@@ -17,7 +17,7 @@ SECRET_KEY = 'django-insecure-koh(_rq4w(xa(q42&wqxx-yf6z67fgvx@l7gvwzz2_m&all#_*
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['chuo-market3.onrender.com', 'localhost', '127.0.0.1',]
 
 
 # Application definition
