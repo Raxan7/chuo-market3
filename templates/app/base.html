@@ -61,7 +61,8 @@
          </form>
          <div>
           <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-           <li class="nav-item dropdown mx-2">
+            {% if user.is_authenticated %}
+            <li class="nav-item dropdown mx-2">
               <a class="nav-link dropdown-toggle text-white" href="#" id="profileDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                 {{request.user.username}}
               </a>
@@ -72,7 +73,6 @@
                 <li><a class="dropdown-item" href="{% url "logout" %}">Logout</a></li>
               </ul>
             </li>
-            {% if user.is_authenticated %}
             <li class="nav-item mx-2">
              <a href="{% url 'carts' %}" class="nav-link text-white"><span class="badge bg-danger" id="cart-count">{{ cart_count }}</span> Cart </a>
             </li>
