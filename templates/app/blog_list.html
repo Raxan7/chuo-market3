@@ -1,0 +1,17 @@
+{% extends 'app/base.html' %}
+{% block title %}Blog List{% endblock title %}
+
+{% block main-content %}
+<div class="container mt-5">
+    <h2>Blog List</h2>
+    <div class="list-group">
+        {% for blog in blogs %}
+            <a href="{% url 'blog_detail' pk=blog.pk %}" class="list-group-item list-group-item-action">
+                <h5 class="mb-1">{{ blog.title }}</h5>
+                <p class="mb-1">{{ blog.content|truncatewords:20 }}</p>
+                <small>By {{ blog.author.username }} on {{ blog.created_at }}</small>
+            </a>
+        {% endfor %}
+    </div>
+</div>
+{% endblock main-content %}

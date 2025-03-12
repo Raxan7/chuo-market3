@@ -1,0 +1,73 @@
+{% extends 'app/base.html' %}
+{% load static %}
+{% block title %}Profile{% endblock title %}
+{% block main-content %}
+<div class="container my-5">
+ <div class="row">
+  <h3>Welcome {{ user.username }}</h3>
+  <div class="col-sm-2 border-end">
+   <ul class="list-unstyled">
+    <li class="d-grid"><a href="{% url 'profile' %}" class="btn btn-primary">Profile</a></li>
+    <li class="d-grid"><a href="{% url 'address' %}" class="btn">Address</a></li>
+   </ul>
+  </div>
+  <div class="col-sm-8 offset-sm-1">
+   <form action="" method="post">
+    {% csrf_token %}
+    <div class="col-12">
+      <label for="inputName" class="form-label">Name</label>
+      <input type="text" class="form-control" id="inputName" name="name" value="{{ user.customer.name }}" required>
+    </div>
+    <div class="col-12">
+      <label for="inputUniversity" class="form-label">University</label>
+      <select id="inputUniversity" class="form-select" name="university" required>
+        <option value="" selected disabled>Choose...</option>
+        {% for choice in UNIVERSITY_CHOICES %}
+        <option value="{{ choice.0 }}" {% if user.customer.university == choice.0 %} selected {% endif %}>{{ choice.1 }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-12">
+      <label for="inputCollege" class="form-label">College</label>
+      <select id="inputCollege" class="form-select" name="college" required>
+        <option value="" selected disabled>Choose...</option>
+        {% for choice in COLLEGE_CHOICES %}
+        <option value="{{ choice.0 }}" {% if user.customer.college == choice.0 %} selected {% endif %}>{{ choice.1 }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-4">
+      <label for="inputBlockNumber" class="form-label">Block Number</label>
+      <input type="text" class="form-control" id="inputBlockNumber" name="block_number" value="{{ user.customer.block_number }}">
+    </div>
+    <div class="col-md-2">
+      <label for="inputRoomNumber" class="form-label">Room Number</label>
+      <input type="text" class="form-control" id="inputRoomNumber" name="room_number" value="{{ user.customer.room_number }}" required>
+    </div>
+    <div class="col-12 mt-3">
+      <button type="submit" class="btn btn-primary">Submit</button>
+    </div>
+   </form>
+  </div>
+ </div>
+</div>
+
+<script>
+  const universitiesData = {{ universities_data|safe }};
+  const universitySelect = document.getElementById('inputUniversity');
+  const collegeSelect = document.getElementById('inputCollege');
+
+  universitySelect.addEventListener('change', function() {
+    const selectedUniversity = this.value;
+    const colleges = universitiesData.find(uni => uni.name === selectedUniversity).colleges;
+    
+    collegeSelect.innerHTML = '<option value="" selected disabled>Choose...</option>';
+    colleges.forEach(college => {
+      const option = document.createElement('option');
+      option.value = college;
+      option.textContent = college;
+      collegeSelect.appendChild(option);
+    });
+  });
+</script>
+{% endblock main-content %}

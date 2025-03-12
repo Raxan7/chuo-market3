@@ -1,0 +1,13 @@
+.container {
+    margin-top: 20px;
+}
+
+.list-group-item.active {
+    background-color: #007bff;
+    border-color: #007bff;
+}
+
+.btn-primary {
+    background-color: #007bff;
+    border-color: #007bff;
+}

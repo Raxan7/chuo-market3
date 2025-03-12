@@ -1,0 +1,10 @@
+{% extends 'app/base.html' %}
+{% block title %}{{ blog.title }}{% endblock title %}
+
+{% block main-content %}
+<div class="container mt-5">
+    <h2>{{ blog.title }}</h2>
+    <p>{{ blog.content }}</p>
+    <small>By {{ blog.author.username }} on {{ blog.created_at }}</small>
+</div>
+{% endblock main-content %}
