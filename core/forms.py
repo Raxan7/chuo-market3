@@ -3,6 +3,7 @@ from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
 from django import forms
 from .models import Product, Blog
+from tinymce.widgets import TinyMCE
 
 class RegistrationForm(UserCreationForm):
     email = forms.EmailField(max_length=254, help_text='Required. Inform a valid email address.')
@@ -24,6 +25,8 @@ class ProductForm(forms.ModelForm):
 
 
 class BlogForm(forms.ModelForm):
+    content = forms.CharField(widget=TinyMCE(attrs={'cols': 80, 'rows':50,'class': 'form-control'}))
+    
     class Meta:
         model = Blog
-        fields = ['title', 'content']
+        fields = ['title', 'content', 'thumbnail']

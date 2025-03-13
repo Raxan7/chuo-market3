@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Customer, Product, OrderPlaced, Cart, Banners
+from .models import Customer, Product, OrderPlaced, Cart, Banners, Blog
 class OrderPlacedAdmin(admin.ModelAdmin):
     list_display = ('user', 'customer', 'product', 'quantity', 'ordered_date', 'status')
 
@@ -11,4 +11,5 @@ admin.site.register(Product)
 # admin.site.register(OrderPlaced)
 admin.site.register(Cart)
 admin.site.register(Banners)
+admin.site.register(Blog)
 

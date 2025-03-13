@@ -47,12 +47,13 @@ def home(request):
 
 def product_detail(request, pk):
     product = Product.objects.get(pk=pk)
+    customer = product.user.customer
     user = request.user
     if isinstance(user, AnonymousUser):
         product_cart = None
     else:
         product_cart = Cart.objects.filter(user=user, product=product.pk).exists()
-    return render(request, 'app/productdetail.html', {'product': product, 'product_cart': product_cart, 'user': user})
+    return render(request, 'app/productdetail.html', {'product': product, 'product_cart': product_cart, 'user': user, 'customer': customer})
 
 
 @login_required(login_url='/login/')
@@ -310,45 +311,37 @@ def buy_now(request):
         product = get_object_or_404(Product, id=product_id)
         return redirect('checkout_with_product', product_id=product.id, quantity=1)
 
-from django.shortcuts import render, redirect
-from django.contrib.auth.decorators import login_required
-from .models import Product
-from .forms import ProductForm, BlogForm
-
 @login_required
 def add_product(request):
     if request.method == 'POST':
-        if 'product_form' in request.POST:
-            product_form = ProductForm(request.POST, request.FILES)
-            blog_form = BlogForm()
-            if product_form.is_valid():
-                product = product_form.save(commit=False)
-                product.user = request.user
-                product.save()
-                return redirect('product_list')
-        elif 'blog_form' in request.POST:
-            blog_form = BlogForm(request.POST)
-            product_form = ProductForm()
-            if blog_form.is_valid():
-                blog = blog_form.save(commit=False)
-                blog.author = request.user
-                blog.save()
-                return redirect('blog_list')
+        product_form = ProductForm(request.POST, request.FILES)
+        if product_form.is_valid():
+            product = product_form.save(commit=False)
+            product.user = request.user
+            product_form.save()
+            return redirect('home')
     else:
         product_form = ProductForm()
-        blog_form = BlogForm()
-    
-    return render(request, 'add_product.html', {'product_form': product_form, 'blog_form': blog_form})
+    return render(request, 'app/add_product.html', {'product_form': product_form})
 
-from django.shortcuts import render, redirect
-from django.contrib.auth.decorators import login_required
-from .models import Blog
-from .forms import BlogForm
+@login_required
+def add_blog(request):
+    if request.method == 'POST':
+        blog_form = BlogForm(request.POST, request.FILES)
+        print(blog_form.is_valid())
+        if blog_form.is_valid():
+            blog = blog_form.save(commit=False)
+            blog.author = request.user
+            blog_form.save()
+            return redirect('blog_list')  # Replace with your success URL
+    else:
+        blog_form = BlogForm()
+    return render(request, 'app/add_blog.html', {'blog_form': blog_form})
 
 @login_required
 def create_blog(request):
     if request.method == 'POST':
-        form = BlogForm(request.POST)
+        form = BlogForm(request.POST, request.FILES)
         if form.is_valid():
             blog = form.save(commit=False)
             blog.author = request.user

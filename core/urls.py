@@ -1,7 +1,7 @@
 from django.urls import path
 from . import views
 from django.contrib.auth import views as auth_views
-from .views import add_product, create_blog, blog_list, blog_detail
+from .views import add_product, add_blog, create_blog, blog_list, blog_detail
 
 urlpatterns = [
     path('', views.home, name='home'),
@@ -28,6 +28,7 @@ urlpatterns = [
     path('changepassword/', views.change_password, name='changepassword'),
     path('buynow/', views.buy_now, name='buy_now'),
     path('add-product/', add_product, name='add_product'),
+    path('add-blog/', add_blog, name='add_blog'),
     path('create-blog/', create_blog, name='create_blog'),
     path('blogs/', blog_list, name='blog_list'),
     path('blogs/<int:pk>/', blog_detail, name='blog_detail'),
