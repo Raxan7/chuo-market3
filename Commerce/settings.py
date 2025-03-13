@@ -74,17 +74,17 @@ WSGI_APPLICATION = 'Commerce.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
-}
-
 # DATABASES = {
-#     'default': dj_database_url.parse("postgresql://manyerere201:exHjyP9UQFX0@ep-shy-mud-a5gs0r74.us-east-2.aws.neon."
-#                                      "tech/chuo-market3?sslmode=require")
+#     'default': {
+#         'ENGINE': 'django.db.backends.sqlite3',
+#         'NAME': BASE_DIR / 'db.sqlite3',
+#     }
 # }
+
+DATABASES = {
+    'default': dj_database_url.parse("postgresql://manyerere201:exHjyP9UQFX0@ep-shy-mud-a5gs0r74.us-east-2.aws.neon."
+                                     "tech/chuo-market3?sslmode=require")
+}
 
 # Password validation
 # https://docs.djangoproject.com/en/5.0/ref/settings/#auth-password-validators
