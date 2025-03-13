@@ -1,0 +1,35 @@
+{% extends 'app/base.html' %}
+{% load custom_filters %}
+
+{% block main-content %}
+<div class="container mt-5">
+    <h2 class="mb-4">Add New Blog Post</h2>
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="form-group">
+            <label for="id_title">Title</label>
+            {{ blog_form.title|add_class:"form-control" }}
+        </div>
+        <div class="form-group">
+            <label for="id_content">Content</label>
+            {{ blog_form.content|add_class:"form-control" }}
+            <!-- <textarea id="id_content" name="content" class="form-control">{{ blog_form.content.value }}</textarea> -->
+        </div>
+        <div class="form-group">
+            <label for="id_thumbnail">Thumbnail</label>
+            {{ blog_form.thumbnail|add_class:"form-control-file" }}
+        </div>
+        <button type="submit" name="blog_form" class="btn btn-primary mt-3">Add Blog</button>
+    </form>
+</div>
+
+<!-- Include the TinyMCE library -->
+<script src="https://cdn.tiny.cloud/1/79mav6qxv90aa5ok0e06rrdtfsld589tfny17p83j3p5qxwk/tinymce/5/tinymce.min.js" referrerpolicy="origin"></script>
+<script>
+    tinymce.init({
+        selector: '#id_content',
+        plugins: 'advlist autolink lists link image charmap print preview hr anchor pagebreak',
+        toolbar_mode: 'floating',
+    });
+</script>
+{% endblock %}

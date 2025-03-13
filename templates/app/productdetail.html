@@ -1,43 +1,50 @@
 {% extends 'app/base.html' %}
 {% load static %}
-{% block title %}Product Detail{% endblock title %}
+{% block title %}Product Details{% endblock title %}
+
 {% block main-content %}
 <div class="container my-5">
- <div class="row">
-  <div class="col-sm-6 text-center align-self-center">
-   <img src="{{product.image.url}}" alt="" class="img-fluid img-thumbnail">
+  <div class="row">
+    <div class="col-md-6 text-center align-self-center">
+      <img src="{{ product.image.url }}" alt="{{ product.title }}" class="img-fluid img-thumbnail">
+    </div>
+    <div class="col-md-6">
+      <h1>{{ product.title }}</h1>
+      <p>{{ product.description }}</p>
+      <p><strong>Price:</strong> TSh {{ product.price }}</p>
+      <p><strong>Posted by:</strong> {{ customer.name }}</p>
+      <p><strong>University:</strong> {{ customer.university }}</p>
+      <p><strong>College:</strong> {{ customer.college }}</p>
+      <p><strong>Block:</strong> {{ customer.block_number }}</p>
+      <p><strong>Room Number:</strong> {{ customer.room_number }}</p>
+      <hr>
+      <h4>$ {{ product.price }} <small class="fw-light text-decoration-line-through">{{ product.discount_price }}</small></h4>
+      {% if user.is_authenticated %}
+        {% if product_cart %}
+          <a href="{% url "carts" %}" class="btn btn-primary shadow px-5 py-2">View Cart</a>
+        {% else %}
+          <form action="/add-to-cart" class="d-inline">
+            <input type="hidden" name="product_id" value="{{ product.id }}" id="product_id">
+            <button type="submit" class="btn btn-primary shadow px-5 py-2">Add to Cart</button>
+          </form>
+        {% endif %}
+      {% else %}
+        <form action="/add-to-cart" class="d-inline">
+          <input type="hidden" name="product_id" value="{{ product.id }}" id="product_id">
+          <button type="submit" class="btn btn-primary shadow px-5 py-2">Add to Cart</button>
+        </form>
+      {% endif %}
+      <form action="{% url 'buy_now' %}" method="post" class="d-inline">
+        {% csrf_token %}
+        <input type="hidden" name="product_id" value="{{ product.id }}" id="product_id">
+        <button type="submit" class="btn btn-danger shadow px-5 py-2 ms-4">Buy Now</button>
+      </form>
+      <h5 class="mt-5">Available Offers</h5>
+      <ul>
+        <li>No shipping cost if you are at the University of Dodoma</li>
+        <li>5% discount if you buy more than 10 at once</li>
+      </ul>
+    </div>
   </div>
-  <div class="col-sm-5 offset-sm-1">
-   <h2>Product Title: {{product.title}}</h2>
-   <hr>
-   <p>{{product.description}}</p> <br>
-   <h4>$ {{product.price}} <small class="fw-light text-decoration-line-through">{{product.discount_price}}</small></h4> <br>
-   {% if user.is_authenticated %}
-   {% if product_cart %}
-   <a href="{% url "carts" %}" class="btn btn-primary shadow px-5 py-2">View Cart</a>
-   {% else %}
-   <form action="/add-to-cart" class="d-inline">
-    <input type="hidden" name="product_id" value="{{product.id}}" id="product_id">
-    <button type="submit" class="btn btn-primary shadow px-5 py-2">Add to Cart</button>
-   </form>
-   {% endif %}
-   {% else %}
-   <form action="/add-to-cart" class="d-inline">
-    <input type="hidden" name="product_id" value="{{product.id}}" id="product_id">
-    <button type="submit" class="btn btn-primary shadow px-5 py-2">Add to Cart</button>
-   </form>
-   {% endif %}
-   <form action="{% url 'buy_now' %}" method="post" class="d-inline">
-    {% csrf_token %}
-    <input type="hidden" name="product_id" value="{{product.id}}" id="product_id">
-    <button type="submit" class="btn btn-danger shadow px-5 py-2 ms-4">Buy Now</button>
-   </form>
-   <h5 class="mt-5">Available Offers</h5>
-   <ul>
-    <li>No shipping cost if you are at the University of Dodoma</li>
-    <li>5% discount if you buy more than 10 at once</li>
-   </ul>
-  </div>
- </div>
 </div>
 {% endblock main-content %}

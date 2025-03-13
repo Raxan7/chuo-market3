@@ -4,7 +4,12 @@
 {% block main-content %}
 <div class="container mt-5">
     <h2>{{ blog.title }}</h2>
-    <p>{{ blog.content }}</p>
+    {% if blog.thumbnail %}
+        <img src="{{ blog.thumbnail.url }}" alt="{{ blog.title }}" class="img-fluid mb-3">
+    {% endif %}
+    <br>
     <small>By {{ blog.author.username }} on {{ blog.created_at }}</small>
+    <br><br>
+    <p>{{ blog.content | safe }}</p>
 </div>
 {% endblock main-content %}
