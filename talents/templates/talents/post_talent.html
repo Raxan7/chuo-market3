@@ -1,0 +1,66 @@
+{% extends 'app/base.html' %}
+{% load static %}
+{% load custom_filters %}
+
+{% block title %}Post Your Talent{% endblock title %}
+
+{% block main-content %}
+<div class="container mt-5">
+  <div class="card glass-card">
+    <div class="card-header">
+      <h1>Post Your Talent</h1>
+    </div>
+    <div class="card-body">
+      <form method="POST" enctype="multipart/form-data" class="mdc-form">
+        {% csrf_token %}
+        
+        <div class="form-group mdc-text-field mdc-text-field--outlined">
+          <label class="mdc-floating-label" for="title">Title</label>
+          {{ form.title|add_class:"mdc-text-field__input form-control" }}
+          <div class="mdc-line-ripple"></div>
+        </div>
+        
+        <div class="form-group mdc-text-field mdc-text-field--textarea">
+          <label class="mdc-floating-label" for="description">Description</label>
+          {{ form.description|add_class:"mdc-text-field__input form-control" }}
+          <div class="mdc-line-ripple"></div>
+        </div>
+        
+        <div class="form-group mdc-select">
+          <label class="mdc-floating-label">Category</label>
+          {{ form.category|add_class:"mdc-select__native-control form-control" }}
+          <div class="mdc-line-ripple"></div>
+        </div>
+        
+        <div class="form-group mdc-text-field mdc-text-field--outlined">
+          <label class="mdc-floating-label" for="media">Media</label>
+          {{ form.media|add_class:"mdc-text-field__input form-control-file" }}
+          <div class="mdc-line-ripple"></div>
+        </div>
+        
+        <button type="submit" class="btn btn-primary mt-3 mdc-button mdc-button--raised">Submit</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock main-content %}
+
+{% block extra-scripts %}
+<script src="{% static 'js/material-components-web.min.js' %}"></script>
+<script>
+  mdc.autoInit();
+</script>
+{% endblock extra-scripts %}
+
+<style>
+  .glass-card {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 15px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(10px);
+    padding: 20px;
+  }
+  .glass-card .card-header {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  }
+</style>

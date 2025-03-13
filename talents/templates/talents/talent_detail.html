@@ -1,0 +1,59 @@
+{% extends 'app/base.html' %}
+{% block title %}{{ talent.title }}{% endblock title %}
+
+{% block main-content %}
+<div class="container d-flex justify-content-center align-items-center" style="min-height: 100vh;">
+  <div class="card text-center shadow-lg" style="width: 100%; max-width: 800px; margin: 20px; padding: 20px;">
+    <div class="card-header text-white">
+      <h1 class="text-dark">{{ talent.title }}</h1>
+      {% if talent.media %}
+        <img src="{{ talent.media.url }}" class="img-fluid mt-3" alt="{{ talent.title }}">
+      {% endif %}
+    </div>
+    <div class="card-body">
+      <p>{{ talent.description }}</p>
+      <p>Category: {{ talent.get_category_display }}</p>
+    </div>
+    <div class="card-footer">
+      <h3>Comments:</h3>
+      {% for comment in comments %}
+        <div class="comment border rounded p-2 my-2">
+          <p><strong>{{ comment.user.username }}:</strong> {{ comment.text }}</p>
+        </div>
+      {% endfor %}
+      <form method="POST" action="{% url 'add_comment' talent.pk %}" class="mt-3">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit" class="btn btn-primary btn-block">Add Comment</button>
+      </form>
+      <p class="mt-3">
+        <a href="{% url 'like_talent' talent.pk %}" class="btn btn-secondary btn-block">Like</a> ({{ talent.likes.count }})
+      </p>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.4.0/dist/confetti.browser.min.js"></script>
+<script>
+  var duration = 15 * 1000;
+  var animationEnd = Date.now() + duration;
+  var defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 };
+
+  function randomInRange(min, max) {
+    return Math.random() * (max - min) + min;
+  }
+
+  var interval = setInterval(function() {
+    var timeLeft = animationEnd - Date.now();
+
+    if (timeLeft <= 0) {
+      return clearInterval(interval);
+    }
+
+    var particleCount = 50 * (timeLeft / duration);
+    // since particles fall down, start a bit higher than random
+    confetti({ ...defaults, particleCount, origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 } });
+    confetti({ ...defaults, particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 } });
+  }, 250);
+</script>
+{% endblock main-content %}

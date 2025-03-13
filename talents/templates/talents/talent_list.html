@@ -1,0 +1,31 @@
+{% extends 'app/base.html' %}
+{% block title %}Talent List{% endblock title %}
+
+{% block main-content %}
+{% if talents %}
+  <div style="display: flex; flex-wrap: wrap; gap: 20px; justify-content: center;">
+    {% for talent in talents %}
+      <a href="{% url 'talent_detail' talent.pk %}" style="text-decoration: none; color: inherit;">
+        <div style="border: 1px solid gold; border-radius: 8px; padding: 20px; width: 300px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(255, 215, 0, 0.3)); margin: 10px;">
+          <h2>{{ talent.title }}</h2>
+          <p>{{ talent.description|truncatewords:20 }}</p>
+          <p>Category: {{ talent.get_category_display }}</p>
+          {% if talent.media %}
+            <img src="{{ talent.media.url }}" width="100%">
+          {% endif %}
+          <p>Likes: {{ talent.likes.count }} | 
+            <a href="{% url 'like_talent' talent.pk %}" style="text-decoration: none; color: inherit;">Like</a>
+          </p>
+        </div>
+      </a>
+    {% endfor %}
+  </div>
+{% else %}
+  <div style="display: flex; justify-content: center; align-items: center; height: 100vh;">
+    <div style="padding: 20px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); border-radius: 8px; text-align: center;">
+      <p>No talents available at the moment. Please check back later.</p>
+      <p>Be the first to <a href="{% url 'post_talent' %}">upload your talent</a>!</p>
+    </div>
+  </div>
+{% endif %}
+{% endblock main-content %}
