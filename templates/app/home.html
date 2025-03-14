@@ -71,7 +71,7 @@
           {% if message.bot_response %}
           <div class="d-flex justify-content-start">
             <div class="p-2 m-1 bg-secondary text-white rounded">
-              <strong>Bot:</strong> {{ message.bot_response|markdown }}
+              <strong>AI Lecturer:</strong> {{ message.bot_response|markdown }}
             </div>
           </div>
           {% endif %}
@@ -88,7 +88,7 @@
       <!-- Form Section -->
       <form action="{% url 'send_message' %}#chatbox-section" method="post" class="d-flex">
           {% csrf_token %}
-          <textarea name="user_message" class="form-control me-2" style="background-color: #e9ecef;" placeholder="Ask me anything"></textarea>
+          <textarea name="user_message" class="form-control me-2" style="background-color: #e9ecef;" placeholder="Niulize Chochote Nitakujibu ..."></textarea>
           <input type="submit" value="Send" class="btn btn-primary">
       </form>
     </div>
