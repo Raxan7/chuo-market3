@@ -5,6 +5,11 @@
     <title>Chatbot</title>
 </head>
 <body>
+    {% if not request.user.is_authenticated and not messages %}
+    <div>
+        <strong>Your session has expired. Please <a href="{% url 'login' %}">log in</a> to continue.</strong>
+    </div>
+    {% else %}
     {% for message in messages %}
     <div>
         <strong>User:</strong>  {{ message.user_message }}
@@ -19,5 +24,6 @@
         <textarea name="user_message"></textarea>
         <input type="submit" value="Send">
     </form>
+    {% endif %}
 </body>
 </html>
