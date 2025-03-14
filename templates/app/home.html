@@ -1,5 +1,6 @@
 {% extends 'app/base.html' %}
 {% load static %}
+{% load markdown_deux_tags %}
 {% block title %}Home{% endblock title %}
 
 <style>
@@ -9,6 +10,15 @@
     width: 100%;
     z-index: 1000;
     display: block;
+  }
+
+  .animated-text {
+    animation: fadeInOut 2s infinite;
+  }
+
+  @keyframes fadeInOut {
+    0%, 100% { opacity: 0; }
+    50% { opacity: 1; }
   }
 </style>
 
@@ -41,6 +51,57 @@
 
 <!-- End Banner Slider -->
 {% endblock banner_slider %}
+
+{% block chatbox %}
+<!-- Chatbox Section -->
+<div id="chatbox-section" class="d-flex justify-content-center">
+  <div class="container border border-4 rounded shadow-lg m-2 p-2 bg-light d-flex flex-column" style="max-height: 400px; border-radius: 15px; box-shadow: 0 4px 8px rgba(255, 215, 0, 0.3); border-color: #0077be;">
+    <h2 class="text-center text-primary mb-3" style="font-family: 'Comic Sans MS', cursive, sans-serif;">AI Lecturer</h2>
+    <div id="chatbox-messages" style="flex: 1; overflow-y: auto;">
+      <!-- Messages Section -->
+      {% if messages %}
+        {% for message in messages %}
+          {% if message.user_message %}
+          <div class="d-flex justify-content-end">
+            <div class="p-2 m-1 bg-primary text-white rounded">
+              <strong>User:</strong> {{ message.user_message|markdown }}
+            </div>
+          </div>
+          {% endif %}
+          {% if message.bot_response %}
+          <div class="d-flex justify-content-start">
+            <div class="p-2 m-1 bg-secondary text-white rounded">
+              <strong>Bot:</strong> {{ message.bot_response|markdown }}
+            </div>
+          </div>
+          {% endif %}
+        {% endfor %}
+      {% else %}
+        <div class="d-flex justify-content-center">
+          <div class="p-2 m-1 bg-light text-dark rounded animated-text">
+            <strong>Ask AI Lecturer anything!</strong>
+          </div>
+        </div>
+      {% endif %}
+    </div>
+    <div style="background-color: #f8f9fa;">
+      <!-- Form Section -->
+      <form action="{% url 'send_message' %}#chatbox-section" method="post" class="d-flex">
+          {% csrf_token %}
+          <textarea name="user_message" class="form-control me-2" style="background-color: #e9ecef;" placeholder="Ask me anything"></textarea>
+          <input type="submit" value="Send" class="btn btn-primary">
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+    var chatboxMessages = document.getElementById("chatbox-messages");
+    chatboxMessages.scrollTop = chatboxMessages.scrollHeight;
+  });
+</script>
+{% endblock chatbox %}
 
 {% block livesale %}
 <!-- Live Sale Section -->
