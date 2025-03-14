@@ -12,6 +12,11 @@ from django.contrib.auth import update_session_auth_hash
 from django.contrib import messages
 from django.contrib.auth.models import AnonymousUser
 from .universities_colleges_tanzania import universities_data
+from chatbotapp.models import ChatMessage, UnauthenticatedChatMessage
+from asgiref.sync import sync_to_async
+from django.utils import timezone
+from datetime import timedelta
+
 logger = logging.getLogger(__name__)
 
 
@@ -24,14 +29,36 @@ def get_cart_count(request):
     return JsonResponse({'cart_count': cart_count})
 
 def home(request):
-    customers = Customer.objects.all()
-    mobile = Product.objects.filter(category='M')
-    electronics = Product.objects.filter(category__iexact='El')
-    books = Product.objects.filter(category='B')
-    cloth = Product.objects.filter(category='C')
-    accessorie = Product.objects.filter(category='AC')
-    products = Product.objects.all()
-    banners = Banners.objects.all()
+    user = request.user
+    session_key = request.session.session_key
+
+    if not session_key:
+        request.session.create()
+        session_key = request.session.session_key
+
+    # Set session expiration times
+    request.session.set_expiry(600)  # 10 minutes of constant use
+    request.session.set_expiry(180)  # 3 minutes if inactive
+
+    is_authenticated = user.is_authenticated
+    if is_authenticated:
+        messages = list(ChatMessage.objects.filter(user=user))
+        request.session.flush()  # Clear session on login
+    else:
+        messages = request.session.get('messages', [])
+        if not messages:
+            messages = list(UnauthenticatedChatMessage.objects.filter(session_key=session_key))
+            request.session['messages'] = [{'user_message': msg.user_message, 'bot_response': msg.bot_response} for msg in messages]
+            request.session.modified = True
+
+    customers = list(Customer.objects.all())
+    mobile = list(Product.objects.filter(category='M'))
+    electronics = list(Product.objects.filter(category__iexact='El'))
+    books = list(Product.objects.filter(category='B'))
+    cloth = list(Product.objects.filter(category='C'))
+    accessorie = list(Product.objects.filter(category='AC'))
+    products = list(Product.objects.all())
+    banners = list(Banners.objects.all())
     context = {
         'customers': customers,
         'products': products, 
@@ -41,7 +68,8 @@ def home(request):
         'cloth': cloth,
         'accessorie': accessorie,
         'banners': banners,
-        
+        'messages': messages,
+        'is_authenticated': is_authenticated,
     }
     return render(request, 'app/home.html', context)
 
