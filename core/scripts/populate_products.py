@@ -3,11 +3,19 @@ import django
 import requests
 from django.core.files import File
 from django.core.files.temp import NamedTemporaryFile
-from core.models import Product  # Import your model
+from core.models import Customer  # Import Customer model
+from core.models import Product  # Import Product model
 
 # Set up Django environment
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "Commerce.settings")  # Update your project name
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "Commerce.settings")  # Update with your project name
 django.setup()
+
+# Get the first available user from Customer
+customer = Customer.objects.first()
+if not customer:
+    raise Exception("❌ No customers found! Add a customer first.")
+
+user = customer.user  # Extract associated user
 
 # Define product categories
 CATEGORY = {
@@ -50,10 +58,11 @@ def download_image(image_url, product):
     except Exception as e:
         print(f"⚠️ Failed to download image for {product.title}: {e}")
 
-# Add Products to Database with Images
+# Add Products to Database with Images & User
 for cat_code, products in PRODUCTS.items():
     for prod in products:
         product = Product.objects.create(
+            user=user,  # Assign user from Customer
             title=prod["title"],
             category=cat_code,
             description=prod["description"],
@@ -64,5 +73,4 @@ for cat_code, products in PRODUCTS.items():
         # Download and attach image
         download_image(prod["image"], product)
 
-print("✅ Products with images added successfully!")
-
+print(f"✅ Products with images added successfully for user {user.username}!")
