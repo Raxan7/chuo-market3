@@ -43,7 +43,7 @@ def home(request):
     is_authenticated = user.is_authenticated
     if is_authenticated:
         messages = list(ChatMessage.objects.filter(user=user))
-        request.session.flush()  # Clear session on login
+        # request.session.flush()  # Comment out this line to prevent session flush on login
     else:
         messages = request.session.get('messages', [])
         if not messages:
