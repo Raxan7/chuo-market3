@@ -11,12 +11,22 @@
     <div class="col-md-6">
       <h1>{{ product.title }}</h1>
       <p>{{ product.description }}</p>
-      <p><strong>Price:</strong> TSh {{ product.price }}</p>
-      <p><strong>Posted by:</strong> {{ customer.name }}</p>
-      <p><strong>University:</strong> {{ customer.university }}</p>
-      <p><strong>College:</strong> {{ customer.college }}</p>
-      <p><strong>Block:</strong> {{ customer.block_number }}</p>
-      <p><strong>Room Number:</strong> {{ customer.room_number }}</p>
+      <p><i class="fas fa-tag"></i> <strong>Price:</strong> TSh {{ product.price }}</p>
+      <p><i class="fas fa-user"></i> <strong>Posted by:</strong> {{ customer.name }}</p>
+      <p><i class="fas fa-university"></i> <strong>University:</strong> {{ customer.university }}</p>
+      <p><i class="fas fa-school"></i> <strong>College:</strong> {{ customer.college }}</p>
+      <p><i class="fas fa-building"></i> <strong>Block:</strong> {{ customer.block_number }}</p>
+      <p><i class="fas fa-door-open"></i> <strong>Room Number:</strong> {{ customer.room_number }}</p>
+      <p>
+        <i class="fas fa-star" 
+           style="color: 
+             {% if customer.subscription == 'Bronze' %}#cd7f32
+             {% elif customer.subscription == 'Silver' %}#c0c0c0
+             {% elif customer.subscription == 'Gold' %}#ffd700
+             {% endif %};">
+        </i> 
+        <strong>Seller Level:</strong> {{ customer.subscription }}
+      </p>
       <hr>
       <h4>$ {{ product.price }} <small class="fw-light text-decoration-line-through">{{ product.discount_price }}</small></h4>
       {% if user.is_authenticated %}

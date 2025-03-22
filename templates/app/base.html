@@ -180,6 +180,15 @@
        </div>
      </div>
     </nav>
+    <div class="container mt-3">
+      {% if messages %}
+        <div class="alert alert-info" role="alert">
+          {% for message in messages %}
+            <p>{{ message }}</p>
+          {% endfor %}
+        </div>
+      {% endif %}
+    </div>
     <div class="content">
       {% block banner_slider %} {% endblock banner_slider %}
       {% block chatbox %} {% endblock chatbox %}

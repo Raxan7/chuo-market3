@@ -145,6 +145,13 @@
               <p class="card-text text-muted">
                 <i class="fas fa-map-marker-alt"></i> {{ mobiles.user.customer.university }}, {{ mobiles.user.customer.college }}
               </p>
+              <p class="card-text text-muted">
+                <i class="fas fa-star" style="color: 
+                  {% if mobiles.user.customer.subscription.level == 'Bronze' %}#cd7f32
+                  {% elif mobiles.user.customer.subscription.level == 'Silver' %}#c0c0c0
+                  {% elif mobiles.user.customer.subscription.level == 'Gold' %}#ffd700
+                  {% endif %};"></i> {{ mobiles.user.customer.subscription.level }} Seller
+              </p>
             </div>
           </div>
         </a>
@@ -167,6 +174,13 @@
               <p class="card-text">TSh {{cloths.price}}</p>
               <p class="card-text text-muted">
                 <i class="fas fa-map-marker-alt"></i> {{ cloths.user.customer.university }}, {{ cloths.user.customer.college }}
+              </p>
+              <p class="card-text text-muted">
+                <i class="fas fa-star" style="color: 
+                  {% if cloths.user.customer.subscription.level == 'Bronze' %}#cd7f32
+                  {% elif cloths.user.customer.subscription.level == 'Silver' %}#c0c0c0
+                  {% elif cloths.user.customer.subscription.level == 'Gold' %}#ffd700
+                  {% endif %};"></i> {{ cloths.user.customer.subscription.level }} Seller
               </p>
             </div>
           </div>
@@ -191,6 +205,13 @@
               <p class="card-text text-muted">
                 <i class="fas fa-map-marker-alt"></i> {{ product.user.customer.university }}, {{ product.user.customer.college }}
               </p>
+              <p class="card-text text-muted">
+                <i class="fas fa-star" style="color: 
+                  {% if product.user.customer.subscription.level == 'Bronze' %}#cd7f32
+                  {% elif product.user.customer.subscription.level == 'Silver' %}#c0c0c0
+                  {% elif product.user.customer.subscription.level == 'Gold' %}#ffd700
+                  {% endif %};"></i> {{ product.user.customer.subscription.level }} Seller
+              </p>
             </div>
           </div>
         </a>
@@ -214,6 +235,13 @@
               <p class="card-text text-muted">
                 <i class="fas fa-map-marker-alt"></i> {{ book.user.customer.university }}, {{ book.user.customer.college }}
               </p>
+              <p class="card-text text-muted">
+                <i class="fas fa-star" style="color: 
+                  {% if book.user.customer.subscription.level == 'Bronze' %}#cd7f32
+                  {% elif book.user.customer.subscription.level == 'Silver' %}#c0c0c0
+                  {% elif book.user.customer.subscription.level == 'Gold' %}#ffd700
+                  {% endif %};"></i> {{ book.user.customer.subscription.level }} Seller
+              </p>
             </div>
           </div>
         </a>
@@ -236,6 +264,13 @@
               <p class="card-text">TSh {{accessory.price}}</p>
               <p class="card-text text-muted">
                 <i class="fas fa-map-marker-alt"></i> {{ accessory.user.customer.university }}, {{ accessory.user.customer.college }}
+              </p>
+              <p class="card-text text-muted">
+                <i class="fas fa-star" style="color: 
+                  {% if accessory.user.customer.subscription.level == 'Bronze' %}#cd7f32
+                  {% elif accessory.user.customer.subscription.level == 'Silver' %}#c0c0c0
+                  {% elif accessory.user.customer.subscription.level == 'Gold' %}#ffd700
+                  {% endif %};"></i> {{ accessory.user.customer.subscription.level }} Seller
               </p>
             </div>
           </div>
