@@ -20,6 +20,18 @@
     0%, 100% { opacity: 0; }
     50% { opacity: 1; }
   }
+
+  .card-text {
+    margin-bottom: 0.5rem;
+  }
+  .card-text.text-muted {
+    font-size: 0.9rem;
+  }
+  @media (max-width: 768px) {
+    .card {
+      width: 100%;
+    }
+  }
 </style>
 
 {% block banner_slider %}
@@ -130,6 +142,9 @@
             <div class="card-body">
               <h5 class="card-title">{{ mobiles.title |truncatewords:3 }}</h5>
               <p class="card-text">TSh {{mobiles.price}}</p>
+              <p class="card-text text-muted">
+                <i class="fas fa-map-marker-alt"></i> {{ mobiles.user.customer.university }}, {{ mobiles.user.customer.college }}
+              </p>
             </div>
           </div>
         </a>
@@ -150,6 +165,9 @@
             <div class="card-body">
               <h5 class="card-title">{{ cloths.title |truncatewords:3 }}</h5>
               <p class="card-text">TSh {{cloths.price}}</p>
+              <p class="card-text text-muted">
+                <i class="fas fa-map-marker-alt"></i> {{ cloths.user.customer.university }}, {{ cloths.user.customer.college }}
+              </p>
             </div>
           </div>
         </a>
@@ -170,6 +188,9 @@
             <div class="card-body">
               <h5 class="card-title">{{ product.title |truncatewords:3 }}</h5>
               <p class="card-text">TSh {{product.price}}</p>
+              <p class="card-text text-muted">
+                <i class="fas fa-map-marker-alt"></i> {{ product.user.customer.university }}, {{ product.user.customer.college }}
+              </p>
             </div>
           </div>
         </a>
@@ -190,6 +211,9 @@
             <div class="card-body">
               <h5 class="card-title">{{ book.title |truncatewords:3 }}</h5>
               <p class="card-text">TSh {{book.price}}</p>
+              <p class="card-text text-muted">
+                <i class="fas fa-map-marker-alt"></i> {{ book.user.customer.university }}, {{ book.user.customer.college }}
+              </p>
             </div>
           </div>
         </a>
@@ -210,6 +234,9 @@
             <div class="card-body">
               <h5 class="card-title">{{ accessory.title |truncatewords:3 }}</h5>
               <p class="card-text">TSh {{accessory.price}}</p>
+              <p class="card-text text-muted">
+                <i class="fas fa-map-marker-alt"></i> {{ accessory.user.customer.university }}, {{ accessory.user.customer.college }}
+              </p>
             </div>
           </div>
         </a>
