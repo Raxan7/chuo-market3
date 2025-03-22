@@ -16,10 +16,10 @@ from chatbotapp.models import ChatMessage, UnauthenticatedChatMessage
 from asgiref.sync import sync_to_async
 from django.utils import timezone
 from datetime import timedelta
+from django.utils.decorators import method_decorator
+from core.decorators.customer_required import customer_required
 
 logger = logging.getLogger(__name__)
-
-
 
 def get_cart_count(request):
     if request.user.is_authenticated:
@@ -86,7 +86,7 @@ def product_detail(request, pk):
 
 
 @login_required(login_url='/login/')
-
+@customer_required
 def add_to_cart(request):
     user = request.user
     product_id = request.GET.get('product_id')
@@ -97,6 +97,7 @@ def add_to_cart(request):
 
 
 @login_required(login_url='/login/')
+@customer_required
 def view_cart(request):
     user = request.user
     carts = Cart.objects.filter(user=user)
@@ -107,6 +108,7 @@ def view_cart(request):
     return render(request, 'app/addtocart.html', {'carts': cart_items_with_price, 'total_amount': total_amount, 'shipping_amount': shipping_amount, 'amount': amount})
 
 @login_required(login_url='/login/')
+@customer_required
 def remove_cart(request, pk):
     product = get_object_or_404(Product, pk=pk)
     if product:
@@ -122,6 +124,7 @@ def remove_cart(request, pk):
     return redirect(reverse('carts'))
 
 @login_required(login_url='/login/')
+@customer_required
 def plus_cart(request):
     if request.method == 'GET':
         pid = request.GET.get('pid')
@@ -136,6 +139,7 @@ def plus_cart(request):
         return JsonResponse({'status': 'ok', 'quantity': cart_item.quantity, 'total_amount': total_amount, 'amount': amount})
 
 @login_required(login_url='/login/')
+@customer_required
 def minus_cart(request):
     if request.method == 'GET':
         pid = request.GET.get('pid')
@@ -197,6 +201,7 @@ def orders(request):
     return render(request, 'app/orders.html', {'orders': orders})
 
 @login_required(login_url='/login/')
+@customer_required
 def order_placed(request):
     user = request.user
     customer_id = request.GET.get("customer_id")
@@ -260,6 +265,7 @@ def customerregistration(request):
     return render(request, 'app/customerregistration.html', {'form': form})
 
 @login_required(login_url='/login/')
+@customer_required
 def checkout(request, product_id=None, quantity=1):
     user = request.user
     addresses = Customer.objects.filter(user=user)
@@ -341,6 +347,7 @@ def buy_now(request):
         return redirect('checkout_with_product', product_id=product.id, quantity=1)
 
 @login_required
+@customer_required
 def add_product(request):
     if request.method == 'POST':
         product_form = ProductForm(request.POST, request.FILES)
@@ -354,6 +361,7 @@ def add_product(request):
     return render(request, 'app/add_product.html', {'product_form': product_form})
 
 @login_required
+@customer_required
 def add_blog(request):
     if request.method == 'POST':
         blog_form = BlogForm(request.POST, request.FILES)
@@ -368,6 +376,7 @@ def add_blog(request):
     return render(request, 'app/add_blog.html', {'blog_form': blog_form})
 
 @login_required
+@customer_required
 def create_blog(request):
     if request.method == 'POST':
         form = BlogForm(request.POST, request.FILES)
@@ -390,6 +399,7 @@ def blog_detail(request, pk):
 
 
 @login_required(login_url='/login/')
+@customer_required
 def subscribe(request):
     user = request.user
     if request.method == 'POST':
