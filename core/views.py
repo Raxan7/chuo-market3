@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from .models import *
-from .forms import RegistrationForm, LoginForm, ProductForm, BlogForm
+from .forms import RegistrationForm, LoginForm, ProductForm, BlogForm, SubscriptionForm
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 import logging
@@ -37,21 +37,22 @@ def home(request):
         session_key = request.session.session_key
 
     # Set session expiration times
-    request.session.set_expiry(600)  # 10 minutes of constant use
-    request.session.set_expiry(180)  # 3 minutes if inactive
+    request.session.set_expiry(3600)  # 1 hour of constant use
+    request.session.set_expiry(1800)  # 30 minutes if inactive
 
     is_authenticated = user.is_authenticated
     if is_authenticated:
         messages = list(ChatMessage.objects.filter(user=user))
         # request.session.flush()  # Comment out this line to prevent session flush on login
+        customers = Customer.objects.filter(user=user).exists()
     else:
         messages = request.session.get('messages', [])
         if not messages:
             messages = list(UnauthenticatedChatMessage.objects.filter(session_key=session_key))
             request.session['messages'] = [{'user_message': msg.user_message, 'bot_response': msg.bot_response} for msg in messages]
             request.session.modified = True
+        customers = False
 
-    customers = list(Customer.objects.all())
     mobile = list(Product.objects.filter(category='M'))
     electronics = list(Product.objects.filter(category__iexact='El'))
     books = list(Product.objects.filter(category='B'))
@@ -387,3 +388,30 @@ def blog_detail(request, pk):
     blog = Blog.objects.get(pk=pk)
     return render(request, 'app/blog_detail.html', {'blog': blog})
 
+
+@login_required(login_url='/login/')
+def subscribe(request):
+    user = request.user
+    if request.method == 'POST':
+        form = SubscriptionForm(request.POST)
+        if form.is_valid():
+            subscription = form.cleaned_data['subscription']
+            customer = user.customer
+            customer.subscription = subscription
+            customer.save()
+            messages.success(request, 'Subscription updated successfully.')
+            return redirect('profile')
+    else:
+        form = SubscriptionForm()
+    
+    subscriptions = []
+    for subscription in form.fields['subscription'].queryset:
+        benefits = [benefit.strip().capitalize() for benefit in subscription.benefits.split(',')]
+        subscriptions.append({
+            'id': subscription.id,
+            'level': subscription.level,
+            'price': subscription.price,
+            'benefits': benefits
+        })
+    
+    return render(request, 'app/subscribe.html', {'form': form, 'subscriptions': subscriptions})

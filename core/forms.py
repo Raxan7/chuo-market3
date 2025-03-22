@@ -1,8 +1,7 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
-from django import forms
-from .models import Product, Blog
+from .models import Product, Blog, Subscription
 from tinymce.widgets import TinyMCE
 
 class RegistrationForm(UserCreationForm):
@@ -30,3 +29,7 @@ class BlogForm(forms.ModelForm):
     class Meta:
         model = Blog
         fields = ['title', 'content', 'thumbnail']
+
+
+class SubscriptionForm(forms.Form):
+    subscription = forms.ModelChoiceField(queryset=Subscription.objects.all(), empty_label="Select Subscription Level")

@@ -32,4 +32,5 @@ urlpatterns = [
     path('create-blog/', create_blog, name='create_blog'),
     path('blogs/', blog_list, name='blog_list'),
     path('blogs/<int:pk>/', blog_detail, name='blog_detail'),
+    path('subscribe/', views.subscribe, name='subscribe'),
 ]

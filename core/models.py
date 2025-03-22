@@ -2,6 +2,44 @@ from django.db import models
 from django.contrib.auth.models import User
 from .universities_colleges_tanzania import universities_data
 
+class Subscription(models.Model):
+    LEVEL_CHOICES = [
+        ('Free', 'Free'),
+        ('Bronze', 'Bronze'),
+        ('Silver', 'Silver'),
+        ('Gold', 'Gold'),
+    ]
+    level = models.CharField(max_length=10, choices=LEVEL_CHOICES, default='Free')
+    price = models.FloatField()
+    benefits = models.TextField()
+
+    @staticmethod
+    def populate_default_data():
+        if Subscription.objects.count() == 0:
+            Subscription.objects.create(
+                level='Free',
+                price=0.0,
+                benefits='Basic access to the platform, limited product listings, basic support'
+            )
+            Subscription.objects.create(
+                level='Bronze',
+                price=2000.0,
+                benefits='Increased product listings, priority support, access to promotional tools'
+            )
+            Subscription.objects.create(
+                level='Silver',
+                price=5000.0,
+                benefits='All Bronze benefits, featured product placement, advanced analytics, most popular'
+            )
+            Subscription.objects.create(
+                level='Gold',
+                price=10000.0,
+                benefits='All Silver benefits, unlimited product listings, dedicated account manager, premium support'
+            )
+
+    def __str__(self):
+        return self.level
+
 class Customer(models.Model):
     UNIVERSITY_CHOICES = [(uni['name'], uni['name']) for uni in universities_data]
     COLLEGE_CHOICES = [(college, college) for uni in universities_data for college in uni['colleges']]
@@ -12,6 +50,11 @@ class Customer(models.Model):
     college = models.CharField(max_length=200, choices=COLLEGE_CHOICES)
     block_number = models.CharField(max_length=200, null=True)
     room_number = models.CharField(max_length=200)
+    
+    def get_default_subscription():
+        return Subscription.objects.get(level='Free').id
+
+    subscription = models.ForeignKey(Subscription, on_delete=models.SET_NULL, null=True, blank=True, default=get_default_subscription)
 
     def __str__(self):
         return str(self.id)
