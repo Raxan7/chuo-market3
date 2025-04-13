@@ -1,6 +1,8 @@
 import os
 from pathlib import Path
 from dotenv import load_dotenv
+import pymysql
+pymysql.install_as_MySQLdb()
 
 # Load environment variables from .env file
 load_dotenv()
@@ -96,9 +98,23 @@ WSGI_APPLICATION = 'Commerce.wsgi.application'
 #     }
 # }
 
+# DATABASES = {
+#     'default': dj_database_url.parse("postgresql://manyerere201:exHjyP9UQFX0@ep-shy-mud-a5gs0r74.us-east-2.aws.neon."
+#                                      "tech/chuo-market3?sslmode=require")
+# }
+
 DATABASES = {
-    'default': dj_database_url.parse("postgresql://manyerere201:exHjyP9UQFX0@ep-shy-mud-a5gs0r74.us-east-2.aws.neon."
-                                     "tech/chuo-market3?sslmode=require")
+    'default': {
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': os.getenv('DB_NAME'),  # Database name from .env
+        'USER': os.getenv('DB_USER'),  # Database username from .env
+        'PASSWORD': os.getenv('DB_PASSWORD'),  # Database password from .env
+        'HOST': os.getenv('DB_HOST', default='localhost'),  # Database host from .env
+        'PORT': os.getenv('DB_PORT', default='3306'),  # Database port from .env
+        'OPTIONS': {
+            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'"
+        }
+    }
 }
 
 # Password validation
