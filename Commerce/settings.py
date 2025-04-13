@@ -20,7 +20,20 @@ SECRET_KEY = os.getenv('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['chuo-market3.onrender.com', 'localhost', '127.0.0.1',]
+ALLOWED_HOSTS = ['chuo-market3.onrender.com', 'localhost', '127.0.0.1', 'chuosmart.com', 'www.chuosmart.com']
+# CSRF_TRUSTED_ORIGINS = ['https://chuo-market3.onrender.com', 'http://localhost:8000']
+CSRF_TRUSTED_ORIGINS = [
+    'https://chuo-market3.onrender.com',
+    'http://localhost:8000',
+    'https://www.chuosmart.com',
+    'https://chuosmart.com'
+]
+# CSRF_COOKIE_SECURE = True
+# CSRF_COOKIE_SAMESITE = 'None'
+# CSRF_COOKIE_HTTPONLY = True
+# CSRF_COOKIE_SECURE = True
+# CSRF_COOKIE_SAMESITE = 'None'
+# CSRF_COOKIE_HTTPONLY = True
 
 
 # Application definition
