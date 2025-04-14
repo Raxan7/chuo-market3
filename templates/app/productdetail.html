@@ -29,7 +29,7 @@
       </p>
       <p><i class="fas fa-phone"></i> <strong>Phone Number:</strong> {{ customer.phone_number }}</p>
       <hr>
-      <h4>$ {{ product.price }} <small class="fw-light text-decoration-line-through">{{ product.discount_price }}</small></h4>
+      <h4>TSh {{ product.price }} <small class="fw-light text-decoration-line-through">{{ product.discount_price }}</small></h4>
       {% if user.is_authenticated %}
         {% if product_cart %}
           <a href="{% url "carts" %}" class="btn btn-primary shadow px-5 py-2">View Cart</a>
