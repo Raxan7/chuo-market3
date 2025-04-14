@@ -28,7 +28,7 @@ def post_talent(request):
     return render(request, 'talents/post_talent.html', {'form': form})
 
 
-@login_required
+@login_required(login_url='/login/')  # Ensure this matches the LOGIN_URL in settings.py
 def add_comment(request, pk):
     talent = get_object_or_404(Talent, pk=pk)
     if request.method == 'POST':

@@ -1,0 +1,23 @@
+{% extends 'app/base.html' %}
+{% load add_class_filter %}
+{% block title %}Add Comment{% endblock title %}
+{% block main-content %}
+<div class="container mt-5 d-flex justify-content-center align-items-center" style="min-height: 80vh;">
+    <div class="card shadow-lg" style="width: 100%; max-width: 600px; padding: 20px;">
+        <div class="card-header bg-primary text-white text-center">
+            <h2>Add a Comment</h2>
+        </div>
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+                <div class="form-group">
+                    {{ form.text.label_tag }}
+                    {{ form.text|add_class:"form-control form-control-lg" }}
+                </div>
+                <button type="submit" class="btn btn-success btn-block mt-3">Submit Comment</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock main-content %}
+
