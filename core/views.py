@@ -167,6 +167,7 @@ def profile(request):
         college = request.POST.get('college')
         block_number = request.POST.get('block_number')
         room_number = request.POST.get('room_number')
+        phone_number = request.POST.get('phone_number')  # New field
 
         customer, created = Customer.objects.update_or_create(
             user=user,
@@ -176,6 +177,7 @@ def profile(request):
                 'college': college,
                 'block_number': block_number,
                 'room_number': room_number,
+                'phone_number': phone_number,  # Save phone number
             }
         )
         messages.success(request, "Profile updated successfully.")

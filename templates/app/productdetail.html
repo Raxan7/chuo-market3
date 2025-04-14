@@ -27,6 +27,7 @@
         </i> 
         <strong>Seller Level:</strong> {{ customer.subscription }}
       </p>
+      <p><i class="fas fa-phone"></i> <strong>Phone Number:</strong> {{ customer.phone_number }}</p>
       <hr>
       <h4>$ {{ product.price }} <small class="fw-light text-decoration-line-through">{{ product.discount_price }}</small></h4>
       {% if user.is_authenticated %}
@@ -44,10 +45,9 @@
           <button type="submit" class="btn btn-primary shadow px-5 py-2">Add to Cart</button>
         </form>
       {% endif %}
-      <form action="{% url 'buy_now' %}" method="post" class="d-inline">
-        {% csrf_token %}
-        <input type="hidden" name="product_id" value="{{ product.id }}" id="product_id">
-        <button type="submit" class="btn btn-danger shadow px-5 py-2 ms-4">Buy Now</button>
+      <form action="https://wa.me/{{ customer.phone_number }}" method="get" target="_blank" class="d-inline">
+        <input type="hidden" name="text" value="Hello, I am interested in your product '{{ product.title }}' listed at TSh {{ product.price }}. Please let me know if it is still available.">
+        <button type="submit" class="btn btn-danger shadow px-5 py-2">Buy Now</button>
       </form>
       <h5 class="mt-5">Available Offers</h5>
       <ul>

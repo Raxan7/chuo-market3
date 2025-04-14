@@ -44,6 +44,10 @@
       <label for="inputRoomNumber" class="form-label">Room Number</label>
       <input type="text" class="form-control" id="inputRoomNumber" name="room_number" value="{{ user.customer.room_number }}" required>
     </div>
+    <div class="col-12">
+      <label for="inputPhoneNumber" class="form-label">Phone Number (with country code)</label>
+      <input type="text" class="form-control" id="inputPhoneNumber" name="phone_number" value="{{ user.customer.phone_number }}" placeholder="+255123456789">
+    </div>
     <div class="col-12 mt-3">
       <button type="submit" class="btn btn-primary">Submit</button>
     </div>
