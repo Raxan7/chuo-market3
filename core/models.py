@@ -116,9 +116,6 @@ class OrderPlaced(models.Model):
         return f"{self.quantity} of {self.product.title} placed by {self.user.username}"
 
 
-
-
-
 class Banners(models.Model):
     title = models.CharField(max_length=255, blank=True, null=True)
     image = models.ImageField(upload_to='banner_images')
@@ -137,5 +134,20 @@ class Blog(models.Model):
 
     def __str__(self):
         return self.title
+
+
+class SubscriptionPayment(models.Model):
+    customer = models.ForeignKey(Customer, on_delete=models.CASCADE)
+    subscription = models.ForeignKey(Subscription, on_delete=models.CASCADE)
+    payment_proof = models.ImageField(upload_to='payment_proofs/')
+    status = models.CharField(
+        max_length=20,
+        choices=[('Pending', 'Pending'), ('Verified', 'Verified'), ('Rejected', 'Rejected')],
+        default='Pending'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.customer.user.username} - {self.subscription.level} ({self.status})"
 
 

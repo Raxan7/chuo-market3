@@ -14,11 +14,7 @@
         <li>{{ benefit }}</li>
         {% endfor %}
       </ul>
-      <form method="post">
-        {% csrf_token %}
-        <input type="hidden" name="subscription" value="{{ subscription.id }}">
-        <button type="submit" class="btn {% if subscription.level == 'Silver' %}featured-btn{% endif %}">Get Plan</button>
-      </form>
+      <a href="{% url 'upload_payment_proof' subscription.id %}" class="btn {% if subscription.level == 'Silver' %}featured-btn{% endif %}">Choose Plan</a>
     </div>
     {% endfor %}
   </div>

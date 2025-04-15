@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from .models import *
-from .forms import RegistrationForm, LoginForm, ProductForm, BlogForm, SubscriptionForm
+from .forms import RegistrationForm, LoginForm, ProductForm, BlogForm, SubscriptionForm, SubscriptionPaymentForm
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 import logging
@@ -405,19 +405,21 @@ def blog_detail(request, pk):
 def subscribe(request):
     user = request.user
     if request.method == 'POST':
-        form = SubscriptionForm(request.POST)
+        subscription_id = request.POST.get('subscription')
+        subscription = get_object_or_404(Subscription, id=subscription_id)
+        form = SubscriptionPaymentForm(request.POST, request.FILES)
         if form.is_valid():
-            subscription = form.cleaned_data['subscription']
-            customer = user.customer
-            customer.subscription = subscription
-            customer.save()
-            messages.success(request, 'Subscription updated successfully.')
+            payment = form.save(commit=False)
+            payment.customer = user.customer
+            payment.subscription = subscription
+            payment.save()
+            messages.success(request, 'Your payment proof has been submitted. Please wait for admin verification.')
             return redirect('profile')
     else:
-        form = SubscriptionForm()
-    
+        form = SubscriptionPaymentForm()
+
     subscriptions = []
-    for subscription in form.fields['subscription'].queryset:
+    for subscription in Subscription.objects.all():
         benefits = [benefit.strip().capitalize() for benefit in subscription.benefits.split(',')]
         subscriptions.append({
             'id': subscription.id,
@@ -425,5 +427,22 @@ def subscribe(request):
             'price': subscription.price,
             'benefits': benefits
         })
-    
+
     return render(request, 'app/subscribe.html', {'form': form, 'subscriptions': subscriptions})
+
+@login_required(login_url='/login/')
+@customer_required
+def upload_payment_proof(request, subscription_id):
+    subscription = get_object_or_404(Subscription, id=subscription_id)
+    if request.method == 'POST':
+        form = SubscriptionPaymentForm(request.POST, request.FILES)
+        if form.is_valid():
+            payment = form.save(commit=False)
+            payment.customer = request.user.customer
+            payment.subscription = subscription
+            payment.save()
+            messages.success(request, 'Your payment proof has been submitted. Please wait for admin verification.')
+            return redirect('profile')
+    else:
+        form = SubscriptionPaymentForm()
+    return render(request, 'app/upload_payment_proof.html', {'form': form, 'subscription': subscription})

@@ -33,4 +33,5 @@ urlpatterns = [
     path('blogs/', blog_list, name='blog_list'),
     path('blogs/<int:pk>/', blog_detail, name='blog_detail'),
     path('subscribe/', views.subscribe, name='subscribe'),
+    path('upload-payment-proof/<int:subscription_id>/', views.upload_payment_proof, name='upload_payment_proof'),
 ]

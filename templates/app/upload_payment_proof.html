@@ -1,0 +1,18 @@
+{% extends 'app/base.html' %}
+{% load static %}
+{% block title %}Upload Payment Proof{% endblock title %}
+{% block main-content %}
+<div class="container mt-5">
+  <h1>Upload Payment Proof</h1>
+  <p>You have selected the <strong>{{ subscription.level }}</strong> plan for TSh {{ subscription.price }}/month.</p>
+  <p>Please upload your payment proof below:</p>
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    <div class="mb-3">
+      <label for="paymentProof" class="form-label">Payment Proof</label>
+      <input type="file" class="form-control" id="paymentProof" name="payment_proof" required>
+    </div>
+    <button type="submit" class="btn btn-primary">Submit</button>
+  </form>
+</div>
+{% endblock main-content %}

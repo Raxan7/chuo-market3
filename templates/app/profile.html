@@ -54,7 +54,7 @@
    </form>
    <div class="col-12 mt-3">
     <h5>Subscription Level: {{ user.customer.subscription.level }}</h5>
-    <p>Benefits: {{ user.customer.subscription.benefits }}</p>
+    <p>Status: {{ user.customer.subscriptionpayment_set.last.status }}</p>
     <a href="{% url 'subscribe' %}" class="btn btn-primary">Change Subscription</a>
    </div>
   </div>
