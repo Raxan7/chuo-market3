@@ -5,12 +5,19 @@
 <div class="container mt-5">
   <h1>Upload Payment Proof</h1>
   <p>You have selected the <strong>{{ subscription.level }}</strong> plan for TSh {{ subscription.price }}/month.</p>
-  <p>Please upload your payment proof below:</p>
+  <p>Please follow the payment instructions below and upload your payment proof:</p>
+  
+  <!-- Updated image placeholder for payment instructions -->
+  <div class="mb-4">
+    <img src="{% static 'images/airtel_lipa.png' %}" alt="Payment Instructions" class="img-fluid">
+  </div>
+  
   <form method="post" enctype="multipart/form-data">
     {% csrf_token %}
     <div class="mb-3">
       <label for="paymentProof" class="form-label">Payment Proof</label>
       <input type="file" class="form-control" id="paymentProof" name="payment_proof" required>
+      <small class="form-text text-muted">Upload a screenshot of the successful transaction message with the transaction ID visible.</small>
     </div>
     <button type="submit" class="btn btn-primary">Submit</button>
   </form>
