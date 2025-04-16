@@ -419,7 +419,7 @@ def subscribe(request):
         form = SubscriptionPaymentForm()
 
     subscriptions = []
-    for subscription in Subscription.objects.all():
+    for subscription in Subscription.objects.all().order_by('-id'):
         benefits = [benefit.strip().capitalize() for benefit in subscription.benefits.split(',')]
         subscriptions.append({
             'id': subscription.id,

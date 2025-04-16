@@ -14,7 +14,9 @@
         <li>{{ benefit }}</li>
         {% endfor %}
       </ul>
+      {% if subscription.level != 'Free' %}
       <a href="{% url 'upload_payment_proof' subscription.id %}" class="btn {% if subscription.level == 'Silver' %}featured-btn{% endif %}">Choose Plan</a>
+      {% endif %}
     </div>
     {% endfor %}
   </div>
