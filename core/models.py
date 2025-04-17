@@ -67,6 +67,7 @@ CATEGORY = (
     ('B', 'Books'),
     ('C', 'Clothing'),
     ('AC', 'Accessories'),
+    ('S', 'Services'),
 )
 
 

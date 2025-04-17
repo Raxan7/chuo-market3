@@ -42,25 +42,60 @@
 </div>
 {% endif %}
 
-<!--Banner Slider-->
-<div id="carouselExampleControls" class="carousel slide" data-bs-ride="carousel">
-  <div class="carousel-inner">
-    {% for banner in banners %}
-      <div class="carousel-item{% if forloop.first %} active{% endif %}">
-        <img src="{{ banner.image.url }}" class="d-block w-100" alt="...">
-      </div>
-    {% endfor %}
-  </div>
-  <a class="carousel-control-prev" href="#carouselExampleControls" role="button" data-bs-slide="prev">
-    <span class="carousel-control-prev-icon" aria-hidden="true"></span>
-    <span class="visually-hidden">Previous</span>
-  </a>
-  <a class="carousel-control-next" href="#carouselExampleControls" role="button" data-bs-slide="next">
-    <span class="carousel-control-next-icon" aria-hidden="true"></span>
-    <span class="visually-hidden">Next</span>
-  </a>
-</div>
+<style>
+  /* Banner Slider Styles */
+  .banner-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 15px;
+  }
+  
+  .carousel-inner {
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  
+  .carousel-item img {
+    width: 100%;
+    height: auto;
+    object-fit: cover;
+    max-height: 400px; /* Adjust this value as needed */
+  }
+  
+  /* Responsive adjustments */
+  @media (max-width: 768px) {
+    .carousel-item img {
+      max-height: 300px;
+    }
+  }
+  
+  @media (max-width: 576px) {
+    .carousel-item img {
+      max-height: 200px;
+    }
+  }
+</style>
 
+<!--Banner Slider-->
+<div class="banner-container">
+  <div id="carouselExampleControls" class="carousel slide" data-bs-ride="carousel">
+    <div class="carousel-inner">
+      {% for banner in banners %}
+        <div class="carousel-item{% if forloop.first %} active{% endif %}">
+          <img src="{{ banner.image.url }}" class="d-block w-100" alt="{{ banner.title|default:'Banner image' }}">
+        </div>
+      {% endfor %}
+    </div>
+    <a class="carousel-control-prev" href="#carouselExampleControls" role="button" data-bs-slide="prev">
+      <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+      <span class="visually-hidden">Previous</span>
+    </a>
+    <a class="carousel-control-next" href="#carouselExampleControls" role="button" data-bs-slide="next">
+      <span class="carousel-control-next-icon" aria-hidden="true"></span>
+      <span class="visually-hidden">Next</span>
+    </a>
+  </div>
+</div>
 <!-- End Banner Slider -->
 {% endblock banner_slider %}
 
@@ -271,6 +306,36 @@
                   {% elif accessory.user.customer.subscription.level == 'Silver' %}#c0c0c0
                   {% elif accessory.user.customer.subscription.level == 'Gold' %}#ffd700
                   {% endif %};"></i> {{ accessory.user.customer.subscription.level }} Seller
+              </p>
+            </div>
+          </div>
+        </a>
+      {% endfor %}
+    </div>
+  {% endif %}
+</div>
+
+<div class="mb3">
+  {% if services %}
+    <h2 class="text-center my-4">Services</h2>
+    <!-- Slider 1 -->
+    <div class="owl-carousel" id="slider1">
+      {% for service in services %}
+        <a href="{% url 'product-detail' pk=service.id %}" class="btn">
+          <div class="card text-center shadow-sm" style="width: 18rem;">
+            <img src="{{service.image.url}}" class="card-img-top" alt="">
+            <div class="card-body">
+              <h5 class="card-title">{{ service.title |truncatewords:3 }}</h5>
+              <p class="card-text">TSh {{service.price}}</p>
+              <p class="card-text text-muted">
+                <i class="fas fa-map-marker-alt"></i> {{ service.user.customer.university }}, {{ service.user.customer.college }}
+              </p>
+              <p class="card-text text-muted">
+                <i class="fas fa-star" style="color: 
+                  {% if service.user.customer.subscription.level == 'Bronze' %}#cd7f32
+                  {% elif service.user.customer.subscription.level == 'Silver' %}#c0c0c0
+                  {% elif service.user.customer.subscription.level == 'Gold' %}#ffd700
+                  {% endif %};"></i> {{ service.user.customer.subscription.level }} Seller
               </p>
             </div>
           </div>

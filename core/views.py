@@ -58,6 +58,7 @@ def home(request):
     books = list(Product.objects.filter(category='B'))
     cloth = list(Product.objects.filter(category='C'))
     accessorie = list(Product.objects.filter(category='AC'))
+    services = list(Product.objects.filter(category='S'))
     products = list(Product.objects.all())
     banners = list(Banners.objects.all())
     context = {
@@ -68,6 +69,7 @@ def home(request):
         'books': books,
         'cloth': cloth,
         'accessorie': accessorie,
+        'services': services,
         'banners': banners,
         'messages': messages,
         'is_authenticated': is_authenticated,
