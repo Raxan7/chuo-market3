@@ -180,15 +180,17 @@
        </div>
      </div>
     </nav>
-    <div class="container mt-3">
+    <!-- <div class="container mt-3">
       {% if messages %}
-        <div class="alert alert-info" role="alert">
+        <div id="message-container" class="alert alert-info" role="alert">
           {% for message in messages %}
-            <p>{{ message }}</p>
+            {% if not message.extra_tags == "chatbot" %}
+              <p>{{ message }}</p>
+            {% endif %}
           {% endfor %}
         </div>
       {% endif %}
-    </div>
+    </div> -->
     <div class="content">
       {% block banner_slider %} {% endblock banner_slider %}
       {% block chatbox %} {% endblock chatbox %}
@@ -291,6 +293,15 @@
     // Initial scroll to bottom
     scrollToBottom();
   });
+
+      document.addEventListener("DOMContentLoaded", function() {
+        const messageContainer = document.getElementById("message-container");
+        if (messageContainer) {
+          setTimeout(() => {
+            messageContainer.style.display = "none";
+          }, 3000); // 3 seconds
+        }
+      });
     </script>
   </body>
 </html>

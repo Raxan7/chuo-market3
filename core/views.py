@@ -241,7 +241,7 @@ def user_login(request):
             user = authenticate(request, username=username, password=password)
             if user is not None:
                 login(request, user)
-                messages.success(request, 'You have successfully logged in.')
+                # messages.success(request, 'You have successfully logged in.')
                 return redirect('home')  # Redirect to the desired page after login
             else:
                 messages.error(request, 'Invalid username or password.')
@@ -310,7 +310,7 @@ def checkout(request, product_id=None, quantity=1):
 def user_logout(request):
     logout(request)
     messages.success(request, "You have been logged out successfully.")
-    return redirect('home')
+    return redirect('login')
 
 
 def search_bar(request):

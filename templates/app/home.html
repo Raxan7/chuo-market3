@@ -44,56 +44,89 @@
 
 <style>
   /* Banner Slider Styles */
+  .banner-slider {
+    position: relative;
+    width: 100%;
+    overflow: hidden;
+    margin: 0 auto;
+  }
+  
   .banner-container {
     max-width: 1200px;
     margin: 0 auto;
-    padding: 0 15px;
+    padding: 0;
   }
   
   .carousel-inner {
-    border-radius: 10px;
+    position: relative;
+    width: 100%;
     overflow: hidden;
+    border-radius: 8px;
+  }
+  
+  .carousel-item {
+    position: relative;
+    width: 100%;
+    /* Adjust this padding-top percentage based on your desired aspect ratio */
+    /* 25% = 4:1, 33.33% = 3:1, 50% = 2:1, 56.25% = 16:9 (common banner ratio) */
+    padding-top: 33.33%; /* Creates a 3:1 aspect ratio container */
   }
   
   .carousel-item img {
+    position: absolute;
+    top: 0;
+    left: 0;
     width: 100%;
-    height: auto;
+    height: 100%;
     object-fit: cover;
-    max-height: 400px; /* Adjust this value as needed */
+    object-position: center; /* Ensures the important part of image is always visible */
   }
   
   /* Responsive adjustments */
+  @media (max-width: 992px) {
+    .carousel-item {
+      padding-top: 40%; /* Slightly taller aspect ratio on medium screens */
+    }
+  }
+  
   @media (max-width: 768px) {
-    .carousel-item img {
-      max-height: 300px;
+    .carousel-item {
+      padding-top: 50%; /* Even taller aspect ratio on tablets */
     }
   }
   
   @media (max-width: 576px) {
-    .carousel-item img {
-      max-height: 200px;
+    .carousel-item {
+      padding-top: 60%; /* Tallest aspect ratio on mobile */
+    }
+    .carousel-inner {
+      border-radius: 0; /* Full width on small screens */
     }
   }
 </style>
 
-<!--Banner Slider-->
-<div class="banner-container">
-  <div id="carouselExampleControls" class="carousel slide" data-bs-ride="carousel">
-    <div class="carousel-inner">
-      {% for banner in banners %}
-        <div class="carousel-item{% if forloop.first %} active{% endif %}">
-          <img src="{{ banner.image.url }}" class="d-block w-100" alt="{{ banner.title|default:'Banner image' }}">
-        </div>
-      {% endfor %}
+<!-- Banner Slider -->
+<div class="banner-slider">
+  <div class="banner-container">
+    <div id="carouselExampleControls" class="carousel slide" data-bs-ride="carousel">
+      <div class="carousel-inner">
+        {% for banner in banners %}
+          <div class="carousel-item{% if forloop.first %} active{% endif %}">
+            <img src="{{ banner.image.url }}" class="d-block w-100" 
+                 alt="{{ banner.title|default:'Banner image' }}"
+                 loading="lazy">
+          </div>
+        {% endfor %}
+      </div>
+      <a class="carousel-control-prev" href="#carouselExampleControls" role="button" data-bs-slide="prev">
+        <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+        <span class="visually-hidden">Previous</span>
+      </a>
+      <a class="carousel-control-next" href="#carouselExampleControls" role="button" data-bs-slide="next">
+        <span class="carousel-control-next-icon" aria-hidden="true"></span>
+        <span class="visually-hidden">Next</span>
+      </a>
     </div>
-    <a class="carousel-control-prev" href="#carouselExampleControls" role="button" data-bs-slide="prev">
-      <span class="carousel-control-prev-icon" aria-hidden="true"></span>
-      <span class="visually-hidden">Previous</span>
-    </a>
-    <a class="carousel-control-next" href="#carouselExampleControls" role="button" data-bs-slide="next">
-      <span class="carousel-control-next-icon" aria-hidden="true"></span>
-      <span class="visually-hidden">Next</span>
-    </a>
   </div>
 </div>
 <!-- End Banner Slider -->
