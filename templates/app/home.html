@@ -113,8 +113,7 @@
         {% for banner in banners %}
           <div class="carousel-item{% if forloop.first %} active{% endif %}">
             <img src="{{ banner.image.url }}" class="d-block w-100" 
-                 alt="{{ banner.title|default:'Banner image' }}"
-                 loading="lazy">
+                 alt="{{ banner.title|default:'Banner image' }}">
           </div>
         {% endfor %}
       </div>
