@@ -1,0 +1,61 @@
+{% extends 'app/base.html' %}
+{% block title %}{{ category }} Products{% endblock title %}
+
+{% block main-content %}
+<div class="container my-5">
+  <div class="text-center mb-5">
+    <h1 class="display-4 font-weight-bold text-primary mb-3">{{ product.get_category_display }} Collection</h1>
+    <p class="lead text-muted">Discover our premium selection of {{ product.get_category_display }} products</p>
+  </div>
+
+  {% if products %}
+  <div class="row">
+    {% for product in products %}
+      <div class="col-lg-3 col-md-4 col-sm-6 mb-4">
+        <div class="card h-100 border-0 shadow-sm hover-shadow-lg transition">
+          <div class="badge bg-danger position-absolute" style="top: 0.5rem; right: 0.5rem">Sale</div>
+          <img src="{{ product.image.url }}" class="card-img-top p-3" alt="{{ product.title }}" style="height: 200px; object-fit: contain;">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+              <h5 class="card-title font-weight-bold mb-0">{{ product.title }}</h5>
+            </div>
+            <p class="card-text text-muted small mb-2">{{ product.description|truncatewords:15 }}</p>
+            <div class="d-flex justify-content-between align-items-center">
+              <h5 class="text-primary mb-0">TSh {{ product.price }}</h5>
+              <a href="{% url 'product-detail' product.id %}" class="btn btn-sm btn-outline-primary">Details</a>
+            </div>
+          </div>
+          <div class="card-footer bg-white border-0 pt-0">
+            <small class="text-success"><i class="fas fa-check-circle"></i> In Stock</small>
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="text-center py-5">
+    <div class="alert alert-info" role="alert">
+      <h4 class="alert-heading">No Products Found</h4>
+      <p>We couldn't find any products in this category at the moment.</p>
+      <hr>
+      <p class="mb-0">Check back later or browse our other categories.</p>
+    </div>
+    <a href="{% url 'home' %}" class="btn btn-primary mt-3">Back to Home</a>
+  </div>
+  {% endif %}
+</div>
+
+<style>
+  .hover-shadow-lg:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 1rem 3rem rgba(0,0,0,.175)!important;
+  }
+  .transition {
+    transition: all 0.3s ease;
+  }
+  .card-img-top {
+    background-color: #f8f9fa;
+    border-radius: 0.25rem 0.25rem 0 0;
+  }
+</style>
+{% endblock main-content %}

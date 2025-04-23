@@ -1,7 +1,7 @@
 from django.urls import path
 from . import views
 from django.contrib.auth import views as auth_views
-from .views import add_product, add_blog, create_blog, blog_list, blog_detail
+from .views import add_product, add_blog, create_blog, blog_list, blog_detail, products_by_category
 
 urlpatterns = [
     path('', views.home, name='home'),
@@ -34,4 +34,5 @@ urlpatterns = [
     path('blogs/<int:pk>/', blog_detail, name='blog_detail'),
     path('subscribe/', views.subscribe, name='subscribe'),
     path('upload-payment-proof/<int:subscription_id>/', views.upload_payment_proof, name='upload_payment_proof'),
+    path('category/<str:category>/', products_by_category, name='products-by-category'),
 ]

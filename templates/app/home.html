@@ -206,7 +206,9 @@
 <!-- 1st Product Slider -->
 <div class="m-3">
   {% if mobile %}
-    <h2 class="text-center my-4">Mobiles</h2>
+    <h2 class="text-center my-4">
+      <a href="{% url 'products-by-category' 'M' %}" class="text-decoration-none text-dark">Mobiles</a>
+    </h2>
     <!-- Slider 1 -->
     <div class="owl-carousel" id="slider1">
       {% for mobiles in mobile %}
@@ -236,7 +238,9 @@
 
 <div class="m-3">
   {% if cloth %}
-    <h2 class="text-center my-4">Clothing</h2>
+    <h2 class="text-center my-4">
+      <a href="{% url 'products-by-category' 'C' %}" class="text-decoration-none text-dark">Clothing</a>
+    </h2>
     <!-- Slider 1 -->
     <div class="owl-carousel" id="slider1">
       {% for cloths in cloth %}
@@ -266,7 +270,9 @@
 
 <div class="m-3">
   {% if electronics %}
-    <h2 class="text-center my-4">Electronics</h2>
+    <h2 class="text-center my-4">
+      <a href="{% url 'products-by-category' 'El' %}" class="text-decoration-none text-dark">Electronics</a>
+    </h2>
     <!-- Slider 1 -->
     <div class="owl-carousel" id="slider1">
       {% for product in electronics %}
@@ -296,7 +302,9 @@
 
 <div class="m-3">
   {% if books %}
-    <h2 class="text-center my-4">Books</h2>
+    <h2 class="text-center my-4">
+      <a href="{% url 'products-by-category' 'B' %}" class="text-decoration-none text-dark">Books</a>
+    </h2>
     <!-- Slider 1 -->
     <div class="owl-carousel" id="slider1">
       {% for book in books %}
@@ -326,7 +334,9 @@
 
 <div class="m-3">
   {% if accessorie %}
-    <h2 class="text-center my-4">Accessories</h2>
+    <h2 class="text-center my-4">
+      <a href="{% url 'products-by-category' 'AC' %}" class="text-decoration-none text-dark">Accessories</a>
+    </h2>
     <!-- Slider 1 -->
     <div class="owl-carousel" id="slider1">
       {% for accessory in accessorie %}
@@ -354,9 +364,11 @@
   {% endif %}
 </div>
 
-<div class="mb3">
+<div class="m-3">
   {% if services %}
-    <h2 class="text-center my-4">Services</h2>
+    <h2 class="text-center my-4">
+      <a href="{% url 'products-by-category' 'S' %}" class="text-decoration-none text-dark">Services</a>
+    </h2>
     <!-- Slider 1 -->
     <div class="owl-carousel" id="slider1">
       {% for service in services %}

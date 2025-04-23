@@ -448,3 +448,7 @@ def upload_payment_proof(request, subscription_id):
     else:
         form = SubscriptionPaymentForm()
     return render(request, 'app/upload_payment_proof.html', {'form': form, 'subscription': subscription})
+
+def products_by_category(request, category):
+    products = Product.objects.filter(category=category)
+    return render(request, 'app/products_by_category.html', {'products': products, 'category': category})
