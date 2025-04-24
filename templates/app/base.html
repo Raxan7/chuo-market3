@@ -119,6 +119,18 @@
     <title>ChuoSmart | {% block title %} {% endblock title %} </title>
   </head>
   <body>
+    <div class="container mt-3">
+        <script type="text/javascript">
+            atOptions = {
+                'key' : 'e5ecc048e11dbae6e085296015dc6c53',
+                'format' : 'iframe',
+                'height' : 90,
+                'width' : 728,
+                'params' : {}
+            };
+        </script>
+        <script type="text/javascript" src="//www.highperformanceformat.com/e5ecc048e11dbae6e085296015dc6c53/invoke.js"></script>
+    </div>
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
      <div class="container">
        <a class="navbar-brand d-flex align-items-center" href="/">
@@ -185,17 +197,6 @@
        </div>
      </div>
     </nav>
-    <!-- <div class="container mt-3">
-      {% if messages %}
-        <div id="message-container" class="alert alert-info" role="alert">
-          {% for message in messages %}
-            {% if not message.extra_tags == "chatbot" %}
-              <p>{{ message }}</p>
-            {% endif %}
-          {% endfor %}
-        </div>
-      {% endif %}
-    </div> -->
     <div class="content">
       {% block banner_slider %} {% endblock banner_slider %}
       {% block chatbox %} {% endblock chatbox %}
