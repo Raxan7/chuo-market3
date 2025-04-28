@@ -2,6 +2,16 @@
 {% load static %}
 <html lang="en">
   <head>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=AW-17040727960">
+    </script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'AW-17040727960');
+    </script>
     <!-- Required meta tags -->
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -119,18 +129,6 @@
     <title>ChuoSmart | {% block title %} {% endblock title %} </title>
   </head>
   <body>
-    <!-- <div class="container mt-3">
-        <script type="text/javascript">
-            atOptions = {
-                'key' : 'e5ecc048e11dbae6e085296015dc6c53',
-                'format' : 'iframe',
-                'height' : 90,
-                'width' : 728,
-                'params' : {}
-            };
-        </script>
-        <script type="text/javascript" src="//www.highperformanceformat.com/e5ecc048e11dbae6e085296015dc6c53/invoke.js"></script>
-    </div> -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
      <div class="container">
        <a class="navbar-brand d-flex align-items-center" href="/">
