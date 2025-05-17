@@ -1,21 +1,14 @@
+/* Custom CSS for ChuoSmart */
+body {
+  font-family: 'Roboto', sans-serif;
+}
 .owl-carousel .item{
- /* border: 1px solid black; */
- font-size: 24px;
- text-align: center;
- margin-top: 20px;;
+  font-size: 24px;
+  text-align: center;
+  margin-top: 20px;
+  transition: transform .5s ease;
 }
-
-.owl-next{
- float:right;
+.owl-carousel .item:hover{
+  transform: scale(1.1);
 }
-.owl-prev{
- float:left;
-}
-.owl-prev span{
- font-size: 24px;
- font-weight: bold;
-}
-.owl-next span{
- font-size: 24px;
- font-weight: bold;
-}
+/* Other styling omitted for brevity */
