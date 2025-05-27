@@ -119,8 +119,38 @@
           padding-bottom: 0;
         }
         
-        .navbar .container > div:last-child {
-          display: none;
+        /* Let Bootstrap handle the show/hide behavior for mobile navbar content */
+        /* Just ensure proper styling when navbar is collapsed */
+        
+        /* Style the collapsed navbar content */
+        .navbar-collapse {
+          background-color: #343a40;
+          margin-top: 10px;
+          padding: 15px;
+          border-radius: 5px;
+        }
+        
+        /* Make sure navbar items stack vertically on mobile */
+        .navbar-collapse .navbar-nav {
+          flex-direction: column !important;
+          width: 100%;
+        }
+        
+        .navbar-collapse .navbar-nav .nav-item {
+          margin: 5px 0;
+          width: 100%;
+        }
+        
+        /* Style the search form on mobile */
+        .navbar-collapse .d-flex {
+          flex-direction: column !important;
+          width: 100%;
+          margin: 10px 0;
+        }
+        
+        .navbar-collapse .d-flex input {
+          margin-bottom: 10px;
+          margin-right: 0 !important;
         }
         
         /* Adjust positioning for chatbot to be above the bottom nav */
@@ -301,13 +331,16 @@
              <a class="nav-link text-white" href="{% url 'talent_list' %}">Talents</a>
            </li>
          </ul>
-         <form class="d-flex" method="post" action="{% url "search" %}">
+         
+         <!-- Search form - visible on mobile when collapsed -->
+         <form class="d-flex mb-2 mb-lg-0" method="post" action="{% url "search" %}">
           {% csrf_token %}
            <input class="form-control me-2" name="search" type="search" placeholder="Search" aria-label="Search">
            <button class="btn btn-warning" type="submit">Search</button>
          </form>
-         <div>
-          <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+         
+         <!-- User menu - visible on mobile when collapsed -->
+         <ul class="navbar-nav mb-2 mb-lg-0">
             {% if is_authenticated %}
             <li class="nav-item dropdown mx-2">
               <a class="nav-link dropdown-toggle text-white" href="#" id="profileDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
@@ -342,7 +375,6 @@
             </li>
             {% endif %}
           </ul>
-         </div>
        </div>
      </div>
     </nav>
@@ -510,6 +542,29 @@
     }
     
     updateMobileCartCount();
+    
+    // Bootstrap 5 handles navbar toggle automatically, but add fallback for mobile
+    // Only add custom handlers if Bootstrap's native functionality isn't working
+    if (typeof bootstrap === 'undefined') {
+      // Fallback for when Bootstrap JS isn't loaded
+      $('.navbar-toggler').on('click', function() {
+        const target = $($(this).attr('data-bs-target'));
+        target.toggleClass('show');
+      });
+      
+      // Close navbar when clicking outside
+      $(document).on('click', function(e) {
+        if (!$(e.target).closest('.navbar').length) {
+          $('.navbar-collapse').removeClass('show');
+        }
+      });
+    } else {
+      // Bootstrap is loaded, ensure proper initialization
+      // Close mobile navbar when a nav-link is clicked
+      $('.navbar-nav .nav-link').on('click', function() {
+        $('.navbar-collapse').removeClass('show');
+      });
+    }
     
     // Set the active nav item based on current page
     $(function() {
