@@ -53,23 +53,15 @@ def home(request):
             request.session.modified = True
         customers = False
 
-    mobile = list(Product.objects.filter(category='M'))
-    electronics = list(Product.objects.filter(category__iexact='El'))
-    books = list(Product.objects.filter(category='B'))
-    cloth = list(Product.objects.filter(category='C'))
-    accessorie = list(Product.objects.filter(category='AC'))
-    services = list(Product.objects.filter(category='S'))
-    products = list(Product.objects.all())
+    # Get all products and randomize them
+    products = list(Product.objects.all().order_by('?'))  # '?' randomizes the order
     banners = list(Banners.objects.all())
+    
+    # You can still get category-specific products for category pages if needed
+    # but for home page, we'll use randomized products
     context = {
         'customers': customers,
         'products': products, 
-        'mobile': mobile,
-        'electronics': electronics,
-        'books': books,
-        'cloth': cloth,
-        'accessorie': accessorie,
-        'services': services,
         'banners': banners,
         'messages': messages,
         'is_authenticated': is_authenticated,

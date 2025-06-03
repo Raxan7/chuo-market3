@@ -203,79 +203,15 @@
 
 {% block main-content %}
 
-<!-- 1st Product Slider -->
+<!-- Random Products Section -->
 <div class="m-3">
-  {% if mobile %}
+  {% if products %}
     <h2 class="text-center my-4">
-      <a href="{% url 'products-by-category' 'M' %}" class="text-decoration-none text-dark">Mobiles</a>
+      <span class="text-dark">Featured Products</span>
     </h2>
-    <!-- Slider 1 -->
+    <!-- Random Products Slider -->
     <div class="owl-carousel" id="slider1">
-      {% for mobiles in mobile %}
-        <a href="{% url 'product-detail' pk=mobiles.id %}" class="btn">
-          <div class="card text-center shadow-sm" style="width: 18rem;">
-            <img src="{{mobiles.image.url}}" class="card-img-top" alt="">
-            <div class="card-body">
-              <h5 class="card-title">{{ mobiles.title |truncatewords:3 }}</h5>
-              <p class="card-text">TSh {{mobiles.price}}</p>
-              <p class="card-text text-muted">
-                <i class="fas fa-map-marker-alt"></i> {{ mobiles.user.customer.university }}, {{ mobiles.user.customer.college }}
-              </p>
-              <p class="card-text text-muted">
-                <i class="fas fa-star" style="color: 
-                  {% if mobiles.user.customer.subscription.level == 'Bronze' %}#cd7f32
-                  {% elif mobiles.user.customer.subscription.level == 'Silver' %}#c0c0c0
-                  {% elif mobiles.user.customer.subscription.level == 'Gold' %}#ffd700
-                  {% endif %};"></i> {{ mobiles.user.customer.subscription.level }} Seller
-              </p>
-            </div>
-          </div>
-        </a>
-      {% endfor %}
-    </div>
-  {% endif %}
-</div>
-
-<div class="m-3">
-  {% if cloth %}
-    <h2 class="text-center my-4">
-      <a href="{% url 'products-by-category' 'C' %}" class="text-decoration-none text-dark">Clothing</a>
-    </h2>
-    <!-- Slider 1 -->
-    <div class="owl-carousel" id="slider1">
-      {% for cloths in cloth %}
-        <a href="{% url 'product-detail' pk=cloths.id %}" class="btn">
-          <div class="card text-center shadow-sm" style="width: 18rem;">
-            <img src="{{cloths.image.url}}" class="card-img-top" alt="">
-            <div class="card-body">
-              <h5 class="card-title">{{ cloths.title |truncatewords:3 }}</h5>
-              <p class="card-text">TSh {{cloths.price}}</p>
-              <p class="card-text text-muted">
-                <i class="fas fa-map-marker-alt"></i> {{ cloths.user.customer.university }}, {{ cloths.user.customer.college }}
-              </p>
-              <p class="card-text text-muted">
-                <i class="fas fa-star" style="color: 
-                  {% if cloths.user.customer.subscription.level == 'Bronze' %}#cd7f32
-                  {% elif cloths.user.customer.subscription.level == 'Silver' %}#c0c0c0
-                  {% elif cloths.user.customer.subscription.level == 'Gold' %}#ffd700
-                  {% endif %};"></i> {{ cloths.user.customer.subscription.level }} Seller
-              </p>
-            </div>
-          </div>
-        </a>
-      {% endfor %}
-    </div>
-  {% endif %}
-</div>
-
-<div class="m-3">
-  {% if electronics %}
-    <h2 class="text-center my-4">
-      <a href="{% url 'products-by-category' 'El' %}" class="text-decoration-none text-dark">Electronics</a>
-    </h2>
-    <!-- Slider 1 -->
-    <div class="owl-carousel" id="slider1">
-      {% for product in electronics %}
+      {% for product in products %}
         <a href="{% url 'product-detail' pk=product.id %}" class="btn">
           <div class="card text-center shadow-sm" style="width: 18rem;">
             <img src="{{product.image.url}}" class="card-img-top" alt="">
@@ -292,102 +228,8 @@
                   {% elif product.user.customer.subscription.level == 'Gold' %}#ffd700
                   {% endif %};"></i> {{ product.user.customer.subscription.level }} Seller
               </p>
-            </div>
-          </div>
-        </a>
-      {% endfor %}
-    </div>
-  {% endif %}
-</div>
-
-<div class="m-3">
-  {% if books %}
-    <h2 class="text-center my-4">
-      <a href="{% url 'products-by-category' 'B' %}" class="text-decoration-none text-dark">Books</a>
-    </h2>
-    <!-- Slider 1 -->
-    <div class="owl-carousel" id="slider1">
-      {% for book in books %}
-        <a href="{% url 'product-detail' pk=book.id %}" class="btn">
-          <div class="card text-center shadow-sm" style="width: 18rem;">
-            <img src="{{book.image.url}}" class="card-img-top" alt="">
-            <div class="card-body">
-              <h5 class="card-title">{{ book.title |truncatewords:3 }}</h5>
-              <p class="card-text">TSh {{book.price}}</p>
-              <p class="card-text text-muted">
-                <i class="fas fa-map-marker-alt"></i> {{ book.user.customer.university }}, {{ book.user.customer.college }}
-              </p>
-              <p class="card-text text-muted">
-                <i class="fas fa-star" style="color: 
-                  {% if book.user.customer.subscription.level == 'Bronze' %}#cd7f32
-                  {% elif book.user.customer.subscription.level == 'Silver' %}#c0c0c0
-                  {% elif book.user.customer.subscription.level == 'Gold' %}#ffd700
-                  {% endif %};"></i> {{ book.user.customer.subscription.level }} Seller
-              </p>
-            </div>
-          </div>
-        </a>
-      {% endfor %}
-    </div>
-  {% endif %}
-</div>
-
-<div class="m-3">
-  {% if accessorie %}
-    <h2 class="text-center my-4">
-      <a href="{% url 'products-by-category' 'AC' %}" class="text-decoration-none text-dark">Accessories</a>
-    </h2>
-    <!-- Slider 1 -->
-    <div class="owl-carousel" id="slider1">
-      {% for accessory in accessorie %}
-        <a href="{% url 'product-detail' pk=accessory.id %}" class="btn">
-          <div class="card text-center shadow-sm" style="width: 18rem;">
-            <img src="{{accessory.image.url}}" class="card-img-top" alt="">
-            <div class="card-body">
-              <h5 class="card-title">{{ accessory.title |truncatewords:3 }}</h5>
-              <p class="card-text">TSh {{accessory.price}}</p>
-              <p class="card-text text-muted">
-                <i class="fas fa-map-marker-alt"></i> {{ accessory.user.customer.university }}, {{ accessory.user.customer.college }}
-              </p>
-              <p class="card-text text-muted">
-                <i class="fas fa-star" style="color: 
-                  {% if accessory.user.customer.subscription.level == 'Bronze' %}#cd7f32
-                  {% elif accessory.user.customer.subscription.level == 'Silver' %}#c0c0c0
-                  {% elif accessory.user.customer.subscription.level == 'Gold' %}#ffd700
-                  {% endif %};"></i> {{ accessory.user.customer.subscription.level }} Seller
-              </p>
-            </div>
-          </div>
-        </a>
-      {% endfor %}
-    </div>
-  {% endif %}
-</div>
-
-<div class="m-3">
-  {% if services %}
-    <h2 class="text-center my-4">
-      <a href="{% url 'products-by-category' 'S' %}" class="text-decoration-none text-dark">Services</a>
-    </h2>
-    <!-- Slider 1 -->
-    <div class="owl-carousel" id="slider1">
-      {% for service in services %}
-        <a href="{% url 'product-detail' pk=service.id %}" class="btn">
-          <div class="card text-center shadow-sm" style="width: 18rem;">
-            <img src="{{service.image.url}}" class="card-img-top" alt="">
-            <div class="card-body">
-              <h5 class="card-title">{{ service.title |truncatewords:3 }}</h5>
-              <p class="card-text">TSh {{service.price}}</p>
-              <p class="card-text text-muted">
-                <i class="fas fa-map-marker-alt"></i> {{ service.user.customer.university }}, {{ service.user.customer.college }}
-              </p>
-              <p class="card-text text-muted">
-                <i class="fas fa-star" style="color: 
-                  {% if service.user.customer.subscription.level == 'Bronze' %}#cd7f32
-                  {% elif service.user.customer.subscription.level == 'Silver' %}#c0c0c0
-                  {% elif service.user.customer.subscription.level == 'Gold' %}#ffd700
-                  {% endif %};"></i> {{ service.user.customer.subscription.level }} Seller
-              </p>
+              <!-- Category badge to show what type of product it is -->
+              <span class="badge bg-secondary">{{ product.get_category_display }}</span>
             </div>
           </div>
         </a>
