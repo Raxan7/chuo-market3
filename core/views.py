@@ -386,7 +386,7 @@ def create_blog(request):
     return render(request, 'app/create_blog.html', {'form': form})
 
 def blog_list(request):
-    blogs = Blog.objects.all()
+    blogs = Blog.objects.all().order_by('?')  # '?' randomizes the order
     return render(request, 'app/blog_list.html', {'blogs': blogs})
 
 def blog_detail(request, pk):
