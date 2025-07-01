@@ -6,5 +6,8 @@ class CoreConfig(AppConfig):
 
     def ready(self):
         import django.db.models.signals  # Ensure models are loaded
-        # from .models import Subscription
-        # Subscription.populate_default_data()
+        from .models import Subscription
+        # Register signals
+        import core.signals
+        # Create default subscriptions if they don't exist
+        Subscription.populate_default_data()
