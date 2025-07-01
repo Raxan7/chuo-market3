@@ -1,0 +1,91 @@
+{% extends "app/base.html" %}
+{% load static %}
+
+{% block title %}LMS - Home{% endblock title %}
+
+{% block main-content %}
+<div class="container my-5">
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <h2 class="card-title">Welcome to the Learning Management System</h2>
+                    <p class="card-text">
+                        A comprehensive platform for online learning, course management, and assessment.
+                    </p>
+                    
+                    {% if user.is_authenticated %}
+                        {% if user_profile %}
+                            {% if user_profile.role == 'student' %}
+                                <a href="{% url 'lms:student_dashboard' %}" class="btn btn-primary">Go to Student Dashboard</a>
+                            {% elif user_profile.role == 'instructor' %}
+                                <a href="{% url 'lms:instructor_dashboard' %}" class="btn btn-primary">Go to Instructor Dashboard</a>
+                            {% elif user_profile.role == 'admin' %}
+                                <a href="{% url 'lms:lms_home' %}" class="btn btn-primary">Admin Dashboard</a>
+                            {% endif %}
+                        {% else %}
+                            <div class="alert alert-info">
+                                You need an LMS profile to access all features. Please contact an administrator.
+                            </div>
+                        {% endif %}
+                    {% else %}
+                        <div class="alert alert-info">
+                            Please <a href="{% url 'login' %}" class="alert-link">log in</a> to access LMS features.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h3 class="card-title">Available Programs</h3>
+                    <a href="{% url 'lms:program_list' %}" class="btn btn-outline-secondary mb-3">View All Programs</a>
+                    
+                    <h3 class="card-title mt-4">Browse Courses</h3>
+                    <a href="{% url 'lms:course_list' %}" class="btn btn-outline-secondary">Browse All Courses</a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-light">
+                    <h4 class="card-title mb-0">Quick Links</h4>
+                </div>
+                <div class="card-body">
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item">
+                            <a href="{% url 'lms:program_list' %}">Browse Programs</a>
+                        </li>
+                        <li class="list-group-item">
+                            <a href="{% url 'lms:course_list' %}">Browse Courses</a>
+                        </li>
+                        {% if user.is_authenticated and user_profile %}
+                            {% if user_profile.role == 'student' %}
+                                <li class="list-group-item">
+                                    <a href="{% url 'lms:grade_list' %}">My Grades</a>
+                                </li>
+                            {% elif user_profile.role == 'instructor' %}
+                                <li class="list-group-item">
+                                    <a href="{% url 'lms:course_create' %}">Create New Course</a>
+                                </li>
+                            {% endif %}
+                        {% endif %}
+                    </ul>
+                </div>
+            </div>
+            
+            {% if current_semester %}
+            <div class="card shadow-sm">
+                <div class="card-header bg-light">
+                    <h4 class="card-title mb-0">Current Semester</h4>
+                </div>
+                <div class="card-body">
+                    <p class="card-text">{{ current_semester }}</p>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock main-content %}

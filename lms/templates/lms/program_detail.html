@@ -1,0 +1,59 @@
+{% extends "app/base.html" %}
+{% load static %}
+
+{% block title %}{{ program.title }} Program{% endblock title %}
+
+{% block main-content %}
+<div class="container my-5">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1>{{ program.title }}</h1>
+            <div class="my-3">
+                {{ program.summary|linebreaks }}
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <h2 class="mb-3">Courses in this Program</h2>
+        </div>
+        
+        {% with courses=program.course_set.all %}
+            {% if courses %}
+                {% for course in courses %}
+                    <div class="col-md-6 col-lg-4 mb-4">
+                        <div class="card shadow-sm h-100">
+                            <div class="card-body">
+                                <h5 class="card-title">{{ course.title }} ({{ course.code }})</h5>
+                                <p class="text-muted small">
+                                    Level {{ course.level }} | {{ course.get_semester_display }} Semester
+                                    {% if course.is_elective %}
+                                        | <span class="badge bg-info">Elective</span>
+                                    {% endif %}
+                                </p>
+                                <p class="card-text">{{ course.summary|truncatewords:20 }}</p>
+                                <a href="{% url 'lms:course_detail' course.slug %}" class="btn btn-sm btn-primary">View Course</a>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <div class="col-12">
+                    <div class="alert alert-info">
+                        No courses have been added to this program yet.
+                    </div>
+                </div>
+            {% endif %}
+        {% endwith %}
+    </div>
+    
+    <div class="row mt-4">
+        <div class="col">
+            <a href="{% url 'lms:program_list' %}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Programs
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock main-content %}

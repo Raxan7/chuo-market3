@@ -1,0 +1,147 @@
+{% extends "app/base.html" %}
+{% load static %}
+
+{% block title %}
+    {% if form.instance.id %}Edit Content{% else %}Create Content{% endif %}
+{% endblock title %}
+
+{% block main-content %}
+<div class="container my-5">
+    <div class="row mb-4">
+        <div class="col">
+            <h1>{% if form.instance.id %}Edit Content{% else %}Add New Content{% endif %}</h1>
+            <p class="lead">Course: {{ course.title }} | Module: {{ module.title }}</p>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        
+                        {% if form.non_field_errors %}
+                            <div class="alert alert-danger">
+                                {% for error in form.non_field_errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.title.id_for_label }}" class="form-label">{{ form.title.label }}</label>
+                            {{ form.title }}
+                            {% if form.title.errors %}
+                                <div class="text-danger">{{ form.title.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.content_type.id_for_label }}" class="form-label">{{ form.content_type.label }}</label>
+                            {{ form.content_type }}
+                            {% if form.content_type.errors %}
+                                <div class="text-danger">{{ form.content_type.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="mb-3" id="text-content">
+                            <label for="{{ form.text.id_for_label }}" class="form-label">{{ form.text.label }}</label>
+                            {{ form.text }}
+                            {% if form.text.errors %}
+                                <div class="text-danger">{{ form.text.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="mb-3" id="file-content">
+                            <label for="{{ form.file.id_for_label }}" class="form-label">{{ form.file.label }}</label>
+                            {{ form.file }}
+                            {% if form.file.errors %}
+                                <div class="text-danger">{{ form.file.errors }}</div>
+                            {% endif %}
+                            {% if form.instance.file %}
+                                <p class="mt-2">Current file: <a href="{{ form.instance.file.url }}" target="_blank">{{ form.instance.file.name }}</a></p>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="mb-3" id="url-content">
+                            <label for="{{ form.url.id_for_label }}" class="form-label">{{ form.url.label }}</label>
+                            {{ form.url }}
+                            {% if form.url.errors %}
+                                <div class="text-danger">{{ form.url.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.order.id_for_label }}" class="form-label">{{ form.order.label }}</label>
+                            {{ form.order }}
+                            {% if form.order.errors %}
+                                <div class="text-danger">{{ form.order.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                            <a href="{% url 'lms:course_detail' course.slug %}#module-{{ module.id }}" class="btn btn-outline-secondary me-md-2">Cancel</a>
+                            <button type="submit" class="btn btn-primary">Save Content</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">Content Types</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled">
+                        <li class="mb-3">
+                            <strong>Text:</strong> Rich text content with formatting options.
+                        </li>
+                        <li class="mb-3">
+                            <strong>File:</strong> Upload documents, presentations, or other files.
+                        </li>
+                        <li class="mb-3">
+                            <strong>URL:</strong> Link to external resources, videos, or websites.
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const contentTypeField = document.querySelector('select[name="content_type"]');
+    const textContentDiv = document.getElementById('text-content');
+    const fileContentDiv = document.getElementById('file-content');
+    const urlContentDiv = document.getElementById('url-content');
+    
+    function updateVisibleFields() {
+        const selectedType = contentTypeField.value;
+        
+        // Hide all content fields
+        textContentDiv.style.display = 'none';
+        fileContentDiv.style.display = 'none';
+        urlContentDiv.style.display = 'none';
+        
+        // Show the selected content field
+        if (selectedType === 'text') {
+            textContentDiv.style.display = 'block';
+        } else if (selectedType === 'file') {
+            fileContentDiv.style.display = 'block';
+        } else if (selectedType === 'url') {
+            urlContentDiv.style.display = 'block';
+        }
+    }
+    
+    // Set initial state
+    updateVisibleFields();
+    
+    // Update on change
+    contentTypeField.addEventListener('change', updateVisibleFields);
+});
+</script>
+{% endblock main-content %}

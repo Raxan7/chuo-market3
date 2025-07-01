@@ -1,0 +1,50 @@
+{% extends "app/base.html" %}
+{% load static %}
+
+{% block title %}Programs{% endblock title %}
+
+{% block main-content %}
+<div class="container my-5">
+    <div class="row mb-4">
+        <div class="col">
+            <h1>Academic Programs</h1>
+            <p class="lead">Browse available programs and their courses</p>
+        </div>
+    </div>
+
+    <div class="row">
+        {% if programs %}
+            {% for program in programs %}
+                <div class="col-md-6 mb-4">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-body">
+                            <h3 class="card-title">{{ program.title }}</h3>
+                            <p class="card-text">{{ program.summary|truncatewords:30 }}</p>
+                            
+                            {% with program_courses=program.course_set.all %}
+                                <p class="text-muted">{{ program_courses.count }} course{{ program_courses.count|pluralize }}</p>
+                            {% endwith %}
+                            
+                            <a href="{% url 'lms:program_detail' program.id %}" class="btn btn-primary">View Program</a>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <div class="col-12">
+                <div class="alert alert-info">
+                    No programs available at the moment. Please check back later.
+                </div>
+            </div>
+        {% endif %}
+    </div>
+    
+    <div class="row mt-4">
+        <div class="col">
+            <a href="{% url 'lms:lms_home' %}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left"></i> Back to LMS Home
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock main-content %}

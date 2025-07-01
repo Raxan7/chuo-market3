@@ -1,0 +1,126 @@
+{% extends "app/base.html" %}
+{% load static %}
+
+{% block title %}{{ quiz.title }}{% endblock title %}
+
+{% block main-content %}
+<div class="container my-5">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1>{{ quiz.title }}</h1>
+            <p class="lead">{{ quiz.description }}</p>
+            
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Course:</strong> <a href="{% url 'lms:course_detail' quiz.course.slug %}">{{ quiz.course.title }}</a></p>
+                            <p><strong>Time Limit:</strong> {{ quiz.time_limit_mins }} minutes</p>
+                            <p>
+                                <strong>Due Date:</strong> 
+                                {% if quiz.due_date %}
+                                    {{ quiz.due_date|date:"F j, Y, g:i a" }}
+                                {% else %}
+                                    No due date
+                                {% endif %}
+                            </p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Questions:</strong> {{ quiz.get_questions.count }}</p>
+                            <p><strong>Total Points:</strong> {{ quiz.total_points }}</p>
+                            <p><strong>Category:</strong> {{ quiz.get_category_display }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            {% if user_can_take_quiz %}
+                <div class="alert alert-info">
+                    <h4 class="alert-heading">Quiz Instructions</h4>
+                    <p>{{ quiz.instructions|default:"Please answer all questions to the best of your ability." }}</p>
+                    <hr>
+                    <p class="mb-0">Once you start the quiz, the timer will begin. You'll have {{ quiz.time_limit_mins }} minutes to complete it.</p>
+                </div>
+                
+                <div class="d-grid gap-2">
+                    <a href="{% url 'lms:start_quiz' quiz.slug %}" class="btn btn-primary btn-lg">
+                        Start Quiz
+                    </a>
+                </div>
+            {% elif user_is_instructor %}
+                <div class="alert alert-warning">
+                    <h4 class="alert-heading">Instructor View</h4>
+                    <p>You are viewing this quiz as an instructor.</p>
+                </div>
+                
+                <div class="d-grid gap-2">
+                    <a href="#" class="btn btn-outline-primary">Edit Quiz</a>
+                    <a href="#" class="btn btn-outline-secondary">View Submissions</a>
+                </div>
+            {% elif has_already_taken %}
+                <div class="alert alert-success">
+                    <h4 class="alert-heading">Quiz Completed</h4>
+                    <p>You have already completed this quiz. Your score: {{ user_score }}%</p>
+                </div>
+                
+                <div class="d-grid gap-2">
+                    <a href="#" class="btn btn-outline-primary">View Results</a>
+                </div>
+            {% else %}
+                <div class="alert alert-warning">
+                    <h4 class="alert-heading">Quiz Unavailable</h4>
+                    <p>
+                        {% if not_enrolled %}
+                            You must be enrolled in this course to take the quiz.
+                        {% elif past_due %}
+                            This quiz is past the due date.
+                        {% else %}
+                            This quiz is not currently available.
+                        {% endif %}
+                    </p>
+                </div>
+            {% endif %}
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">Quiz Details</h5>
+                </div>
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item">
+                        <i class="fas fa-clock text-muted me-2"></i> 
+                        {{ quiz.time_limit_mins }} minute time limit
+                    </li>
+                    <li class="list-group-item">
+                        <i class="fas fa-question-circle text-muted me-2"></i>
+                        {{ quiz.get_questions.count }} questions
+                    </li>
+                    {% if quiz.passing_score %}
+                        <li class="list-group-item">
+                            <i class="fas fa-check-circle text-muted me-2"></i>
+                            {{ quiz.passing_score }}% passing score
+                        </li>
+                    {% endif %}
+                    <li class="list-group-item">
+                        <i class="fas fa-redo text-muted me-2"></i>
+                        {% if quiz.allowed_attempts == 0 %}
+                            Unlimited attempts
+                        {% else %}
+                            {{ quiz.allowed_attempts }} attempt{{ quiz.allowed_attempts|pluralize }}
+                        {% endif %}
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mt-4">
+        <div class="col">
+            <a href="{% url 'lms:course_detail' quiz.course.slug %}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Course
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock main-content %}

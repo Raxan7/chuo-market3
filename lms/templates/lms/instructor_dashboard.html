@@ -1,0 +1,178 @@
+{% extends "app/base.html" %}
+{% load static %}
+
+{% block title %}Instructor Dashboard{% endblock title %}
+
+{% block main-content %}
+<div class="container my-5">
+    <div class="row mb-4">
+        <div class="col">
+            <h1>Instructor Dashboard</h1>
+            <p class="lead">Manage your courses and teaching responsibilities</p>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-3">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Navigation</h5>
+                </div>
+                <div class="list-group list-group-flush">
+                    <a href="{% url 'lms:instructor_dashboard' %}" class="list-group-item list-group-item-action active">Dashboard</a>
+                    <a href="{% url 'lms:course_list' %}" class="list-group-item list-group-item-action">All Courses</a>
+                    <a href="{% url 'lms:course_create' %}" class="list-group-item list-group-item-action">Create Course</a>
+                </div>
+            </div>
+            
+            <div class="card shadow-sm">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">Quick Stats</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>Courses Teaching</div>
+                        <span class="badge bg-primary rounded-pill">{{ teaching_courses|length }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>Students Enrolled</div>
+                        <span class="badge bg-info rounded-pill">{{ total_students }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>Active Quizzes</div>
+                        <span class="badge bg-warning text-dark rounded-pill">{{ active_quizzes }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-9">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">Your Courses</h5>
+                </div>
+                <div class="card-body">
+                    {% if teaching_courses %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Course</th>
+                                        <th>Code</th>
+                                        <th>Semester</th>
+                                        <th>Students</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for course in teaching_courses %}
+                                        <tr>
+                                            <td>
+                                                <a href="{% url 'lms:course_detail' course.slug %}">{{ course.title }}</a>
+                                            </td>
+                                            <td>{{ course.code }}</td>
+                                            <td>{{ course.get_semester_display }} {{ course.year }}</td>
+                                            <td>{{ course.students.count }}</td>
+                                            <td>
+                                                <div class="btn-group btn-group-sm">
+                                                    <a href="{% url 'lms:course_detail' course.slug %}" class="btn btn-outline-primary">View</a>
+                                                    <a href="{% url 'lms:course_update' course.slug %}" class="btn btn-outline-secondary">Edit</a>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-info">
+                            <h5 class="alert-heading">No Courses Yet</h5>
+                            <p>You are not currently teaching any courses.</p>
+                            <hr>
+                            <a href="{% url 'lms:course_create' %}" class="btn btn-primary">Create Your First Course</a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="card shadow-sm mb-4">
+                        <div class="card-header bg-light">
+                            <h5 class="mb-0">Recent Quizzes</h5>
+                        </div>
+                        <div class="card-body">
+                            {% if recent_quizzes %}
+                                <ul class="list-group list-group-flush">
+                                    {% for quiz in recent_quizzes %}
+                                        <li class="list-group-item">
+                                            <div class="d-flex w-100 justify-content-between">
+                                                <h6 class="mb-1">{{ quiz.title }}</h6>
+                                                <small class="text-muted">{{ quiz.timestamp|date:"M d" }}</small>
+                                            </div>
+                                            <small class="text-muted">{{ quiz.course.title }} ({{ quiz.get_category_display }})</small>
+                                            <div class="mt-2">
+                                                <a href="{% url 'lms:quiz_detail' quiz.slug %}" class="btn btn-sm btn-outline-primary">View</a>
+                                                {% if quiz.draft %}
+                                                    <span class="badge bg-secondary">Draft</span>
+                                                {% endif %}
+                                            </div>
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                            {% else %}
+                                <p class="text-muted">No quizzes created yet.</p>
+                            {% endif %}
+                        </div>
+                        <div class="card-footer bg-transparent">
+                            <a href="#" class="btn btn-sm btn-outline-secondary">View All Quizzes</a>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <div class="card shadow-sm mb-4">
+                        <div class="card-header bg-light">
+                            <h5 class="mb-0">Things To Do</h5>
+                        </div>
+                        <div class="card-body">
+                            <ul class="list-group list-group-flush">
+                                {% if pending_quizzes %}
+                                    <li class="list-group-item">
+                                        <i class="fas fa-clipboard-list text-warning me-2"></i>
+                                        <span class="badge bg-warning text-dark">{{ pending_quizzes }}</span>
+                                        Quizzes need grading
+                                    </li>
+                                {% endif %}
+                                
+                                {% if draft_quizzes %}
+                                    <li class="list-group-item">
+                                        <i class="fas fa-edit text-info me-2"></i>
+                                        <span class="badge bg-info text-dark">{{ draft_quizzes }}</span>
+                                        Draft quizzes awaiting publication
+                                    </li>
+                                {% endif %}
+                                
+                                {% if incomplete_courses %}
+                                    <li class="list-group-item">
+                                        <i class="fas fa-exclamation-circle text-danger me-2"></i>
+                                        <span class="badge bg-danger">{{ incomplete_courses }}</span>
+                                        Courses without any content
+                                    </li>
+                                {% endif %}
+                            </ul>
+                            
+                            {% if not pending_quizzes and not draft_quizzes and not incomplete_courses %}
+                                <div class="text-center py-3">
+                                    <i class="fas fa-check-circle text-success fa-3x mb-3"></i>
+                                    <p>All caught up! No pending tasks.</p>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock main-content %}

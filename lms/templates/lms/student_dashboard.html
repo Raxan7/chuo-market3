@@ -1,0 +1,204 @@
+{% extends "app/base.html" %}
+{% load static %}
+
+{% block title %}Student Dashboard{% endblock title %}
+
+{% block main-content %}
+<div class="container my-5">
+    <div class="row mb-4">
+        <div class="col">
+            <h1>Student Dashboard</h1>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'lms:lms_home' %}">LMS Home</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Dashboard</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <!-- Profile and Current Semester -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card shadow-sm mb-4">
+                <div class="card-body text-center">
+                    {% if profile.profile_picture %}
+                    <img src="{{ profile.profile_picture.url }}" class="rounded-circle img-thumbnail mb-3" width="120" height="120" alt="{{ profile.user.username }}">
+                    {% else %}
+                    <div class="bg-secondary rounded-circle text-white d-flex align-items-center justify-content-center mx-auto mb-3" style="width: 120px; height: 120px;">
+                        <i class="fas fa-user fa-4x"></i>
+                    </div>
+                    {% endif %}
+                    <h4>{{ profile.user.get_full_name|default:profile.user.username }}</h4>
+                    <p class="text-muted mb-2">Student</p>
+                    {% if profile.phone_number %}
+                    <p><i class="fas fa-phone me-2"></i> {{ profile.phone_number }}</p>
+                    {% endif %}
+                    <hr>
+                    <p class="mb-0"><strong>Email:</strong> {{ profile.user.email }}</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-8">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-light">
+                    <h4 class="mb-0">Current Semester</h4>
+                </div>
+                <div class="card-body">
+                    {% if current_semester %}
+                    <h5>{{ current_semester }}</h5>
+                    {% else %}
+                    <p class="text-muted">No active semester set.</p>
+                    {% endif %}
+                    
+                    <!-- Course Registration CTA -->
+                    <div class="alert alert-info mt-3">
+                        <h5>Course Registration</h5>
+                        <p>Browse courses and register for the current semester.</p>
+                        <a href="{% url 'lms:course_list' %}" class="btn btn-primary">Browse Courses</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Enrolled Courses and Progress -->
+    <div class="row mb-4">
+        <div class="col">
+            <div class="card shadow-sm">
+                <div class="card-header bg-light">
+                    <h4 class="mb-0">Enrolled Courses</h4>
+                </div>
+                <div class="card-body">
+                    {% if courses %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Course</th>
+                                    <th>Code</th>
+                                    <th>Credits</th>
+                                    <th>Semester</th>
+                                    <th>Grade</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for course in courses %}
+                                <tr>
+                                    <td>
+                                        <a href="{% url 'lms:course_detail' slug=course.slug %}">{{ course.title }}</a>
+                                    </td>
+                                    <td>{{ course.code }}</td>
+                                    <td>{{ course.credit }}</td>
+                                    <td>{{ course.get_semester_display }}</td>
+                                    <td>
+                                        {% for grade in grades %}
+                                            {% if grade.course == course %}
+                                                {% if grade.grade %}
+                                                    <span class="badge 
+                                                    {% if grade.grade == 'A' %}bg-success
+                                                    {% elif grade.grade == 'B' %}bg-primary
+                                                    {% elif grade.grade == 'C' %}bg-info
+                                                    {% elif grade.grade == 'D' %}bg-warning
+                                                    {% else %}bg-danger{% endif %}">
+                                                        {{ grade.grade }}
+                                                    </span>
+                                                {% else %}
+                                                    <span class="badge bg-secondary">Not Graded</span>
+                                                {% endif %}
+                                            {% endif %}
+                                        {% endfor %}
+                                    </td>
+                                    <td>
+                                        <a href="{% url 'lms:course_detail' slug=course.slug %}" class="btn btn-sm btn-outline-primary">View</a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info">
+                        <p>You are not enrolled in any courses yet.</p>
+                        <a href="{% url 'lms:course_list' %}" class="btn btn-primary">Browse Courses</a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Upcoming Quizzes and Recent Activities -->
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card shadow-sm mb-4 mb-md-0">
+                <div class="card-header bg-light">
+                    <h4 class="mb-0">Upcoming Quizzes & Assignments</h4>
+                </div>
+                <div class="card-body">
+                    {% if upcoming_quizzes %}
+                    <div class="list-group">
+                        {% for quiz in upcoming_quizzes %}
+                        <a href="{% url 'lms:quiz_detail' slug=quiz.slug %}" class="list-group-item list-group-item-action">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h5 class="mb-1">{{ quiz.title }}</h5>
+                                <small>
+                                    <span class="badge 
+                                    {% if quiz.category == 'assignment' %}bg-primary
+                                    {% elif quiz.category == 'exam' %}bg-danger
+                                    {% else %}bg-success{% endif %}">
+                                        {{ quiz.get_category_display }}
+                                    </span>
+                                </small>
+                            </div>
+                            <p class="mb-1">{{ quiz.course.title }}</p>
+                            <small class="text-danger">
+                                <i class="fas fa-calendar-alt me-1"></i> Due: {{ quiz.due_date|date:"M d, Y H:i" }}
+                            </small>
+                        </a>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="text-muted">No upcoming quizzes or assignments.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card shadow-sm">
+                <div class="card-header bg-light">
+                    <h4 class="mb-0">Recent Course Activities</h4>
+                </div>
+                <div class="card-body">
+                    {% if recent_contents %}
+                    <div class="list-group">
+                        {% for content in recent_contents %}
+                        <a href="{% url 'lms:content_detail' course_slug=content.module.course.slug content_id=content.id %}" class="list-group-item list-group-item-action">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h5 class="mb-1">{{ content.title }}</h5>
+                                <small>{{ content.date_added|date:"M d, Y" }}</small>
+                            </div>
+                            <p class="mb-1">{{ content.module.course.title }}</p>
+                            <small>
+                                <i class="fas 
+                                {% if content.content_type == 'document' %}fa-file-pdf
+                                {% elif content.content_type == 'video' %}fa-video
+                                {% elif content.content_type == 'link' %}fa-link
+                                {% else %}fa-file-alt{% endif %} me-1"></i>
+                                {{ content.get_content_type_display }}
+                            </small>
+                        </a>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="text-muted">No recent activities.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock main-content %}
