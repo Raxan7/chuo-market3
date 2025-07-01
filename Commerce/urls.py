@@ -9,6 +9,7 @@ urlpatterns = [
     path('', include('core.urls')),
     path('talents/', include('talents.urls')),
     path('chatbot/', include('chatbotapp.urls')),
+    path('lms/', include('lms.urls')),
 ]
 
 if settings.DEBUG:
