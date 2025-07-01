@@ -12,20 +12,32 @@
       {% csrf_token %}
     <div class="mb-3">
       <label for="username" class="form-label">Username</label>
-      <input type="text" class="form-control" id="username" name="username">
+      <input type="text" class="form-control" id="username" name="username" {% if form.username.value %}value="{{ form.username.value }}"{% endif %} required>
+      {% if form.username.errors %}
+        <div class="text-danger small">{{ form.username.errors.0 }}</div>
+      {% endif %}
     </div>
     <div class="mb-3">
      <label for="inputEmail4" class="form-label">Email</label>
-     <input type="email" class="form-control" id="inputEmail4" name="email">
+     <input type="email" class="form-control" id="inputEmail4" name="email" {% if form.email.value %}value="{{ form.email.value }}"{% endif %} required>
      <div id="emailHelp" class="form-text">We'll never share your email with anyone else.</div>
+      {% if form.email.errors %}
+        <div class="text-danger small">{{ form.email.errors.0 }}</div>
+      {% endif %}
     </div>
     <div class="mb-3">
      <label for="inputPassword1" class="form-label">Password</label>
-     <input type="password" class="form-control" id="inputPassword1" name="password1">
+     <input type="password" class="form-control" id="inputPassword1" name="password1" required>
+      {% if form.password1.errors %}
+        <div class="text-danger small">{{ form.password1.errors.0 }}</div>
+      {% endif %}
     </div>
     <div class="mb-3">
      <label for="inputPassword2" class="form-label">Confirm Password</label>
-     <input type="password" class="form-control" id="inputPassword2" name="password2">
+     <input type="password" class="form-control" id="inputPassword2" name="password2" required>
+      {% if form.password2.errors %}
+        <div class="text-danger small">{{ form.password2.errors.0 }}</div>
+      {% endif %}
     </div>
     {% if form.errors %}
     <div class="alert alert-danger" role="alert">

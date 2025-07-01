@@ -197,11 +197,58 @@
     <span>5% Instant Discount If You Are At The University of Dodoma</span>
     <small class="fw-lighter">Term and Condition Applied (For details visit Bank's official Website)</small>
   </div>
-</div> 
+</div>
+
+<!-- LMS Banner -->
+<div class="container my-4">
+  <div class="row bg-primary text-center p-4 text-white border-bottom shadow rounded">
+    <div class="col-md-8 offset-md-2">
+      <h2><i class="fas fa-graduation-cap me-2"></i> Learning Management System</h2>
+      <p class="lead">Access courses, quizzes, and learning materials to enhance your academic journey</p>
+      <a href="{% url 'lms:lms_home' %}" class="btn btn-light btn-lg px-4 mt-2">
+        <i class="fas fa-book-open me-2"></i> Start Learning Now
+      </a>
+    </div>
+  </div>
+</div>
 <!-- End Live Sale Section -->
 {% endblock livesale %}
 
 {% block main-content %}
+
+<!-- LMS Feature Card -->
+<div class="container my-5">
+  <div class="row">
+    <div class="col-md-12">
+      <div class="card shadow border-0">
+        <div class="row g-0">
+          <div class="col-md-4 bg-primary text-white d-flex align-items-center">
+            <div class="p-4 text-center">
+              <i class="fas fa-graduation-cap fa-4x mb-3"></i>
+              <h2 class="fw-bold">Learning Management System</h2>
+              <p class="lead">Enhance your academic experience</p>
+            </div>
+          </div>
+          <div class="col-md-8">
+            <div class="card-body p-4">
+              <h3 class="card-title fw-bold">Access Your Courses Online</h3>
+              <p class="card-text">Our integrated Learning Management System provides:</p>
+              <ul class="list-group list-group-flush mb-4">
+                <li class="list-group-item"><i class="fas fa-check-circle text-success me-2"></i> Access to course materials and lectures</li>
+                <li class="list-group-item"><i class="fas fa-check-circle text-success me-2"></i> Online quizzes and assessments</li>
+                <li class="list-group-item"><i class="fas fa-check-circle text-success me-2"></i> Interact with instructors and fellow students</li>
+                <li class="list-group-item"><i class="fas fa-check-circle text-success me-2"></i> Track your academic progress</li>
+              </ul>
+              <a href="{% url 'lms:lms_home' %}" class="btn btn-primary btn-lg">
+                <i class="fas fa-arrow-right me-2"></i> Go to Learning Portal
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- Random Products Section -->
 <div class="m-3">
