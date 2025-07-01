@@ -48,8 +48,8 @@ class Customer(models.Model):
     name = models.CharField(max_length=200)
     university = models.CharField(max_length=200, choices=UNIVERSITY_CHOICES)
     college = models.CharField(max_length=200, choices=COLLEGE_CHOICES)
-    block_number = models.CharField(max_length=200, null=True)
-    room_number = models.CharField(max_length=200)
+    block_number = models.CharField(max_length=200, null=True, blank=True)
+    room_number = models.CharField(max_length=200, null=True, blank=True)
     phone_number = models.CharField(max_length=15, null=True, blank=True)  # New field for phone number
     
     def get_default_subscription():
