@@ -233,12 +233,20 @@ def user_login(request):
             user = authenticate(request, username=username, password=password)
             if user is not None:
                 login(request, user)
-                # messages.success(request, 'You have successfully logged in.')
+                # Check if user needs to complete their profile
+                if not hasattr(user, 'customer') or not user.customer:
+                    messages.info(request, 'Please complete your profile information.')
+                    return redirect('profile')
+                messages.success(request, 'You have successfully logged in.')
                 return redirect('home')  # Redirect to the desired page after login
             else:
                 messages.error(request, 'Invalid username or password.')
+                form.add_error(None, 'Invalid username or password.')
         else:
             logger.warning("Form data is invalid: %s", form.errors)
+            for field, errors in form.errors.items():
+                for error in errors:
+                    messages.error(request, f"{field}: {error}")
     else:
         form = LoginForm()
     
@@ -250,12 +258,23 @@ def customerregistration(request):
         if form.is_valid():
             try:
                 user = form.save()  # Save the user
-                logger.info("User %s registered successfully.", user.username)
+                # Customer profile will be created by signal handler
+                
+                # Log success
+                logger.info("User %s registered successfully", user.username)
+                
+                # Show success message
+                messages.success(request, "Registration successful! You can now log in.")
                 return redirect('login')
             except Exception as e:
                 logger.error("Error occurred during user registration: %s", str(e))
+                messages.error(request, f"Registration failed: {str(e)}")
         else:
             logger.warning("Form data is invalid: %s", form.errors)
+            # Display specific field errors
+            for field, errors in form.errors.items():
+                for error in errors:
+                    messages.error(request, f"{field}: {error}")
     else:
         form = RegistrationForm()
     return render(request, 'app/customerregistration.html', {'form': form})
