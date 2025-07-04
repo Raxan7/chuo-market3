@@ -31,6 +31,11 @@
                     {% endif %}
                     <h4>{{ profile.user.get_full_name|default:profile.user.username }}</h4>
                     <p class="text-muted mb-2">Student</p>
+                    <p>
+                        <a href="{% url 'lms:request_instructor_role' %}" class="btn btn-sm btn-outline-primary">
+                            <i class="fas fa-chalkboard-teacher me-1"></i> Become an Instructor
+                        </a>
+                    </p>
                     {% if profile.phone_number %}
                     <p><i class="fas fa-phone me-2"></i> {{ profile.phone_number }}</p>
                     {% endif %}

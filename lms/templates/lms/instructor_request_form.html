@@ -1,0 +1,66 @@
+{% extends 'app/base.html' %}
+{% load static %}
+{% block title %}Request to Become an Instructor{% endblock title %}
+{% block main-content %}
+
+<div class="container my-5">
+    <div class="row">
+        <div class="col-md-10 offset-md-1">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">Request to Become an Instructor</h4>
+                </div>
+                <div class="card-body">
+                    <p class="lead">
+                        Being an instructor allows you to create and manage courses, quizzes, and learning materials. 
+                        Please provide information about your qualifications and experience to support your request.
+                    </p>
+                    
+                    <form method="post" enctype="multipart/form-data" class="mt-4">
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.reason.id_for_label }}" class="form-label">
+                                <strong>Why do you want to be an instructor?</strong>
+                            </label>
+                            {{ form.reason }}
+                            {% if form.reason.errors %}
+                                <div class="text-danger small">{{ form.reason.errors.0 }}</div>
+                            {% endif %}
+                            <div class="form-text">{{ form.reason.help_text }}</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.qualifications.id_for_label }}" class="form-label">
+                                <strong>Qualifications and Experience</strong>
+                            </label>
+                            {{ form.qualifications }}
+                            {% if form.qualifications.errors %}
+                                <div class="text-danger small">{{ form.qualifications.errors.0 }}</div>
+                            {% endif %}
+                            <div class="form-text">{{ form.qualifications.help_text }}</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.cv.id_for_label }}" class="form-label">
+                                <strong>CV/Resume (optional)</strong>
+                            </label>
+                            {{ form.cv }}
+                            {% if form.cv.errors %}
+                                <div class="text-danger small">{{ form.cv.errors.0 }}</div>
+                            {% endif %}
+                            <div class="form-text">{{ form.cv.help_text }}</div>
+                        </div>
+                        
+                        <div class="mt-4">
+                            <button type="submit" class="btn btn-primary">Submit Request</button>
+                            <a href="{% url 'lms:lms_home' %}" class="btn btn-outline-secondary ms-2">Cancel</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock main-content %}

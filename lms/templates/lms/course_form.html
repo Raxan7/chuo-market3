@@ -1,5 +1,6 @@
 {% extends "app/base.html" %}
 {% load static %}
+{% load form_tags %}
 
 {% block title %}
     {% if form.instance.id %}Edit Course{% else %}Create Course{% endif %}
@@ -9,14 +10,38 @@
 <div class="container my-5">
     <div class="row mb-4">
         <div class="col">
-            <h1>{% if form.instance.id %}Edit Course: {{ form.instance.title }}{% else %}Create New Course{% endif %}</h1>
+            <h1 class="display-5 fw-bold text-primary mb-3">
+                {% if form.instance.id %}
+                    <i class="fas fa-edit me-2"></i>Edit Course: {{ form.instance.title }}
+                {% else %}
+                    <i class="fas fa-plus-circle me-2"></i>Create New Course
+                {% endif %}
+            </h1>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'lms:lms_home' %}">LMS Home</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'lms:course_list' %}">Courses</a></li>
+                    <li class="breadcrumb-item active">
+                        {% if form.instance.id %}Edit Course{% else %}Create Course{% endif %}
+                    </li>
+                </ol>
+            </nav>
         </div>
     </div>
     
     <div class="row">
         <div class="col-md-8">
-            <div class="card shadow-sm">
-                <div class="card-body">
+            <div class="card shadow border-0 rounded-3">
+                <div class="card-header bg-primary bg-gradient text-white py-3">
+                    <h4 class="mb-0">
+                        {% if form.instance.id %}
+                            <i class="fas fa-edit me-2"></i>Course Details
+                        {% else %}
+                            <i class="fas fa-book me-2"></i>Course Details
+                        {% endif %}
+                    </h4>
+                </div>
+                <div class="card-body p-4">
                     <form method="post" enctype="multipart/form-data">
                         {% csrf_token %}
                         
@@ -28,107 +53,186 @@
                             </div>
                         {% endif %}
                         
-                        <div class="mb-3">
-                            <label for="{{ form.title.id_for_label }}" class="form-label">{{ form.title.label }}</label>
-                            {{ form.title }}
+                        <div class="mb-4">
+                            <label for="{{ form.title.id_for_label }}" class="form-label fw-bold">
+                                <i class="fas fa-heading me-2 text-primary"></i>{{ form.title.label }}
+                            </label>
+                            {{ form.title|add_class:"form-control form-control-lg" }}
                             {% if form.title.errors %}
-                                <div class="text-danger">{{ form.title.errors }}</div>
+                                <div class="text-danger small mt-1">
+                                    <i class="fas fa-exclamation-circle me-1"></i>{{ form.title.errors }}
+                                </div>
                             {% endif %}
                             {% if form.title.help_text %}
                                 <div class="form-text">{{ form.title.help_text }}</div>
                             {% endif %}
                         </div>
                         
-                        <div class="mb-3">
-                            <label for="{{ form.code.id_for_label }}" class="form-label">{{ form.code.label }}</label>
-                            {{ form.code }}
+                        <div class="mb-4">
+                            <label for="{{ form.code.id_for_label }}" class="form-label fw-bold">
+                                <i class="fas fa-hashtag me-2 text-primary"></i>{{ form.code.label }}
+                            </label>
+                            {{ form.code|add_class:"form-control" }}
                             {% if form.code.errors %}
-                                <div class="text-danger">{{ form.code.errors }}</div>
+                                <div class="text-danger small mt-1">
+                                    <i class="fas fa-exclamation-circle me-1"></i>{{ form.code.errors }}
+                                </div>
                             {% endif %}
                             {% if form.code.help_text %}
                                 <div class="form-text">{{ form.code.help_text }}</div>
                             {% endif %}
                         </div>
                         
-                        <div class="mb-3">
-                            <label for="{{ form.summary.id_for_label }}" class="form-label">{{ form.summary.label }}</label>
-                            {{ form.summary }}
+                        <div class="mb-4">
+                            <label for="{{ form.summary.id_for_label }}" class="form-label fw-bold">
+                                <i class="fas fa-align-left me-2 text-primary"></i>{{ form.summary.label }}
+                            </label>
+                            {{ form.summary|add_class:"form-control" }}
                             {% if form.summary.errors %}
-                                <div class="text-danger">{{ form.summary.errors }}</div>
+                                <div class="text-danger small mt-1">
+                                    <i class="fas fa-exclamation-circle me-1"></i>{{ form.summary.errors }}
+                                </div>
                             {% endif %}
+                            <div class="form-text">Write a brief summary of what students will learn in this course</div>
                         </div>
                         
-                        <div class="row mb-3">
+                        <hr class="my-4">
+                        <h5 class="text-primary mb-3"><i class="fas fa-cogs me-2"></i>Course Settings</h5>
+
+                        <div class="row mb-4">
                             <div class="col-md-6">
-                                <label for="{{ form.program.id_for_label }}" class="form-label">{{ form.program.label }}</label>
-                                {{ form.program }}
+                                <label for="{{ form.program.id_for_label }}" class="form-label fw-bold">
+                                    <i class="fas fa-graduation-cap me-2 text-primary"></i>{{ form.program.label }}
+                                </label>
+                                {{ form.program|add_class:"form-select" }}
                                 {% if form.program.errors %}
-                                    <div class="text-danger">{{ form.program.errors }}</div>
+                                    <div class="text-danger small mt-1">
+                                        <i class="fas fa-exclamation-circle me-1"></i>{{ form.program.errors }}
+                                    </div>
                                 {% endif %}
                             </div>
                             <div class="col-md-6">
-                                <label for="{{ form.level.id_for_label }}" class="form-label">{{ form.level.label }}</label>
-                                {{ form.level }}
+                                <label for="{{ form.level.id_for_label }}" class="form-label fw-bold">
+                                    <i class="fas fa-layer-group me-2 text-primary"></i>{{ form.level.label }}
+                                </label>
+                                {{ form.level|add_class:"form-select" }}
                                 {% if form.level.errors %}
-                                    <div class="text-danger">{{ form.level.errors }}</div>
+                                    <div class="text-danger small mt-1">
+                                        <i class="fas fa-exclamation-circle me-1"></i>{{ form.level.errors }}
+                                    </div>
                                 {% endif %}
                             </div>
                         </div>
                         
-                        <div class="row mb-3">
+                        <div class="row mb-4">
                             <div class="col-md-4">
-                                <label for="{{ form.year.id_for_label }}" class="form-label">{{ form.year.label }}</label>
-                                {{ form.year }}
+                                <label for="{{ form.year.id_for_label }}" class="form-label fw-bold">
+                                    <i class="fas fa-calendar-alt me-2 text-primary"></i>{{ form.year.label }}
+                                </label>
+                                {{ form.year|add_class:"form-select" }}
                                 {% if form.year.errors %}
-                                    <div class="text-danger">{{ form.year.errors }}</div>
+                                    <div class="text-danger small mt-1">
+                                        <i class="fas fa-exclamation-circle me-1"></i>{{ form.year.errors }}
+                                    </div>
                                 {% endif %}
                             </div>
                             <div class="col-md-4">
-                                <label for="{{ form.semester.id_for_label }}" class="form-label">{{ form.semester.label }}</label>
-                                {{ form.semester }}
+                                <label for="{{ form.semester.id_for_label }}" class="form-label fw-bold">
+                                    <i class="far fa-calendar me-2 text-primary"></i>{{ form.semester.label }}
+                                </label>
+                                {{ form.semester|add_class:"form-select" }}
                                 {% if form.semester.errors %}
-                                    <div class="text-danger">{{ form.semester.errors }}</div>
+                                    <div class="text-danger small mt-1">
+                                        <i class="fas fa-exclamation-circle me-1"></i>{{ form.semester.errors }}
+                                    </div>
                                 {% endif %}
                             </div>
                             <div class="col-md-4">
-                                <label for="{{ form.credit.id_for_label }}" class="form-label">{{ form.credit.label }}</label>
-                                {{ form.credit }}
+                                <label for="{{ form.credit.id_for_label }}" class="form-label fw-bold">
+                                    <i class="fas fa-award me-2 text-primary"></i>{{ form.credit.label }}
+                                </label>
+                                {{ form.credit|add_class:"form-control" }}
                                 {% if form.credit.errors %}
-                                    <div class="text-danger">{{ form.credit.errors }}</div>
+                                    <div class="text-danger small mt-1">
+                                        <i class="fas fa-exclamation-circle me-1"></i>{{ form.credit.errors }}
+                                    </div>
                                 {% endif %}
                             </div>
                         </div>
                         
-                        <div class="mb-3">
-                            <div class="form-check">
-                                {{ form.is_elective }}
-                                <label for="{{ form.is_elective.id_for_label }}" class="form-check-label">{{ form.is_elective.label }}</label>
+                        <div class="mb-4">
+                            <div class="form-check form-switch">
+                                {{ form.is_elective|add_class:"form-check-input" }}
+                                <label for="{{ form.is_elective.id_for_label }}" class="form-check-label fw-bold">
+                                    <i class="fas fa-check-circle me-2 text-primary"></i>{{ form.is_elective.label }}
+                                </label>
                                 {% if form.is_elective.errors %}
-                                    <div class="text-danger">{{ form.is_elective.errors }}</div>
+                                    <div class="text-danger small mt-1">
+                                        <i class="fas fa-exclamation-circle me-1"></i>{{ form.is_elective.errors }}
+                                    </div>
                                 {% endif %}
+                                <div class="form-text">Check if this course is an elective rather than a required course.</div>
                             </div>
                         </div>
                         
-                        <div class="mb-3">
-                            <label for="{{ form.instructors.id_for_label }}" class="form-label">{{ form.instructors.label }}</label>
-                            {{ form.instructors }}
+                        <hr class="my-4">
+                        <h5 class="text-primary mb-3"><i class="fas fa-users me-2"></i>Instructor Assignment</h5>
+                        
+                        <div class="mb-4">
+                            <label for="{{ form.instructors.id_for_label }}" class="form-label fw-bold">
+                                <i class="fas fa-chalkboard-teacher me-2 text-primary"></i>{{ form.instructors.label }}
+                            </label>
+                            {{ form.instructors|add_class:"form-select" }}
                             {% if form.instructors.errors %}
-                                <div class="text-danger">{{ form.instructors.errors }}</div>
+                                <div class="text-danger small mt-1">
+                                    <i class="fas fa-exclamation-circle me-1"></i>{{ form.instructors.errors }}
+                                </div>
                             {% endif %}
-                            <div class="form-text">Hold Ctrl/Cmd to select multiple instructors.</div>
+                            <div class="form-text">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Hold Ctrl/Cmd to select multiple instructors.
+                            </div>
                         </div>
                         
-                        <div class="mb-3">
-                            <label for="{{ form.image.id_for_label }}" class="form-label">{{ form.image.label }}</label>
-                            {{ form.image }}
+                        <hr class="my-4">
+                        <h5 class="text-primary mb-3"><i class="fas fa-image me-2"></i>Course Image</h5>
+                        
+                        <div class="mb-4">
+                            <label for="{{ form.image.id_for_label }}" class="form-label fw-bold">
+                                <i class="fas fa-file-image me-2 text-primary"></i>{{ form.image.label }}
+                            </label>
+                            
+                            <div class="input-group mb-3">
+                                <span class="input-group-text bg-primary text-white">
+                                    <i class="fas fa-upload"></i>
+                                </span>
+                                {{ form.image|add_class:"form-control" }}
+                            </div>
+                            
                             {% if form.image.errors %}
-                                <div class="text-danger">{{ form.image.errors }}</div>
+                                <div class="text-danger small mt-1">
+                                    <i class="fas fa-exclamation-circle me-1"></i>{{ form.image.errors }}
+                                </div>
+                            {% endif %}
+                            <div class="form-text">
+                                Upload an image that represents your course. Recommended size: 1200x800px.
+                            </div>
+                            
+                            {% if form.instance.image %}
+                            <div class="mt-2">
+                                <img src="{{ form.instance.image.url }}" alt="Current course image" class="img-thumbnail" style="max-height: 150px">
+                                <p class="small text-muted mt-1">Current image</p>
+                            </div>
                             {% endif %}
                         </div>
                         
-                        <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
-                            <a href="{% url 'lms:course_list' %}" class="btn btn-outline-secondary me-md-2">Cancel</a>
-                            <button type="submit" class="btn btn-primary">Save Course</button>
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-5">
+                            <a href="{% url 'lms:course_list' %}" class="btn btn-outline-secondary me-md-2 px-4 py-2">
+                                <i class="fas fa-times me-2"></i>Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary px-5 py-2">
+                                <i class="fas fa-save me-2"></i>Save Course
+                            </button>
                         </div>
                     </form>
                 </div>
@@ -136,29 +240,76 @@
         </div>
         
         <div class="col-md-4">
-            <div class="card shadow-sm">
-                <div class="card-header bg-light">
-                    <h5 class="mb-0">Tips for Creating Courses</h5>
+            <div class="card border-0 shadow rounded-3 mb-4">
+                <div class="card-header bg-light bg-gradient py-3">
+                    <h5 class="mb-0 text-primary">
+                        <i class="fas fa-lightbulb me-2"></i>Tips for Creating Courses
+                    </h5>
                 </div>
-                <div class="card-body">
-                    <ul class="list-unstyled">
-                        <li class="mb-3">
-                            <i class="fas fa-info-circle text-primary me-2"></i>
-                            Use a clear, descriptive title for your course.
+                <div class="card-body p-4">
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item border-0 px-0 py-3">
+                            <div class="d-flex">
+                                <div class="flex-shrink-0">
+                                    <span class="badge rounded-pill bg-primary p-2">
+                                        <i class="fas fa-check"></i>
+                                    </span>
+                                </div>
+                                <div class="flex-grow-1 ms-3">
+                                    <h6 class="fw-bold mb-1">Descriptive Title</h6>
+                                    <p class="text-muted mb-0">Use a clear, descriptive title that accurately represents your course content.</p>
+                                </div>
+                            </div>
                         </li>
-                        <li class="mb-3">
-                            <i class="fas fa-info-circle text-primary me-2"></i>
-                            Course codes should follow your institution's format (e.g., CS101).
+                        <li class="list-group-item border-0 px-0 py-3">
+                            <div class="d-flex">
+                                <div class="flex-shrink-0">
+                                    <span class="badge rounded-pill bg-primary p-2">
+                                        <i class="fas fa-check"></i>
+                                    </span>
+                                </div>
+                                <div class="flex-grow-1 ms-3">
+                                    <h6 class="fw-bold mb-1">Standardized Course Code</h6>
+                                    <p class="text-muted mb-0">Course codes should follow your institution's format (e.g., CS101).</p>
+                                </div>
+                            </div>
                         </li>
-                        <li class="mb-3">
-                            <i class="fas fa-info-circle text-primary me-2"></i>
-                            Write a detailed summary to help students understand the course content and objectives.
+                        <li class="list-group-item border-0 px-0 py-3">
+                            <div class="d-flex">
+                                <div class="flex-shrink-0">
+                                    <span class="badge rounded-pill bg-primary p-2">
+                                        <i class="fas fa-check"></i>
+                                    </span>
+                                </div>
+                                <div class="flex-grow-1 ms-3">
+                                    <h6 class="fw-bold mb-1">Detailed Summary</h6>
+                                    <p class="text-muted mb-0">Write a thorough summary to help students understand course content and objectives.</p>
+                                </div>
+                            </div>
                         </li>
-                        <li>
-                            <i class="fas fa-info-circle text-primary me-2"></i>
-                            After creating the course, you can add modules, content, and quizzes.
+                        <li class="list-group-item border-0 px-0 py-3">
+                            <div class="d-flex">
+                                <div class="flex-shrink-0">
+                                    <span class="badge rounded-pill bg-primary p-2">
+                                        <i class="fas fa-check"></i>
+                                    </span>
+                                </div>
+                                <div class="flex-grow-1 ms-3">
+                                    <h6 class="fw-bold mb-1">Next Steps</h6>
+                                    <p class="text-muted mb-0">After creating the course, you can add modules, content, and quizzes.</p>
+                                </div>
+                            </div>
                         </li>
                     </ul>
+                </div>
+            </div>
+            
+            <div class="card border-0 shadow rounded-3 bg-light bg-gradient">
+                <div class="card-body p-4">
+                    <h5 class="text-primary">
+                        <i class="fas fa-question-circle me-2"></i>Need Help?
+                    </h5>
+                    <p class="mb-0">Check the <a href="#">Instructor's Guide</a> for detailed instructions on creating and managing courses.</p>
                 </div>
             </div>
         </div>

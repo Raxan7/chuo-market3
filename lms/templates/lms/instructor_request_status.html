@@ -1,0 +1,85 @@
+{% extends 'app/base.html' %}
+{% load static %}
+{% block title %}Instructor Request Status{% endblock title %}
+{% block main-content %}
+
+<div class="container my-5">
+    <div class="row">
+        <div class="col-md-10 offset-md-1">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">Instructor Request Status</h4>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-3 fw-bold">Request Date:</div>
+                        <div class="col-md-9">{{ instructor_request.created_at|date:"F j, Y, g:i a" }}</div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-3 fw-bold">Status:</div>
+                        <div class="col-md-9">
+                            {% if instructor_request.status == 'pending' %}
+                                <span class="badge bg-warning text-dark">Pending Review</span>
+                            {% elif instructor_request.status == 'approved' %}
+                                <span class="badge bg-success">Approved</span>
+                            {% elif instructor_request.status == 'denied' %}
+                                <span class="badge bg-danger">Denied</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-3 fw-bold">Reason:</div>
+                        <div class="col-md-9">{{ instructor_request.reason|linebreaks }}</div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-3 fw-bold">Qualifications:</div>
+                        <div class="col-md-9">{{ instructor_request.qualifications|linebreaks }}</div>
+                    </div>
+                    
+                    {% if instructor_request.cv %}
+                    <div class="row mb-3">
+                        <div class="col-md-3 fw-bold">CV/Resume:</div>
+                        <div class="col-md-9">
+                            <a href="{{ instructor_request.cv.url }}" class="btn btn-sm btn-outline-primary" target="_blank">
+                                <i class="fas fa-file-download"></i> Download CV
+                            </a>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if instructor_request.status == 'approved' %}
+                    <div class="alert alert-success mt-4">
+                        <h5 class="alert-heading">Congratulations!</h5>
+                        <p>Your request to become an instructor has been approved. You can now create and manage courses.</p>
+                        <hr>
+                        <p class="mb-0">
+                            <a href="{% url 'lms:instructor_dashboard' %}" class="btn btn-success">Go to Instructor Dashboard</a>
+                        </p>
+                    </div>
+                    {% elif instructor_request.status == 'denied' %}
+                    <div class="alert alert-danger mt-4">
+                        <h5 class="alert-heading">Request Denied</h5>
+                        <p>Unfortunately, your request to become an instructor has been denied at this time.</p>
+                        <p>You can submit a new request after 30 days with additional qualifications or information.</p>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-warning mt-4">
+                        <h5 class="alert-heading">Request Under Review</h5>
+                        <p>Your request is currently under review. You will be notified once a decision has been made.</p>
+                        <p>This usually takes 1-3 business days. Thank you for your patience.</p>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="mt-4">
+                        <a href="{% url 'lms:lms_home' %}" class="btn btn-outline-primary">Return to LMS Home</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock main-content %}

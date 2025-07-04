@@ -441,6 +441,34 @@ class Grade(models.Model):
         super().save(*args, **kwargs)
 
 
+class InstructorRequest(models.Model):
+    """
+    Model to handle requests to become an instructor
+    """
+    STATUS_CHOICES = (
+        ('pending', _('Pending')),
+        ('approved', _('Approved')),
+        ('denied', _('Denied')),
+    )
+    
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='instructor_requests')
+    reason = models.TextField(help_text=_("Explain why you want to become an instructor"))
+    qualifications = models.TextField(help_text=_("Describe your qualifications and experience"))
+    cv = models.FileField(upload_to='lms/instructor_requests/cv/', blank=True, null=True, 
+                         help_text=_("Upload your CV or resume (optional)"))
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
+    admin_notes = models.TextField(blank=True, null=True, 
+                                 help_text=_("Admin notes about this request (not visible to the requester)"))
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    def __str__(self):
+        return f"{self.user.username} - {self.get_status_display()}"
+    
+    class Meta:
+        ordering = ['-created_at']
+
+
 def unique_slug_generator(instance, new_slug=None):
     """
     Generate a unique slug for models

@@ -7,7 +7,8 @@ from django.utils.translation import gettext_lazy as _
 from .models import (
     ActivityLog, Semester, LMSProfile, Program, Course, CourseModule, 
     CourseContent, Quiz, Question, MCQuestion, Choice, TF_Question, 
-    Essay_Question, QuizTaker, StudentAnswer, Grade, CourseEnrollment
+    Essay_Question, QuizTaker, StudentAnswer, Grade, CourseEnrollment,
+    InstructorRequest
 )
 
 
@@ -147,6 +148,61 @@ class CourseEnrollmentAdmin(admin.ModelAdmin):
     list_filter = ('course',)
     search_fields = ('student__user__username', 'student__user__first_name', 'student__user__last_name', 'course__title')
     readonly_fields = ('date_enrolled',)
+
+
+@admin.register(InstructorRequest)
+class InstructorRequestAdmin(admin.ModelAdmin):
+    list_display = ('user', 'status', 'created_at', 'updated_at')
+    list_filter = ('status',)
+    search_fields = ('user__username', 'user__first_name', 'user__last_name', 'user__email')
+    readonly_fields = ('user', 'reason', 'qualifications', 'cv', 'created_at', 'updated_at')
+    fieldsets = (
+        (None, {
+            'fields': ('user', 'reason', 'qualifications', 'cv')
+        }),
+        (_('Request Status'), {
+            'fields': ('status', 'admin_notes')
+        }),
+        (_('Timestamps'), {
+            'fields': ('created_at',),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    actions = ['approve_requests', 'deny_requests']
+    
+    def approve_requests(self, request, queryset):
+        for instructor_request in queryset.filter(status='pending'):
+            # Update request status
+            instructor_request.status = 'approved'
+            instructor_request.save()
+            
+            # Update user profile role to instructor
+            profile = instructor_request.user.lms_profile
+            profile.role = 'instructor'
+            profile.save()
+            
+            # Log the activity
+            ActivityLog.objects.create(
+                message=_(f"User {instructor_request.user.username}'s instructor request was approved.")
+            )
+        
+        self.message_user(request, _("Selected requests have been approved."))
+    approve_requests.short_description = _("Approve selected instructor requests")
+    
+    def deny_requests(self, request, queryset):
+        for instructor_request in queryset.filter(status='pending'):
+            # Update request status
+            instructor_request.status = 'denied'
+            instructor_request.save()
+            
+            # Log the activity
+            ActivityLog.objects.create(
+                message=_(f"User {instructor_request.user.username}'s instructor request was denied.")
+            )
+        
+        self.message_user(request, _("Selected requests have been denied."))
+    deny_requests.short_description = _("Deny selected instructor requests")
 
 
 # Register all question types

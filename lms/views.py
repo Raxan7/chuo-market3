@@ -18,20 +18,43 @@ from django.utils.translation import gettext_lazy as _
 from .models import (
     LMSProfile, Program, Course, CourseModule, CourseContent, Quiz, Question,
     MCQuestion, Choice, TF_Question, Essay_Question, QuizTaker, StudentAnswer,
-    Grade, Semester, CourseEnrollment, ActivityLog
+    Grade, Semester, CourseEnrollment, ActivityLog, InstructorRequest
 )
 from .forms import (
     LMSProfileForm, CourseForm, CourseModuleForm, CourseContentForm,
     QuizForm, MCQuestionForm, ChoiceForm, TFQuestionForm, EssayQuestionForm,
-    GradeForm, CourseEnrollForm, EssayAnswerForm
+    GradeForm, CourseEnrollForm, EssayAnswerForm, InstructorRequestForm
 )
 
 
 def is_instructor(user):
-    """Check if user is an instructor"""
+    """
+    Check if user is an instructor
+    
+    This function checks:
+    1. If user has an LMS profile with instructor role
+    2. If not, checks if they have an approved instructor request
+    """
     try:
-        return hasattr(user, 'lms_profile') and user.lms_profile.role == 'instructor'
-    except:
+        # First check if they have the instructor role directly
+        if hasattr(user, 'lms_profile') and user.lms_profile.role == 'instructor':
+            return True
+            
+        # If not, check if they have an approved instructor request
+        has_approved_request = InstructorRequest.objects.filter(
+            user=user,
+            status='approved'
+        ).exists()
+        
+        # If they have an approved request but role not updated,
+        # update their role now
+        if has_approved_request and hasattr(user, 'lms_profile') and user.lms_profile.role != 'instructor':
+            user.lms_profile.role = 'instructor'
+            user.lms_profile.save()
+            return True
+            
+        return False
+    except Exception:
         return False
 
 
@@ -54,8 +77,32 @@ def is_admin(user):
 class InstructorRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
     """Mixin to restrict views to instructors only"""
     login_url = '/login/'  # Use the main app's login URL
+    
     def test_func(self):
         return is_instructor(self.request.user) or is_admin(self.request.user)
+    
+    def handle_no_permission(self):
+        if not self.request.user.is_authenticated:
+            return super().handle_no_permission()
+        
+        # If authenticated but not an instructor, check if they have a pending request
+        if hasattr(self.request.user, 'lms_profile'):
+            messages.warning(self.request, _("You need instructor privileges to access this area."))
+            
+            # Check if user has a pending instructor request
+            pending_request = InstructorRequest.objects.filter(
+                user=self.request.user, 
+                status='pending'
+            ).exists()
+            
+            if pending_request:
+                messages.info(self.request, _("Your instructor request is pending approval."))
+                return redirect('lms:instructor_request_status')
+            else:
+                messages.info(self.request, _("You can request to become an instructor."))
+                return redirect('lms:request_instructor_role')
+        
+        return super().handle_no_permission()
 
 
 class StudentRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
@@ -1159,3 +1206,65 @@ def instructor_dashboard(request):
     }
     
     return render(request, 'lms/instructor_dashboard.html', context)
+
+
+@login_required(login_url='/login/')
+def request_instructor_role(request):
+    """View for users to request instructor status"""
+    # Check if user already has a pending or approved request
+    existing_request = InstructorRequest.objects.filter(
+        user=request.user, 
+        status__in=['pending', 'approved']
+    ).first()
+    
+    if existing_request:
+        if existing_request.status == 'approved':
+            messages.info(request, _("Your request to become an instructor has already been approved."))
+            return redirect('lms:lms_home')
+        else:
+            messages.info(request, _("You already have a pending instructor request."))
+            return redirect('lms:instructor_request_status')
+    
+    # Check if user is already an instructor
+    if hasattr(request.user, 'lms_profile') and request.user.lms_profile.role == 'instructor':
+        messages.info(request, _("You are already registered as an instructor."))
+        return redirect('lms:instructor_dashboard')
+    
+    if request.method == 'POST':
+        form = InstructorRequestForm(request.POST, request.FILES)
+        if form.is_valid():
+            instructor_request = form.save(commit=False)
+            instructor_request.user = request.user
+            instructor_request.save()
+            
+            # Log the activity
+            ActivityLog.objects.create(
+                message=_(f"User {request.user.username} submitted an instructor request.")
+            )
+            
+            messages.success(request, _("Your instructor request has been submitted successfully and is pending review."))
+            return redirect('lms:instructor_request_status')
+    else:
+        form = InstructorRequestForm()
+    
+    context = {
+        'form': form
+    }
+    
+    return render(request, 'lms/instructor_request_form.html', context)
+
+
+@login_required(login_url='/login/')
+def instructor_request_status(request):
+    """View for users to check their instructor request status"""
+    instructor_request = InstructorRequest.objects.filter(user=request.user).order_by('-created_at').first()
+    
+    if not instructor_request:
+        messages.info(request, _("You haven't submitted an instructor request yet."))
+        return redirect('lms:request_instructor_role')
+    
+    context = {
+        'instructor_request': instructor_request
+    }
+    
+    return render(request, 'lms/instructor_request_status.html', context)

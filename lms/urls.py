@@ -63,6 +63,9 @@ urlpatterns = [
     
     # Grades
     path('grades/', views.GradeListView.as_view(), name='grade_list'),
-    path('courses/<slug:course_slug>/grade-students/', 
-         views.grade_students, name='grade_students'),
+    path('courses/<slug:course_slug>/grade-students/', views.grade_students, name='grade_students'),
+    
+    # Instructor Request
+    path('become-instructor/', views.request_instructor_role, name='request_instructor_role'),
+    path('instructor-request-status/', views.instructor_request_status, name='instructor_request_status'),
 ]

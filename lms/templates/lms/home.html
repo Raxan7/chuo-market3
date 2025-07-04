@@ -18,6 +18,7 @@
                         {% if user_profile %}
                             {% if user_profile.role == 'student' %}
                                 <a href="{% url 'lms:student_dashboard' %}" class="btn btn-primary">Go to Student Dashboard</a>
+                                <a href="{% url 'lms:request_instructor_role' %}" class="btn btn-outline-secondary ms-2">Become an Instructor</a>
                             {% elif user_profile.role == 'instructor' %}
                                 <a href="{% url 'lms:instructor_dashboard' %}" class="btn btn-primary">Go to Instructor Dashboard</a>
                             {% elif user_profile.role == 'admin' %}

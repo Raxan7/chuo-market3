@@ -5,16 +5,39 @@ Forms for the LMS application
 from django import forms
 from django.contrib.auth.models import User
 from django.utils.translation import gettext_lazy as _
+import re
 
 from .models import (
     LMSProfile, Program, Course, CourseModule, CourseContent,
     Quiz, Question, MCQuestion, Choice, TF_Question, Essay_Question,
-    Grade
+    Grade, InstructorRequest
 )
+
+# Import utility function from core app
+from core.utils import clean_phone_number
+
+
+class PhoneNumberField(forms.CharField):
+    """Custom field for phone number validation"""
+    def clean(self, value):
+        value = super().clean(value)
+        if not value:
+            return None
+        
+        cleaned_phone = clean_phone_number(value)
+        if not cleaned_phone:
+            raise forms.ValidationError(_("Please enter a valid phone number with country code (e.g., +255123456789)"))
+        
+        return cleaned_phone
 
 
 class LMSProfileForm(forms.ModelForm):
     """Form for updating an LMS user profile"""
+    phone_number = PhoneNumberField(
+        required=False,
+        help_text=_("Enter phone number with country code (e.g., +255123456789)")
+    )
+    
     class Meta:
         model = LMSProfile
         fields = ['bio', 'profile_picture', 'phone_number']
@@ -28,9 +51,33 @@ class CourseForm(forms.ModelForm):
     class Meta:
         model = Course
         fields = ['title', 'code', 'credit', 'summary', 'program', 
-                  'level', 'year', 'semester', 'is_elective', 'image']
+                  'level', 'year', 'semester', 'is_elective', 'instructors', 'image']
         widgets = {
-            'summary': forms.Textarea(attrs={'rows': 4}),
+            'title': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Enter course title'
+            }),
+            'code': forms.TextInput(attrs={
+                'class': 'form-control', 
+                'placeholder': 'e.g. CS101'
+            }),
+            'credit': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'min': '1',
+                'max': '10'
+            }),
+            'summary': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 4,
+                'placeholder': 'Describe what students will learn in this course'
+            }),
+            'program': forms.Select(attrs={'class': 'form-select'}),
+            'level': forms.Select(attrs={'class': 'form-select'}),
+            'year': forms.Select(attrs={'class': 'form-select'}),
+            'semester': forms.Select(attrs={'class': 'form-select'}),
+            'is_elective': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'instructors': forms.SelectMultiple(attrs={'class': 'form-select'}),
+            'image': forms.ClearableFileInput(attrs={'class': 'form-control'}),
         }
 
 
@@ -49,7 +96,8 @@ class CourseContentForm(forms.ModelForm):
     class Meta:
         model = CourseContent
         fields = ['title', 'content_type', 'document', 'video_url', 
-                 'external_link', 'text_content', 'order']
+                 'external_link', 'text_content', 'order'
+        ]
         widgets = {
             'text_content': forms.Textarea(attrs={'rows': 6}),
         }
@@ -88,7 +136,8 @@ class MCQuestionForm(forms.ModelForm):
     """Form for multiple choice questions"""
     class Meta:
         model = MCQuestion
-        fields = ['content', 'figure', 'explanation', 'choice_order', 'order']
+        fields = ['content', 'figure', 'explanation', 'choice_order', 'order'
+        ]
         widgets = {
             'content': forms.Textarea(attrs={'rows': 3}),
             'explanation': forms.Textarea(attrs={'rows': 3}),
@@ -109,7 +158,8 @@ class TFQuestionForm(forms.ModelForm):
     """Form for true/false questions"""
     class Meta:
         model = TF_Question
-        fields = ['content', 'figure', 'explanation', 'correct', 'order']
+        fields = ['content', 'figure', 'explanation', 'correct', 'order'
+        ]
         widgets = {
             'content': forms.Textarea(attrs={'rows': 3}),
             'explanation': forms.Textarea(attrs={'rows': 3}),
@@ -120,7 +170,8 @@ class EssayQuestionForm(forms.ModelForm):
     """Form for essay questions"""
     class Meta:
         model = Essay_Question
-        fields = ['content', 'figure', 'explanation', 'answer_type', 'order']
+        fields = ['content', 'figure', 'explanation', 'answer_type', 'order'
+        ]
         widgets = {
             'content': forms.Textarea(attrs={'rows': 3}),
             'explanation': forms.Textarea(attrs={'rows': 3}),
@@ -167,3 +218,14 @@ class EssayAnswerForm(forms.Form):
             raise forms.ValidationError(_('You must provide either text or file answer.'))
             
         return cleaned_data
+
+
+class InstructorRequestForm(forms.ModelForm):
+    """Form for requesting instructor status"""
+    class Meta:
+        model = InstructorRequest
+        fields = ['reason', 'qualifications', 'cv']
+        widgets = {
+            'reason': forms.Textarea(attrs={'rows': 4, 'class': 'form-control'}),
+            'qualifications': forms.Textarea(attrs={'rows': 4, 'class': 'form-control'}),
+        }
