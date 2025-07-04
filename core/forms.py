@@ -1,8 +1,9 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
-from .models import Product, Blog, Subscription, SubscriptionPayment
+from .models import Product, Blog, Subscription, SubscriptionPayment, Customer
 from tinymce.widgets import TinyMCE
+from .utils import clean_phone_number
 
 class RegistrationForm(UserCreationForm):
     email = forms.EmailField(max_length=254, help_text='Required. Inform a valid email address.')
@@ -46,3 +47,26 @@ class SubscriptionPaymentForm(forms.ModelForm):
     class Meta:
         model = SubscriptionPayment
         fields = ['payment_proof']
+
+
+class CustomerProfileForm(forms.ModelForm):
+    """Form for updating customer profile information"""
+    phone_number = forms.CharField(
+        required=False, 
+        max_length=15,
+        help_text="Enter phone number with country code (e.g., +255123456789)",
+        widget=forms.TextInput(attrs={'placeholder': '+255123456789'})
+    )
+    
+    class Meta:
+        model = Customer
+        fields = ['name', 'university', 'college', 'block_number', 'room_number', 'phone_number']
+    
+    def clean_phone_number(self):
+        phone = self.cleaned_data.get('phone_number')
+        cleaned_phone = clean_phone_number(phone)
+        
+        if phone and not cleaned_phone:
+            raise forms.ValidationError("Please enter a valid phone number with country code (e.g., +255123456789)")
+            
+        return cleaned_phone

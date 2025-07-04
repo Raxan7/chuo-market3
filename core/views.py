@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from .models import *
-from .forms import RegistrationForm, LoginForm, ProductForm, BlogForm, SubscriptionForm, SubscriptionPaymentForm
+from .forms import RegistrationForm, LoginForm, ProductForm, BlogForm, SubscriptionForm, SubscriptionPaymentForm, CustomerProfileForm
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 import logging
@@ -18,6 +18,7 @@ from django.utils import timezone
 from datetime import timedelta
 from django.utils.decorators import method_decorator
 from core.decorators.customer_required import customer_required
+import re
 
 logger = logging.getLogger(__name__)
 
@@ -155,29 +156,25 @@ def profile(request):
     UNIVERSITY_CHOICES = [(uni['name'], uni['name']) for uni in universities_data]
     COLLEGE_CHOICES = [(college, college) for uni in universities_data for college in uni['colleges']]
     
+    # Get or create customer instance for the form
+    customer, created = Customer.objects.get_or_create(user=user)
+    
     if request.method == 'POST':
-        name = request.POST.get('name')
-        university = request.POST.get('university')
-        college = request.POST.get('college')
-        block_number = request.POST.get('block_number')
-        room_number = request.POST.get('room_number')
-        phone_number = request.POST.get('phone_number')  # New field
-
-        customer, created = Customer.objects.update_or_create(
-            user=user,
-            defaults={
-                'name': name,
-                'university': university,
-                'college': college,
-                'block_number': block_number,
-                'room_number': room_number,
-                'phone_number': phone_number,  # Save phone number
-            }
-        )
-        messages.success(request, "Profile updated successfully.")
+        form = CustomerProfileForm(request.POST, instance=customer)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Profile updated successfully.")
+        else:
+            # Display form errors
+            for field, errors in form.errors.items():
+                for error in errors:
+                    messages.error(request, f"{field}: {error}")
+    else:
+        form = CustomerProfileForm(instance=customer)
 
     context = {
         'user': user,
+        'form': form,
         'UNIVERSITY_CHOICES': UNIVERSITY_CHOICES,
         'COLLEGE_CHOICES': COLLEGE_CHOICES,
         'universities_data': universities_data,
@@ -463,3 +460,29 @@ def upload_payment_proof(request, subscription_id):
 def products_by_category(request, category):
     products = Product.objects.filter(category=category)
     return render(request, 'app/products_by_category.html', {'products': products, 'category': category})
+
+def clean_phone_number(phone):
+    """
+    Clean and validate phone number to ensure it's properly formatted.
+    Returns None if invalid, formatted phone number if valid.
+    """
+    if not phone or phone.strip() == "":
+        return None
+    
+    # Remove all non-digit characters except the + sign at the beginning
+    cleaned = re.sub(r'[^\d+]', '', phone.strip())
+    
+    # If doesn't start with +, add the default Tanzania code
+    if not cleaned.startswith('+'):
+        if cleaned.startswith('0'):
+            cleaned = '+255' + cleaned[1:]
+        elif not re.match(r'^\d{9,15}$', cleaned):
+            return None
+        else:
+            cleaned = '+' + cleaned
+    
+    # Validate the length (international format: country code + number)
+    if not re.match(r'^\+\d{9,14}$', cleaned):
+        return None
+        
+    return cleaned[:15]  # Ensure it doesn't exceed the max length
