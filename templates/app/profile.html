@@ -1,5 +1,6 @@
 {% extends 'app/base.html' %}
 {% load static %}
+{% load form_tags %}
 {% block title %}Profile{% endblock title %}
 {% block main-content %}
 <div class="container my-5">
@@ -14,42 +15,53 @@
   <div class="col-sm-8 offset-sm-1">
    <form action="" method="post">
     {% csrf_token %}
-    <div class="col-12">
-      <label for="inputName" class="form-label">Name</label>
-      <input type="text" class="form-control" id="inputName" name="name" value="{{ user.customer.name }}" required>
+    <div class="col-12 mb-3">
+      <label for="{{ form.name.id_for_label }}" class="form-label">Name</label>
+      {{ form.name|add_class:"form-control" }}
+      {% if form.name.errors %}
+        <div class="invalid-feedback d-block">{{ form.name.errors.0 }}</div>
+      {% endif %}
     </div>
-    <div class="col-12">
-      <label for="inputUniversity" class="form-label">University</label>
-      <select id="inputUniversity" class="form-select" name="university" required>
-        <option value="" selected disabled>Choose...</option>
-        {% for choice in UNIVERSITY_CHOICES %}
-        <option value="{{ choice.0 }}" {% if user.customer.university == choice.0 %} selected {% endif %}>{{ choice.1 }}</option>
-        {% endfor %}
-      </select>
+    <div class="col-12 mb-3">
+      <label for="{{ form.university.id_for_label }}" class="form-label">University</label>
+      {{ form.university|add_class:"form-select" }}
+      {% if form.university.errors %}
+        <div class="invalid-feedback d-block">{{ form.university.errors.0 }}</div>
+      {% endif %}
     </div>
-    <div class="col-12">
-      <label for="inputCollege" class="form-label">College</label>
-      <select id="inputCollege" class="form-select" name="college" required>
-        <option value="" selected disabled>Choose...</option>
-        {% for choice in COLLEGE_CHOICES %}
-        <option value="{{ choice.0 }}" {% if user.customer.college == choice.0 %} selected {% endif %}>{{ choice.1 }}</option>
-        {% endfor %}
-      </select>
+    <div class="col-12 mb-3">
+      <label for="{{ form.college.id_for_label }}" class="form-label">College</label>
+      {{ form.college|add_class:"form-select" }}
+      {% if form.college.errors %}
+        <div class="invalid-feedback d-block">{{ form.college.errors.0 }}</div>
+      {% endif %}
     </div>
-    <div class="col-md-4">
-      <label for="inputBlockNumber" class="form-label">Block Number</label>
-      <input type="text" class="form-control" id="inputBlockNumber" name="block_number" value="{{ user.customer.block_number }}">
+    <div class="row">
+      <div class="col-md-6 mb-3">
+        <label for="{{ form.block_number.id_for_label }}" class="form-label">Block Number</label>
+        {{ form.block_number|add_class:"form-control" }}
+        {% if form.block_number.errors %}
+          <div class="invalid-feedback d-block">{{ form.block_number.errors.0 }}</div>
+        {% endif %}
+      </div>
+      <div class="col-md-6 mb-3">
+        <label for="{{ form.room_number.id_for_label }}" class="form-label">Room Number</label>
+        {{ form.room_number|add_class:"form-control" }}
+        {% if form.room_number.errors %}
+          <div class="invalid-feedback d-block">{{ form.room_number.errors.0 }}</div>
+        {% endif %}
+      </div>
     </div>
-    <div class="col-md-2">
-      <label for="inputRoomNumber" class="form-label">Room Number</label>
-      <input type="text" class="form-control" id="inputRoomNumber" name="room_number" value="{{ user.customer.room_number }}" required>
-    </div>
-    <div class="col-12">
-      <label for="inputPhoneNumber" class="form-label">Phone Number (with country code)</label>
-      <input type="text" class="form-control" id="inputPhoneNumber" name="phone_number" value="{{ user.customer.phone_number }}" placeholder="+255123456789">
+    <div class="col-12 mb-3">
+      <label for="{{ form.phone_number.id_for_label }}" class="form-label">Phone Number (with country code)</label>
+      {{ form.phone_number|add_class:"form-control" }}
+      <small class="form-text text-muted">Format: +255XXXXXXXXX (9-14 digits after the country code)</small>
+      {% if form.phone_number.errors %}
+        <div class="invalid-feedback d-block">{{ form.phone_number.errors.0 }}</div>
+      {% endif %}
     </div>
     <div class="col-12 mt-3">
-      <button type="submit" class="btn btn-primary">Submit</button>
+      <button type="submit" class="btn btn-primary" id="submitBtn">Submit</button>
     </div>
    </form>
    <div class="col-12 mt-3">
@@ -63,20 +75,78 @@
 
 <script>
   const universitiesData = {{ universities_data|safe }};
-  const universitySelect = document.getElementById('inputUniversity');
-  const collegeSelect = document.getElementById('inputCollege');
+  const universitySelect = document.getElementById('{{ form.university.id_for_label }}');
+  const collegeSelect = document.getElementById('{{ form.college.id_for_label }}');
+  const phoneInput = document.getElementById('{{ form.phone_number.id_for_label }}');
+  const submitBtn = document.getElementById('submitBtn');
+  const form = document.querySelector('form');
 
+  // University-college relationship
   universitySelect.addEventListener('change', function() {
     const selectedUniversity = this.value;
-    const colleges = universitiesData.find(uni => uni.name === selectedUniversity).colleges;
+    const selectedUniData = universitiesData.find(uni => uni.name === selectedUniversity);
     
-    collegeSelect.innerHTML = '<option value="" selected disabled>Choose...</option>';
-    colleges.forEach(college => {
-      const option = document.createElement('option');
-      option.value = college;
-      option.textContent = college;
-      collegeSelect.appendChild(option);
+    if (selectedUniData && selectedUniData.colleges) {
+      collegeSelect.innerHTML = '<option value="" selected disabled>Choose...</option>';
+      selectedUniData.colleges.forEach(college => {
+        const option = document.createElement('option');
+        option.value = college;
+        option.textContent = college;
+        collegeSelect.appendChild(option);
+      });
+    }
+  });
+  
+  // Phone number validation
+  function validatePhoneNumber(phone) {
+    if (!phone || phone.trim() === "") {
+      return true; // Phone number is optional
+    }
+    
+    // Clean the input for validation (keep only digits and + sign)
+    const cleaned = phone.replace(/[^\d+]/g, '');
+    
+    // Basic validation pattern: starts with + followed by 9-14 digits
+    // OR starts with digit (assuming local format) and has 9-15 digits total
+    const pattern = /^(\+\d{9,14}|\d{9,15})$/;
+    
+    return pattern.test(cleaned);
+  }
+  
+  // Real-time validation
+  if (phoneInput) {
+    phoneInput.addEventListener('input', function() {
+      const isValid = validatePhoneNumber(this.value);
+      
+      if (isValid) {
+        this.classList.remove('is-invalid');
+        this.classList.add('is-valid');
+      } else {
+        this.classList.add('is-invalid');
+        this.classList.remove('is-valid');
+      }
     });
+  }
+  
+  // Form submission validation
+  form.addEventListener('submit', function(event) {
+    if (phoneInput && !validatePhoneNumber(phoneInput.value)) {
+      event.preventDefault();
+      phoneInput.classList.add('is-invalid');
+      phoneInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      
+      // Show error message
+      const errorDiv = document.createElement('div');
+      errorDiv.className = 'invalid-feedback d-block';
+      errorDiv.textContent = 'Please enter a valid phone number with country code (e.g., +255123456789)';
+      
+      // Remove any existing error messages
+      const existingErrors = phoneInput.parentElement.querySelectorAll('.invalid-feedback');
+      existingErrors.forEach(el => el.remove());
+      
+      // Add the new error message
+      phoneInput.parentElement.appendChild(errorDiv);
+    }
   });
 </script>
 {% endblock main-content %}
