@@ -802,6 +802,31 @@ class CourseUpdateView(InstructorRequiredMixin, UpdateView):
             return Course.objects.all()
         return Course.objects.filter(instructors=self.request.user.lms_profile)
     
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['program_form'] = ProgramForm()
+        return context
+    
+    def post(self, request, *args, **kwargs):
+        # Check if this is a program creation submission
+        if 'create_program' in request.POST:
+            program_form = ProgramForm(request.POST)
+            if program_form.is_valid():
+                program = program_form.save()
+                messages.success(request, _(f"Program '{program.title}' created successfully."))
+                # Redirect back to the course update page
+                return redirect('lms:course_update', slug=self.get_object().slug)
+            else:
+                # If program form is invalid, show it with the course form
+                self.object = self.get_object()
+                return self.render_to_response(
+                    self.get_context_data(
+                        form=self.get_form(),
+                        program_form=program_form
+                    )
+                )
+        return super().post(request, *args, **kwargs)
+    
     def form_valid(self, form):
         response = super().form_valid(form)
         
