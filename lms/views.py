@@ -75,11 +75,27 @@ def is_admin(user):
         return False
 
 
+def is_course_instructor(user, course):
+    """
+    Check if a user is an instructor for a specific course.
+    Handles anonymous users and users without lms_profile safely.
+    """
+    if not user.is_authenticated:
+        return False
+    
+    if not hasattr(user, 'lms_profile'):
+        return False
+        
+    return is_admin(user) or course.instructors.filter(id=user.lms_profile.id).exists()
+
+
 class InstructorRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
     """Mixin to restrict views to instructors only"""
     login_url = '/login/'  # Use the main app's login URL
     
     def test_func(self):
+        if not self.request.user.is_authenticated:
+            return False
         return is_instructor(self.request.user) or is_admin(self.request.user)
     
     def handle_no_permission(self):
@@ -87,10 +103,10 @@ class InstructorRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
             return super().handle_no_permission()
         
         # If authenticated but not an instructor, check if they have a pending request
+        messages.warning(self.request, _("You need instructor privileges to access this area."))
+        
+        # Check if user has a pending instructor request
         if hasattr(self.request.user, 'lms_profile'):
-            messages.warning(self.request, _("You need instructor privileges to access this area."))
-            
-            # Check if user has a pending instructor request
             pending_request = InstructorRequest.objects.filter(
                 user=self.request.user, 
                 status='pending'
@@ -829,7 +845,10 @@ class CourseContentCreateView(InstructorRequiredMixin, CreateView):
         self.module = get_object_or_404(CourseModule, id=self.kwargs['module_id'], course=self.course)
         
         # Check if user is instructor for this course
-        if not is_admin(request.user) and not self.course.instructors.filter(id=request.user.lms_profile.id).exists():
+        if not request.user.is_authenticated:
+            return redirect('login')
+            
+        if not is_admin(request.user) and hasattr(request.user, 'lms_profile') and not self.course.instructors.filter(id=request.user.lms_profile.id).exists():
             messages.error(request, _("You are not an instructor for this course."))
             return redirect('lms:course_detail', slug=self.course.slug)
         

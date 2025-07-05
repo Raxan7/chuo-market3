@@ -1,5 +1,6 @@
 {% extends "app/base.html" %}
 {% load static %}
+{% load lms_form_tags %}
 
 {% block title %}
     {% if form.instance.id %}Edit Content{% else %}Create Content{% endif %}
@@ -9,15 +10,42 @@
 <div class="container my-5">
     <div class="row mb-4">
         <div class="col">
-            <h1>{% if form.instance.id %}Edit Content{% else %}Add New Content{% endif %}</h1>
-            <p class="lead">Course: {{ course.title }} | Module: {{ module.title }}</p>
+            <h1 class="display-5 fw-bold text-primary mb-3">
+                {% if form.instance.id %}
+                    <i class="fas fa-edit me-2"></i>Edit Content
+                {% else %}
+                    <i class="fas fa-plus-circle me-2"></i>Add New Content
+                {% endif %}
+            </h1>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'lms:lms_home' %}">LMS Home</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'lms:course_detail' course.slug %}">{{ course.title }}</a></li>
+                    <li class="breadcrumb-item active">{% if form.instance.id %}Edit Content{% else %}Add Content{% endif %}</li>
+                </ol>
+            </nav>
+            <div class="alert alert-info d-flex align-items-center">
+                <i class="fas fa-info-circle me-2 fs-4"></i>
+                <div>
+                    <strong>Course:</strong> {{ course.title }} | <strong>Module:</strong> {{ module.title }}
+                </div>
+            </div>
         </div>
     </div>
     
     <div class="row">
         <div class="col-md-8">
-            <div class="card shadow-sm">
-                <div class="card-body">
+            <div class="card shadow border-0 rounded-3">
+                <div class="card-header bg-primary bg-gradient text-white py-3">
+                    <h4 class="mb-0">
+                        {% if form.instance.id %}
+                            <i class="fas fa-edit me-2"></i>Content Details
+                        {% else %}
+                            <i class="fas fa-file-alt me-2"></i>Content Details
+                        {% endif %}
+                    </h4>
+                </div>
+                <div class="card-body p-4">
                     <form method="post" enctype="multipart/form-data">
                         {% csrf_token %}
                         
@@ -29,60 +57,115 @@
                             </div>
                         {% endif %}
                         
-                        <div class="mb-3">
-                            <label for="{{ form.title.id_for_label }}" class="form-label">{{ form.title.label }}</label>
-                            {{ form.title }}
+                        <div class="mb-4">
+                            <label for="{{ form.title.id_for_label }}" class="form-label fw-bold">
+                                <i class="fas fa-heading me-2 text-primary"></i>{{ form.title.label }}
+                            </label>
+                            {{ form.title|add_class:"form-control form-control-lg" }}
                             {% if form.title.errors %}
-                                <div class="text-danger">{{ form.title.errors }}</div>
+                                <div class="text-danger small mt-1">
+                                    <i class="fas fa-exclamation-circle me-1"></i>{{ form.title.errors }}
+                                </div>
                             {% endif %}
                         </div>
                         
-                        <div class="mb-3">
-                            <label for="{{ form.content_type.id_for_label }}" class="form-label">{{ form.content_type.label }}</label>
-                            {{ form.content_type }}
+                        <div class="mb-4">
+                            <label for="{{ form.content_type.id_for_label }}" class="form-label fw-bold">
+                                <i class="fas fa-th-list me-2 text-primary"></i>{{ form.content_type.label }}
+                            </label>
+                            {{ form.content_type|add_class:"form-select" }}
                             {% if form.content_type.errors %}
-                                <div class="text-danger">{{ form.content_type.errors }}</div>
+                                <div class="text-danger small mt-1">
+                                    <i class="fas fa-exclamation-circle me-1"></i>{{ form.content_type.errors }}
+                                </div>
+                            {% endif %}
+                            <div class="form-text">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Select the type of content you want to add to this module.
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4" id="text-content">
+                            <label for="{{ form.text_content.id_for_label }}" class="form-label fw-bold">
+                                <i class="fas fa-align-left me-2 text-primary"></i>{{ form.text_content.label }}
+                            </label>
+                            {{ form.text_content|add_class:"form-control" }}
+                            {% if form.text_content.errors %}
+                                <div class="text-danger small mt-1">
+                                    <i class="fas fa-exclamation-circle me-1"></i>{{ form.text_content.errors }}
+                                </div>
                             {% endif %}
                         </div>
                         
-                        <div class="mb-3" id="text-content">
-                            <label for="{{ form.text.id_for_label }}" class="form-label">{{ form.text.label }}</label>
-                            {{ form.text }}
-                            {% if form.text.errors %}
-                                <div class="text-danger">{{ form.text.errors }}</div>
+                        <div class="mb-4" id="file-content">
+                            <label for="{{ form.document.id_for_label }}" class="form-label fw-bold">
+                                <i class="fas fa-file-upload me-2 text-primary"></i>{{ form.document.label }}
+                            </label>
+                            <div class="input-group">
+                                {{ form.document|add_class:"form-control" }}
+                            </div>
+                            {% if form.document.errors %}
+                                <div class="text-danger small mt-1">
+                                    <i class="fas fa-exclamation-circle me-1"></i>{{ form.document.errors }}
+                                </div>
                             {% endif %}
+                            {% if form.instance.document %}
+                                <div class="mt-2 p-2 border rounded bg-light">
+                                    <div class="d-flex align-items-center">
+                                        <i class="fas fa-file-alt text-primary me-2"></i>
+                                        <span>Current file: </span>
+                                        <a href="{{ form.instance.document.url }}" target="_blank" class="ms-2 btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-download me-1"></i>
+                                            {{ form.instance.document.name }}
+                                        </a>
+                                    </div>
+                                </div>
+                            {% endif %}
+                            <div class="form-text">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Upload documents (PDF, DOC, etc.), presentations, spreadsheets or other files.
+                            </div>
                         </div>
                         
-                        <div class="mb-3" id="file-content">
-                            <label for="{{ form.file.id_for_label }}" class="form-label">{{ form.file.label }}</label>
-                            {{ form.file }}
-                            {% if form.file.errors %}
-                                <div class="text-danger">{{ form.file.errors }}</div>
+                        <div class="mb-4" id="url-content">
+                            <label for="{{ form.external_link.id_for_label }}" class="form-label fw-bold">
+                                <i class="fas fa-link me-2 text-primary"></i>{{ form.external_link.label }}
+                            </label>
+                            {{ form.external_link|add_class:"form-control" }}
+                            {% if form.external_link.errors %}
+                                <div class="text-danger small mt-1">
+                                    <i class="fas fa-exclamation-circle me-1"></i>{{ form.external_link.errors }}
+                                </div>
                             {% endif %}
-                            {% if form.instance.file %}
-                                <p class="mt-2">Current file: <a href="{{ form.instance.file.url }}" target="_blank">{{ form.instance.file.name }}</a></p>
-                            {% endif %}
+                            <div class="form-text">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Enter full URL including http:// or https:// (e.g., https://www.youtube.com/watch?v=example).
+                            </div>
                         </div>
                         
-                        <div class="mb-3" id="url-content">
-                            <label for="{{ form.url.id_for_label }}" class="form-label">{{ form.url.label }}</label>
-                            {{ form.url }}
-                            {% if form.url.errors %}
-                                <div class="text-danger">{{ form.url.errors }}</div>
-                            {% endif %}
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label for="{{ form.order.id_for_label }}" class="form-label">{{ form.order.label }}</label>
-                            {{ form.order }}
+                        <div class="mb-4">
+                            <label for="{{ form.order.id_for_label }}" class="form-label fw-bold">
+                                <i class="fas fa-sort-numeric-down me-2 text-primary"></i>{{ form.order.label }}
+                            </label>
+                            {{ form.order|add_class:"form-control" }}
                             {% if form.order.errors %}
-                                <div class="text-danger">{{ form.order.errors }}</div>
+                                <div class="text-danger small mt-1">
+                                    <i class="fas fa-exclamation-circle me-1"></i>{{ form.order.errors }}
+                                </div>
                             {% endif %}
+                            <div class="form-text">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Determines the display order of this content in the module.
+                            </div>
                         </div>
                         
                         <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
-                            <a href="{% url 'lms:course_detail' course.slug %}#module-{{ module.id }}" class="btn btn-outline-secondary me-md-2">Cancel</a>
-                            <button type="submit" class="btn btn-primary">Save Content</button>
+                            <a href="{% url 'lms:course_detail' course.slug %}#module-{{ module.id }}" class="btn btn-outline-secondary me-md-2">
+                                <i class="fas fa-times me-1"></i>Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-1"></i>Save Content
+                            </button>
                         </div>
                     </form>
                 </div>
@@ -90,22 +173,46 @@
         </div>
         
         <div class="col-md-4">
-            <div class="card shadow-sm">
-                <div class="card-header bg-light">
-                    <h5 class="mb-0">Content Types</h5>
+            <div class="card shadow border-0 rounded-3">
+                <div class="card-header bg-primary bg-gradient text-white py-3">
+                    <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Content Types</h5>
                 </div>
-                <div class="card-body">
-                    <ul class="list-unstyled">
-                        <li class="mb-3">
-                            <strong>Text:</strong> Rich text content with formatting options.
-                        </li>
-                        <li class="mb-3">
-                            <strong>File:</strong> Upload documents, presentations, or other files.
-                        </li>
-                        <li class="mb-3">
-                            <strong>URL:</strong> Link to external resources, videos, or websites.
-                        </li>
-                    </ul>
+                <div class="card-body p-4">
+                    <div class="list-group list-group-flush">
+                        <div class="list-group-item bg-transparent border-bottom py-3">
+                            <div class="d-flex">
+                                <div class="me-3">
+                                    <i class="fas fa-file-alt fa-lg text-primary"></i>
+                                </div>
+                                <div>
+                                    <strong>Text Content</strong>
+                                    <p class="mb-0 text-muted">Rich text content with formatting options. Ideal for lessons, explanations, and theory.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="list-group-item bg-transparent border-bottom py-3">
+                            <div class="d-flex">
+                                <div class="me-3">
+                                    <i class="fas fa-file-upload fa-lg text-primary"></i>
+                                </div>
+                                <div>
+                                    <strong>File Upload</strong>
+                                    <p class="mb-0 text-muted">Upload documents, presentations, PDFs, spreadsheets or other files for students to download.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="list-group-item bg-transparent py-3">
+                            <div class="d-flex">
+                                <div class="me-3">
+                                    <i class="fas fa-link fa-lg text-primary"></i>
+                                </div>
+                                <div>
+                                    <strong>External URL</strong>
+                                    <p class="mb-0 text-muted">Link to external resources, videos, websites or other online content.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -122,26 +229,71 @@ document.addEventListener('DOMContentLoaded', function() {
     function updateVisibleFields() {
         const selectedType = contentTypeField.value;
         
-        // Hide all content fields
+        // Hide all content fields with animation
         textContentDiv.style.display = 'none';
         fileContentDiv.style.display = 'none';
         urlContentDiv.style.display = 'none';
         
-        // Show the selected content field
+        // Show the selected content field with animation
         if (selectedType === 'text') {
             textContentDiv.style.display = 'block';
-        } else if (selectedType === 'file') {
+            textContentDiv.classList.add('animate__animated', 'animate__fadeIn');
+        } else if (selectedType === 'document') {
             fileContentDiv.style.display = 'block';
-        } else if (selectedType === 'url') {
+            fileContentDiv.classList.add('animate__animated', 'animate__fadeIn');
+        } else if (selectedType === 'link') {
             urlContentDiv.style.display = 'block';
+            urlContentDiv.classList.add('animate__animated', 'animate__fadeIn');
         }
     }
     
     // Set initial state
     updateVisibleFields();
     
-    // Update on change
-    contentTypeField.addEventListener('change', updateVisibleFields);
+    // Update on change with nice transition
+    contentTypeField.addEventListener('change', function() {
+        // Add a small delay for better UX
+        setTimeout(updateVisibleFields, 50);
+        
+        // Highlight the selected option
+        const options = contentTypeField.querySelectorAll('option');
+        options.forEach(option => {
+            if (option.selected) {
+                contentTypeField.classList.add('border-primary');
+                setTimeout(() => {
+                    contentTypeField.classList.remove('border-primary');
+                }, 500);
+            }
+        });
+    });
+    
+    // Add file input styling enhancement
+    const fileInput = document.querySelector('input[name="document"]');
+    if (fileInput) {
+        fileInput.addEventListener('change', function() {
+            if (this.files.length > 0) {
+                const fileName = this.files[0].name;
+                const fileSize = (this.files[0].size / 1024).toFixed(2) + ' KB';
+                const fileInfo = document.createElement('div');
+                fileInfo.className = 'mt-2 p-2 border rounded bg-light';
+                fileInfo.innerHTML = `
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-file-upload text-success me-2"></i>
+                        <span>Selected: <strong>${fileName}</strong> (${fileSize})</span>
+                    </div>
+                `;
+                
+                // Remove any previous file info
+                const existingFileInfo = fileInput.parentNode.querySelector('.bg-light:not([class*="mt-2 p-2"])');
+                if (existingFileInfo) {
+                    existingFileInfo.remove();
+                }
+                
+                // Add the new file info
+                fileInput.parentNode.appendChild(fileInfo);
+            }
+        });
+    }
 });
 </script>
 {% endblock main-content %}
