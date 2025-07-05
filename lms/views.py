@@ -856,6 +856,26 @@ class CourseContentCreateView(InstructorRequiredMixin, CreateView):
     
     def form_valid(self, form):
         form.instance.module = self.module
+        
+        # Set proper fields based on content type
+        content_type = form.cleaned_data.get('content_type')
+        if content_type == 'text':
+            form.instance.document = None
+            form.instance.video_url = None
+            form.instance.external_link = None
+        elif content_type == 'document':
+            form.instance.text_content = None
+            form.instance.video_url = None
+            form.instance.external_link = None
+        elif content_type == 'video':
+            form.instance.text_content = None
+            form.instance.document = None
+            form.instance.external_link = None
+        elif content_type == 'link':
+            form.instance.text_content = None
+            form.instance.document = None
+            form.instance.video_url = None
+            
         response = super().form_valid(form)
         
         # Create activity log
@@ -897,6 +917,25 @@ class CourseContentUpdateView(InstructorRequiredMixin, UpdateView):
         return CourseContent.objects.filter(module__course=self.course)
     
     def form_valid(self, form):
+        # Set proper fields based on content type
+        content_type = form.cleaned_data.get('content_type')
+        if content_type == 'text':
+            form.instance.document = None
+            form.instance.video_url = None
+            form.instance.external_link = None
+        elif content_type == 'document':
+            form.instance.text_content = None
+            form.instance.video_url = None
+            form.instance.external_link = None
+        elif content_type == 'video':
+            form.instance.text_content = None
+            form.instance.document = None
+            form.instance.external_link = None
+        elif content_type == 'link':
+            form.instance.text_content = None
+            form.instance.document = None
+            form.instance.video_url = None
+            
         response = super().form_valid(form)
         
         # Create activity log

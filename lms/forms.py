@@ -105,7 +105,13 @@ class CourseContentForm(forms.ModelForm):
                  'external_link', 'text_content', 'order'
         ]
         widgets = {
-            'text_content': forms.Textarea(attrs={'rows': 6}),
+            'title': forms.TextInput(attrs={'class': 'form-control'}),
+            'content_type': forms.Select(attrs={'class': 'form-select'}),
+            'document': forms.FileInput(attrs={'class': 'form-control'}),
+            'video_url': forms.URLInput(attrs={'class': 'form-control', 'placeholder': 'https://www.youtube.com/watch?v=example'}),
+            'external_link': forms.URLInput(attrs={'class': 'form-control', 'placeholder': 'https://example.com'}),
+            'text_content': forms.Textarea(attrs={'rows': 6, 'class': 'form-control'}),
+            'order': forms.NumberInput(attrs={'class': 'form-control', 'min': '0'}),
         }
     
     def clean(self):

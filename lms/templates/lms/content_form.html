@@ -139,7 +139,23 @@
                             {% endif %}
                             <div class="form-text">
                                 <i class="fas fa-info-circle me-1"></i>
-                                Enter full URL including http:// or https:// (e.g., https://www.youtube.com/watch?v=example).
+                                Enter full URL including http:// or https:// (e.g., https://example.com).
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4" id="video-content">
+                            <label for="{{ form.video_url.id_for_label }}" class="form-label fw-bold">
+                                <i class="fas fa-video me-2 text-primary"></i>{{ form.video_url.label }}
+                            </label>
+                            {{ form.video_url|add_class:"form-control" }}
+                            {% if form.video_url.errors %}
+                                <div class="text-danger small mt-1">
+                                    <i class="fas fa-exclamation-circle me-1"></i>{{ form.video_url.errors }}
+                                </div>
+                            {% endif %}
+                            <div class="form-text">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Enter video URL (e.g., https://www.youtube.com/watch?v=example).
                             </div>
                         </div>
                         
@@ -226,6 +242,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const fileContentDiv = document.getElementById('file-content');
     const urlContentDiv = document.getElementById('url-content');
     
+    const videoContentDiv = document.getElementById('video-content');
+    
     function updateVisibleFields() {
         const selectedType = contentTypeField.value;
         
@@ -233,6 +251,7 @@ document.addEventListener('DOMContentLoaded', function() {
         textContentDiv.style.display = 'none';
         fileContentDiv.style.display = 'none';
         urlContentDiv.style.display = 'none';
+        videoContentDiv.style.display = 'none';
         
         // Show the selected content field with animation
         if (selectedType === 'text') {
@@ -244,6 +263,9 @@ document.addEventListener('DOMContentLoaded', function() {
         } else if (selectedType === 'link') {
             urlContentDiv.style.display = 'block';
             urlContentDiv.classList.add('animate__animated', 'animate__fadeIn');
+        } else if (selectedType === 'video') {
+            videoContentDiv.style.display = 'block';
+            videoContentDiv.classList.add('animate__animated', 'animate__fadeIn');
         }
     }
     
