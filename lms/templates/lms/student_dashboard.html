@@ -1,5 +1,6 @@
 {% extends "app/base.html" %}
 {% load static %}
+{% load lms_extras %}
 
 {% block title %}Student Dashboard{% endblock title %}
 
@@ -117,7 +118,26 @@
                                         {% endfor %}
                                     </td>
                                     <td>
-                                        <a href="{% url 'lms:course_detail' slug=course.slug %}" class="btn btn-sm btn-outline-primary">View</a>
+                                        <div class="d-flex align-items-center">
+                                            <div class="me-2">
+                                                <a href="{% url 'lms:course_detail' slug=course.slug %}" class="btn btn-sm btn-outline-primary">View</a>
+                                            </div>
+                                            <div style="width: 100px;">
+                                                {% with progress=course_progress|get_item:course.id %}
+                                                <div class="progress" style="height: 15px;">
+                                                    <div class="progress-bar bg-success" role="progressbar" 
+                                                         style="width: {{ progress.percentage }}%;" 
+                                                         aria-valuenow="{{ progress.percentage }}" 
+                                                         aria-valuemin="0" aria-valuemax="100">
+                                                        {{ progress.percentage }}%
+                                                    </div>
+                                                </div>
+                                                <div class="small text-muted text-center">
+                                                    {{ progress.completed_count }}/{{ progress.total_count }} completed
+                                                </div>
+                                                {% endwith %}
+                                            </div>
+                                        </div>
                                     </td>
                                 </tr>
                                 {% endfor %}

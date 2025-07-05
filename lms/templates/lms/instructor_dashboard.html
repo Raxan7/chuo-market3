@@ -1,5 +1,6 @@
 {% extends "app/base.html" %}
 {% load static %}
+{% load lms_extras %}
 
 {% block title %}Instructor Dashboard{% endblock title %}
 
@@ -172,7 +173,144 @@
                     </div>
                 </div>
             </div>
+            
+            {% if teaching_courses %}
+            <!-- Course Completion Statistics -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">Course Progress Statistics</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% for course in teaching_courses %}
+                            {% with stats=course_completion_stats|get_item:course.id %}
+                            {% if stats %}
+                            <div class="col-md-6 mb-3">
+                                <div class="card h-100">
+                                    <div class="card-body">
+                                        <h5 class="card-title">{{ course.title }}</h5>
+                                        <p class="text-muted">{{ course.code }}</p>
+                                        
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <span>Average completion:</span>
+                                            <span class="fw-bold">{{ stats.avg_completion }}%</span>
+                                        </div>
+                                        
+                                        <div class="progress mb-3" style="height: 20px;">
+                                            <div class="progress-bar bg-success" role="progressbar" 
+                                                 style="width: {{ stats.avg_completion }}%;" 
+                                                 aria-valuenow="{{ stats.avg_completion }}" 
+                                                 aria-valuemin="0" aria-valuemax="100">
+                                                {{ stats.avg_completion }}%
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="row text-center">
+                                            <div class="col-3">
+                                                <div class="small text-muted">25%+</div>
+                                                <div class="h5">{{ stats.completed_25 }}</div>
+                                            </div>
+                                            <div class="col-3">
+                                                <div class="small text-muted">50%+</div>
+                                                <div class="h5">{{ stats.completed_50 }}</div>
+                                            </div>
+                                            <div class="col-3">
+                                                <div class="small text-muted">75%+</div>
+                                                <div class="h5">{{ stats.completed_75 }}</div>
+                                            </div>
+                                            <div class="col-3">
+                                                <div class="small text-muted">100%</div>
+                                                <div class="h5">{{ stats.completed_100 }}</div>
+                                            </div>
+                                        </div>
+                                        
+                                        <p class="mt-3 text-muted text-center">
+                                            {{ stats.student_count }} student{{ stats.student_count|pluralize }}
+                                        </p>
+                                        
+                                        <a href="#" class="btn btn-sm btn-primary w-100 mt-2" data-bs-toggle="modal" data-bs-target="#courseProgressModal-{{ course.id }}">
+                                            View Student Details
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                            {% endwith %}
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
         </div>
     </div>
 </div>
+
+{% if teaching_courses %}
+    <!-- Student Progress Detail Modals -->
+    {% for course in teaching_courses %}
+    <div class="modal fade" id="courseProgressModal-{{ course.id }}" tabindex="-1" aria-labelledby="courseProgressModalLabel-{{ course.id }}" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="courseProgressModalLabel-{{ course.id }}">Student Progress: {{ course.title }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    {% with students_progress=courses_student_progress|get_item:course.id %}
+                    {% if students_progress %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Student</th>
+                                    <th>Progress</th>
+                                    <th>Completed</th>
+                                    <th>Last Activity</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for student_id, data in students_progress.items %}
+                                <tr>
+                                    <td>{{ data.student.user.get_full_name|default:data.student.user.username }}</td>
+                                    <td>
+                                        <div class="progress" style="height: 15px;">
+                                            <div class="progress-bar bg-success" role="progressbar" 
+                                                style="width: {{ data.progress.percentage }}%;" 
+                                                aria-valuenow="{{ data.progress.percentage }}" 
+                                                aria-valuemin="0" aria-valuemax="100">
+                                                {{ data.progress.percentage }}%
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>{{ data.progress.completed_count }}/{{ data.progress.total_count }}</td>
+                                    <td>
+                                        {% with access=data.student.contentaccess_set.filter.first %}
+                                            {% if access %}
+                                                {{ access.accessed_at|date:"M d, Y H:i" }}
+                                            {% else %}
+                                                No activity yet
+                                            {% endif %}
+                                        {% endwith %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info">
+                        <p>No student progress data available for this course yet.</p>
+                    </div>
+                    {% endif %}
+                    {% endwith %}
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+{% endif %}
+
 {% endblock main-content %}

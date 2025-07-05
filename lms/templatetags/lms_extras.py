@@ -1,5 +1,5 @@
 """
-Custom template tags for the LMS app
+Custom template tags and filters for the LMS app
 """
 
 from django import template

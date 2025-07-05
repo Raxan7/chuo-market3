@@ -17,7 +17,7 @@ from django.utils.translation import gettext_lazy as _
 
 from .models import (
     LMSProfile, Program, Course, CourseModule, CourseContent, Quiz, Question,
-    MCQuestion, Choice, TF_Question, Essay_Question, QuizTaker, StudentAnswer,
+    MCQuestion, Choice, TF_Question, Essay_Question, QuizTaker, StudentAnswer, ContentAccess,
     Grade, Semester, CourseEnrollment, ActivityLog, InstructorRequest
 )
 from .forms import (
@@ -292,9 +292,11 @@ class CourseDetailView(DetailView):
         
         # Check if user is enrolled
         is_enrolled = False
+        student_profile = None
         if self.request.user.is_authenticated and hasattr(self.request.user, 'lms_profile'):
+            student_profile = self.request.user.lms_profile
             is_enrolled = CourseEnrollment.objects.filter(
-                student=self.request.user.lms_profile,
+                student=student_profile,
                 course=course
             ).exists()
         
@@ -303,11 +305,25 @@ class CourseDetailView(DetailView):
         if self.request.user.is_authenticated and hasattr(self.request.user, 'lms_profile'):
             is_course_instructor = course.instructors.filter(id=self.request.user.lms_profile.id).exists()
         
+        # Get course progress if user is enrolled
+        course_progress = None
+        if is_enrolled and student_profile:
+            from .utils import calculate_course_progress
+            course_progress = calculate_course_progress(course, student_profile)
+        
+        # If user is instructor, get progress data for all enrolled students
+        students_progress = None
+        if is_course_instructor:
+            from .utils import get_all_enrolled_students_progress
+            students_progress = get_all_enrolled_students_progress(course)
+        
         context.update({
             'modules': modules,
             'quizzes': quizzes,
             'is_enrolled': is_enrolled,
             'is_course_instructor': is_course_instructor,
+            'course_progress': course_progress,
+            'students_progress': students_progress,
         })
         
         return context
@@ -689,10 +705,33 @@ def course_content_detail(request, course_slug, content_id):
         messages.error(request, _("You must be enrolled in this course to view its content."))
         return redirect('lms:course_detail', slug=course.slug)
     
+    # Track content access for students (not instructors or staff)
+    if is_enrolled and not is_instructor and not request.user.is_staff:
+        content_access, created = ContentAccess.objects.get_or_create(
+            student=profile,
+            content=content
+        )
+        
+        # Mark as completed if it's a request from the "mark complete" button
+        if request.GET.get('mark_complete') == 'true':
+            content_access.mark_complete()
+            messages.success(request, _("Content marked as completed!"))
+            return redirect('lms:content_detail', course_slug=course_slug, content_id=content_id)
+    
+    # Check if this content is completed by the student
+    content_completed = False
+    if hasattr(request.user, 'lms_profile') and is_enrolled:
+        content_completed = ContentAccess.objects.filter(
+            student=profile,
+            content=content,
+            completed=True
+        ).exists()
+    
     context = {
         'course': course,
         'content': content,
-        'module': content.module
+        'module': content.module,
+        'content_completed': content_completed
     }
     
     return render(request, 'lms/course_content_detail.html', context)
@@ -1257,13 +1296,20 @@ def student_dashboard(request):
         module__course__in=courses
     ).order_by('-date_added')[:10]
     
+    # Calculate progress for each course
+    from .utils import calculate_course_progress
+    course_progress = {}
+    for course in courses:
+        course_progress[course.id] = calculate_course_progress(course, profile)
+    
     context = {
         'profile': profile,
         'current_semester': current_semester,
         'courses': courses,
         'grades': grades,
         'upcoming_quizzes': upcoming_quizzes,
-        'recent_contents': recent_contents
+        'recent_contents': recent_contents,
+        'course_progress': course_progress
     }
     
     return render(request, 'lms/student_dashboard.html', context)
@@ -1305,13 +1351,61 @@ def instructor_dashboard(request):
                 'avg_score': avg_score
             }
     
+    # Calculate student progress for each course
+    from .utils import get_all_enrolled_students_progress
+    courses_student_progress = {}
+    for course in teaching_courses:
+        courses_student_progress[course.id] = get_all_enrolled_students_progress(course)
+    
+    # Calculate course completion statistics
+    course_completion_stats = {}
+    for course in teaching_courses:
+        if course.id in courses_student_progress:
+            progress_data = courses_student_progress[course.id]
+            if progress_data:
+                completion_rates = [data['progress']['percentage'] for data in progress_data.values()]
+                if completion_rates:
+                    avg_completion = sum(completion_rates) / len(completion_rates)
+                    course_completion_stats[course.id] = {
+                        'avg_completion': round(avg_completion, 1),
+                        'student_count': len(completion_rates),
+                        'completed_25': len([r for r in completion_rates if r >= 25]),
+                        'completed_50': len([r for r in completion_rates if r >= 50]),
+                        'completed_75': len([r for r in completion_rates if r >= 75]),
+                        'completed_100': len([r for r in completion_rates if r >= 100])
+                    }
+    
+    # Calculate the total number of students
+    total_students = len(set(enrollment.student.id for enrollment in enrollments))
+    
+    # Count active quizzes
+    active_quizzes = Quiz.objects.filter(
+        course__in=teaching_courses,
+        draft=False,
+        due_date__gt=timezone.now()
+    ).count()
+    
+    # Count incomplete courses (less than 70% of modules have content)
+    incomplete_courses = 0
+    for course in teaching_courses:
+        modules = course.modules.all()
+        if modules:
+            empty_modules = modules.annotate(content_count=Count('contents')).filter(content_count=0).count()
+            if empty_modules / modules.count() > 0.3:  # More than 30% of modules are empty
+                incomplete_courses += 1
+    
     context = {
         'profile': profile,
         'current_semester': current_semester,
         'teaching_courses': teaching_courses,
         'enrollments': enrollments,
         'recent_quizzes': recent_quizzes,
-        'quiz_stats': quiz_stats
+        'quiz_stats': quiz_stats,
+        'courses_student_progress': courses_student_progress,
+        'course_completion_stats': course_completion_stats,
+        'total_students': total_students,
+        'active_quizzes': active_quizzes,
+        'incomplete_courses': incomplete_courses
     }
     
     return render(request, 'lms/instructor_dashboard.html', context)

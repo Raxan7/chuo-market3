@@ -8,7 +8,7 @@ from .models import (
     ActivityLog, Semester, LMSProfile, Program, Course, CourseModule, 
     CourseContent, Quiz, Question, MCQuestion, Choice, TF_Question, 
     Essay_Question, QuizTaker, StudentAnswer, Grade, CourseEnrollment,
-    InstructorRequest
+    InstructorRequest, ContentAccess
 )
 
 
@@ -203,6 +203,14 @@ class InstructorRequestAdmin(admin.ModelAdmin):
         
         self.message_user(request, _("Selected requests have been denied."))
     deny_requests.short_description = _("Deny selected instructor requests")
+
+
+@admin.register(ContentAccess)
+class ContentAccessAdmin(admin.ModelAdmin):
+    list_display = ('student', 'content', 'accessed_at', 'completed', 'completed_at')
+    list_filter = ('completed', 'accessed_at', 'completed_at')
+    search_fields = ('student__user__username', 'content__title')
+    readonly_fields = ('accessed_at',)
 
 
 # Register all question types

@@ -10,6 +10,7 @@ from django.db.models import Q
 from django.contrib.auth.models import User
 from django.utils.translation import gettext_lazy as _
 from django.utils.text import slugify
+from django.utils import timezone
 import random
 import string
 from django.dispatch import receiver
@@ -217,6 +218,30 @@ class CourseContent(models.Model):
         
     def __str__(self):
         return self.title
+
+
+class ContentAccess(models.Model):
+    """
+    Tracks when a student accesses course content
+    """
+    student = models.ForeignKey(LMSProfile, on_delete=models.CASCADE)
+    content = models.ForeignKey(CourseContent, on_delete=models.CASCADE)
+    accessed_at = models.DateTimeField(auto_now_add=True)
+    completed = models.BooleanField(default=False)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    
+    class Meta:
+        unique_together = ['student', 'content']
+        ordering = ['-accessed_at']
+    
+    def __str__(self):
+        return f"{self.student.user.username} accessed {self.content.title}"
+
+    def mark_complete(self):
+        if not self.completed:
+            self.completed = True
+            self.completed_at = timezone.now()
+            self.save()
 
 
 class Quiz(models.Model):
