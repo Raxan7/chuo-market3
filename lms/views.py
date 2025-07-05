@@ -23,7 +23,8 @@ from .models import (
 from .forms import (
     LMSProfileForm, CourseForm, CourseModuleForm, CourseContentForm,
     QuizForm, MCQuestionForm, ChoiceForm, TFQuestionForm, EssayQuestionForm,
-    GradeForm, CourseEnrollForm, EssayAnswerForm, InstructorRequestForm
+    GradeForm, CourseEnrollForm, EssayAnswerForm, InstructorRequestForm,
+    ProgramForm
 )
 
 
@@ -669,7 +670,39 @@ class CourseCreateView(InstructorRequiredMixin, CreateView):
     form_class = CourseForm
     template_name = 'lms/course_form.html'
     
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # Check if there are any programs
+        context['has_programs'] = Program.objects.exists()
+        context['program_form'] = ProgramForm()
+        return context
+    
+    def post(self, request, *args, **kwargs):
+        # Check if this is a program creation submission
+        if 'create_program' in request.POST:
+            program_form = ProgramForm(request.POST)
+            if program_form.is_valid():
+                program = program_form.save()
+                messages.success(request, _(f"Program '{program.title}' created successfully."))
+                # Redirect back to the course creation page
+                return redirect('lms:course_create')
+            else:
+                # If program form is invalid, show it with the course form
+                self.object = None
+                return self.render_to_response(
+                    self.get_context_data(
+                        form=self.get_form(),
+                        program_form=program_form
+                    )
+                )
+        return super().post(request, *args, **kwargs)
+    
     def form_valid(self, form):
+        # Check if we need to create a program
+        if not Program.objects.exists() and 'program' not in form.cleaned_data:
+            messages.error(self.request, _("You must create a program before creating a course."))
+            return self.form_invalid(form)
+            
         # Set instructor
         response = super().form_valid(form)
         course = self.object

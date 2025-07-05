@@ -48,6 +48,12 @@ class LMSProfileForm(forms.ModelForm):
 
 class CourseForm(forms.ModelForm):
     """Form for creating and updating courses"""
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Make program field required only if programs exist
+        if not Program.objects.exists():
+            self.fields['program'].required = False
+            
     class Meta:
         model = Course
         fields = ['title', 'code', 'credit', 'summary', 'program', 
@@ -228,4 +234,22 @@ class InstructorRequestForm(forms.ModelForm):
         widgets = {
             'reason': forms.Textarea(attrs={'rows': 4, 'class': 'form-control'}),
             'qualifications': forms.Textarea(attrs={'rows': 4, 'class': 'form-control'}),
+        }
+
+
+class ProgramForm(forms.ModelForm):
+    """Form for creating a new program"""
+    class Meta:
+        model = Program
+        fields = ['title', 'summary']
+        widgets = {
+            'title': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Enter program title'
+            }),
+            'summary': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': 'Provide a brief description of this program'
+            }),
         }

@@ -104,7 +104,21 @@
                                 <label for="{{ form.program.id_for_label }}" class="form-label fw-bold">
                                     <i class="fas fa-graduation-cap me-2 text-primary"></i>{{ form.program.label }}
                                 </label>
+                                
+                                {% if not has_programs %}
+                                <div class="alert alert-info">
+                                    <i class="fas fa-info-circle me-2"></i> No programs exist yet. Please create one below.
+                                </div>
+                                <button type="button" class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#createProgramModal">
+                                    <i class="fas fa-plus-circle me-2"></i>Create New Program
+                                </button>
+                                {% else %}
                                 {{ form.program|add_class:"form-select" }}
+                                <button type="button" class="btn btn-sm btn-outline-primary mt-2" data-bs-toggle="modal" data-bs-target="#createProgramModal">
+                                    <i class="fas fa-plus-circle me-1"></i>Create New Program
+                                </button>
+                                {% endif %}
+                                
                                 {% if form.program.errors %}
                                     <div class="text-danger small mt-1">
                                         <i class="fas fa-exclamation-circle me-1"></i>{{ form.program.errors }}
@@ -312,6 +326,51 @@
                     <p class="mb-0">Check the <a href="#">Instructor's Guide</a> for detailed instructions on creating and managing courses.</p>
                 </div>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- Program Creation Modal -->
+<div class="modal fade" id="createProgramModal" tabindex="-1" aria-labelledby="createProgramModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="createProgramModalLabel">
+                    <i class="fas fa-graduation-cap me-2"></i>Create New Program
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="{{ program_form.title.id_for_label }}" class="form-label fw-bold">Program Title</label>
+                        {{ program_form.title|add_class:"form-control" }}
+                        {% if program_form.title.errors %}
+                            <div class="text-danger small mt-1">
+                                <i class="fas fa-exclamation-circle me-1"></i>{{ program_form.title.errors }}
+                            </div>
+                        {% endif %}
+                        <div class="form-text">Enter a unique title for the educational program</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="{{ program_form.summary.id_for_label }}" class="form-label fw-bold">Program Summary</label>
+                        {{ program_form.summary|add_class:"form-control" }}
+                        {% if program_form.summary.errors %}
+                            <div class="text-danger small mt-1">
+                                <i class="fas fa-exclamation-circle me-1"></i>{{ program_form.summary.errors }}
+                            </div>
+                        {% endif %}
+                        <div class="form-text">Provide a brief description of this program</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" name="create_program" class="btn btn-primary">
+                        <i class="fas fa-save me-2"></i>Save Program
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
