@@ -67,6 +67,74 @@
                     {% endif %}
                 </div>
                 <div class="card-body">
+                    {% if not is_enrolled and not is_course_instructor %}
+                    <!-- Course Summary for Non-enrolled Students -->
+                    <div class="alert alert-warning mb-4">
+                        <div class="d-flex">
+                            <div class="me-3">
+                                <i class="fas fa-lock fa-2x"></i>
+                            </div>
+                            <div>
+                                <h5 class="alert-heading">Enrollment Required</h5>
+                                <p>You need to enroll in this course to access the full content.</p>
+                                {% if user.is_authenticated %}
+                                <div class="mt-3">
+                                    <a href="{% url 'lms:enroll_course' slug=course.slug %}" class="btn btn-success">
+                                        <i class="fas fa-user-plus me-2"></i>Enroll Now
+                                    </a>
+                                </div>
+                                {% else %}
+                                <div class="mt-3">
+                                    <a href="{% url 'login' %}?next={% url 'lms:enroll_course' slug=course.slug %}" class="btn btn-primary">
+                                        <i class="fas fa-sign-in-alt me-2"></i>Login to Enroll
+                                    </a>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <h4 class="mb-3">Course Summary</h4>
+                    <p class="lead">This course contains:</p>
+                    <ul class="list-group mb-4">
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <div><i class="fas fa-folder me-2 text-primary"></i> Modules</div>
+                            <span class="badge bg-primary rounded-pill">{{ modules|length }}</span>
+                        </li>
+                        {% with total_content=0 %}
+                            {% for module in modules %}
+                                {% with module_content_count=module.contents.all|length %}
+                                    {% with total_content=total_content|add:module_content_count %}
+                                    {% endwith %}
+                                {% endwith %}
+                            {% endfor %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <div><i class="fas fa-file-alt me-2 text-success"></i> Content Items</div>
+                                <span class="badge bg-success rounded-pill">{{ total_content }}</span>
+                            </li>
+                        {% endwith %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <div><i class="fas fa-question-circle me-2 text-info"></i> Quizzes & Assessments</div>
+                            <span class="badge bg-info rounded-pill">{{ quizzes|length }}</span>
+                        </li>
+                    </ul>
+                    
+                    <!-- Preview of module titles for non-enrolled students -->
+                    <h5 class="mb-3">What You'll Learn</h5>
+                    <div class="list-group">
+                        {% for module in modules %}
+                        <div class="list-group-item">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h6 class="mb-1"><i class="fas fa-lock-open me-2 text-muted"></i> {{ module.title }}</h6>
+                                <small>{{ module.contents.all|length }} items</small>
+                            </div>
+                            <p class="mb-1 text-muted">{{ module.description|truncatechars:100 }}</p>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    
+                    {% else %}
+                    <!-- Full course content for enrolled students -->
                     {% if modules %}
                     <div class="accordion" id="moduleAccordion">
                         {% for module in modules %}
@@ -135,6 +203,7 @@
                     {% else %}
                     <p class="text-muted">No modules have been created for this course yet.</p>
                     {% endif %}
+                    {% endif %}
                 </div>
             </div>
             
@@ -149,6 +218,84 @@
                     {% endif %}
                 </div>
                 <div class="card-body">
+                    {% if not is_enrolled and not is_course_instructor %}
+                    <!-- Quiz Summary for Non-enrolled Students -->
+                    {% if quizzes %}
+                    <div class="alert alert-info mb-4">
+                        <div class="d-flex">
+                            <div class="me-3">
+                                <i class="fas fa-info-circle fa-2x"></i>
+                            </div>
+                            <div>
+                                <h5 class="alert-heading">Assessment Information</h5>
+                                <p>This course includes {{ quizzes|length }} assessment{% if quizzes|length != 1 %}s{% endif %}. 
+                                Enroll to attempt quizzes and track your progress.</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Preview of quiz categories for non-enrolled students -->
+                    <div class="row">
+                        {% with assignment_count=0 exam_count=0 practice_count=0 other_count=0 %}
+                            {% for quiz in quizzes %}
+                                {% if quiz.category == 'assignment' %}
+                                    {% with assignment_count=assignment_count|add:1 %}{% endwith %}
+                                {% elif quiz.category == 'exam' %}
+                                    {% with exam_count=exam_count|add:1 %}{% endwith %}
+                                {% elif quiz.category == 'practice' %}
+                                    {% with practice_count=practice_count|add:1 %}{% endwith %}
+                                {% else %}
+                                    {% with other_count=other_count|add:1 %}{% endwith %}
+                                {% endif %}
+                            {% endfor %}
+                            
+                            <div class="col-md-3 mb-3">
+                                <div class="card h-100 bg-light">
+                                    <div class="card-body text-center">
+                                        <i class="fas fa-clipboard-list fa-2x text-primary mb-3"></i>
+                                        <h5 class="card-title">Assignments</h5>
+                                        <h3>{{ assignment_count }}</h3>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-3 mb-3">
+                                <div class="card h-100 bg-light">
+                                    <div class="card-body text-center">
+                                        <i class="fas fa-file-alt fa-2x text-danger mb-3"></i>
+                                        <h5 class="card-title">Exams</h5>
+                                        <h3>{{ exam_count }}</h3>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-3 mb-3">
+                                <div class="card h-100 bg-light">
+                                    <div class="card-body text-center">
+                                        <i class="fas fa-chess-pawn fa-2x text-success mb-3"></i>
+                                        <h5 class="card-title">Practice</h5>
+                                        <h3>{{ practice_count }}</h3>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-3 mb-3">
+                                <div class="card h-100 bg-light">
+                                    <div class="card-body text-center">
+                                        <i class="fas fa-question-circle fa-2x text-secondary mb-3"></i>
+                                        <h5 class="card-title">Other</h5>
+                                        <h3>{{ other_count }}</h3>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endwith %}
+                    </div>
+                    {% else %}
+                    <p class="text-muted">No assessments have been created for this course yet.</p>
+                    {% endif %}
+                    
+                    {% else %}
+                    <!-- Full quiz list for enrolled students -->
                     {% if quizzes %}
                     <div class="table-responsive">
                         <table class="table">
@@ -201,6 +348,7 @@
                     </div>
                     {% else %}
                     <p class="text-muted">No quizzes have been created for this course yet.</p>
+                    {% endif %}
                     {% endif %}
                 </div>
             </div>

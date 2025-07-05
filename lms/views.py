@@ -380,9 +380,13 @@ class QuizDetailView(DetailView):
         context = super().get_context_data(**kwargs)
         quiz = self.get_object()
         
-        # Check if user can take quiz
+        # Default values
         can_take_quiz = False
+        is_instructor = False
+        is_enrolled = False
         previous_attempts = None
+        completed_attempt = None
+        user_score = None
         
         if self.request.user.is_authenticated and hasattr(self.request.user, 'lms_profile'):
             profile = self.request.user.lms_profile
@@ -393,15 +397,23 @@ class QuizDetailView(DetailView):
                 course=quiz.course
             ).exists()
             
+            # Check if instructor
+            is_instructor = is_course_instructor(self.request.user, quiz.course)
+            
             # Get previous attempts
             previous_attempts = QuizTaker.objects.filter(
                 user=profile,
                 quiz=quiz
             ).order_by('-date_started')
             
+            # Get the most recent completed attempt if any
+            completed_attempt = previous_attempts.filter(completed=True).first()
+            if completed_attempt:
+                user_score = completed_attempt.get_score_percentage()
+            
             if is_enrolled:
                 # Check single attempt restriction
-                if quiz.single_attempt and previous_attempts.filter(completed=True).exists():
+                if quiz.single_attempt and completed_attempt:
                     can_take_quiz = False
                 else:
                     can_take_quiz = True
@@ -413,9 +425,15 @@ class QuizDetailView(DetailView):
             can_take_quiz = False
         
         context.update({
-            'can_take_quiz': can_take_quiz,
+            'user_can_take_quiz': can_take_quiz,
+            'user_is_instructor': is_instructor,
+            'is_enrolled': is_enrolled,
+            'not_enrolled': not is_enrolled,
             'previous_attempts': previous_attempts,
+            'has_already_taken': completed_attempt is not None,
+            'user_score': user_score,
             'is_past_due': is_past_due,
+            'past_due': is_past_due,
         })
         
         return context
