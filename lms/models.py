@@ -126,22 +126,41 @@ class Course(models.Model):
     """
     Course model representing a single course in the LMS
     """
+    COURSE_TYPE_CHOICES = (
+        ('university', _('University Course')),
+        ('general', _('General Course')),
+    )
+    
+    course_type = models.CharField(
+        max_length=10, 
+        choices=COURSE_TYPE_CHOICES, 
+        default='university',
+        help_text=_("University courses require academic fields like course code, program, etc.")
+    )
     title = models.CharField(max_length=200)
     slug = models.SlugField(unique=True, blank=True)
-    code = models.CharField(max_length=20, unique=True)
-    credit = models.IntegerField(default=3)
     summary = models.TextField(blank=True)
-    program = models.ForeignKey(Program, on_delete=models.CASCADE)
-    level = models.CharField(max_length=2, choices=LEVEL_CHOICES)
-    year = models.IntegerField(choices=YEARS, default=1)
-    semester = models.CharField(choices=SEMESTER_CHOICES, max_length=10)
-    is_elective = models.BooleanField(default=False)
     is_free = models.BooleanField(default=True, help_text=_("Whether this course is free or paid"))
     image = models.ImageField(upload_to='lms/course_images/', blank=True, null=True)
     instructors = models.ManyToManyField(LMSProfile, related_name='courses_teaching',
                                         limit_choices_to={'role': 'instructor'})
     students = models.ManyToManyField(LMSProfile, through='CourseEnrollment', 
                                      related_name='courses_enrolled')
+    
+    # Fields specific to university courses (nullable for general courses)
+    code = models.CharField(max_length=20, unique=True, null=True, blank=True,
+                          help_text=_("Required for university courses only"))
+    credit = models.IntegerField(default=3, null=True, blank=True,
+                               help_text=_("Required for university courses only"))
+    program = models.ForeignKey(Program, on_delete=models.CASCADE, null=True, blank=True,
+                              help_text=_("Required for university courses only"))
+    level = models.CharField(max_length=2, choices=LEVEL_CHOICES, null=True, blank=True,
+                          help_text=_("Required for university courses only"))
+    year = models.IntegerField(choices=YEARS, default=1, null=True, blank=True,
+                             help_text=_("Required for university courses only"))
+    semester = models.CharField(choices=SEMESTER_CHOICES, max_length=10, null=True, blank=True,
+                             help_text=_("Required for university courses only"))
+    is_elective = models.BooleanField(default=False, help_text=_("Applies to university courses only"))
     
     def __str__(self):
         return f"{self.title} ({self.code})"

@@ -54,14 +54,41 @@ class CourseForm(forms.ModelForm):
         if not Program.objects.exists():
             self.fields['program'].required = False
             
+        # Check if it's a university course - only require university fields for university course type
+        if self.instance and self.instance.pk and self.instance.course_type == 'university':
+            # For university courses, these fields are required
+            for field in ['code', 'credit', 'program', 'level', 'year', 'semester']:
+                self.fields[field].required = True
+        elif self.instance and self.instance.pk and self.instance.course_type == 'general':
+            # For general courses, these fields are not required
+            for field in ['code', 'credit', 'program', 'level', 'year', 'semester']:
+                self.fields[field].required = False
+            
+    def clean(self):
+        cleaned_data = super().clean()
+        course_type = cleaned_data.get('course_type')
+        
+        # Validate that appropriate fields are filled based on course_type
+        if course_type == 'university':
+            university_fields = ['code', 'credit', 'program', 'level', 'year', 'semester']
+            for field in university_fields:
+                if not cleaned_data.get(field):
+                    self.add_error(field, _(f'{field.title()} is required for university courses'))
+                    
+        return cleaned_data
+            
     class Meta:
         model = Course
-        fields = ['title', 'code', 'credit', 'summary', 'program', 
+        fields = ['title', 'course_type', 'code', 'credit', 'summary', 'program', 
                   'level', 'year', 'semester', 'is_elective', 'instructors', 'image']
         widgets = {
             'title': forms.TextInput(attrs={
                 'class': 'form-control',
                 'placeholder': 'Enter course title'
+            }),
+            'course_type': forms.Select(attrs={
+                'class': 'form-select',
+                'id': 'id_course_type'
             }),
             'code': forms.TextInput(attrs={
                 'class': 'form-control', 

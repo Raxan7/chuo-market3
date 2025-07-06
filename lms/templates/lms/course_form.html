@@ -69,6 +69,22 @@
                         </div>
                         
                         <div class="mb-4">
+                            <label for="{{ form.course_type.id_for_label }}" class="form-label fw-bold">
+                                <i class="fas fa-graduation-cap me-2 text-primary"></i>{{ form.course_type.label }}
+                            </label>
+                            {{ form.course_type|add_class:"form-select" }}
+                            {% if form.course_type.errors %}
+                                <div class="text-danger small mt-1">
+                                    <i class="fas fa-exclamation-circle me-1"></i>{{ form.course_type.errors }}
+                                </div>
+                            {% endif %}
+                            <div class="form-text">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Select "University Course" for academic courses with program, level, etc. or "General Course" for other courses.
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4 university-fields">
                             <label for="{{ form.code.id_for_label }}" class="form-label fw-bold">
                                 <i class="fas fa-hashtag me-2 text-primary"></i>{{ form.code.label }}
                             </label>
@@ -99,7 +115,7 @@
                         <hr class="my-4">
                         <h5 class="text-primary mb-3"><i class="fas fa-cogs me-2"></i>Course Settings</h5>
 
-                        <div class="row mb-4">
+                        <div class="row mb-4 university-fields">
                             <div class="col-md-6">
                                 <label for="{{ form.program.id_for_label }}" class="form-label fw-bold">
                                     <i class="fas fa-graduation-cap me-2 text-primary"></i>{{ form.program.label }}
@@ -138,7 +154,7 @@
                             </div>
                         </div>
                         
-                        <div class="row mb-4">
+                        <div class="row mb-4 university-fields">
                             <div class="col-md-4">
                                 <label for="{{ form.year.id_for_label }}" class="form-label fw-bold">
                                     <i class="fas fa-calendar-alt me-2 text-primary"></i>{{ form.year.label }}
@@ -174,7 +190,7 @@
                             </div>
                         </div>
                         
-                        <div class="mb-4">
+                        <div class="mb-4 university-fields">
                             <div class="form-check form-switch">
                                 {{ form.is_elective|add_class:"form-check-input" }}
                                 <label for="{{ form.is_elective.id_for_label }}" class="form-check-label fw-bold">
@@ -374,4 +390,39 @@
         </div>
     </div>
 </div>
+
 {% endblock main-content %}
+
+{% block extra_scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Function to toggle university fields based on selected course type
+        function toggleUniversityFields() {
+            const courseType = document.getElementById('id_course_type');
+            const universityFields = document.querySelectorAll('.university-fields');
+            
+            if (courseType.value === 'university') {
+                // Show university-specific fields
+                universityFields.forEach(function(field) {
+                    field.style.display = 'block';
+                });
+            } else {
+                // Hide university-specific fields
+                universityFields.forEach(function(field) {
+                    field.style.display = 'none';
+                });
+            }
+        }
+        
+        // Add event listener to course type select field
+        const courseType = document.getElementById('id_course_type');
+        if (courseType) {
+            // Initial toggle based on selected value
+            toggleUniversityFields();
+            
+            // Toggle on change
+            courseType.addEventListener('change', toggleUniversityFields);
+        }
+    });
+</script>
+{% endblock extra_scripts %}
