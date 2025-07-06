@@ -8,7 +8,7 @@ from .models import (
     ActivityLog, Semester, LMSProfile, Program, Course, CourseModule, 
     CourseContent, Quiz, Question, MCQuestion, Choice, TF_Question, 
     Essay_Question, QuizTaker, StudentAnswer, Grade, CourseEnrollment,
-    InstructorRequest, ContentAccess
+    InstructorRequest, ContentAccess, SiteSettings
 )
 
 
@@ -43,8 +43,8 @@ class ProgramAdmin(admin.ModelAdmin):
 
 @admin.register(Course)
 class CourseAdmin(admin.ModelAdmin):
-    list_display = ('title', 'code', 'program', 'level', 'semester', 'year')
-    list_filter = ('program', 'level', 'semester', 'year', 'is_elective')
+    list_display = ('title', 'code', 'program', 'level', 'semester', 'year', 'is_free')
+    list_filter = ('program', 'level', 'semester', 'year', 'is_elective', 'is_free')
     search_fields = ('title', 'code', 'summary')
     prepopulated_fields = {'slug': ('title',)}
     inlines = [CourseModuleInline, CourseEnrollmentInline]
@@ -213,7 +213,26 @@ class ContentAccessAdmin(admin.ModelAdmin):
     readonly_fields = ('accessed_at',)
 
 
+class SiteSettingsAdmin(admin.ModelAdmin):
+    """Admin for site settings"""
+    fieldsets = (
+        (_('Advertisement Settings'), {
+            'fields': ('show_ads_before_free_courses',),
+            'description': _('Configure whether advertisements should be shown before users can access free courses.')
+        }),
+    )
+    
+    def has_add_permission(self, request):
+        # Only allow one instance of SiteSettings
+        return SiteSettings.objects.count() == 0
+    
+    def has_delete_permission(self, request, obj=None):
+        # Don't allow deleting the settings
+        return False
+
+
 # Register all question types
 admin.site.register(MCQuestion, MCQuestionAdmin)
 admin.site.register(TF_Question, TFQuestionAdmin)
 admin.site.register(Essay_Question, EssayQuestionAdmin)
+admin.site.register(SiteSettings, SiteSettingsAdmin)

@@ -4,6 +4,33 @@
 
 The LMS now includes a course advertisement system that displays an advertisement before users access a course. This helps generate revenue while users are browsing courses.
 
+## Managing the Advertisement System
+
+### Enabling/Disabling Advertisements
+
+Administrators can easily control whether advertisements are displayed before free courses:
+
+1. Log in to the admin panel
+2. Navigate to: `/admin/lms/sitesettings/1/change/`
+3. Check or uncheck the "Show Ads Before Free Courses" option
+4. Save the changes
+
+When ads are disabled, users will be redirected directly to the course page without seeing advertisements.
+
+### Setting Courses as Free or Paid
+
+To control which courses display advertisements:
+
+1. Log in to the admin panel
+2. Navigate to: `/admin/lms/course/`
+3. Select a course to edit
+4. Set the "Is Free" field to True or False:
+   - **True**: Course is free and will show ads (if enabled in site settings)
+   - **False**: Course is paid and will never show ads
+5. Save the changes
+
+Note: Advertisements are only shown for free courses, and only when enabled in site settings.
+
 ## Features
 
 - Displays Google AdSense ads before users can access course content

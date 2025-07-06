@@ -28,10 +28,16 @@
                         {% endif %}
                     </div>
                     
-                    <!-- Google AdSense Ad -->
+                    <!-- Google AdSense Ad - Only show if ads are enabled -->
                     <div class="google-ad-container my-4">
-                        <!-- Google AdSense code will be here -->
-                        {% include 'lms/partials/ad_unit.html' %}
+                        {% if show_ads %}
+                            {% include 'lms/partials/ad_unit.html' %}
+                        {% else %}
+                            <div class="alert alert-info text-center">
+                                <p><i class="fas fa-info-circle fa-2x mb-3"></i></p>
+                                <p>Advertisements are currently disabled.</p>
+                            </div>
+                        {% endif %}
                     </div>
                     
                     <div class="text-center mt-4">

@@ -1520,17 +1520,31 @@ def instructor_request_status(request):
 class CourseAdvertisementView(View):
     """
     Display an advertisement before redirecting to the course detail page
+    
+    This view checks site settings to determine whether to show ads,
+    and only shows ads for free courses when the setting is enabled.
     """
     def get(self, request, *args, **kwargs):
         course_slug = kwargs.get('slug')
         course = get_object_or_404(Course, slug=course_slug)
         
+        # Check if ads are enabled for free courses in site settings
+        from .models import SiteSettings
+        settings = SiteSettings.get_settings()
+        show_ads = settings.show_ads_before_free_courses and course.is_free
+        
+        # Skip the ad page if ads are disabled or the course is not free
+        if not show_ads:
+            # Redirect directly to the course detail page
+            return redirect('lms:course_detail_direct', slug=course_slug)
+            
         # Generate the URL for the course detail page
         course_detail_url = reverse('lms:course_detail_direct', kwargs={'slug': course_slug})
         
         context = {
             'course': course,
             'course_detail_url': course_detail_url,
+            'show_ads': show_ads,
         }
         
         return render(request, 'lms/course_ad.html', context)
