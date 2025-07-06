@@ -1,27 +1,53 @@
 {% extends "app/base.html" %}
 {% load static %}
+{% load widget_tweaks %}
 
 {% block title %}
     {% if form.instance.id %}Edit Quiz{% else %}Create Quiz{% endif %}
 {% endblock title %}
 
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'lms/css/quiz_form.css' %}">
+{% endblock extra_css %}
+
 {% block main-content %}
 <div class="container my-5">
     <div class="row mb-4">
         <div class="col">
-            <h1>{% if form.instance.id %}Edit Quiz: {{ form.instance.title }}{% else %}Create New Quiz{% endif %}</h1>
-            <p class="lead">Course: {{ course.title }}</p>
-            {% if module %}
-                <p>Module: {{ module.title }}</p>
-            {% endif %}
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'lms:lms_home' %}">LMS Home</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'lms:course_detail' course.slug %}">{{ course.code }}</a></li>
+                    {% if module %}
+                        <li class="breadcrumb-item"><a href="{% url 'lms:course_detail' course.slug %}#module-{{ module.id }}">{{ module.title }}</a></li>
+                    {% endif %}
+                    <li class="breadcrumb-item active">{% if form.instance.id %}Edit Quiz{% else %}Create Quiz{% endif %}</li>
+                </ol>
+            </nav>
+            
+            <h1 class="mt-3">
+                {% if form.instance.id %}
+                    <i class="fas fa-edit me-2 text-primary"></i>Edit Quiz: {{ form.instance.title }}
+                {% else %}
+                    <i class="fas fa-plus-circle me-2 text-success"></i>Create New Quiz
+                {% endif %}
+            </h1>
+            <p class="lead">
+                <span class="badge bg-primary me-2">{{ course.code }}</span>
+                {{ course.title }}
+                {% if module %}
+                    <span class="mx-2">›</span>
+                    <span class="badge bg-secondary">{{ module.title }}</span>
+                {% endif %}
+            </p>
         </div>
     </div>
     
     <div class="row">
         <div class="col-md-8">
-            <div class="card shadow-sm">
+            <div class="card quiz-form-container">
                 <div class="card-body">
-                    <form method="post">
+                    <form method="post" class="quiz-form">
                         {% csrf_token %}
                         
                         {% if form.non_field_errors %}
@@ -34,7 +60,7 @@
                         
                         <div class="mb-3">
                             <label for="{{ form.title.id_for_label }}" class="form-label">{{ form.title.label }}</label>
-                            {{ form.title }}
+                            {% render_field form.title class="form-control" %}
                             {% if form.title.errors %}
                                 <div class="text-danger">{{ form.title.errors }}</div>
                             {% endif %}
@@ -42,7 +68,7 @@
                         
                         <div class="mb-3">
                             <label for="{{ form.description.id_for_label }}" class="form-label">{{ form.description.label }}</label>
-                            {{ form.description }}
+                            {% render_field form.description class="form-control" rows="4" %}
                             {% if form.description.errors %}
                                 <div class="text-danger">{{ form.description.errors }}</div>
                             {% endif %}
@@ -51,58 +77,68 @@
                         <div class="row mb-3">
                             <div class="col-md-6">
                                 <label for="{{ form.category.id_for_label }}" class="form-label">{{ form.category.label }}</label>
-                                {{ form.category }}
+                                {% render_field form.category class="form-select" %}
                                 {% if form.category.errors %}
                                     <div class="text-danger">{{ form.category.errors }}</div>
                                 {% endif %}
                             </div>
                             <div class="col-md-6">
-                                <label for="{{ form.time_limit_mins.id_for_label }}" class="form-label">{{ form.time_limit_mins.label }}</label>
-                                {{ form.time_limit_mins }}
-                                {% if form.time_limit_mins.errors %}
-                                    <div class="text-danger">{{ form.time_limit_mins.errors }}</div>
+                                <label for="{{ form.pass_mark.id_for_label }}" class="form-label">{{ form.pass_mark.label }}</label>
+                                {% render_field form.pass_mark class="form-control" %}
+                                {% if form.pass_mark.errors %}
+                                    <div class="text-danger">{{ form.pass_mark.errors }}</div>
                                 {% endif %}
+                                <div class="form-text">Percentage required to pass (0-100)</div>
                             </div>
                         </div>
                         
                         <div class="row mb-3">
                             <div class="col-md-6">
                                 <label for="{{ form.due_date.id_for_label }}" class="form-label">{{ form.due_date.label }}</label>
-                                {{ form.due_date }}
+                                {% render_field form.due_date class="form-control" %}
                                 {% if form.due_date.errors %}
                                     <div class="text-danger">{{ form.due_date.errors }}</div>
                                 {% endif %}
+                                <div class="form-text">When should students complete this quiz?</div>
                             </div>
                             <div class="col-md-6">
-                                <label for="{{ form.allowed_attempts.id_for_label }}" class="form-label">{{ form.allowed_attempts.label }}</label>
-                                {{ form.allowed_attempts }}
-                                {% if form.allowed_attempts.errors %}
-                                    <div class="text-danger">{{ form.allowed_attempts.errors }}</div>
+                                <label for="{{ form.single_attempt.id_for_label }}" class="form-label">Attempt Limits</label>
+                                <div class="form-check mt-2">
+                                    {% render_field form.single_attempt class="form-check-input" %}
+                                    <label for="{{ form.single_attempt.id_for_label }}" class="form-check-label">{{ form.single_attempt.label }}</label>
+                                </div>
+                                {% if form.single_attempt.errors %}
+                                    <div class="text-danger">{{ form.single_attempt.errors }}</div>
                                 {% endif %}
-                                <div class="form-text">Use 0 for unlimited attempts</div>
                             </div>
                         </div>
                         
                         <div class="row mb-3">
                             <div class="col-md-6">
-                                <label for="{{ form.passing_score.id_for_label }}" class="form-label">{{ form.passing_score.label }}</label>
-                                {{ form.passing_score }}
-                                {% if form.passing_score.errors %}
-                                    <div class="text-danger">{{ form.passing_score.errors }}</div>
+                                <label class="form-label">Quiz Options</label>
+                                <div class="form-check mt-2">
+                                    {% render_field form.random_order class="form-check-input" %}
+                                    <label for="{{ form.random_order.id_for_label }}" class="form-check-label">{{ form.random_order.label }}</label>
+                                </div>
+                                {% if form.random_order.errors %}
+                                    <div class="text-danger">{{ form.random_order.errors }}</div>
                                 {% endif %}
                             </div>
                             <div class="col-md-6">
-                                <label for="{{ form.difficulty.id_for_label }}" class="form-label">{{ form.difficulty.label }}</label>
-                                {{ form.difficulty }}
-                                {% if form.difficulty.errors %}
-                                    <div class="text-danger">{{ form.difficulty.errors }}</div>
+                                <label class="form-label">Answer Display</label>
+                                <div class="form-check mt-2">
+                                    {% render_field form.answers_at_end class="form-check-input" %}
+                                    <label for="{{ form.answers_at_end.id_for_label }}" class="form-check-label">{{ form.answers_at_end.label }}</label>
+                                </div>
+                                {% if form.answers_at_end.errors %}
+                                    <div class="text-danger">{{ form.answers_at_end.errors }}</div>
                                 {% endif %}
                             </div>
                         </div>
                         
                         <div class="mb-3">
                             <div class="form-check">
-                                {{ form.draft }}
+                                {% render_field form.draft class="form-check-input" %}
                                 <label for="{{ form.draft.id_for_label }}" class="form-check-label">{{ form.draft.label }}</label>
                                 {% if form.draft.errors %}
                                     <div class="text-danger">{{ form.draft.errors }}</div>
@@ -112,11 +148,15 @@
                         </div>
                         
                         <div class="mb-3">
-                            <label for="{{ form.instructions.id_for_label }}" class="form-label">{{ form.instructions.label }}</label>
-                            {{ form.instructions }}
-                            {% if form.instructions.errors %}
-                                <div class="text-danger">{{ form.instructions.errors }}</div>
+                            <label for="{{ form.exam_paper.id_for_label }}" class="form-label">Quiz Results</label>
+                            <div class="form-check mt-2">
+                                {% render_field form.exam_paper class="form-check-input" %}
+                                <label for="{{ form.exam_paper.id_for_label }}" class="form-check-label">{{ form.exam_paper.label }}</label>
+                            </div>
+                            {% if form.exam_paper.errors %}
+                                <div class="text-danger">{{ form.exam_paper.errors }}</div>
                             {% endif %}
+                            <div class="form-text">Store results for each attempt for grading</div>
                         </div>
                         
                         <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
@@ -133,28 +173,42 @@
         </div>
         
         <div class="col-md-4">
-            <div class="card shadow-sm">
-                <div class="card-header bg-light">
-                    <h5 class="mb-0">Quiz Creation Process</h5>
+            <div class="progress-card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-tasks me-2"></i>Quiz Creation Process</h5>
                 </div>
                 <div class="card-body">
-                    <ul class="list-unstyled">
-                        <li class="mb-3">
-                            <i class="fas fa-check-circle text-success me-2"></i>
-                            <strong>Step 1:</strong> Create the quiz (current step)
-                        </li>
-                        <li class="mb-3">
-                            <i class="fas fa-circle text-muted me-2"></i>
-                            <strong>Step 2:</strong> Add questions after saving
-                        </li>
-                        <li>
-                            <i class="fas fa-circle text-muted me-2"></i>
-                            <strong>Step 3:</strong> Set the quiz live when ready
-                        </li>
-                    </ul>
+                    <div class="quiz-step">
+                        <div class="step-icon active-step">
+                            <i class="fas fa-check"></i>
+                        </div>
+                        <strong>Step 1: Create the quiz</strong>
+                        <span class="text-success">Current step</span>
+                    </div>
+                    <div class="quiz-step">
+                        <div class="step-icon inactive-step">
+                            <i class="fas fa-2"></i>
+                        </div>
+                        <strong>Step 2: Add questions</strong>
+                        <span class="text-muted">After saving the quiz</span>
+                    </div>
+                    <div class="quiz-step">
+                        <div class="step-icon inactive-step">
+                            <i class="fas fa-3"></i>
+                        </div>
+                        <strong>Step 3: Set quiz live</strong>
+                        <span class="text-muted">When ready for students</span>
+                    </div>
+                    
                     <hr>
-                    <div class="text-muted small">
-                        <p><strong>Tip:</strong> You can keep the quiz in draft mode while you add questions.</p>
+                    
+                    <div class="bg-light p-3 rounded mt-3">
+                        <h6 class="mb-2"><i class="fas fa-lightbulb text-warning me-2"></i>Tips</h6>
+                        <ul class="mb-0 ps-3 small">
+                            <li class="mb-2">Keep the quiz in draft mode while adding questions</li>
+                            <li class="mb-2">Set a due date for time-limited quizzes</li>
+                            <li>Use the "single attempt" option for exams</li>
+                        </ul>
                     </div>
                 </div>
             </div>

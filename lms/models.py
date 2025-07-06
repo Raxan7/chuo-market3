@@ -136,6 +136,7 @@ class Course(models.Model):
     year = models.IntegerField(choices=YEARS, default=1)
     semester = models.CharField(choices=SEMESTER_CHOICES, max_length=10)
     is_elective = models.BooleanField(default=False)
+    is_free = models.BooleanField(default=True, help_text=_("Whether this course is free or paid"))
     image = models.ImageField(upload_to='lms/course_images/', blank=True, null=True)
     instructors = models.ManyToManyField(LMSProfile, related_name='courses_teaching',
                                         limit_choices_to={'role': 'instructor'})
@@ -147,6 +148,10 @@ class Course(models.Model):
     
     def get_absolute_url(self):
         return reverse("lms:course_detail", kwargs={"slug": self.slug})
+        
+    def get_direct_url(self):
+        """Get URL that bypasses the advertisement"""
+        return reverse("lms:course_detail_direct", kwargs={"slug": self.slug})
     
     @property
     def is_current_semester(self):

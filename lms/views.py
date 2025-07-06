@@ -9,7 +9,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib import messages
 from django.views.generic import (
-    ListView, DetailView, CreateView, UpdateView, DeleteView, FormView, TemplateView
+    ListView, DetailView, CreateView, UpdateView, DeleteView, FormView, TemplateView, View
 )
 from django.db.models import Q, Count, Avg
 from django.utils import timezone
@@ -310,6 +310,9 @@ class CourseDetailView(DetailView):
         if is_enrolled and student_profile:
             from .utils import calculate_course_progress
             course_progress = calculate_course_progress(course, student_profile)
+            
+        # Add is_free status to context
+        context['is_free'] = course.is_free
         
         # If user is instructor, get progress data for all enrolled students
         students_progress = None
@@ -1045,6 +1048,13 @@ class QuizCreateView(InstructorRequiredMixin, CreateView):
     template_name = 'lms/quiz_form.html'
     
     def dispatch(self, request, *args, **kwargs):
+        # First check if the user is authenticated and has an LMS profile
+        # This is redundant with the InstructorRequiredMixin, but we'll keep it to be safe
+        if not request.user.is_authenticated:
+            messages.error(request, _("You must be logged in to create quizzes."))
+            return redirect('login')  # Redirect to login page
+            
+        # Get the course
         self.course = get_object_or_404(Course, slug=self.kwargs['course_slug'])
         
         # Module is optional
@@ -1053,8 +1063,17 @@ class QuizCreateView(InstructorRequiredMixin, CreateView):
         if module_id:
             self.module = get_object_or_404(CourseModule, id=module_id, course=self.course)
         
-        # Check if user is instructor for this course
-        if not is_admin(request.user) and not self.course.instructors.filter(id=request.user.lms_profile.id).exists():
+        # Check if user is instructor for this course, safely
+        # First check if user is admin
+        if is_admin(request.user):
+            # Admin can access all courses
+            pass
+        elif not hasattr(request.user, 'lms_profile'):
+            # User doesn't have an LMS profile
+            messages.error(request, _("You don't have an LMS profile. Please contact an administrator."))
+            return redirect('lms:course_detail', slug=self.course.slug)
+        elif not self.course.instructors.filter(id=request.user.lms_profile.id).exists():
+            # User is not an instructor for this course
             messages.error(request, _("You are not an instructor for this course."))
             return redirect('lms:course_detail', slug=self.course.slug)
         
@@ -1496,3 +1515,22 @@ def instructor_request_status(request):
     }
     
     return render(request, 'lms/instructor_request_status.html', context)
+
+
+class CourseAdvertisementView(View):
+    """
+    Display an advertisement before redirecting to the course detail page
+    """
+    def get(self, request, *args, **kwargs):
+        course_slug = kwargs.get('slug')
+        course = get_object_or_404(Course, slug=course_slug)
+        
+        # Generate the URL for the course detail page
+        course_detail_url = reverse('lms:course_detail_direct', kwargs={'slug': course_slug})
+        
+        context = {
+            'course': course,
+            'course_detail_url': course_detail_url,
+        }
+        
+        return render(request, 'lms/course_ad.html', context)

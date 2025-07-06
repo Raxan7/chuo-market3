@@ -1,0 +1,116 @@
+{% extends "app/base.html" %}
+{% load static %}
+
+{% block title %}Course Advertisement | {{ course.title }}{% endblock %}
+
+{% block main-content %}
+<div class="container my-5">
+    <div class="row">
+        <div class="col-md-8 mx-auto text-center">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="mb-0">You're about to access</h3>
+                </div>
+                <div class="card-body">
+                    <h2 class="course-title mb-4">{{ course.title }}</h2>
+                    
+                    {% if course.image %}
+                        <img src="{{ course.image.url }}" alt="{{ course.title }}" class="img-fluid rounded mb-4" style="max-height: 200px;">
+                    {% endif %}
+                    
+                    <p class="lead mb-4">{{ course.summary }}</p>
+                    
+                    <div class="mb-4">
+                        {% if course.is_free %}
+                            <span class="badge bg-success p-2 fs-5">Free Course</span>
+                        {% else %}
+                            <span class="badge bg-warning p-2 fs-5">Premium Course</span>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Google AdSense Ad -->
+                    <div class="google-ad-container my-4">
+                        <!-- Google AdSense code will be here -->
+                        {% include 'lms/partials/ad_unit.html' %}
+                    </div>
+                    
+                    <div class="text-center mt-4">
+                        <div class="progress mb-3" style="height: 25px;">
+                            <div id="countdown-progress" class="progress-bar progress-bar-striped progress-bar-animated bg-primary" 
+                                 role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                                <span id="countdown">5</span>
+                            </div>
+                        </div>
+                        <a href="{{ course_detail_url }}" class="btn btn-primary btn-lg disabled" id="continue-btn">
+                            <i class="fas fa-lock me-2"></i>Continue to Course
+                        </a>
+                        <p class="text-muted small mt-2">Please view the advertisement while waiting</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+    // Enhanced Countdown timer
+    const totalTime = 5; // seconds
+    let seconds = totalTime;
+    const countdownDisplay = document.getElementById('countdown');
+    const continueBtn = document.getElementById('continue-btn');
+    const progressBar = document.getElementById('countdown-progress');
+    
+    // Record ad impression in Google Analytics
+    gtag('event', 'ad_impression', {
+        'event_category': 'Course Ads',
+        'event_label': '{{ course.title }}',
+        'value': 1
+    });
+    
+    const countdownTimer = setInterval(() => {
+        seconds--;
+        
+        // Update text countdown
+        countdownDisplay.textContent = seconds;
+        
+        // Update progress bar
+        const progressPercent = ((totalTime - seconds) / totalTime) * 100;
+        progressBar.style.width = progressPercent + '%';
+        progressBar.setAttribute('aria-valuenow', progressPercent);
+        
+        if (seconds <= 0) {
+            clearInterval(countdownTimer);
+            
+            // Enable the continue button
+            continueBtn.classList.remove('disabled');
+            continueBtn.innerHTML = '<i class="fas fa-arrow-right me-2"></i>Continue to Course';
+            
+            // Update progress bar to complete
+            progressBar.style.width = '100%';
+            progressBar.classList.remove('progress-bar-animated');
+            progressBar.classList.add('bg-success');
+            progressBar.innerHTML = 'Ready!';
+            
+            // Record ad completed in Google Analytics
+            gtag('event', 'ad_completed', {
+                'event_category': 'Course Ads',
+                'event_label': '{{ course.title }}',
+                'value': 1
+            });
+        }
+    }, 1000);
+    
+    // Record when user continues to course
+    continueBtn.addEventListener('click', function() {
+        if (!continueBtn.classList.contains('disabled')) {
+            gtag('event', 'course_continue', {
+                'event_category': 'Course Access',
+                'event_label': '{{ course.title }}',
+                'value': 1
+            });
+        }
+    });
+</script>
+{% endblock %}
+{% endblock main-content %}

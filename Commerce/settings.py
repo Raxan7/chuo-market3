@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'tinymce',
     'markdown_deux',
+    'widget_tweaks',
 
     'core',
     'talents',

@@ -20,7 +20,8 @@ urlpatterns = [
     # Courses
     path('courses/', views.CourseListView.as_view(), name='course_list'),
     path('courses/create/', views.CourseCreateView.as_view(), name='course_create'),
-    path('courses/<slug:slug>/', views.CourseDetailView.as_view(), name='course_detail'),
+    path('courses/<slug:slug>/', views.CourseAdvertisementView.as_view(), name='course_detail'),
+    path('courses/<slug:slug>/direct/', views.CourseDetailView.as_view(), name='course_detail_direct'),
     path('courses/<slug:slug>/update/', views.CourseUpdateView.as_view(), name='course_update'),
     path('courses/<slug:slug>/enroll/', views.enroll_course, name='enroll_course'),
     path('courses/<slug:slug>/unenroll/', views.unenroll_course, name='unenroll_course'),

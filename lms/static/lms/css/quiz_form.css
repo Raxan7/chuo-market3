@@ -1,0 +1,169 @@
+/* Quiz Form Styling */
+
+/* Form container enhancements */
+.quiz-form-container {
+    background-color: #f8f9fa;
+    border-radius: 12px;
+    padding: 30px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    transition: all 0.3s ease;
+}
+
+.quiz-form-container:hover {
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.15);
+}
+
+/* Form inputs styling */
+.quiz-form .form-control {
+    border-radius: 8px;
+    border: 1px solid #ced4da;
+    padding: 12px;
+    transition: all 0.2s ease;
+}
+
+.quiz-form .form-control:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+/* Textarea styling */
+.quiz-form textarea.form-control {
+    min-height: 120px;
+}
+
+/* Form labels */
+.quiz-form .form-label {
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 8px;
+}
+
+/* Help text */
+.quiz-form .form-text {
+    color: #6c757d;
+    font-size: 0.85rem;
+    margin-top: 5px;
+}
+
+/* Form field margins */
+.quiz-form .mb-3 {
+    margin-bottom: 1.5rem !important;
+}
+
+/* Error messages */
+.quiz-form .text-danger {
+    font-size: 0.85rem;
+    margin-top: 5px;
+}
+
+/* Form buttons */
+.quiz-form .btn-primary {
+    padding: 10px 24px;
+    font-weight: 600;
+    border-radius: 8px;
+    transition: all 0.2s;
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+}
+
+.quiz-form .btn-primary:hover {
+    background-color: #0b5ed7;
+    border-color: #0a58ca;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(13, 110, 253, 0.25);
+}
+
+.quiz-form .btn-outline-secondary {
+    padding: 10px 24px;
+    font-weight: 600;
+    border-radius: 8px;
+    transition: all 0.2s;
+}
+
+.quiz-form .btn-outline-secondary:hover {
+    background-color: #6c757d;
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(108, 117, 125, 0.25);
+}
+
+/* Form check (checkbox) styling */
+.quiz-form .form-check {
+    padding-left: 30px;
+    margin-bottom: 10px;
+}
+
+.quiz-form .form-check-input {
+    width: 18px;
+    height: 18px;
+    margin-left: -30px;
+}
+
+.quiz-form .form-check-input:checked {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+}
+
+.quiz-form .form-check-label {
+    font-weight: 500;
+}
+
+/* Progress indicator card */
+.progress-card {
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+}
+
+.progress-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+}
+
+.progress-card .card-header {
+    background-color: #f1f3f5;
+    border-bottom: none;
+    padding: 15px 20px;
+}
+
+.progress-card .card-body {
+    padding: 20px;
+}
+
+/* Progress steps */
+.quiz-step {
+    position: relative;
+    padding-left: 40px;
+    margin-bottom: 20px;
+}
+
+.quiz-step:last-child {
+    margin-bottom: 0;
+}
+
+.quiz-step .step-icon {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    color: white;
+}
+
+.quiz-step .active-step {
+    background-color: #28a745;
+}
+
+.quiz-step .inactive-step {
+    background-color: #6c757d;
+}
+
+.quiz-step strong {
+    display: block;
+    margin-bottom: 5px;
+}
