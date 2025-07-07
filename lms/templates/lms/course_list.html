@@ -58,6 +58,14 @@
                             </select>
                         </div>
                         <div class="mb-3">
+                            <label for="course_type" class="form-label">Course Type</label>
+                            <select name="course_type" id="course_type" class="form-select">
+                                <option value="">All Course Types</option>
+                                <option value="university" {% if current_filters.course_type == 'university' %}selected{% endif %}>University Courses</option>
+                                <option value="general" {% if current_filters.course_type == 'general' %}selected{% endif %}>General Courses</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
                             <label for="q" class="form-label">Search</label>
                             <input type="text" name="q" id="q" class="form-control" value="{{ current_filters.q }}">
                         </div>
@@ -76,6 +84,11 @@
                     {% for course in courses %}
                     <div class="col-md-6 col-lg-4 mb-4">
                         <div class="card h-100 shadow-sm">
+                            <div class="card-header bg-white">
+                                <span class="badge {% if course.course_type == 'university' %}bg-primary{% else %}bg-success{% endif %} float-end">
+                                    {{ course.get_course_type_display }}
+                                </span>
+                            </div>
                             {% if course.image %}
                             <img src="{{ course.image.url }}" class="card-img-top" alt="{{ course.title }}">
                             {% else %}
@@ -85,13 +98,28 @@
                             {% endif %}
                             <div class="card-body">
                                 <h5 class="card-title">{{ course.title }}</h5>
+                                {% if course.course_type == 'university' and course.code %}
                                 <h6 class="card-subtitle mb-2 text-muted">{{ course.code }}</h6>
+                                {% endif %}
                                 <p class="card-text small">{{ course.summary|truncatechars:100 }}</p>
                             </div>
                             <div class="card-footer bg-white">
                                 <div class="d-flex justify-content-between align-items-center">
-                                    <span class="badge bg-info">{{ course.get_level_display }}</span>
-                                    <span class="badge bg-secondary">{{ course.get_semester_display }} Semester</span>
+                                    {% if course.course_type == 'university' %}
+                                        {% if course.get_level_display %}
+                                        <span class="badge bg-info">{{ course.get_level_display }}</span>
+                                        {% endif %}
+                                        {% if course.get_semester_display %}
+                                        <span class="badge bg-secondary">{{ course.get_semester_display }} Semester</span>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="badge bg-info">General Course</span>
+                                        {% if not course.is_free %}
+                                        <span class="badge bg-warning">Paid</span>
+                                        {% else %}
+                                        <span class="badge bg-success">Free</span>
+                                        {% endif %}
+                                    {% endif %}
                                 </div>
                                 <a href="{% url 'lms:course_detail' slug=course.slug %}" class="btn btn-outline-primary btn-sm mt-2 w-100">View Details</a>
                             </div>

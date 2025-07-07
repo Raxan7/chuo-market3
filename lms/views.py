@@ -236,6 +236,11 @@ class CourseListView(ListView):
     def get_queryset(self):
         queryset = Course.objects.all()
         
+        # Filter by course type if provided
+        course_type = self.request.GET.get('course_type')
+        if course_type:
+            queryset = queryset.filter(course_type=course_type)
+        
         # Filter by semester if provided
         semester = self.request.GET.get('semester')
         if semester:
@@ -269,6 +274,7 @@ class CourseListView(ListView):
             'semester': self.request.GET.get('semester', ''),
             'program': self.request.GET.get('program', ''),
             'level': self.request.GET.get('level', ''),
+            'course_type': self.request.GET.get('course_type', ''),
             'q': self.request.GET.get('q', ''),
         }
         return context
