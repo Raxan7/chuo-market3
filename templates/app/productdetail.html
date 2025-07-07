@@ -10,7 +10,7 @@
     </div>
     <div class="col-md-6">
       <h1>{{ product.title }}</h1>
-      <p>{{ product.description }}</p>
+      <p>{{ product.description|linebreaks }}</p>
       <p><i class="fas fa-tag"></i> <strong>Price:</strong> TSh {{ product.price }}</p>
       <p><i class="fas fa-user"></i> <strong>Posted by:</strong> {{ customer.name }}</p>
       <p><i class="fas fa-university"></i> <strong>University:</strong> {{ customer.university }}</p>
