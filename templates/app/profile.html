@@ -22,36 +22,49 @@
         <div class="invalid-feedback d-block">{{ form.name.errors.0 }}</div>
       {% endif %}
     </div>
+    
     <div class="col-12 mb-3">
-      <label for="{{ form.university.id_for_label }}" class="form-label">University</label>
-      {{ form.university|add_class:"form-select" }}
-      {% if form.university.errors %}
-        <div class="invalid-feedback d-block">{{ form.university.errors.0 }}</div>
-      {% endif %}
-    </div>
-    <div class="col-12 mb-3">
-      <label for="{{ form.college.id_for_label }}" class="form-label">College</label>
-      {{ form.college|add_class:"form-select" }}
-      {% if form.college.errors %}
-        <div class="invalid-feedback d-block">{{ form.college.errors.0 }}</div>
-      {% endif %}
-    </div>
-    <div class="row">
-      <div class="col-md-6 mb-3">
-        <label for="{{ form.block_number.id_for_label }}" class="form-label">Block Number</label>
-        {{ form.block_number|add_class:"form-control" }}
-        {% if form.block_number.errors %}
-          <div class="invalid-feedback d-block">{{ form.block_number.errors.0 }}</div>
-        {% endif %}
-      </div>
-      <div class="col-md-6 mb-3">
-        <label for="{{ form.room_number.id_for_label }}" class="form-label">Room Number</label>
-        {{ form.room_number|add_class:"form-control" }}
-        {% if form.room_number.errors %}
-          <div class="invalid-feedback d-block">{{ form.room_number.errors.0 }}</div>
-        {% endif %}
+      <div class="form-check">
+        {{ form.is_university_student }}
+        <label for="{{ form.is_university_student.id_for_label }}" class="form-check-label">
+          I am a university student
+        </label>
       </div>
     </div>
+    
+    <div id="university-fields" class="university-fields" {% if not form.instance.is_university_student %}style="display:none;"{% endif %}>
+      <div class="col-12 mb-3">
+        <label for="{{ form.university.id_for_label }}" class="form-label">University</label>
+        {{ form.university|add_class:"form-select" }}
+        {% if form.university.errors %}
+          <div class="invalid-feedback d-block">{{ form.university.errors.0 }}</div>
+        {% endif %}
+      </div>
+      <div class="col-12 mb-3">
+        <label for="{{ form.college.id_for_label }}" class="form-label">College</label>
+        {{ form.college|add_class:"form-select" }}
+        {% if form.college.errors %}
+          <div class="invalid-feedback d-block">{{ form.college.errors.0 }}</div>
+        {% endif %}
+      </div>
+      <div class="row">
+        <div class="col-md-6 mb-3">
+          <label for="{{ form.block_number.id_for_label }}" class="form-label">Block Number</label>
+          {{ form.block_number|add_class:"form-control" }}
+          {% if form.block_number.errors %}
+            <div class="invalid-feedback d-block">{{ form.block_number.errors.0 }}</div>
+          {% endif %}
+        </div>
+        <div class="col-md-6 mb-3">
+          <label for="{{ form.room_number.id_for_label }}" class="form-label">Room Number</label>
+          {{ form.room_number|add_class:"form-control" }}
+          {% if form.room_number.errors %}
+            <div class="invalid-feedback d-block">{{ form.room_number.errors.0 }}</div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    
     <div class="col-12 mb-3">
       <label for="{{ form.phone_number.id_for_label }}" class="form-label">Phone Number (with country code)</label>
       {{ form.phone_number|add_class:"form-control" }}
@@ -80,6 +93,17 @@
   const phoneInput = document.getElementById('{{ form.phone_number.id_for_label }}');
   const submitBtn = document.getElementById('submitBtn');
   const form = document.querySelector('form');
+  const isUniversityStudent = document.getElementById('{{ form.is_university_student.id_for_label }}');
+  const universityFields = document.getElementById('university-fields');
+
+  // Toggle university fields based on checkbox
+  isUniversityStudent.addEventListener('change', function() {
+    if(this.checked) {
+      universityFields.style.display = 'block';
+    } else {
+      universityFields.style.display = 'none';
+    }
+  });
 
   // University-college relationship
   universitySelect.addEventListener('change', function() {

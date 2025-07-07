@@ -136,7 +136,7 @@ class AdminRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
         return is_admin(self.request.user)
 
 
-@login_required(login_url='/login/')
+@login_required(login_url='login')
 def lms_home(request):
     """LMS home page view"""
     
@@ -338,7 +338,7 @@ class CourseDetailView(DetailView):
         return context
 
 
-@login_required(login_url='/login/')
+@login_required(login_url='login')
 def enroll_course(request, slug):
     """Enroll in a course"""
     course = get_object_or_404(Course, slug=slug)
@@ -366,7 +366,7 @@ def enroll_course(request, slug):
     return redirect('lms:course_detail', slug=course.slug)
 
 
-@login_required(login_url='/login/')
+@login_required(login_url='login')
 def unenroll_course(request, slug):
     """Unenroll from a course"""
     course = get_object_or_404(Course, slug=slug)
@@ -464,7 +464,7 @@ class QuizDetailView(DetailView):
         return context
 
 
-@login_required(login_url='/login/')
+@login_required(login_url='login')
 def start_quiz(request, slug):
     """Start a quiz"""
     quiz = get_object_or_404(Quiz, slug=slug)
@@ -518,7 +518,7 @@ def start_quiz(request, slug):
     return redirect('lms:quiz_question', quiz_id=quiz.id, quiz_taker_id=quiz_taker.id, question_number=1)
 
 
-@login_required(login_url='/login/')
+@login_required(login_url='login')
 def quiz_question(request, quiz_id, quiz_taker_id, question_number):
     """Show a quiz question and process answers"""
     quiz = get_object_or_404(Quiz, id=quiz_id)
@@ -634,7 +634,7 @@ def quiz_question(request, quiz_id, quiz_taker_id, question_number):
     return render(request, 'lms/quiz_question.html', context)
 
 
-@login_required(login_url='/login/')
+@login_required(login_url='login')
 def complete_quiz(request, quiz_taker_id):
     """Complete a quiz and show results"""
     quiz_taker = get_object_or_404(QuizTaker, id=quiz_taker_id, user=request.user.lms_profile)
@@ -672,7 +672,7 @@ def complete_quiz(request, quiz_taker_id):
     return redirect('lms:quiz_results', quiz_taker_id=quiz_taker.id)
 
 
-@login_required(login_url='/login/')
+@login_required(login_url='login')
 def quiz_results(request, quiz_taker_id):
     """Show quiz results"""
     quiz_taker = get_object_or_404(QuizTaker, id=quiz_taker_id, user=request.user.lms_profile)
@@ -695,7 +695,7 @@ def quiz_results(request, quiz_taker_id):
     return render(request, 'lms/quiz_results.html', context)
 
 
-@login_required(login_url='/login/')
+@login_required(login_url='login')
 def course_content_detail(request, course_slug, content_id):
     """Show course content details"""
     course = get_object_or_404(Course, slug=course_slug)
@@ -1110,7 +1110,7 @@ class QuizCreateView(InstructorRequiredMixin, CreateView):
         return reverse('lms:quiz_detail', kwargs={'slug': self.object.slug})
 
 
-@login_required(login_url='/login/')
+@login_required(login_url='login')
 def add_mc_question(request, quiz_id):
     """Add a multiple choice question to a quiz"""
     quiz = get_object_or_404(Quiz, id=quiz_id)
@@ -1154,7 +1154,7 @@ def add_mc_question(request, quiz_id):
     return render(request, 'lms/mc_question_form.html', context)
 
 
-@login_required(login_url='/login/')
+@login_required(login_url='login')
 def add_tf_question(request, quiz_id):
     """Add a true/false question to a quiz"""
     quiz = get_object_or_404(Quiz, id=quiz_id)
@@ -1185,7 +1185,7 @@ def add_tf_question(request, quiz_id):
     return render(request, 'lms/tf_question_form.html', context)
 
 
-@login_required(login_url='/login/')
+@login_required(login_url='login')
 def add_essay_question(request, quiz_id):
     """Add an essay question to a quiz"""
     quiz = get_object_or_404(Quiz, id=quiz_id)
@@ -1253,7 +1253,7 @@ class GradeListView(LoginRequiredMixin, ListView):
         return context
 
 
-@login_required(login_url='/login/')
+@login_required(login_url='login')
 def grade_students(request, course_slug):
     """Grade students for a course"""
     course = get_object_or_404(Course, slug=course_slug)
@@ -1314,7 +1314,7 @@ def grade_students(request, course_slug):
     return render(request, 'lms/grade_students.html', context)
 
 
-@login_required(login_url='/login/')
+@login_required(login_url='login')
 def student_dashboard(request):
     """Dashboard for students"""
     # Check if user is a student
@@ -1365,7 +1365,7 @@ def student_dashboard(request):
     return render(request, 'lms/student_dashboard.html', context)
 
 
-@login_required(login_url='/login/')
+@login_required(login_url='login')
 def instructor_dashboard(request):
     """Dashboard for instructors"""
     # Check if user is an instructor
@@ -1461,7 +1461,7 @@ def instructor_dashboard(request):
     return render(request, 'lms/instructor_dashboard.html', context)
 
 
-@login_required(login_url='/login/')
+@login_required(login_url='login')
 def request_instructor_role(request):
     """View for users to request instructor status"""
     # Check if user already has a pending or approved request
@@ -1507,7 +1507,7 @@ def request_instructor_role(request):
     return render(request, 'lms/instructor_request_form.html', context)
 
 
-@login_required(login_url='/login/')
+@login_required(login_url='login')
 def instructor_request_status(request):
     """View for users to check their instructor request status"""
     instructor_request = InstructorRequest.objects.filter(user=request.user).order_by('-created_at').first()
