@@ -12,12 +12,18 @@
         font-size: 1.05rem;
         margin-bottom: 1.5rem;
     }
-    .course-summary p {
+    .course-summary p, .module-description p {
         margin-bottom: 0.8rem;
     }
-    .course-summary ul, .course-summary ol {
+    .course-summary ul, .course-summary ol, .module-description ul, .module-description ol {
         margin-left: 1.5rem;
         margin-bottom: 1rem;
+    }
+    .module-description {
+        white-space: pre-line;
+        line-height: 1.6;
+        font-size: 1rem;
+        margin-bottom: 1.2rem;
     }
 </style>
 {% endblock extra_head %}
@@ -182,7 +188,7 @@
                                 <h6 class="mb-1"><i class="fas fa-lock-open me-2 text-muted"></i> {{ module.title }}</h6>
                                 <small>{{ module.contents.all|length }} items</small>
                             </div>
-                            <p class="mb-1 text-muted">{{ module.description|truncatechars:100 }}</p>
+                            <p class="mb-1 text-muted">{{ module.description|linebreaksbr|truncatechars:100 }}</p>
                         </div>
                         {% endfor %}
                     </div>
@@ -206,7 +212,7 @@
                             <div id="collapse{{ module.id }}" class="accordion-collapse collapse" 
                                  aria-labelledby="heading{{ module.id }}" data-bs-parent="#moduleAccordion">
                                 <div class="accordion-body">
-                                    <p>{{ module.description }}</p>
+                                    <div class="module-description">{{ module.description|linebreaks }}</div>
                                     
                                     {% if module.contents.all %}
                                     <h5 class="mt-3">Module Content</h5>
