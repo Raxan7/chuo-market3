@@ -66,9 +66,9 @@
     </div>
     
     <div class="col-12 mb-3">
-      <label for="{{ form.phone_number.id_for_label }}" class="form-label">Phone Number (with country code)</label>
+      <label for="{{ form.phone_number.id_for_label }}" class="form-label">Phone Number (with country code) <span class="text-danger">*</span></label>
       {{ form.phone_number|add_class:"form-control" }}
-      <small class="form-text text-muted">Format: +255XXXXXXXXX (9-14 digits after the country code)</small>
+      <small class="form-text text-muted">Format: +255XXXXXXXXX (9-14 digits after the country code). Required to add products on the marketplace.</small>
       {% if form.phone_number.errors %}
         <div class="invalid-feedback d-block">{{ form.phone_number.errors.0 }}</div>
       {% endif %}
@@ -124,7 +124,7 @@
   // Phone number validation
   function validatePhoneNumber(phone) {
     if (!phone || phone.trim() === "") {
-      return true; // Phone number is optional
+      return false; // Phone number is required
     }
     
     // Clean the input for validation (keep only digits and + sign)

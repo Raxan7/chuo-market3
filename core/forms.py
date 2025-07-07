@@ -52,9 +52,9 @@ class SubscriptionPaymentForm(forms.ModelForm):
 class CustomerProfileForm(forms.ModelForm):
     """Form for updating customer profile information"""
     phone_number = forms.CharField(
-        required=False, 
+        required=True, 
         max_length=15,
-        help_text="Enter phone number with country code (e.g., +255123456789)",
+        help_text="Required. Enter phone number with country code (e.g., +255123456789)",
         widget=forms.TextInput(attrs={'placeholder': '+255123456789'})
     )
     
@@ -67,9 +67,13 @@ class CustomerProfileForm(forms.ModelForm):
     
     def clean_phone_number(self):
         phone = self.cleaned_data.get('phone_number')
+        
+        if not phone:
+            raise forms.ValidationError("Phone number is required to add products on our marketplace")
+            
         cleaned_phone = clean_phone_number(phone)
         
-        if phone and not cleaned_phone:
+        if not cleaned_phone:
             raise forms.ValidationError("Please enter a valid phone number with country code (e.g., +255123456789)")
             
         return cleaned_phone

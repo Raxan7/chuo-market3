@@ -17,7 +17,7 @@ from asgiref.sync import sync_to_async
 from django.utils import timezone
 from datetime import timedelta
 from django.utils.decorators import method_decorator
-from core.decorators.customer_required import customer_required
+from core.decorators.customer_required import customer_required, phone_required
 import re
 
 logger = logging.getLogger(__name__)
@@ -360,6 +360,9 @@ def buy_now(request):
 
 @login_required(login_url='login')
 @customer_required
+@phone_required
+@login_required(login_url='login')
+@phone_required
 def add_product(request):
     if request.method == 'POST':
         product_form = ProductForm(request.POST, request.FILES)
