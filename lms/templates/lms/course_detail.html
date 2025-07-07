@@ -15,6 +15,16 @@
                 {% endif %}
                 <div class="card-body">
                     <h1 class="card-title">{{ course.title }}</h1>
+                    
+                    <!-- Course Type Badge -->
+                    <div class="mb-3">
+                        <span class="badge {% if course.course_type == 'university' %}bg-primary{% else %}bg-success{% endif %} me-1">
+                            {{ course.get_course_type_display }}
+                        </span>
+                    </div>
+                    
+                    {% if course.course_type == 'university' %}
+                    <!-- University course specific fields -->
                     <h4 class="card-subtitle mb-3 text-muted">{{ course.code }}</h4>
                     
                     <div class="mb-4">
@@ -33,11 +43,14 @@
                         This course is offered in the current semester
                     </div>
                     {% endif %}
+                    {% endif %}
                     
                     <div class="card-text">
                         <p>{{ course.summary }}</p>
+                        {% if course.course_type == 'university' %}
                         <p><strong>Program:</strong> {{ course.program.title }}</p>
                         <p><strong>Credits:</strong> {{ course.credit }}</p>
+                        {% endif %}
                     </div>
                     
                     {% if not is_enrolled and user.is_authenticated %}
@@ -478,8 +491,25 @@
                 <div class="card-body">
                     <ul class="list-group list-group-flush">
                         <li class="list-group-item d-flex justify-content-between align-items-center">
+                            Course Type
+                            <span class="badge {% if course.course_type == 'university' %}bg-primary{% else %}bg-success{% endif %}">
+                                {{ course.get_course_type_display }}
+                            </span>
+                        </li>
+                        
+                        {% if course.course_type == 'university' %}
+                        <!-- University-specific course information -->
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            Course Code
+                            <span>{{ course.code }}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
                             Credits
                             <span class="badge bg-primary rounded-pill">{{ course.credit }}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            Program
+                            <span>{{ course.program.title }}</span>
                         </li>
                         <li class="list-group-item d-flex justify-content-between align-items-center">
                             Level
@@ -497,6 +527,7 @@
                             Type
                             <span>{% if course.is_elective %}Elective{% else %}Core{% endif %}</span>
                         </li>
+                        {% endif %}
                     </ul>
                 </div>
             </div>

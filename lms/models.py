@@ -163,7 +163,9 @@ class Course(models.Model):
     is_elective = models.BooleanField(default=False, help_text=_("Applies to university courses only"))
     
     def __str__(self):
-        return f"{self.title} ({self.code})"
+        if self.course_type == 'university' and self.code:
+            return f"{self.title} ({self.code})"
+        return self.title
     
     def get_absolute_url(self):
         return reverse("lms:course_detail", kwargs={"slug": self.slug})
