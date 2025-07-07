@@ -60,7 +60,10 @@ class CustomerProfileForm(forms.ModelForm):
     
     class Meta:
         model = Customer
-        fields = ['name', 'university', 'college', 'block_number', 'room_number', 'phone_number']
+        fields = ['name', 'is_university_student', 'university', 'college', 'block_number', 'room_number', 'phone_number']
+        widgets = {
+            'is_university_student': forms.CheckboxInput(attrs={'class': 'form-check-input', 'id': 'is_university_student'}),
+        }
     
     def clean_phone_number(self):
         phone = self.cleaned_data.get('phone_number')

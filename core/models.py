@@ -46,8 +46,9 @@ class Customer(models.Model):
     
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     name = models.CharField(max_length=200)
-    university = models.CharField(max_length=200, choices=UNIVERSITY_CHOICES)
-    college = models.CharField(max_length=200, choices=COLLEGE_CHOICES)
+    is_university_student = models.BooleanField(default=True, help_text="Check if you are a university student")
+    university = models.CharField(max_length=200, choices=UNIVERSITY_CHOICES, null=True, blank=True)
+    college = models.CharField(max_length=200, choices=COLLEGE_CHOICES, null=True, blank=True)
     block_number = models.CharField(max_length=200, null=True, blank=True)
     room_number = models.CharField(max_length=200, null=True, blank=True)
     phone_number = models.CharField(max_length=15, null=True, blank=True)  # New field for phone number

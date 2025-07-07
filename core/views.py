@@ -80,7 +80,7 @@ def product_detail(request, pk):
     return render(request, 'app/productdetail.html', {'product': product, 'product_cart': product_cart, 'user': user, 'customer': customer})
 
 
-@login_required(login_url='/login/')
+@login_required(login_url='login')
 @customer_required
 def add_to_cart(request):
     user = request.user
@@ -91,7 +91,7 @@ def add_to_cart(request):
 
 
 
-@login_required(login_url='/login/')
+@login_required(login_url='login')
 @customer_required
 def view_cart(request):
     user = request.user
@@ -102,7 +102,7 @@ def view_cart(request):
     total_amount = amount + shipping_amount
     return render(request, 'app/addtocart.html', {'carts': cart_items_with_price, 'total_amount': total_amount, 'shipping_amount': shipping_amount, 'amount': amount})
 
-@login_required(login_url='/login/')
+@login_required(login_url='login')
 @customer_required
 def remove_cart(request, pk):
     product = get_object_or_404(Product, pk=pk)
@@ -118,7 +118,7 @@ def remove_cart(request, pk):
 
     return redirect(reverse('carts'))
 
-@login_required(login_url='/login/')
+@login_required(login_url='login')
 @customer_required
 def plus_cart(request):
     if request.method == 'GET':
@@ -133,7 +133,7 @@ def plus_cart(request):
 
         return JsonResponse({'status': 'ok', 'quantity': cart_item.quantity, 'total_amount': total_amount, 'amount': amount})
 
-@login_required(login_url='/login/')
+@login_required(login_url='login')
 @customer_required
 def minus_cart(request):
     if request.method == 'GET':
@@ -150,7 +150,7 @@ def minus_cart(request):
         
 
 
-@login_required(login_url='/login/')
+@login_required(login_url='login')
 def profile(request):
     user = request.user
     UNIVERSITY_CHOICES = [(uni['name'], uni['name']) for uni in universities_data]
@@ -181,19 +181,19 @@ def profile(request):
     }
     return render(request, 'app/profile.html', context)
 
-@login_required(login_url='/login/')
+@login_required(login_url='login')
 def address(request):
     addresses = Customer.objects.filter(user=request.user)
     context = {'addresses': addresses}
     return render(request, 'app/address.html', context)
 
-@login_required(login_url='/login/')
+@login_required(login_url='login')
 def orders(request):
     user = request.user
     orders = OrderPlaced.objects.filter(user=user)
     return render(request, 'app/orders.html', {'orders': orders})
 
-@login_required(login_url='/login/')
+@login_required(login_url='login')
 @customer_required
 def order_placed(request):
     user = request.user
@@ -276,7 +276,7 @@ def customerregistration(request):
         form = RegistrationForm()
     return render(request, 'app/customerregistration.html', {'form': form})
 
-@login_required(login_url='/login/')
+@login_required(login_url='login')
 @customer_required
 def checkout(request, product_id=None, quantity=1):
     user = request.user
@@ -314,7 +314,7 @@ def checkout(request, product_id=None, quantity=1):
     return render(request, 'app/checkout.html', context)
 
 
-@login_required(login_url='/login/')
+@login_required(login_url='login')
 def user_logout(request):
     logout(request)
     messages.success(request, "You have been logged out successfully.")
@@ -330,7 +330,7 @@ def search_bar(request):
     else:
         return render(request, 'app/home.html')
 
-@login_required(login_url='/login/')
+@login_required(login_url='login')
 def change_password(request):
     if request.method == "POST":
         current_pass = request.POST.get('current_password')
@@ -350,7 +350,7 @@ def change_password(request):
     return render(request, 'app/changepassword.html')
 
 
-@login_required(login_url='/login/')
+@login_required(login_url='login')
 def buy_now(request):
     user = request.user
     if request.method == "POST":
@@ -358,7 +358,7 @@ def buy_now(request):
         product = get_object_or_404(Product, id=product_id)
         return redirect('checkout_with_product', product_id=product.id, quantity=1)
 
-@login_required
+@login_required(login_url='login')
 @customer_required
 def add_product(request):
     if request.method == 'POST':
@@ -372,7 +372,7 @@ def add_product(request):
         product_form = ProductForm()
     return render(request, 'app/add_product.html', {'product_form': product_form})
 
-@login_required
+@login_required(login_url='login')
 @customer_required
 def add_blog(request):
     if request.method == 'POST':
@@ -387,7 +387,7 @@ def add_blog(request):
         blog_form = BlogForm()
     return render(request, 'app/add_blog.html', {'blog_form': blog_form})
 
-@login_required
+@login_required(login_url='login')
 @customer_required
 def create_blog(request):
     if request.method == 'POST':
@@ -410,7 +410,7 @@ def blog_detail(request, pk):
     return render(request, 'app/blog_detail.html', {'blog': blog})
 
 
-@login_required(login_url='/login/')
+@login_required(login_url='login')
 @customer_required
 def subscribe(request):
     user = request.user
@@ -440,7 +440,7 @@ def subscribe(request):
 
     return render(request, 'app/subscribe.html', {'form': form, 'subscriptions': subscriptions})
 
-@login_required(login_url='/login/')
+@login_required(login_url='login')
 @customer_required
 def upload_payment_proof(request, subscription_id):
     subscription = get_object_or_404(Subscription, id=subscription_id)
