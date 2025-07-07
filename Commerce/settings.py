@@ -203,3 +203,6 @@ GENERATIVE_AI_KEY = os.getenv('GENERATIVE_AI_KEY')
 
 if not GENERATIVE_AI_KEY:
     raise ValueError('GENERATIVE_AI_KEY environment variable not set')
+
+# Authentication
+LOGIN_URL = 'login'  # Use the name of the login URL pattern, not the URL path
