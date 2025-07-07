@@ -138,7 +138,7 @@ class Course(models.Model):
         help_text=_("University courses require academic fields like course code, program, etc.")
     )
     title = models.CharField(max_length=200)
-    slug = models.SlugField(unique=True, blank=True)
+    slug = models.SlugField(unique=True, blank=True, max_length=100)
     summary = models.TextField(blank=True)
     is_free = models.BooleanField(default=True, help_text=_("Whether this course is free or paid"))
     image = models.ImageField(upload_to='lms/course_images/', blank=True, null=True)
@@ -551,11 +551,26 @@ class SiteSettings(models.Model):
 def unique_slug_generator(instance, new_slug=None):
     """
     Generate a unique slug for models
+    Handle emojis and ensure the slug isn't too long
     """
     if new_slug is not None:
         slug = new_slug
     else:
-        slug = slugify(instance.title)
+        # Remove any emojis or special characters that can't be properly slugified
+        import re
+        import unicodedata
+        
+        # Normalize and strip non-ASCII characters
+        title = unicodedata.normalize('NFKD', instance.title)
+        title = ''.join([c for c in title if not unicodedata.combining(c) and c.isascii()])
+        
+        # If title is empty after filtering, use a generic name plus random string
+        if not title.strip():
+            random_string = ''.join(random.choices(string.ascii_lowercase + string.digits, k=8))
+            title = f"course-{random_string}"
+        
+        # Create slug and limit to 50 chars to avoid DB field length issues
+        slug = slugify(title)[:50]
     
     # Get the model class
     Klass = instance.__class__
@@ -565,7 +580,7 @@ def unique_slug_generator(instance, new_slug=None):
     if qs_exists:
         # Generate random string
         random_string = ''.join(random.choices(string.ascii_lowercase + string.digits, k=4))
-        new_slug = f"{slug}-{random_string}"
+        new_slug = f"{slug[:45]}-{random_string}"  # Ensure we stay under the limit even with the suffix
         return unique_slug_generator(instance, new_slug=new_slug)
     return slug
 
