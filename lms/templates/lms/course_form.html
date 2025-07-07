@@ -2,6 +2,10 @@
 {% load static %}
 {% load lms_form_tags %}
 
+{% block extra_head %}
+{{ form.media }}
+{% endblock %}
+
 {% block title %}
     {% if form.instance.id %}Edit Course{% else %}Create Course{% endif %}
 {% endblock title %}

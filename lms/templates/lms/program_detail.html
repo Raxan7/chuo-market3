@@ -9,7 +9,7 @@
         <div class="col-md-8">
             <h1>{{ program.title }}</h1>
             <div class="my-3">
-                {{ program.summary|linebreaks }}
+                {{ program.summary|safe }}
             </div>
         </div>
     </div>
@@ -32,7 +32,7 @@
                                         | <span class="badge bg-info">Elective</span>
                                     {% endif %}
                                 </p>
-                                <p class="card-text">{{ course.summary|truncatewords:20 }}</p>
+                                <p class="card-text">{{ course.summary|striptags|truncatewords:20 }}</p>
                                 <a href="{% url 'lms:course_detail' course.slug %}" class="btn btn-sm btn-primary">View Course</a>
                             </div>
                         </div>

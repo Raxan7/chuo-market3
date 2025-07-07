@@ -101,7 +101,7 @@
                                 {% if course.course_type == 'university' and course.code %}
                                 <h6 class="card-subtitle mb-2 text-muted">{{ course.code }}</h6>
                                 {% endif %}
-                                <p class="card-text small">{{ course.summary|truncatechars:100|linebreaksbr }}</p>
+                                <p class="card-text small">{{ course.summary|striptags|truncatechars:100 }}</p>
                             </div>
                             <div class="card-footer bg-white">
                                 <div class="d-flex justify-content-between align-items-center">

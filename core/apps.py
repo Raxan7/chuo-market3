@@ -1,4 +1,5 @@
 from django.apps import AppConfig
+from django.db.utils import OperationalError, ProgrammingError
 
 class CoreConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
@@ -9,5 +10,11 @@ class CoreConfig(AppConfig):
         from .models import Subscription
         # Register signals
         import core.signals
-        # Create default subscriptions if they don't exist
-        Subscription.populate_default_data()
+        
+        # Try to create default subscriptions if they don't exist
+        # Wrapped in try-except to handle case when tables don't exist yet
+        try:
+            Subscription.populate_default_data()
+        except (OperationalError, ProgrammingError):
+            # Tables don't exist yet, migrations need to be run
+            print("Warning: Could not create default subscriptions - run migrations first")

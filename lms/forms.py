@@ -5,6 +5,7 @@ Forms for the LMS application
 from django import forms
 from django.contrib.auth.models import User
 from django.utils.translation import gettext_lazy as _
+from tinymce.widgets import TinyMCE
 import re
 
 from .models import (
@@ -99,9 +100,8 @@ class CourseForm(forms.ModelForm):
                 'min': '1',
                 'max': '10'
             }),
-            'summary': forms.Textarea(attrs={
-                'class': 'form-control',
-                'rows': 4,
+            'summary': TinyMCE(attrs={
+                'class': 'form-control tinymce',
                 'placeholder': 'Describe what students will learn in this course'
             }),
             'program': forms.Select(attrs={'class': 'form-select'}),
@@ -120,7 +120,7 @@ class CourseModuleForm(forms.ModelForm):
         model = CourseModule
         fields = ['title', 'description', 'order']
         widgets = {
-            'description': forms.Textarea(attrs={'rows': 4}),
+            'description': TinyMCE(attrs={'class': 'form-control tinymce'}),
         }
 
 
@@ -137,7 +137,7 @@ class CourseContentForm(forms.ModelForm):
             'document': forms.FileInput(attrs={'class': 'form-control'}),
             'video_url': forms.URLInput(attrs={'class': 'form-control', 'placeholder': 'https://www.youtube.com/watch?v=example'}),
             'external_link': forms.URLInput(attrs={'class': 'form-control', 'placeholder': 'https://example.com'}),
-            'text_content': forms.Textarea(attrs={'rows': 6, 'class': 'form-control'}),
+            'text_content': TinyMCE(attrs={'class': 'form-control tinymce'}),
             'order': forms.NumberInput(attrs={'class': 'form-control', 'min': '0'}),
         }
     

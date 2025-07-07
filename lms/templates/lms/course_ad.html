@@ -18,7 +18,7 @@
                         <img src="{{ course.image.url }}" alt="{{ course.title }}" class="img-fluid rounded mb-4" style="max-height: 200px;">
                     {% endif %}
                     
-                    <p class="lead mb-4">{{ course.summary }}</p>
+                    <div class="lead mb-4">{{ course.summary|safe }}</div>
                     
                     <div class="mb-4">
                         {% if course.is_free %}

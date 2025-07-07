@@ -36,7 +36,7 @@
                 <div class="card-body">
                     {% if content.content_type == 'text' %}
                     <div class="content-text">
-                        {{ content.text_content|safe|linebreaks }}
+                        {{ content.text_content|safe }}
                     </div>
                     
                     {% elif content.content_type == 'document' %}

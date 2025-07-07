@@ -855,6 +855,17 @@ class CourseModuleCreateView(InstructorRequiredMixin, CreateView):
     template_name = 'lms/module_form.html'
     
     def dispatch(self, request, *args, **kwargs):
+        # First check if the user is authenticated
+        if not request.user.is_authenticated:
+            messages.error(request, _("You need to log in to access this page."))
+            return self.handle_no_permission()
+        
+        # Then check if the user has an LMS profile
+        if not hasattr(request.user, 'lms_profile'):
+            messages.error(request, _("You don't have an LMS profile. Please contact an administrator."))
+            return redirect('lms:lms_home')
+            
+        # Now get the course
         self.course = get_object_or_404(Course, slug=self.kwargs['course_slug'])
         
         # Check if user is instructor for this course
@@ -893,6 +904,17 @@ class CourseModuleUpdateView(InstructorRequiredMixin, UpdateView):
     pk_url_kwarg = 'module_id'
     
     def dispatch(self, request, *args, **kwargs):
+        # First check if the user is authenticated
+        if not request.user.is_authenticated:
+            messages.error(request, _("You need to log in to access this page."))
+            return self.handle_no_permission()
+        
+        # Then check if the user has an LMS profile
+        if not hasattr(request.user, 'lms_profile'):
+            messages.error(request, _("You don't have an LMS profile. Please contact an administrator."))
+            return redirect('lms:lms_home')
+            
+        # Now get the course
         self.course = get_object_or_404(Course, slug=self.kwargs['course_slug'])
         
         # Check if user is instructor for this course
@@ -932,14 +954,22 @@ class CourseContentCreateView(InstructorRequiredMixin, CreateView):
     template_name = 'lms/content_form.html'
     
     def dispatch(self, request, *args, **kwargs):
+        # First check if the user is authenticated
+        if not request.user.is_authenticated:
+            messages.error(request, _("You need to log in to access this page."))
+            return self.handle_no_permission()
+        
+        # Then check if the user has an LMS profile
+        if not hasattr(request.user, 'lms_profile'):
+            messages.error(request, _("You don't have an LMS profile. Please contact an administrator."))
+            return redirect('lms:lms_home')
+            
+        # Now get the course and module
         self.course = get_object_or_404(Course, slug=self.kwargs['course_slug'])
         self.module = get_object_or_404(CourseModule, id=self.kwargs['module_id'], course=self.course)
         
         # Check if user is instructor for this course
-        if not request.user.is_authenticated:
-            return redirect('login')
-            
-        if not is_admin(request.user) and hasattr(request.user, 'lms_profile') and not self.course.instructors.filter(id=request.user.lms_profile.id).exists():
+        if not is_admin(request.user) and not self.course.instructors.filter(id=request.user.lms_profile.id).exists():
             messages.error(request, _("You are not an instructor for this course."))
             return redirect('lms:course_detail', slug=self.course.slug)
         
@@ -995,6 +1025,17 @@ class CourseContentUpdateView(InstructorRequiredMixin, UpdateView):
     pk_url_kwarg = 'content_id'
     
     def dispatch(self, request, *args, **kwargs):
+        # First check if the user is authenticated
+        if not request.user.is_authenticated:
+            messages.error(request, _("You need to log in to access this page."))
+            return self.handle_no_permission()
+        
+        # Then check if the user has an LMS profile
+        if not hasattr(request.user, 'lms_profile'):
+            messages.error(request, _("You don't have an LMS profile. Please contact an administrator."))
+            return redirect('lms:lms_home')
+            
+        # Now get the course
         self.course = get_object_or_404(Course, slug=self.kwargs['course_slug'])
         
         # Check if user is instructor for this course
