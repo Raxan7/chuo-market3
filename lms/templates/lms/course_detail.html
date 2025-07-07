@@ -4,6 +4,24 @@
 
 {% block title %}{{ course.title }}{% endblock title %}
 
+{% block extra_head %}
+<style>
+    .course-summary {
+        white-space: pre-line;
+        line-height: 1.6;
+        font-size: 1.05rem;
+        margin-bottom: 1.5rem;
+    }
+    .course-summary p {
+        margin-bottom: 0.8rem;
+    }
+    .course-summary ul, .course-summary ol {
+        margin-left: 1.5rem;
+        margin-bottom: 1rem;
+    }
+</style>
+{% endblock extra_head %}
+
 {% block main-content %}
 <div class="container my-5">
     <div class="row">
@@ -46,7 +64,7 @@
                     {% endif %}
                     
                     <div class="card-text">
-                        <p>{{ course.summary }}</p>
+                        <div class="course-summary">{{ course.summary|linebreaks }}</div>
                         {% if course.course_type == 'university' %}
                         <p><strong>Program:</strong> {{ course.program.title }}</p>
                         <p><strong>Credits:</strong> {{ course.credit }}</p>
