@@ -21,8 +21,10 @@ def phone_required(view_func):
         
         # Then check if phone number exists
         if not request.user.customer.phone_number:
-            messages.warning(request, 'Please add your phone number in your profile before adding products.')
-            return redirect('profile')
+            messages.warning(request, 'Your phone number is required before adding products. This allows potential customers to contact you if they are interested in your products.')
+            # Add source parameter to the redirect URL
+            from django.urls import reverse
+            return redirect(reverse('profile') + '?from=add_product')
             
         return view_func(request, *args, **kwargs)
     return _wrapped_view_func

@@ -12,6 +12,13 @@
                     <h3 class="mb-0"><i class="fas fa-plus-circle me-2"></i>Add New Product</h3>
                 </div>
                 <div class="card-body p-4">
+                    <div class="alert alert-info mb-4">
+                        <h5 class="alert-heading"><i class="fas fa-info-circle me-2"></i> Important Information</h5>
+                        <p>To add a product, you must provide a phone number in your profile. This allows potential buyers to contact you when they're interested in your product.</p>
+                        <hr>
+                        <p class="mb-0">If you don't have a phone number in your profile, you'll be redirected to add one first.</p>
+                    </div>
+                    
                     {% if form.errors %}
                         <div class="alert alert-danger">
                             <i class="fas fa-exclamation-triangle me-2"></i> Please correct the errors below.
