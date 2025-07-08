@@ -2,6 +2,7 @@ from django.urls import path
 from . import views
 from django.contrib.auth import views as auth_views
 from .views import add_product, add_blog, create_blog, blog_list, blog_detail, products_by_category
+from .notifications import send_test_notification, send_notification_to_user, send_notification_to_group
 
 urlpatterns = [
     path('', views.home, name='home'),
@@ -35,4 +36,10 @@ urlpatterns = [
     path('subscribe/', views.subscribe, name='subscribe'),
     path('upload-payment-proof/<int:subscription_id>/', views.upload_payment_proof, name='upload_payment_proof'),
     path('category/<str:category>/', products_by_category, name='products-by-category'),
+    
+    # Push Notification URLs
+    path('notifications/test/', send_test_notification, name='test_notification'),
+    path('notifications/send/', send_notification_to_user, name='send_notification'),
+    path('notifications/send/<int:user_id>/', send_notification_to_user, name='send_notification_to_user'),
+    path('notifications/group/<str:group_name>/', send_notification_to_group, name='send_notification_to_group'),
 ]

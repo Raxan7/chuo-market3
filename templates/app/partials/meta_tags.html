@@ -1,6 +1,8 @@
 {% comment %}
 This is a base template for meta tags that templates can include
 {% endcomment %}
+{% load static %}
+{% load webpush_notifications %}
 
 {% if not meta_title %}
     {% with meta_title=title|default:page_title|default:"" %}
@@ -9,6 +11,9 @@ This is a base template for meta tags that templates can include
 {% else %}
     <title>{{ meta_title }} | ChuoSmart</title>
 {% endif %}
+
+<!-- Push Notification Support -->
+{% webpush_header %}
 
 <meta name="description" content="{% if meta_description %}{{ meta_description }}{% else %}ChuoSmart - The smartest place to buy and sell college essentials, find talent, and access educational resources.{% endif %}">
 <meta name="keywords" content="{% if meta_keywords %}{{ meta_keywords }}{% else %}chuosmart, college marketplace, university shopping, student marketplace, tanzania education{% endif %}">

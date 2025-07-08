@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     'tinymce',
     'markdown_deux',
     'widget_tweaks',
+    'webpush',  # For push notifications
 
     'core',
     'talents',
@@ -61,6 +62,14 @@ INSTALLED_APPS = [
 
 # Site ID for the sites framework
 SITE_ID = 1
+
+# filepath: /home/saidi/Projects/KOMBA/chuo-market3/Commerce/settings.py
+# Web Push Notification Settings
+WEBPUSH_SETTINGS = {
+    "VAPID_PUBLIC_KEY": os.getenv('VAPID_PUBLIC_KEY'),
+    "VAPID_PRIVATE_KEY": os.getenv('VAPID_PRIVATE_KEY'),
+    "VAPID_ADMIN_EMAIL": os.getenv('VAPID_ADMIN_EMAIL')
+}
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',

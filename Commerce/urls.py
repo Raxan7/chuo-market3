@@ -1,4 +1,3 @@
-
 from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
@@ -21,6 +20,7 @@ urlpatterns = [
     path('talents/', include('talents.urls')),
     path('chatbot/', include('chatbotapp.urls')),
     path('lms/', include('lms.urls')),
+    path('webpush/', include('webpush.urls')),  # Web Push Notifications
     
     # Sitemap and SEO URLs
     path('sitemap.xml', sitemap, {'sitemaps': sitemaps}, name='django.contrib.sitemaps.views.sitemap'),
