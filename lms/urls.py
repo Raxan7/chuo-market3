@@ -8,6 +8,8 @@ from . import views
 app_name = 'lms'
 
 urlpatterns = [
+    # Debug views - remove in production
+    path('debug/upload/', views.debug_upload_view, name='debug_upload'),
     # Home and dashboard
     path('', views.lms_home, name='lms_home'),
     path('student-dashboard/', views.student_dashboard, name='student_dashboard'),

@@ -752,6 +752,15 @@ class CourseCreateView(InstructorRequiredMixin, CreateView):
     form_class = CourseForm
     template_name = 'lms/course_form.html'
     
+    # Explicitly tell the view to accept file uploads
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        if self.request.method in ('POST', 'PUT'):
+            kwargs.update({
+                'files': self.request.FILES,
+            })
+        return kwargs
+    
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         # Check if there are any programs
@@ -805,6 +814,15 @@ class CourseUpdateView(InstructorRequiredMixin, UpdateView):
     form_class = CourseForm
     template_name = 'lms/course_form.html'
     
+    # Explicitly tell the view to accept file uploads
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        if self.request.method in ('POST', 'PUT'):
+            kwargs.update({
+                'files': self.request.FILES,
+            })
+        return kwargs
+    
     def get_queryset(self):
         # Limit to courses where user is instructor
         if is_admin(self.request.user):
@@ -834,7 +852,23 @@ class CourseUpdateView(InstructorRequiredMixin, UpdateView):
                         program_form=program_form
                     )
                 )
-        return super().post(request, *args, **kwargs)
+
+        # Set self.object before processing the form
+        self.object = self.get_object()
+        
+        # Get the form instance with POST data and FILES
+        form = self.get_form()
+        
+        # Print debugging information about the request
+        print(f"FILES in request: {request.FILES}")
+        print(f"Image field in form: {form.fields.get('image')}")
+        
+        # Check if the form has an image file
+        if form.is_valid():
+            return self.form_valid(form)
+        else:
+            print(f"Form errors: {form.errors}")
+            return self.form_invalid(form)
     
     def form_valid(self, form):
         response = super().form_valid(form)
@@ -1595,3 +1629,36 @@ class CourseAdvertisementView(View):
         }
         
         return render(request, 'lms/course_ad.html', context)
+
+# Debug file upload view
+def debug_upload_view(request):
+    """
+    Debug view for testing file uploads.
+    This is a temporary view for troubleshooting file upload issues.
+    """
+    if request.method == 'POST':
+        print(f"DEBUG UPLOAD: Files in request: {request.FILES}")
+        if 'test_file' in request.FILES:
+            file = request.FILES['test_file']
+            print(f"DEBUG UPLOAD: File name: {file.name}")
+            print(f"DEBUG UPLOAD: File size: {file.size}")
+            print(f"DEBUG UPLOAD: File content type: {file.content_type}")
+            
+            # Save the file to the media directory
+            import os
+            from django.conf import settings
+            
+            file_path = os.path.join(settings.MEDIA_ROOT, 'lms', 'debug_uploads', file.name)
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            
+            with open(file_path, 'wb+') as destination:
+                for chunk in file.chunks():
+                    destination.write(chunk)
+                    
+            return render(request, 'lms/debug_upload.html', {
+                'success': True,
+                'file_name': file.name,
+                'file_path': file_path
+            })
+    
+    return render(request, 'lms/debug_upload.html')

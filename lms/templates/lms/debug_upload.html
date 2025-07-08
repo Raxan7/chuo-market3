@@ -1,0 +1,50 @@
+{% extends "app/base.html" %}
+{% load static %}
+
+{% block title %}Debug File Upload{% endblock title %}
+
+{% block main-content %}
+<div class="container my-5">
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4>Debug File Upload</h4>
+                </div>
+                <div class="card-body">
+                    {% if success %}
+                        <div class="alert alert-success">
+                            <h5>File uploaded successfully!</h5>
+                            <p><strong>File name:</strong> {{ file_name }}</p>
+                            <p><strong>File path:</strong> {{ file_path }}</p>
+                            <p>Check the server console for more details.</p>
+                            <a href="{% url 'lms:debug_upload' %}" class="btn btn-primary">Upload another file</a>
+                        </div>
+                    {% else %}
+                        <form method="post" enctype="multipart/form-data">
+                            {% csrf_token %}
+                            <div class="mb-3">
+                                <label for="test_file" class="form-label">Test File Upload</label>
+                                <input type="file" name="test_file" id="test_file" class="form-control">
+                                <div class="form-text text-muted">
+                                    This is a debug form for testing file uploads. You can upload images or other files here.
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Upload File</button>
+                        </form>
+                    {% endif %}
+                    
+                    <div class="mt-5">
+                        <h5>Form Details</h5>
+                        <ul class="list-group">
+                            <li class="list-group-item">Form Method: POST</li>
+                            <li class="list-group-item">Form Encoding Type: multipart/form-data</li>
+                            <li class="list-group-item">File Input Name: test_file</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock main-content %}
