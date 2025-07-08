@@ -4,7 +4,7 @@ Views for the LMS application
 
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse, reverse_lazy
-from django.http import HttpResponseRedirect, JsonResponse, HttpResponse
+from django.http import HttpResponseRedirect, JsonResponse, HttpResponse, Http404
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib import messages
@@ -14,11 +14,13 @@ from django.views.generic import (
 from django.db.models import Q, Count, Avg
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
+import time
+import time
 
 from .models import (
     LMSProfile, Program, Course, CourseModule, CourseContent, Quiz, Question,
     MCQuestion, Choice, TF_Question, Essay_Question, QuizTaker, StudentAnswer, ContentAccess,
-    Grade, Semester, CourseEnrollment, ActivityLog, InstructorRequest
+    Grade, Semester, CourseEnrollment, ActivityLog, InstructorRequest, SiteSettings
 )
 from .forms import (
     LMSProfileForm, CourseForm, CourseModuleForm, CourseContentForm,
@@ -1610,7 +1612,6 @@ class CourseAdvertisementView(View):
         course = get_object_or_404(Course, slug=course_slug)
         
         # Check if ads are enabled for free courses in site settings
-        from .models import SiteSettings
         settings = SiteSettings.get_settings()
         show_ads = settings.show_ads_before_free_courses and course.is_free
         
@@ -1629,6 +1630,22 @@ class CourseAdvertisementView(View):
         }
         
         return render(request, 'lms/course_ad.html', context)
+
+
+@login_required
+def session_keep_alive(request):
+    """
+    Simple view to keep a user's session alive
+    This should be called via AJAX periodically while the user is active
+    """
+    if request.headers.get('X-Requested-With') != 'XMLHttpRequest':
+        raise Http404("This endpoint is for AJAX requests only")
+        
+    # Update the last activity timestamp
+    request.session['last_activity'] = time.time()
+    
+    # Return a simple OK response
+    return JsonResponse({"status": "ok"})
 
 # Debug file upload view
 def debug_upload_view(request):

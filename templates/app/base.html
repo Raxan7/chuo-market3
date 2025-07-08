@@ -598,5 +598,10 @@
       });
     </script>
     {% block extra_scripts %}{% endblock extra_scripts %}
+    
+    {% if user.is_authenticated %}
+    <!-- Session keep-alive script for logged-in users -->
+    <script src="{% static 'js/session-keep-alive.js' %}"></script>
+    {% endif %}
   </body>
 </html>

@@ -66,6 +66,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'core.middleware.SessionIdleTimeoutMiddleware',  # Custom middleware for session idle timeout
 ]
 
 ROOT_URLCONF = 'Commerce.urls'
@@ -237,6 +238,14 @@ TINYMCE_DEFAULT_CONFIG = {
 }
 
 SESSION_ENGINE = 'django.contrib.sessions.backends.db'  # Use database-backed sessions
+
+# Session configuration
+SESSION_COOKIE_AGE = 86400  # 24 hours as the maximum session age
+SESSION_SAVE_EVERY_REQUEST = True  # Update the session on every request, resetting the expiry time
+SESSION_EXPIRE_AT_BROWSER_CLOSE = False  # Don't expire when browser closes
+SESSION_COOKIE_SECURE = not DEBUG  # Use secure cookies in production
+SESSION_COOKIE_HTTPONLY = True  # Prevent JavaScript from accessing the session cookie
+SESSION_IDLE_TIMEOUT = 7200  # 2 hours in seconds - custom setting for middleware
 
 GENERATIVE_AI_KEY = os.getenv('GENERATIVE_AI_KEY')
 
