@@ -8,7 +8,13 @@
 
 {% block extra_css %}
     <link rel="stylesheet" href="{% static 'lms/css/quiz_form.css' %}">
+    <!-- Add Font Awesome if not already included in base template -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
 {% endblock extra_css %}
+
+{% block extra_js %}
+    <script src="{% static 'lms/js/quiz_form.js' %}"></script>
+{% endblock extra_js %}
 
 {% block main-content %}
 <div class="container my-5">
@@ -58,114 +64,194 @@
                             </div>
                         {% endif %}
                         
-                        <div class="mb-3">
-                            <label for="{{ form.title.id_for_label }}" class="form-label">{{ form.title.label }}</label>
-                            {% render_field form.title class="form-control" %}
-                            {% if form.title.errors %}
-                                <div class="text-danger">{{ form.title.errors }}</div>
-                            {% endif %}
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label for="{{ form.description.id_for_label }}" class="form-label">{{ form.description.label }}</label>
-                            {% render_field form.description class="form-control" rows="4" %}
-                            {% if form.description.errors %}
-                                <div class="text-danger">{{ form.description.errors }}</div>
-                            {% endif %}
-                        </div>
-                        
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <label for="{{ form.category.id_for_label }}" class="form-label">{{ form.category.label }}</label>
-                                {% render_field form.category class="form-select" %}
-                                {% if form.category.errors %}
-                                    <div class="text-danger">{{ form.category.errors }}</div>
+                        <div class="form-section">
+                            <h5 class="form-section-title">
+                                <i class="fas fa-info-circle me-2"></i>Basic Information
+                            </h5>
+                            <div class="mb-3">
+                                <label for="{{ form.title.id_for_label }}" class="form-label">
+                                    <i class="fas fa-heading"></i> {{ form.title.label }}
+                                </label>
+                                {% render_field form.title class="form-control title-field" placeholder="Enter a descriptive quiz title" %}
+                                {% if form.title.errors %}
+                                    <div class="text-danger">{{ form.title.errors }}</div>
                                 {% endif %}
                             </div>
-                            <div class="col-md-6">
-                                <label for="{{ form.pass_mark.id_for_label }}" class="form-label">{{ form.pass_mark.label }}</label>
-                                {% render_field form.pass_mark class="form-control" %}
-                                {% if form.pass_mark.errors %}
-                                    <div class="text-danger">{{ form.pass_mark.errors }}</div>
+                            
+                            <div class="mb-3">
+                                <label for="{{ form.description.id_for_label }}" class="form-label">
+                                    <i class="fas fa-align-left"></i> {{ form.description.label }}
+                                </label>
+                                {% render_field form.description class="form-control description-field" rows="4" placeholder="Describe what this quiz is about and any instructions for students" %}
+                                {% if form.description.errors %}
+                                    <div class="text-danger">{{ form.description.errors }}</div>
                                 {% endif %}
-                                <div class="form-text">Percentage required to pass (0-100)</div>
                             </div>
                         </div>
                         
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <label for="{{ form.due_date.id_for_label }}" class="form-label">{{ form.due_date.label }}</label>
-                                {% render_field form.due_date class="form-control" %}
-                                {% if form.due_date.errors %}
-                                    <div class="text-danger">{{ form.due_date.errors }}</div>
-                                {% endif %}
-                                <div class="form-text">When should students complete this quiz?</div>
-                            </div>
-                            <div class="col-md-6">
-                                <label for="{{ form.single_attempt.id_for_label }}" class="form-label">Attempt Limits</label>
-                                <div class="form-check mt-2">
-                                    {% render_field form.single_attempt class="form-check-input" %}
-                                    <label for="{{ form.single_attempt.id_for_label }}" class="form-check-label">{{ form.single_attempt.label }}</label>
+                        <div class="form-section">
+                            <h5 class="form-section-title">
+                                <i class="fas fa-cog me-2"></i>Quiz Settings
+                            </h5>
+                            
+                            <div class="row mb-4">
+                                <div class="col-md-6">
+                                    <label for="{{ form.category.id_for_label }}" class="form-label">
+                                        <i class="fas fa-tag"></i> {{ form.category.label }}
+                                    </label>
+                                    {% render_field form.category class="form-select" %}
+                                    {% if form.category.errors %}
+                                        <div class="text-danger">{{ form.category.errors }}</div>
+                                    {% endif %}
                                 </div>
-                                {% if form.single_attempt.errors %}
-                                    <div class="text-danger">{{ form.single_attempt.errors }}</div>
-                                {% endif %}
-                            </div>
-                        </div>
-                        
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <label class="form-label">Quiz Options</label>
-                                <div class="form-check mt-2">
-                                    {% render_field form.random_order class="form-check-input" %}
-                                    <label for="{{ form.random_order.id_for_label }}" class="form-check-label">{{ form.random_order.label }}</label>
+                                <div class="col-md-6">
+                                    <label for="{{ form.pass_mark.id_for_label }}" class="form-label">
+                                        <i class="fas fa-check-circle"></i> {{ form.pass_mark.label }}
+                                    </label>
+                                    {% render_field form.pass_mark class="form-control" min="0" max="100" %}
+                                    {% if form.pass_mark.errors %}
+                                        <div class="text-danger">{{ form.pass_mark.errors }}</div>
+                                    {% endif %}
+                                    <div class="form-text">
+                                        <i class="fas fa-percentage me-1 text-muted"></i>
+                                        Percentage required to pass (0-100)
+                                    </div>
                                 </div>
-                                {% if form.random_order.errors %}
-                                    <div class="text-danger">{{ form.random_order.errors }}</div>
-                                {% endif %}
                             </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Answer Display</label>
-                                <div class="form-check mt-2">
-                                    {% render_field form.answers_at_end class="form-check-input" %}
-                                    <label for="{{ form.answers_at_end.id_for_label }}" class="form-check-label">{{ form.answers_at_end.label }}</label>
+                            
+                            <div class="row mb-4">
+                                <div class="col-md-6">
+                                    <label for="{{ form.due_date.id_for_label }}" class="form-label">
+                                        <i class="fas fa-calendar-alt"></i> {{ form.due_date.label }}
+                                    </label>
+                                    {% render_field form.due_date class="form-control" %}
+                                    {% if form.due_date.errors %}
+                                        <div class="text-danger">{{ form.due_date.errors }}</div>
+                                    {% endif %}
+                                    <div class="form-text">
+                                        <i class="fas fa-calendar-alt me-1 text-muted"></i>
+                                        When should students complete this quiz?
+                                    </div>
                                 </div>
-                                {% if form.answers_at_end.errors %}
-                                    <div class="text-danger">{{ form.answers_at_end.errors }}</div>
-                                {% endif %}
+                                <div class="col-md-6">
+                                    <label class="form-label d-block mb-3">
+                                        <i class="fas fa-redo-alt"></i> Attempt Limits
+                                    </label>
+                                    <div class="toggle-container">
+                                        <label class="toggle-switch">
+                                            {% render_field form.single_attempt class="toggle-input" %}
+                                            <span class="toggle-slider"></span>
+                                        </label>
+                                        <label for="{{ form.single_attempt.id_for_label }}">{{ form.single_attempt.label }}</label>
+                                    </div>
+                                    {% if form.single_attempt.errors %}
+                                        <div class="text-danger">{{ form.single_attempt.errors }}</div>
+                                    {% endif %}
+                                </div>
                             </div>
                         </div>
                         
-                        <div class="mb-3">
-                            <div class="form-check">
-                                {% render_field form.draft class="form-check-input" %}
-                                <label for="{{ form.draft.id_for_label }}" class="form-check-label">{{ form.draft.label }}</label>
-                                {% if form.draft.errors %}
-                                    <div class="text-danger">{{ form.draft.errors }}</div>
-                                {% endif %}
+                        <div class="form-section">
+                            <h5 class="form-section-title">
+                                <i class="fas fa-sliders-h me-2"></i>Advanced Options
+                            </h5>
+                            
+                            <div class="row mb-4">
+                                <div class="col-md-6">
+                                    <label class="form-label d-block mb-3">
+                                        <i class="fas fa-random"></i> Question Order
+                                    </label>
+                                    <div class="toggle-container">
+                                        <label class="toggle-switch">
+                                            {% render_field form.random_order class="toggle-input" %}
+                                            <span class="toggle-slider"></span>
+                                        </label>
+                                        <label for="{{ form.random_order.id_for_label }}">{{ form.random_order.label }}</label>
+                                    </div>
+                                    {% if form.random_order.errors %}
+                                        <div class="text-danger">{{ form.random_order.errors }}</div>
+                                    {% endif %}
+                                    <div class="form-text">
+                                        <i class="fas fa-random me-1 text-muted"></i>
+                                        Randomly shuffle questions for each student
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label d-block mb-3">
+                                        <i class="fas fa-eye"></i> Answer Display
+                                    </label>
+                                    <div class="toggle-container">
+                                        <label class="toggle-switch">
+                                            {% render_field form.answers_at_end class="toggle-input" %}
+                                            <span class="toggle-slider"></span>
+                                        </label>
+                                        <label for="{{ form.answers_at_end.id_for_label }}">{{ form.answers_at_end.label }}</label>
+                                    </div>
+                                    {% if form.answers_at_end.errors %}
+                                        <div class="text-danger">{{ form.answers_at_end.errors }}</div>
+                                    {% endif %}
+                                    <div class="form-text">
+                                        <i class="fas fa-eye me-1 text-muted"></i>
+                                        Show correct answers after quiz completion
+                                    </div>
+                                </div>
                             </div>
-                            <div class="form-text">Draft quizzes are not visible to students</div>
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label for="{{ form.exam_paper.id_for_label }}" class="form-label">Quiz Results</label>
-                            <div class="form-check mt-2">
-                                {% render_field form.exam_paper class="form-check-input" %}
-                                <label for="{{ form.exam_paper.id_for_label }}" class="form-check-label">{{ form.exam_paper.label }}</label>
+                            
+                            <div class="row mb-4">
+                                <div class="col-md-6">
+                                    <label class="form-label d-block mb-3">
+                                        <i class="fas fa-eye-slash"></i> Quiz Visibility
+                                    </label>
+                                    <div class="toggle-container">
+                                        <label class="toggle-switch">
+                                            {% render_field form.draft class="toggle-input" %}
+                                            <span class="toggle-slider"></span>
+                                        </label>
+                                        <label for="{{ form.draft.id_for_label }}">{{ form.draft.label }}</label>
+                                    </div>
+                                    {% if form.draft.errors %}
+                                        <div class="text-danger">{{ form.draft.errors }}</div>
+                                    {% endif %}
+                                    <div class="form-text">
+                                        <i class="fas fa-eye-slash me-1 text-muted"></i>
+                                        Draft quizzes are not visible to students
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label d-block mb-3">
+                                        <i class="fas fa-clipboard-list"></i> Quiz Results
+                                    </label>
+                                    <div class="toggle-container">
+                                        <label class="toggle-switch">
+                                            {% render_field form.exam_paper class="toggle-input" %}
+                                            <span class="toggle-slider"></span>
+                                        </label>
+                                        <label for="{{ form.exam_paper.id_for_label }}">{{ form.exam_paper.label }}</label>
+                                    </div>
+                                    {% if form.exam_paper.errors %}
+                                        <div class="text-danger">{{ form.exam_paper.errors }}</div>
+                                    {% endif %}
+                                    <div class="form-text">
+                                        <i class="fas fa-clipboard-list me-1 text-muted"></i>
+                                        Store results for each attempt for grading
+                                    </div>
+                                </div>
                             </div>
-                            {% if form.exam_paper.errors %}
-                                <div class="text-danger">{{ form.exam_paper.errors }}</div>
-                            {% endif %}
-                            <div class="form-text">Store results for each attempt for grading</div>
                         </div>
                         
                         <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
                             {% if module %}
-                                <a href="{% url 'lms:course_detail' course.slug %}#module-{{ module.id }}" class="btn btn-outline-secondary me-md-2">Cancel</a>
+                                <a href="{% url 'lms:course_detail' course.slug %}#module-{{ module.id }}" class="btn btn-outline-secondary me-md-2">
+                                    <i class="fas fa-times me-1"></i> Cancel
+                                </a>
                             {% else %}
-                                <a href="{% url 'lms:course_detail' course.slug %}" class="btn btn-outline-secondary me-md-2">Cancel</a>
+                                <a href="{% url 'lms:course_detail' course.slug %}" class="btn btn-outline-secondary me-md-2">
+                                    <i class="fas fa-times me-1"></i> Cancel
+                                </a>
                             {% endif %}
-                            <button type="submit" class="btn btn-primary">Save Quiz</button>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-1"></i> Save Quiz
+                            </button>
                         </div>
                     </form>
                 </div>
@@ -173,7 +259,7 @@
         </div>
         
         <div class="col-md-4">
-            <div class="progress-card">
+            <div class="card progress-card">
                 <div class="card-header">
                     <h5 class="mb-0"><i class="fas fa-tasks me-2"></i>Quiz Creation Process</h5>
                 </div>
