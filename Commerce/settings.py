@@ -187,10 +187,10 @@ TINYMCE_JS_ROOT = os.path.join(STATIC_URL, "tinymce")
 
 TINYMCE_DEFAULT_CONFIG = {
     'height': 300,
-    'plugins': "image,imagetools,media,codesample,link,code,paste,lists,advlist",
+    'plugins': "image,imagetools,media,codesample,link,code,paste,lists,advlist,table,fullscreen",
     'cleanup_on_startup': True,
-    'menubar': False,
-    'toolbar': "styleselect |undo redo | bold italic | alignleft aligncenter alignright | bullist numlist | link image media codesample code",
+    'menubar': 'table',
+    'toolbar': "styleselect |undo redo | bold italic | alignleft aligncenter alignright | bullist numlist | table | link image media codesample code | fullscreen",
     'image_caption': True,
     'image_advtab': True,
     'custom_undo_redo_levels': 10,
@@ -203,9 +203,24 @@ TINYMCE_DEFAULT_CONFIG = {
     'paste_remove_spans': True,
     'paste_strip_class_attributes': 'all',
     'valid_elements': '*[*]',
-    'valid_children': '+body[style],+div[p|h1|h2|h3|h4|h5|h6|blockquote|ul|ol],+p[strong|em|span|br]',
+    'valid_children': '+body[style],+div[p|h1|h2|h3|h4|h5|h6|blockquote|ul|ol|table],+p[strong|em|span|br]',
     'element_format': 'html',
-    'content_css': '/static/css/tinymce_custom.css'
+    'content_css': '/static/css/tinymce_custom.css',
+    'table_default_attributes': {
+        'border': '1',
+        'class': 'table table-bordered'
+    },
+    'table_default_styles': {
+        'width': '100%',
+        'border-collapse': 'collapse'
+    },
+    'table_responsive_width': True,
+    'table_class_list': [
+        {'title': 'None', 'value': ''},
+        {'title': 'Standard', 'value': 'table table-bordered'},
+        {'title': 'Striped', 'value': 'table table-striped table-bordered'},
+        {'title': 'Hover', 'value': 'table table-hover table-bordered'},
+    ]
 }
 
 SESSION_ENGINE = 'django.contrib.sessions.backends.db'  # Use database-backed sessions
