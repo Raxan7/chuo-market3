@@ -24,7 +24,7 @@
     <meta name="author" content="ChuoSmart">
     
     <!-- Open Graph Meta Tags -->
-    <meta property="og:title" content="{% block og_title %}ChuoSmart | {% block title %} {% endblock title %}{% endblock %}">
+    <meta property="og:title" content="{% block og_title %}ChuoSmart | {% endblock %}{% block title %}{% endblock %}">
     <meta property="og:description" content="{% block og_description %}{{ default_meta_description }}{% endblock %}">
     <meta property="og:image" content="{% block og_image %}{{ base_url }}{% static 'app/images/logo.png' %}{% endblock %}">
     <meta property="og:url" content="{{ canonical_url }}">
