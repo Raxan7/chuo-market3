@@ -489,3 +489,9 @@ def clean_phone_number(phone):
         return None
         
     return cleaned[:15]  # Ensure it doesn't exceed the max length
+
+def robots_txt(request):
+    """
+    Serve robots.txt file with dynamic host information
+    """
+    return render(request, 'robots.txt', {}, content_type='text/plain')

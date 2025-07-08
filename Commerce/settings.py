@@ -47,6 +47,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.sitemaps',  # Add sitemap functionality
+    'django.contrib.sites',     # Required for sitemaps
     'tinymce',
     'markdown_deux',
     'widget_tweaks',
@@ -56,6 +58,9 @@ INSTALLED_APPS = [
     'chatbotapp',
     'lms',
 ]
+
+# Site ID for the sites framework
+SITE_ID = 1
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -82,7 +87,8 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
-                'core.context_processors.auth_status',  # Add this line
+                'core.context_processors.auth_status',  # Authentication status
+                'core.seo_context.seo_context',  # SEO context data
             ],
         },
     },

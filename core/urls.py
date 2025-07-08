@@ -5,6 +5,7 @@ from .views import add_product, add_blog, create_blog, blog_list, blog_detail, p
 
 urlpatterns = [
     path('', views.home, name='home'),
+    path('robots.txt', views.robots_txt, name='robots_txt'),
     path('product-detail/<int:pk>', views.product_detail, name='product-detail'),
     path('add-to-cart/', views.add_to_cart, name='add-to-cart'),
     path('cart/', views.view_cart, name='carts'),

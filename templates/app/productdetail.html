@@ -1,6 +1,26 @@
 {% extends 'app/base.html' %}
 {% load static %}
-{% block title %}Product Details{% endblock title %}
+{% block title %}{{ product.title }}{% endblock title %}
+
+{% block extra_head %}
+<!-- SEO Meta Tags -->
+<meta name="description" content="{{ product.description|truncatechars:160 }}">
+<meta name="keywords" content="{{ product.title }}, ChuoSmart, product, {{ customer.university }}, {{ customer.college }}">
+
+<!-- Open Graph Meta Tags for better social media sharing -->
+<meta property="og:title" content="{{ product.title }} | ChuoSmart">
+<meta property="og:description" content="{{ product.description|truncatechars:200 }}">
+<meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{{ product.image.url }}">
+<meta property="og:url" content="{{ request.scheme }}://{{ request.get_host }}{% url 'product-detail' pk=product.id %}">
+<meta property="og:type" content="product">
+<meta property="og:site_name" content="ChuoSmart">
+
+<!-- Twitter Card data -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="{{ product.title }}">
+<meta name="twitter:description" content="{{ product.description|truncatechars:200 }}">
+<meta name="twitter:image" content="{{ request.scheme }}://{{ request.get_host }}{{ product.image.url }}">
+{% endblock extra_head %}
 
 {% block main-content %}
 <div class="container my-5">
