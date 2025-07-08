@@ -187,10 +187,10 @@ TINYMCE_JS_ROOT = os.path.join(STATIC_URL, "tinymce")
 
 TINYMCE_DEFAULT_CONFIG = {
     'height': 300,
-    'plugins': "image,imagetools,media,codesample,link,code,paste,lists,advlist,table,fullscreen",
+    'plugins': "image,imagetools,media,codesample,link,code,paste,lists,advlist,table,fullscreen,wordcount,searchreplace,visualblocks,visualchars",
     'cleanup_on_startup': True,
-    'menubar': 'table',
-    'toolbar': "styleselect |undo redo | bold italic | alignleft aligncenter alignright | bullist numlist | table | link image media codesample code | fullscreen",
+    'menubar': 'file edit view insert format tools table',
+    'toolbar': "styleselect | undo redo | bold italic underline strikethrough | forecolor backcolor | alignleft aligncenter alignright alignjustify | bullist numlist | table | link image media | codesample code visualblocks | searchreplace | fullscreen",
     'image_caption': True,
     'image_advtab': True,
     'custom_undo_redo_levels': 10,
@@ -203,9 +203,22 @@ TINYMCE_DEFAULT_CONFIG = {
     'paste_remove_spans': True,
     'paste_strip_class_attributes': 'all',
     'valid_elements': '*[*]',
-    'valid_children': '+body[style],+div[p|h1|h2|h3|h4|h5|h6|blockquote|ul|ol|table],+p[strong|em|span|br]',
+    'valid_children': '+body[style],+div[p|h1|h2|h3|h4|h5|h6|blockquote|ul|ol|table|pre],+p[strong|em|span|br|code]',
     'element_format': 'html',
     'content_css': '/static/css/tinymce_custom.css',
+    'codesample_languages': [
+        { 'text': 'HTML/XML', 'value': 'markup' },
+        { 'text': 'JavaScript', 'value': 'javascript' },
+        { 'text': 'CSS', 'value': 'css' },
+        { 'text': 'PHP', 'value': 'php' },
+        { 'text': 'Ruby', 'value': 'ruby' },
+        { 'text': 'Python', 'value': 'python' },
+        { 'text': 'Java', 'value': 'java' },
+        { 'text': 'C', 'value': 'c' },
+        { 'text': 'C#', 'value': 'csharp' },
+        { 'text': 'C++', 'value': 'cpp' }
+    ],
+    'extended_valid_elements': 'pre[class|data-language],code[class]',
     'table_default_attributes': {
         'border': '1',
         'class': 'table table-bordered'
