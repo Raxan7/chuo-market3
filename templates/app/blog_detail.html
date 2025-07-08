@@ -2,6 +2,17 @@
 {% load markdown_deux_tags %}  {# Load the markdown filter #}
 {% block title %}{{ blog.title }}{% endblock title %}
 
+{% block meta_description %}{{ blog.content|striptags|truncatewords:25 }}{% endblock meta_description %}
+
+{% block meta_keywords %}{{ blog.title }}, chuosmart blog, education blog, tanzania education, {{ blog.category }}{% endblock meta_keywords %}
+
+{% block og_title %}{{ blog.title }} | ChuoSmart Blog{% endblock og_title %}
+{% block og_description %}{{ blog.content|striptags|truncatewords:25 }}{% endblock og_description %}
+{% if blog.image %}
+{% block og_image %}{{ request.scheme }}://{{ request.get_host }}{{ blog.image.url }}{% endblock og_image %}
+{% endif %}
+{% block og_type %}article{% endblock og_type %}
+
 {% block main-content %}
 <style>
     .blog-container {

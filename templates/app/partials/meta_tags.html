@@ -1,0 +1,31 @@
+{% comment %}
+This is a base template for meta tags that templates can include
+{% endcomment %}
+
+{% if not meta_title %}
+    {% with meta_title=title|default:page_title|default:"" %}
+        <title>{% if meta_title %}{{ meta_title }} | {% endif %}ChuoSmart</title>
+    {% endwith %}
+{% else %}
+    <title>{{ meta_title }} | ChuoSmart</title>
+{% endif %}
+
+<meta name="description" content="{% if meta_description %}{{ meta_description }}{% else %}ChuoSmart - The smartest place to buy and sell college essentials, find talent, and access educational resources.{% endif %}">
+<meta name="keywords" content="{% if meta_keywords %}{{ meta_keywords }}{% else %}chuosmart, college marketplace, university shopping, student marketplace, tanzania education{% endif %}">
+
+<!-- Open Graph Meta Tags -->
+<meta property="og:title" content="{% if og_title %}{{ og_title }}{% elif meta_title %}{{ meta_title }}{% else %}ChuoSmart{% endif %}">
+<meta property="og:description" content="{% if og_description %}{{ og_description }}{% elif meta_description %}{{ meta_description }}{% else %}ChuoSmart - The smartest place to buy and sell college essentials, find talent, and access educational resources.{% endif %}">
+<meta property="og:image" content="{% if og_image %}{{ og_image }}{% else %}{{ request.scheme }}://{{ request.get_host }}{% static 'app/images/logo.png' %}{% endif %}">
+<meta property="og:url" content="{{ request.build_absolute_uri }}">
+<meta property="og:type" content="{% if og_type %}{{ og_type }}{% else %}website{% endif %}">
+<meta property="og:site_name" content="ChuoSmart">
+
+<!-- Twitter Card Tags -->
+<meta name="twitter:card" content="{% if twitter_card %}{{ twitter_card }}{% else %}summary_large_image{% endif %}">
+<meta name="twitter:title" content="{% if twitter_title %}{{ twitter_title }}{% elif og_title %}{{ og_title }}{% elif meta_title %}{{ meta_title }}{% else %}ChuoSmart{% endif %}">
+<meta name="twitter:description" content="{% if twitter_description %}{{ twitter_description }}{% elif og_description %}{{ og_description }}{% elif meta_description %}{{ meta_description }}{% else %}ChuoSmart - The smartest place to buy and sell college essentials, find talent, and access educational resources.{% endif %}">
+<meta name="twitter:image" content="{% if twitter_image %}{{ twitter_image }}{% elif og_image %}{{ og_image }}{% else %}{{ request.scheme }}://{{ request.get_host }}{% static 'app/images/logo.png' %}{% endif %}">
+
+<!-- Canonical URL -->
+<link rel="canonical" href="{{ request.build_absolute_uri }}">

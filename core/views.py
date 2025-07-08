@@ -494,4 +494,11 @@ def robots_txt(request):
     """
     Serve robots.txt file with dynamic host information
     """
-    return render(request, 'robots.txt', {}, content_type='text/plain')
+    host = request.get_host()
+    scheme = request.scheme
+    context = {
+        'request': request,
+        'host': host,
+        'scheme': scheme,
+    }
+    return render(request, 'robots.txt', context, content_type='text/plain')

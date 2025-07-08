@@ -1,6 +1,17 @@
 {% extends 'app/base.html' %}
 {% block title %}{{ talent.title }}{% endblock title %}
 
+{% block meta_description %}{{ talent.description|truncatewords:25 }}{% endblock meta_description %}
+
+{% block meta_keywords %}{{ talent.title }}, {{ talent.get_category_display }}, student talent, chuosmart talent, tanzania talent{% endblock meta_keywords %}
+
+{% block og_title %}{{ talent.title }} | ChuoSmart Talent{% endblock og_title %}
+{% block og_description %}{{ talent.description|truncatewords:25 }}{% endblock og_description %}
+{% if talent.media %}
+{% block og_image %}{{ request.scheme }}://{{ request.get_host }}{{ talent.media.url }}{% endblock og_image %}
+{% endif %}
+{% block og_type %}profile{% endblock og_type %}
+
 {% block main-content %}
 <div class="container d-flex justify-content-center align-items-center" style="min-height: 100vh;">
   <div class="card text-center shadow-lg" style="width: 100%; max-width: 800px; margin: 20px; padding: 20px;">
