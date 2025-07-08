@@ -5,25 +5,47 @@
 {% block title %}{{ course.title }}{% endblock title %}
 
 {% block extra_head %}
+<link rel="stylesheet" href="{% static 'lms/css/course_content.css' %}">
 <style>
     .course-summary {
-        white-space: pre-line;
         line-height: 1.6;
         font-size: 1.05rem;
         margin-bottom: 1.5rem;
     }
     .course-summary p, .module-description p {
-        margin-bottom: 0.8rem;
+        margin-bottom: 0.5rem;
     }
     .course-summary ul, .course-summary ol, .module-description ul, .module-description ol {
         margin-left: 1.5rem;
-        margin-bottom: 1rem;
+        margin-bottom: 0.5rem;
+        padding-left: 1rem;
+    }
+    .course-summary li, .module-description li {
+        margin-bottom: 0.3rem;
     }
     .module-description {
-        white-space: pre-line;
         line-height: 1.6;
         font-size: 1rem;
         margin-bottom: 1.2rem;
+    }
+    /* Fix excessive spacing in course content */
+    .course-summary br, .module-description br {
+        content: "";
+        display: block;
+        margin: 0;
+        line-height: 0;
+    }
+    /* Fix for list items with excessive spacing */
+    .course-summary li p, .module-description li p {
+        margin-top: 0;
+        margin-bottom: 0.3rem;
+    }
+    /* Module styling */
+    .course-module {
+        margin-bottom: 1rem;
+    }
+    .module-heading {
+        margin-bottom: 0.5rem;
     }
 </style>
 {% endblock extra_head %}
@@ -70,7 +92,7 @@
                     {% endif %}
                     
                     <div class="card-text">
-                        <div class="course-summary">{{ course.summary|safe }}</div>
+                        <div class="course-summary course-content">{{ course.summary|safe }}</div>
                         {% if course.course_type == 'university' %}
                         <p><strong>Program:</strong> {{ course.program.title }}</p>
                         <p><strong>Credits:</strong> {{ course.credit }}</p>

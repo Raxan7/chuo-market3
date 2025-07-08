@@ -3,6 +3,10 @@
 
 {% block title %}{{ content.title }}{% endblock title %}
 
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'lms/css/course_content.css' %}">
+{% endblock extra_head %}
+
 {% block main-content %}
 <div class="container my-5">
     <div class="row mb-4">
@@ -35,7 +39,7 @@
                 </div>
                 <div class="card-body">
                     {% if content.content_type == 'text' %}
-                    <div class="content-text">
+                    <div class="content-text course-content">
                         {{ content.text_content|safe }}
                     </div>
                     

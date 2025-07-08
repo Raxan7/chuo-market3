@@ -186,15 +186,26 @@ TINYMCE_JS_URL = os.path.join(STATIC_URL, "tinymce/tinymce.min.js")
 TINYMCE_JS_ROOT = os.path.join(STATIC_URL, "tinymce")
 
 TINYMCE_DEFAULT_CONFIG = {
-    'height' : 300,
-    'plugins': "image,imagetools,media,codesample,link,code",
+    'height': 300,
+    'plugins': "image,imagetools,media,codesample,link,code,paste,lists,advlist",
     'cleanup_on_startup': True,
     'menubar': False,
-    'toolbar': "styleselect |undo redo | bold italic | alignleft aligncenter alignright | link image media codesample code",
+    'toolbar': "styleselect |undo redo | bold italic | alignleft aligncenter alignright | bullist numlist | link image media codesample code",
     'image_caption': True,
     'image_advtab': True,
     'custom_undo_redo_levels': 10,
-    'file_browser_callback' : "myFileBrowser"
+    'file_browser_callback': "myFileBrowser",
+    'forced_root_block': 'p',
+    'forced_root_block_attrs': {
+        'style': 'margin-top: 0; margin-bottom: 0.5em;'
+    },
+    'paste_remove_styles': True,
+    'paste_remove_spans': True,
+    'paste_strip_class_attributes': 'all',
+    'valid_elements': '*[*]',
+    'valid_children': '+body[style],+div[p|h1|h2|h3|h4|h5|h6|blockquote|ul|ol],+p[strong|em|span|br]',
+    'element_format': 'html',
+    'content_css': '/static/css/tinymce_custom.css'
 }
 
 SESSION_ENGINE = 'django.contrib.sessions.backends.db'  # Use database-backed sessions

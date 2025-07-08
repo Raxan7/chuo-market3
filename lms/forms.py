@@ -102,7 +102,8 @@ class CourseForm(forms.ModelForm):
             }),
             'summary': TinyMCE(attrs={
                 'class': 'form-control tinymce',
-                'placeholder': 'Describe what students will learn in this course'
+                'placeholder': 'Describe what students will learn in this course',
+                'data-custom-formatting': 'true'
             }),
             'program': forms.Select(attrs={'class': 'form-select'}),
             'level': forms.Select(attrs={'class': 'form-select'}),
@@ -120,7 +121,7 @@ class CourseModuleForm(forms.ModelForm):
         model = CourseModule
         fields = ['title', 'description', 'order']
         widgets = {
-            'description': TinyMCE(attrs={'class': 'form-control tinymce'}),
+            'description': TinyMCE(attrs={'class': 'form-control tinymce', 'data-custom-formatting': 'true'}),
         }
 
 
@@ -137,7 +138,7 @@ class CourseContentForm(forms.ModelForm):
             'document': forms.FileInput(attrs={'class': 'form-control'}),
             'video_url': forms.URLInput(attrs={'class': 'form-control', 'placeholder': 'https://www.youtube.com/watch?v=example'}),
             'external_link': forms.URLInput(attrs={'class': 'form-control', 'placeholder': 'https://example.com'}),
-            'text_content': TinyMCE(attrs={'class': 'form-control tinymce'}),
+            'text_content': TinyMCE(attrs={'class': 'form-control tinymce', 'data-custom-formatting': 'true'}),
             'order': forms.NumberInput(attrs={'class': 'form-control', 'min': '0'}),
         }
     
