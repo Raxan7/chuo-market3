@@ -93,7 +93,6 @@
                     {% endif %}
                     
                     <div class="card-text">
-                        <div class="course-summary course-content">{{ course.summary|safe }}</div>
                         {% if course.course_type == 'university' %}
                         <p><strong>Program:</strong> {{ course.program.title }}</p>
                         <p><strong>Credits:</strong> {{ course.credit }}</p>

@@ -59,6 +59,8 @@
 </div>
 
 {% block extra_js %}
+{% load static %}
+<script src="{% static 'lms/js/ad-tracker.js' %}"></script>
 <script>
     // Enhanced Countdown timer
     const totalTime = 5; // seconds
@@ -68,11 +70,13 @@
     const progressBar = document.getElementById('countdown-progress');
     
     // Record ad impression in Google Analytics
-    gtag('event', 'ad_impression', {
-        'event_category': 'Course Ads',
-        'event_label': '{{ course.title }}',
-        'value': 1
-    });
+    if (typeof gtag === 'function') {
+        gtag('event', 'ad_impression', {
+            'event_category': 'Course Ads',
+            'event_label': '{{ course.title }}',
+            'value': 1
+        });
+    }
     
     const countdownTimer = setInterval(() => {
         seconds--;
@@ -99,22 +103,26 @@
             progressBar.innerHTML = 'Ready!';
             
             // Record ad completed in Google Analytics
-            gtag('event', 'ad_completed', {
-                'event_category': 'Course Ads',
-                'event_label': '{{ course.title }}',
-                'value': 1
-            });
+            if (typeof gtag === 'function') {
+                gtag('event', 'ad_completed', {
+                    'event_category': 'Course Ads',
+                    'event_label': '{{ course.title }}',
+                    'value': 1
+                });
+            }
         }
     }, 1000);
     
     // Record when user continues to course
     continueBtn.addEventListener('click', function() {
         if (!continueBtn.classList.contains('disabled')) {
-            gtag('event', 'course_continue', {
-                'event_category': 'Course Access',
-                'event_label': '{{ course.title }}',
-                'value': 1
-            });
+            if (typeof gtag === 'function') {
+                gtag('event', 'course_continue', {
+                    'event_category': 'Course Access',
+                    'event_label': '{{ course.title }}',
+                    'value': 1
+                });
+            }
         }
     });
 </script>
