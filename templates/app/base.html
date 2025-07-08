@@ -24,7 +24,7 @@
     <meta name="author" content="ChuoSmart">
     
     <!-- Open Graph Meta Tags -->
-    <meta property="og:title" content="{% block og_title %}ChuoSmart | {% endblock %}{% block title %}{% endblock %}">
+    <meta property="og:title" content="{% block og_title %}ChuoSmart | {% block page_title_og %}{% endblock %}{% endblock %}">
     <meta property="og:description" content="{% block og_description %}{{ default_meta_description }}{% endblock %}">
     <meta property="og:image" content="{% block og_image %}{{ base_url }}{% static 'app/images/logo.png' %}{% endblock %}">
     <meta property="og:url" content="{{ canonical_url }}">
@@ -33,7 +33,7 @@
     
     <!-- Twitter Card Tags -->
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="{% block twitter_title %}ChuoSmart | {% block twitter_title_content %}{% endblock %}{% endblock %}">
+    <meta name="twitter:title" content="{% block twitter_title %}ChuoSmart | {{ page_title|default:'' }}{% endblock %}">
     <meta name="twitter:description" content="{% block twitter_description %}{{ default_meta_description }}{% endblock %}">
     <meta name="twitter:image" content="{% block twitter_image %}{{ base_url }}{% static 'app/images/logo.png' %}{% endblock %}">
     
