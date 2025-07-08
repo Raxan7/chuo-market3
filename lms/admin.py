@@ -8,7 +8,7 @@ from .models import (
     ActivityLog, Semester, LMSProfile, Program, Course, CourseModule, 
     CourseContent, Quiz, Question, MCQuestion, Choice, TF_Question, 
     Essay_Question, QuizTaker, StudentAnswer, Grade, CourseEnrollment,
-    InstructorRequest, ContentAccess, SiteSettings
+    InstructorRequest, ContentAccess, SiteSettings, AdExemptUser
 )
 
 
@@ -229,6 +229,21 @@ class SiteSettingsAdmin(admin.ModelAdmin):
     def has_delete_permission(self, request, obj=None):
         # Don't allow deleting the settings
         return False
+
+
+@admin.register(AdExemptUser)
+class AdExemptUserAdmin(admin.ModelAdmin):
+    """Admin interface for AdExemptUser model"""
+    list_display = ('user', 'reason', 'created_at', 'updated_at')
+    search_fields = ('user__username', 'user__email', 'reason')
+    date_hierarchy = 'created_at'
+    readonly_fields = ('created_at', 'updated_at')
+    raw_id_fields = ('user',)
+    list_filter = ('created_at',)
+    
+    def get_queryset(self, request):
+        """Optimize queries by prefetching related user"""
+        return super().get_queryset(request).select_related('user')
 
 
 # Register all question types

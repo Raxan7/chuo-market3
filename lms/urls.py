@@ -73,4 +73,7 @@ urlpatterns = [
     # Instructor Request
     path('become-instructor/', views.request_instructor_role, name='request_instructor_role'),
     path('instructor-request-status/', views.instructor_request_status, name='instructor_request_status'),
+    
+    # Ad Exemption Management
+    path('ad-exemption/toggle/<int:user_id>/', views.toggle_ad_exemption, name='toggle_ad_exemption'),
 ]

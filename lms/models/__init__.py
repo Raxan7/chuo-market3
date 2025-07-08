@@ -21,3 +21,6 @@ from .models import unique_slug_generator
 
 # Import SiteSettings from site_settings.py
 from .site_settings import SiteSettings
+
+# Import AdExemptUser from ad_exempt.py
+from .ad_exempt import AdExemptUser

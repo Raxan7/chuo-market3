@@ -6,6 +6,8 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse, reverse_lazy
 from django.http import HttpResponseRedirect, JsonResponse, HttpResponse, Http404
 from django.contrib.auth.decorators import login_required
+from django.contrib.admin.views.decorators import staff_member_required
+from django.contrib.auth.models import User
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib import messages
 from django.views.generic import (
@@ -20,7 +22,8 @@ import time
 from .models import (
     LMSProfile, Program, Course, CourseModule, CourseContent, Quiz, Question,
     MCQuestion, Choice, TF_Question, Essay_Question, QuizTaker, StudentAnswer, ContentAccess,
-    Grade, Semester, CourseEnrollment, ActivityLog, InstructorRequest, SiteSettings
+    Grade, Semester, CourseEnrollment, ActivityLog, InstructorRequest, SiteSettings,
+    AdExemptUser
 )
 from .forms import (
     LMSProfileForm, CourseForm, CourseModuleForm, CourseContentForm,
@@ -1606,16 +1609,22 @@ class CourseAdvertisementView(View):
     
     This view checks site settings to determine whether to show ads,
     and only shows ads for free courses when the setting is enabled.
+    Also checks if the current user is exempt from seeing ads.
     """
     def get(self, request, *args, **kwargs):
         course_slug = kwargs.get('slug')
         course = get_object_or_404(Course, slug=course_slug)
         
+        # Check if the user is exempt from ads
+        user_exempt = False
+        if request.user.is_authenticated:
+            user_exempt = AdExemptUser.objects.filter(user=request.user).exists()
+        
         # Check if ads are enabled for free courses in site settings
         settings = SiteSettings.get_settings()
-        show_ads = settings.show_ads_before_free_courses and course.is_free
+        show_ads = settings.show_ads_before_free_courses and course.is_free and not user_exempt
         
-        # Skip the ad page if ads are disabled or the course is not free
+        # Skip the ad page if ads are disabled, course is not free, or user is exempt
         if not show_ads:
             # Redirect directly to the course detail page
             return redirect('lms:course_detail_direct', slug=course_slug)
@@ -1679,3 +1688,26 @@ def debug_upload_view(request):
             })
     
     return render(request, 'lms/debug_upload.html')
+
+@login_required
+@staff_member_required
+def toggle_ad_exemption(request, user_id):
+    """
+    Toggle ad exemption for a specific user
+    Only staff members can access this view
+    """
+    user = get_object_or_404(User, id=user_id)
+    
+    try:
+        # If exemption exists, delete it
+        exemption = AdExemptUser.objects.get(user=user)
+        exemption.delete()
+        messages.success(request, f"Ad exemption for {user.username} has been removed.")
+    except AdExemptUser.DoesNotExist:
+        # If exemption doesn't exist, create it
+        reason = request.GET.get('reason', 'Staff exemption')
+        AdExemptUser.objects.create(user=user, reason=reason)
+        messages.success(request, f"Ad exemption for {user.username} has been added.")
+    
+    # Redirect to the user's admin page
+    return redirect(f'/admin/auth/user/{user.id}/change/')
