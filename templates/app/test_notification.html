@@ -1,0 +1,103 @@
+{% extends 'app/base.html' %}
+{% load static %}
+
+{% block title %}Test Notifications - ChuoSmart{% endblock title %}
+
+{% block main-content %}
+<div class="container my-5">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="mb-0">Test Push Notifications</h3>
+                </div>
+                <div class="card-body">
+                    {% if messages %}
+                    <div class="alert {% if success %}alert-success{% else %}alert-danger{% endif %} alert-dismissible fade show" role="alert">
+                        {% for message in messages %}
+                        <p>{{ message }}</p>
+                        {% endfor %}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                    {% endif %}
+
+                    <p class="lead">Use this form to test push notifications. This is only available to administrators.</p>
+
+                    <form method="post" action="{% url 'test_notification' %}">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="notification-title" class="form-label">Notification Title</label>
+                            <input type="text" class="form-control" id="notification-title" name="head" value="ChuoSmart Notification" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="notification-body" class="form-label">Notification Message</label>
+                            <textarea class="form-control" id="notification-body" name="body" rows="3" required>Test notification from ChuoSmart</textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="notification-url" class="form-label">Destination URL</label>
+                            <input type="text" class="form-control" id="notification-url" name="url" value="{% url 'home' %}">
+                            <div class="form-text">Where users will go when they click the notification</div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="notification-icon" class="form-label">Icon URL</label>
+                            <input type="text" class="form-control" id="notification-icon" name="icon" value="{% static 'app/images/logo.png' %}">
+                        </div>
+
+                        <h4 class="mt-4">Send To</h4>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="target" id="target-self" value="self" checked>
+                            <label class="form-check-label" for="target-self">
+                                Send to myself only
+                            </label>
+                        </div>
+                        {% if user.is_staff %}
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="target" id="target-all" value="all">
+                            <label class="form-check-label" for="target-all">
+                                Send to all users
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="target" id="target-group" value="group">
+                            <label class="form-check-label" for="target-group">
+                                Send to group
+                            </label>
+                        </div>
+                        <div class="mb-3 mt-2" id="group-input" style="display: none;">
+                            <select class="form-select" name="group">
+                                <option value="students">Students</option>
+                                <option value="sellers">Sellers</option>
+                                <option value="buyers">Buyers</option>
+                                <option value="talents">Talents</option>
+                            </select>
+                        </div>
+                        {% endif %}
+
+                        <div class="mt-4">
+                            <button type="submit" class="btn btn-primary">Send Notification</button>
+                            <a href="{% url 'home' %}" class="btn btn-outline-secondary ms-2">Cancel</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const targetRadios = document.querySelectorAll('input[name="target"]');
+        const groupInput = document.getElementById('group-input');
+        
+        targetRadios.forEach(radio => {
+            radio.addEventListener('change', function() {
+                if (this.value === 'group') {
+                    groupInput.style.display = 'block';
+                } else {
+                    groupInput.style.display = 'none';
+                }
+            });
+        });
+    });
+</script>
+{% endblock main-content %}
