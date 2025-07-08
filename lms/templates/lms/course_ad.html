@@ -18,8 +18,6 @@
                         <img src="{{ course.image.url }}" alt="{{ course.title }}" class="img-fluid rounded mb-4" style="max-height: 200px;">
                     {% endif %}
                     
-                    <div class="lead mb-4">{{ course.summary|safe }}</div>
-                    
                     <div class="mb-4">
                         {% if course.is_free %}
                             <span class="badge bg-success p-2 fs-5">Free Course</span>
