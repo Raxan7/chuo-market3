@@ -19,6 +19,8 @@ from datetime import timedelta
 from django.utils.decorators import method_decorator
 from core.decorators.customer_required import customer_required, phone_required
 import re
+from django.core.mail import send_mail
+from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
@@ -502,3 +504,65 @@ def robots_txt(request):
         'scheme': scheme,
     }
     return render(request, 'robots.txt', context, content_type='text/plain')
+
+# Page views for About Us, Contact Us, and Privacy Policy
+def about_us(request):
+    """Render the About Us page"""
+    return render(request, 'app/about.html')
+
+def contact_us(request):
+    """Render the Contact Us page and handle form submission"""
+    if request.method == 'POST':
+        name = request.POST.get('name')
+        email = request.POST.get('email')
+        subject = request.POST.get('subject')
+        message_content = request.POST.get('message')
+        newsletter = request.POST.get('newsletter') == 'on'
+        
+        # Create formatted message
+        full_message = f"""
+        New contact message from ChuoSmart website:
+        
+        Name: {name}
+        Email: {email}
+        Subject: {subject}
+        Newsletter Signup: {"Yes" if newsletter else "No"}
+        
+        Message:
+        {message_content}
+        """
+        
+        # Send email
+        try:
+            send_mail(
+                f'ChuoSmart Contact: {subject}',
+                full_message,
+                settings.DEFAULT_FROM_EMAIL,
+                ['support@chuosmart.com'],  # Replace with your actual email
+                fail_silently=False,
+            )
+            
+            # Handle newsletter signup if checked
+            if newsletter:
+                # Check if email already exists in subscribers
+                if not NewsletterSubscriber.objects.filter(email=email).exists():
+                    NewsletterSubscriber.objects.create(
+                        name=name,
+                        email=email,
+                        source='contact_form'
+                    )
+            
+            messages.success(request, 'Thank you for reaching out! We will get back to you soon.')
+            return redirect('contact')
+        except Exception as e:
+            messages.error(request, 'Sorry, there was an error sending your message. Please try again later.')
+            
+    return render(request, 'app/contact.html')
+
+def privacy_policy(request):
+    """Render the Privacy Policy page"""
+    return render(request, 'app/privacy.html')
+
+def terms_of_service(request):
+    """Render the Terms of Service page"""
+    return render(request, 'app/terms.html')

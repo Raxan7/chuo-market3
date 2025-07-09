@@ -1,11 +1,19 @@
 from django.urls import path
 from . import views
 from django.contrib.auth import views as auth_views
-from .views import add_product, add_blog, create_blog, blog_list, blog_detail, products_by_category
+from .views import add_product, add_blog, create_blog, blog_list, blog_detail, products_by_category, about_us, contact_us, privacy_policy, terms_of_service
 from .notifications import send_test_notification, send_notification_to_user, send_notification_to_group
 
 urlpatterns = [
     path('', views.home, name='home'),
+    
+    # Information pages
+    path('about/', about_us, name='about'),
+    path('contact/', contact_us, name='contact'),
+    path('privacy/', privacy_policy, name='privacy'),
+    path('terms/', terms_of_service, name='terms'),
+    
+    # Existing paths
     path('product-detail/<int:pk>', views.product_detail, name='product-detail'),
     path('add-to-cart/', views.add_to_cart, name='add-to-cart'),
     path('cart/', views.view_cart, name='carts'),

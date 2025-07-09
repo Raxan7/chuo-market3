@@ -152,4 +152,17 @@ class SubscriptionPayment(models.Model):
     def __str__(self):
         return f"{self.customer.user.username} - {self.subscription.level} ({self.status})"
 
+class NewsletterSubscriber(models.Model):
+    """Model for newsletter subscribers"""
+    name = models.CharField(max_length=100, blank=True)
+    email = models.EmailField(unique=True)
+    source = models.CharField(max_length=50, default='website', 
+                             help_text="Where the subscription originated from")
+    is_active = models.BooleanField(default=True)
+    date_subscribed = models.DateTimeField(auto_now_add=True)
+    last_updated = models.DateTimeField(auto_now=True)
+    
+    def __str__(self):
+        return self.email
+
 
