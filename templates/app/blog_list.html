@@ -21,7 +21,7 @@
         {% for blog in blogs %}
             <div class="col">
                 <div class="card h-100 border-0 shadow-sm hover-shadow">
-                    <a href="{% url 'blog_detail' pk=blog.pk %}" class="text-decoration-none">
+                    <a href="{% url 'blog_detail' slug=blog.slug %}" class="text-decoration-none">
                         {% if blog.thumbnail %}
                             {% load image_tags %}
                             <div class="blog-thumbnail-container">
