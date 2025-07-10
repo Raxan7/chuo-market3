@@ -1,0 +1,81 @@
+{% load static %}
+
+<div class="social-share-container mt-4 mb-4">
+    <h5 class="mb-3">Share This</h5>
+    <div class="d-flex social-share-buttons">
+        <!-- Facebook Share -->
+        <a href="https://www.facebook.com/sharer/sharer.php?u={{ request.build_absolute_uri }}" 
+           target="_blank" 
+           rel="noopener noreferrer"
+           class="social-btn facebook-btn me-2"
+           aria-label="Share on Facebook">
+            <i class="fab fa-facebook-f"></i>
+        </a>
+        
+        <!-- Twitter/X Share -->
+        <a href="https://twitter.com/intent/tweet?url={{ request.build_absolute_uri }}&text={{ share_title|urlencode }}"
+           target="_blank"
+           rel="noopener noreferrer" 
+           class="social-btn twitter-btn me-2"
+           aria-label="Share on Twitter">
+            <i class="fab fa-twitter"></i>
+        </a>
+        
+        <!-- LinkedIn Share -->
+        <a href="https://www.linkedin.com/shareArticle?mini=true&url={{ request.build_absolute_uri }}&title={{ share_title|urlencode }}&summary={{ share_description|urlencode }}"
+           target="_blank"
+           rel="noopener noreferrer"
+           class="social-btn linkedin-btn me-2"
+           aria-label="Share on LinkedIn">
+            <i class="fab fa-linkedin-in"></i>
+        </a>
+        
+        <!-- WhatsApp Share -->
+        <a href="https://wa.me/?text={{ share_title|urlencode }}%20{{ request.build_absolute_uri|urlencode }}"
+           target="_blank"
+           rel="noopener noreferrer"
+           class="social-btn whatsapp-btn me-2"
+           aria-label="Share on WhatsApp">
+            <i class="fab fa-whatsapp"></i>
+        </a>
+    </div>
+</div>
+
+<style>
+    .social-share-buttons {
+        display: flex;
+        flex-wrap: wrap;
+    }
+    
+    .social-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        color: white !important;
+        text-decoration: none;
+        transition: all 0.3s ease;
+    }
+    
+    .social-btn:hover {
+        transform: scale(1.1);
+    }
+    
+    .facebook-btn {
+        background-color: #3b5998;
+    }
+    
+    .twitter-btn {
+        background-color: #1da1f2;
+    }
+    
+    .linkedin-btn {
+        background-color: #0077b5;
+    }
+    
+    .whatsapp-btn {
+        background-color: #25D366;
+    }
+</style>
