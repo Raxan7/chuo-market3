@@ -2,6 +2,12 @@
 {% load static %}
 <html lang="en">
   <head>
+    <!-- Performance optimizations -->
+    <link rel="dns-prefetch" href="//pagead2.googlesyndication.com">
+    <link rel="dns-prefetch" href="//www.googletagmanager.com">
+    <link rel="preconnect" href="https://pagead2.googlesyndication.com" crossorigin>
+    <link rel="preconnect" href="https://www.googletagmanager.com" crossorigin>
+    
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5171031845295268"
      crossorigin="anonymous"></script>
     <!-- Google tag (gtag.js) -->
@@ -40,8 +46,67 @@
     <!-- Canonical URL -->
     <link rel="canonical" href="{{ canonical_url }}">
     
+    <!-- Preconnect to external domains for faster loading -->
+    <link rel="preconnect" href="https://cdn.jsdelivr.net">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    
+    <!-- Skeleton loader for progressive content loading -->
+    <link rel="stylesheet" href="{% static 'css/skeleton-loader.min.css' %}">
+    
     {% block extra_meta %}{% endblock extra_meta %}
+    
+    <!-- Structured Data for Organization (JSON-LD) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "ChuoSmart",
+      "url": "{{ canonical_url }}",
+      "logo": "{{ canonical_url }}{% static 'app/images/logo.png' %}",
+      "description": "Tanzania's first platform to combine online education and digital commerce into a single ecosystem",
+      "foundingDate": "2024",
+      "address": {
+        "@type": "PostalAddress",
+        "addressLocality": "Dodoma",
+        "addressRegion": "Dodoma",
+        "addressCountry": "Tanzania"
+      },
+      "contactPoint": {
+        "@type": "ContactPoint",
+        "contactType": "customer service",
+        "email": "support@chuosmart.com"
+      },
+      "sameAs": [
+        "https://instagram.com/chuosmart",
+        "https://linkedin.com/company/chuosmart",
+        "https://twitter.com/chuosmart"
+      ]
+    }
+    </script>
+    
+    <!-- Website Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "url": "{{ canonical_url }}",
+      "name": "ChuoSmart",
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": "{{ canonical_url }}/search/?q={search_term}",
+        "query-input": "required name=search_term"
+      }
+    }
+    </script>
+    
+    {% block structured_data %}{% endblock structured_data %}
 
+    <!-- Preload critical resources -->
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/css/bootstrap.min.css" as="style">
+    <link rel="preload" href="https://code.jquery.com/jquery-3.5.1.min.js" as="script">
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/js/bootstrap.bundle.min.js" as="script">
+    <link rel="preload" href="{% static 'app/js/myscript.min.js' %}" as="script">
+    
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-giJF6kkoqNQ00vy+HMDP7azOuL0xtbfIcaT9wjKHr8RbDVddVHyTfAAsrekwKmP1" crossorigin="anonymous">
 
@@ -445,7 +510,7 @@
                 <div class="col-md-2 mb-3">
                     <h5 class="mb-3">Support</h5>
                     <ul class="list-unstyled">
-                        <li><a href="#" class="text-white text-decoration-none small">Help Center</a></li>
+                        <li><a href="{% url 'help_center' %}" class="text-white text-decoration-none small">Help Center</a></li>
                         <li><a href="{% url 'privacy' %}" class="text-white text-decoration-none small">Privacy Policy</a></li>
                         <li><a href="{% url 'terms' %}" class="text-white text-decoration-none small">Terms of Service</a></li>
                     </ul>
@@ -530,7 +595,9 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/OwlCarousel2/2.3.4/owl.carousel.min.js" onerror="this.onerror=null;this.src='{% static 'app/js/owl.carousel.min.js' %}';"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/js/all.min.js" onerror="this.onerror=null;this.src='{% static 'app/js/all.min.js' %}';"></script>
-    <script src="{% static 'app/js/myscript.js' %}"></script>
+    <script src="{% static 'app/js/myscript.min.js' %}"></script>
+    <!-- Lazy loading enhancement script -->
+    <script src="{% static 'js/lazy-loading.min.js' %}" async></script>
     <script>
       $(document).ready(function() {
     // Function to fetch cart count via AJAX
@@ -674,7 +741,7 @@
     
     {% if user.is_authenticated %}
     <!-- Session keep-alive script for logged-in users -->
-    <script src="{% static 'js/session-keep-alive.js' %}"></script>
+    <script src="{% static 'js/session-keep-alive.min.js' %}"></script>
     {% endif %}
     
     {% load webpush_notifications %}
@@ -683,7 +750,7 @@
         // Register service worker for push notifications
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function() {
-                navigator.serviceWorker.register('{% static "js/service-worker.js" %}')
+                navigator.serviceWorker.register('{% static "js/service-worker.min.js" %}')
                     .then(function(registration) {
                         console.log('Service Worker registered with scope:', registration.scope);
                         {% webpush_button with_class="d-none" %}

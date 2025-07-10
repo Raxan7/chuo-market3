@@ -16,8 +16,6 @@
 {% block main-content %}
 <style>
     .blog-container {
-        max-width: 800px;
-        margin: 2rem auto;
         padding: 2rem;
         background: #fff;
         border-radius: 12px;
@@ -31,17 +29,18 @@
     }
     
     .blog-title {
-        font-size: 2.2rem;
+        font-size: 2.5rem;
         font-weight: 700;
         line-height: 1.3;
         color: #222;
-        margin-bottom: 1rem;
+        margin-bottom: 1.5rem;
     }
     
     .blog-meta {
         display: flex;
         align-items: center;
-        gap: 1rem;
+        flex-wrap: wrap;
+        gap: 1.5rem;
         margin-bottom: 1.5rem;
         color: #666;
         font-size: 0.95rem;
@@ -203,6 +202,118 @@
         background-color: #f9f9f9;
     }
     
+    /* TinyMCE content specific styling */
+    .tinymce-content {
+        line-height: 1.8;
+        font-size: 1.1rem;
+        color: #333;
+    }
+    
+    .tinymce-content h1, 
+    .tinymce-content h2, 
+    .tinymce-content h3, 
+    .tinymce-content h4, 
+    .tinymce-content h5, 
+    .tinymce-content h6 {
+        margin-top: 2rem;
+        margin-bottom: 1rem;
+        font-weight: 600;
+        color: #222;
+    }
+    
+    .tinymce-content h1 { font-size: 1.8rem; }
+    .tinymce-content h2 { font-size: 1.6rem; }
+    .tinymce-content h3 { font-size: 1.4rem; }
+    .tinymce-content h4 { font-size: 1.2rem; }
+    
+    .tinymce-content p {
+        margin-bottom: 1.2rem;
+    }
+    
+    .tinymce-content ul, 
+    .tinymce-content ol {
+        margin-bottom: 1.5rem;
+        padding-left: 2rem;
+    }
+    
+    .tinymce-content li {
+        margin-bottom: 0.5rem;
+    }
+    
+    .tinymce-content strong {
+        font-weight: 600;
+        color: #222;
+    }
+    
+    /* Critical fix: Remove data attributes that are showing up in the HTML */
+    .tinymce-content [data-start],
+    .tinymce-content [data-end] {
+        /* Override attributes display */
+        content-visibility: hidden !important;
+    }
+    
+    /* Remove data attributes display in rendered output */
+    .tinymce-content *[data-start]:before,
+    .tinymce-content *[data-end]:before {
+        content: none !important;
+        display: none !important;
+    }
+    
+    .tinymce-content *[data-start],
+    .tinymce-content *[data-end] {
+        position: relative;
+    }
+    
+    /* Style all inline elements properly */
+    .tinymce-content p strong,
+    .tinymce-content li strong {
+        font-weight: 600;
+        color: #000;
+    }
+    
+    /* Fix spacing between elements */
+    .tinymce-content hr {
+        margin: 2rem 0;
+        border: none;
+        border-top: 1px solid #eee;
+    }
+    
+    /* Add proper blockquote styling */
+    .tinymce-content blockquote {
+        border-left: 4px solid #3b82f6;
+        padding: 1rem 1.5rem;
+        margin: 1.5rem 0;
+        background: #f8fafc;
+        font-style: italic;
+    }
+    
+    /* Add code block styling */
+    .tinymce-content pre {
+        background: #f8f8f8;
+        border-radius: 4px;
+        padding: 1rem;
+        overflow-x: auto;
+        margin: 1.5rem 0;
+    }
+    
+    /* Fix image display */
+    .tinymce-content img {
+        max-width: 100%;
+        height: auto;
+        border-radius: 8px;
+        margin: 1.5rem 0;
+    }
+    
+    /* Fix for HTML tags showing as text */
+    .tinymce-content > *:not(style):not(script) {
+        display: block;
+    }
+    
+    /* Handle mixed-in text and HTML scenario */
+    .tinymce-content pre > span {
+        white-space: pre-wrap;
+    }
+    
     @media (max-width: 768px) {
         .blog-container {
             padding: 1.5rem;
@@ -233,34 +344,127 @@
     }
 </style>
 
-<div class="blog-container">
-    <div class="blog-header">
-        <h1 class="blog-title">{{ blog.title }}</h1>
-        
-        <div class="blog-meta">
-            <div class="blog-author">
-                <span class="blog-author-avatar">{{ blog.author.username|first|upper }}</span>
-                <span>By {{ blog.author.username }}</span>
-            </div>
-            <div class="blog-date">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                    <path d="M3.5 0a.5.5 0 0 1 .5.5V1h8V.5a.5.5 0 0 1 1 0V1h1a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2h1V.5a.5.5 0 0 1 .5-.5zM1 4v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V4H1z"/>
-                </svg>
-                <span>{{ blog.created_at|date:"F j, Y" }}</span>
+<div class="container py-5">
+    <div class="row">
+        <div class="col-lg-8 col-md-10 mx-auto">
+            <div class="blog-container">
+                <!-- Back to blogs link -->
+                <div class="mb-4">
+                    <a href="{% url 'blog_list' %}" class="btn btn-outline-primary btn-sm">
+                        <i class="fas fa-arrow-left me-2"></i> Back to Blog List
+                    </a>
+                </div>
+                
+                <div class="blog-header">
+                    <h1 class="blog-title">{{ blog.title }}</h1>
+                    
+                    <div class="blog-meta">
+                        <div class="blog-author">
+                            <span class="blog-author-avatar">{{ blog.author.username|first|upper }}</span>
+                            <span>By {{ blog.author.username }}</span>
+                        </div>
+                        <div class="blog-date">
+                            <i class="far fa-calendar-alt"></i>
+                            <span>{{ blog.created_at|date:"F j, Y" }}</span>
+                        </div>
+                    </div>
+                    
+                    {% if blog.thumbnail %}
+                        {% load image_tags %}
+                        <!-- Don't lazy load the main blog image as it's above the fold -->
+                        {% picture webp_src=blog.thumbnail_webp|safe_url fallback_src=blog.thumbnail.url alt=blog.title css_class="blog-thumbnail" lazy=False %}
+                    {% endif %}
+                </div>
+                
+                <div class="blog-content">
+                    {% if blog.is_markdown %}
+                        {{ blog.content|markdown|safe }}
+                    {% else %}
+                        <div class="tinymce-content" id="tinymce-content-container">
+                            {{ blog.content|safe }}
+                        </div>
+                    {% endif %}
+                </div>
+                
+                <!-- Share buttons -->
+                <div class="blog-share mt-5 pt-4 border-top">
+                    <h5 class="mb-3">Share this Article</h5>
+                    <div class="d-flex gap-2">
+                        <a href="https://twitter.com/intent/tweet?text={{ blog.title|urlencode }}&url={{ request.build_absolute_uri }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                            <i class="fab fa-twitter me-1"></i> Twitter
+                        </a>
+                        <a href="https://www.facebook.com/sharer/sharer.php?u={{ request.build_absolute_uri|urlencode }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                            <i class="fab fa-facebook me-1"></i> Facebook
+                        </a>
+                        <a href="https://wa.me/?text={{ blog.title|urlencode }}%20{{ request.build_absolute_uri|urlencode }}" target="_blank" class="btn btn-sm btn-outline-success">
+                            <i class="fab fa-whatsapp me-1"></i> WhatsApp
+                        </a>
+                    </div>
+                </div>
             </div>
         </div>
-        
-        {% if blog.thumbnail %}
-            <img src="{{ blog.thumbnail.url }}" alt="{{ blog.title }}" class="blog-thumbnail">
-        {% endif %}
-    </div>
-    
-    <div class="blog-content">
-        {% if blog.is_markdown %}
-            {{ blog.content|markdown|safe }}
-        {% else %}
-            {{ blog.content|safe }}
-        {% endif %}
     </div>
 </div>
+<!-- Script to clean any remaining data attributes -->
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Find all elements with data-start or data-end attributes
+        const elementsWithDataAttrs = document.querySelectorAll('[data-start], [data-end]');
+        
+        // Remove these attributes to prevent them from showing in the rendered output
+        elementsWithDataAttrs.forEach(element => {
+            element.removeAttribute('data-start');
+            element.removeAttribute('data-end');
+        });
+        
+        // Fix any malformed HTML that TinyMCE might generate
+        const tinymceContent = document.querySelector('.tinymce-content');
+        if (tinymceContent) {
+            // Make sure lists have proper structure
+            const orphanedListItems = tinymceContent.querySelectorAll('li:not(ul > li, ol > li)');
+            orphanedListItems.forEach(item => {
+                const ul = document.createElement('ul');
+                item.parentNode.insertBefore(ul, item);
+                ul.appendChild(item);
+            });
+            
+            // Fix HTML tags rendering as text
+            const contentContainer = document.getElementById('tinymce-content-container');
+            if (contentContainer) {
+                // Check if the content appears to contain HTML tags as text
+                const contentText = contentContainer.textContent || '';
+                if (contentText.includes('<p>') || contentText.includes('<div>') || 
+                    contentText.includes('<h') || contentText.includes('<ul>')) {
+                    
+                    // Content likely contains HTML tags as text - try to fix it
+                    try {
+                        // Get the raw text content
+                        const rawContent = contentContainer.innerText;
+                        
+                        // Clear the container
+                        contentContainer.innerHTML = '';
+                        
+                        // Create a temporary div to parse the HTML
+                        const tempDiv = document.createElement('div');
+                        
+                        // Use DOMParser to safely parse HTML
+                        const parser = new DOMParser();
+                        const parsedDoc = parser.parseFromString(rawContent, 'text/html');
+                        
+                        // If parsing was successful, use the body content
+                        if (parsedDoc && parsedDoc.body) {
+                            contentContainer.innerHTML = parsedDoc.body.innerHTML;
+                        } else {
+                            // Fallback if parsing fails
+                            tempDiv.innerHTML = rawContent;
+                            contentContainer.innerHTML = tempDiv.innerHTML;
+                        }
+                    } catch (e) {
+                        console.error('Error fixing HTML content:', e);
+                    }
+                }
+            }
+        }
+    });
+</script>
 {% endblock main-content %}

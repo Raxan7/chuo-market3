@@ -123,8 +123,13 @@
       <div class="carousel-inner">
         {% for banner in banners %}
           <div class="carousel-item{% if forloop.first %} active{% endif %}">
-            <img src="{{ banner.image.url }}" class="d-block w-100" 
-                 alt="{{ banner.title|default:'Banner image' }}">
+            {% load image_tags %}
+            {% if forloop.first %}
+              <!-- Don't lazy load the first banner for faster initial display -->
+              {% optimized_img src=banner.image.url alt=banner.title|default:'Banner image' css_class="d-block w-100" lazy=False %}
+            {% else %}
+              {% optimized_img src=banner.image.url alt=banner.title|default:'Banner image' css_class="d-block w-100" lazy=True %}
+            {% endif %}
           </div>
         {% endfor %}
       </div>
@@ -260,12 +265,30 @@
     <h2 class="text-center my-4">
       <span class="text-dark">Featured Products</span>
     </h2>
-    <!-- Random Products Slider -->
-    <div class="owl-carousel" id="slider1">
+    <!-- Skeleton loader placeholders (shown while loading) -->
+    <div id="skeleton-products" class="row">
+      {% for i in "12345"|make_list %}
+      <div class="col-6 col-md-4 col-lg-3 mb-4">
+        <div class="card shadow-sm">
+          <div class="skeleton-loader skeleton-img"></div>
+          <div class="card-body">
+            <div class="skeleton-loader skeleton-title"></div>
+            <div class="skeleton-loader skeleton-price"></div>
+            <div class="skeleton-loader skeleton-text"></div>
+            <div class="skeleton-loader skeleton-text"></div>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    
+    <!-- Random Products Slider (hidden until loaded) -->
+    <div class="owl-carousel" id="slider1" style="display: none;">
       {% for product in products %}
-        <a href="{% url 'product-detail' pk=product.id %}" class="btn">
+        <a href="{% url 'product-detail' slug=product.slug %}" class="btn">
           <div class="card text-center shadow-sm" style="width: 18rem;">
-            <img src="{{product.image.url}}" class="card-img-top" alt="">
+            {% load image_tags %}
+            {% picture webp_src=product.image_webp|safe_url fallback_src=product.image.url alt=product.title css_class="card-img-top" lazy=True %}
             <div class="card-body">
               <h5 class="card-title">{{ product.title |truncatewords:3 }}</h5>
               <p class="card-text">TSh {{product.price}}</p>
@@ -289,4 +312,16 @@
   {% endif %}
 </div>
 
+<script>
+  // Show products when they're loaded
+  document.addEventListener('DOMContentLoaded', function() {
+    // Add a short delay to simulate loading (remove in production)
+    setTimeout(function() {
+      // Hide skeleton loaders
+      document.getElementById('skeleton-products').style.display = 'none';
+      // Show actual products
+      document.getElementById('slider1').style.display = 'block';
+    }, 500);
+  });
+</script>
 {% endblock main-content %}
