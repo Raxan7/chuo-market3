@@ -7,6 +7,31 @@
 
 {% block meta_keywords %}ChuoSmart terms of service, terms and conditions, user agreement, terms of use, Tanzania, education platform{% endblock meta_keywords %}
 
+{% block structured_data %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebPage",
+  "name": "Terms of Service - ChuoSmart",
+  "description": "Learn about the terms and conditions for using the ChuoSmart platform.",
+  "publisher": {
+    "@type": "Organization",
+    "name": "ChuoSmart",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "{{ canonical_url }}{% static 'app/images/logo.png' %}"
+    }
+  },
+  "mainEntity": {
+    "@type": "WebContent",
+    "headline": "ChuoSmart Terms of Service",
+    "datePublished": "2025-07-09",
+    "dateModified": "2025-07-09"
+  }
+}
+</script>
+{% endblock structured_data %}
+
 {% block main-content %}
 <div class="container mt-5 mb-5">
     <!-- Header Section -->
