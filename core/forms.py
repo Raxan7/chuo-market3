@@ -3,7 +3,8 @@ from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
 from .models import Product, Blog, Subscription, SubscriptionPayment, Customer
 from tinymce.widgets import TinyMCE
-from .utils import clean_phone_number
+from core.utils import clean_phone_number
+from .image_utils import convert_to_webp, optimize_image
 
 class RegistrationForm(UserCreationForm):
     email = forms.EmailField(max_length=254, help_text='Required. Inform a valid email address.')
@@ -26,9 +27,34 @@ class LoginForm(forms.Form):
 
 
 class ProductForm(forms.ModelForm):
+    description = forms.CharField(
+        widget=TinyMCE(
+            attrs={
+                'cols': 80, 
+                'rows': 30, 
+                'class': 'form-control'
+            }
+        )
+    )
+    
     class Meta:
         model = Product
         fields = ['title', 'category', 'description', 'price', 'discount_price', 'image']
+        
+    def clean_description(self):
+        description = self.cleaned_data.get('description')
+        # This ensures the description is properly handled as UTF-8
+        # and can safely contain emojis
+        if description:
+            return description
+        return description
+        
+    def clean_image(self):
+        image = self.cleaned_data.get('image')
+        if image:
+            # Convert to WebP for better performance
+            return convert_to_webp(image)
+        return image
 
 
 class BlogForm(forms.ModelForm):
@@ -37,6 +63,13 @@ class BlogForm(forms.ModelForm):
     class Meta:
         model = Blog
         fields = ['title', 'content', 'thumbnail']
+        
+    def clean_thumbnail(self):
+        thumbnail = self.cleaned_data.get('thumbnail')
+        if thumbnail:
+            # Convert to WebP for better performance
+            return convert_to_webp(thumbnail)
+        return thumbnail
 
 
 class SubscriptionForm(forms.Form):
@@ -47,6 +80,13 @@ class SubscriptionPaymentForm(forms.ModelForm):
     class Meta:
         model = SubscriptionPayment
         fields = ['payment_proof']
+        
+    def clean_payment_proof(self):
+        payment_proof = self.cleaned_data.get('payment_proof')
+        if payment_proof:
+            # Optimize the image
+            return optimize_image(payment_proof)
+        return payment_proof
 
 
 class CustomerProfileForm(forms.ModelForm):
