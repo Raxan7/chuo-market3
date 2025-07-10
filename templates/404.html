@@ -1,0 +1,62 @@
+{% extends 'app/base.html' %}
+{% load static %}
+
+{% block title %}Page Not Found - ChuoSmart{% endblock title %}
+
+{% block meta_description %}Oops! The page you are looking for cannot be found. Return to the ChuoSmart homepage or browse our courses and marketplace.{% endblock meta_description %}
+
+{% block meta_keywords %}page not found, 404, error page, ChuoSmart{% endblock meta_keywords %}
+
+{% block main-content %}
+<div class="container py-5 my-5">
+    <div class="row">
+        <div class="col-md-8 mx-auto text-center">
+            <div class="mb-4">
+                <img src="{% static 'app/images/logo.png' %}" alt="ChuoSmart Logo" class="img-fluid" style="max-width: 150px;">
+            </div>
+            <h1 class="display-4 fw-bold text-primary mb-4">Page Not Found</h1>
+            <div class="card border-0 shadow-sm p-4 mb-5">
+                <div class="card-body">
+                    <h2 class="h4 mb-4">Oops! The page you are looking for doesn't exist.</h2>
+                    <p class="lead">You may have mistyped the address or the page may have moved.</p>
+                    <p class="mb-4">Here are some helpful links instead:</p>
+                    
+                    <div class="row mt-4">
+                        <div class="col-md-6 mb-3">
+                            <div class="d-grid">
+                                <a href="{% url 'home' %}" class="btn btn-primary btn-lg">
+                                    <i class="fas fa-home me-2"></i> Homepage
+                                </a>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <div class="d-grid">
+                                <a href="{% url 'contact' %}" class="btn btn-outline-primary btn-lg">
+                                    <i class="fas fa-envelope me-2"></i> Contact Us
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mt-3">
+                        <div class="col-md-6 mb-3">
+                            <a href="{% url 'about' %}" class="text-decoration-none d-block p-3 bg-light rounded">
+                                <i class="fas fa-info-circle me-2 text-primary"></i> About ChuoSmart
+                            </a>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <a href="{% url 'blog_list' %}" class="text-decoration-none d-block p-3 bg-light rounded">
+                                <i class="fas fa-blog me-2 text-primary"></i> Read our Blog
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4">
+                        <p class="text-muted">If you believe this is a mistake, please <a href="{% url 'contact' %}">contact our support team</a>.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock main-content %}
