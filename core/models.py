@@ -75,11 +75,58 @@ CATEGORY = (
 class Product(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     title = models.CharField(max_length=255)
+    slug = models.SlugField(max_length=255, unique=True, null=True, blank=True)
     category = models.CharField(choices=CATEGORY, max_length=2)
     description = models.TextField()
     price = models.FloatField()
     discount_price = models.FloatField(blank=True, null=True)
     image = models.ImageField(upload_to='product_images')
+    # New field for optimized WebP images
+    image_webp = models.ImageField(upload_to='product_images/webp', blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True)
+    
+    def save(self, *args, **kwargs):
+        from django.utils.text import slugify
+        
+        # Generate slug from title if slug is not set
+        if not self.slug:
+            original_slug = slugify(self.title)
+            unique_slug = original_slug
+            num = 1
+            
+            # Make sure the slug is unique
+            while Product.objects.filter(slug=unique_slug).exists():
+                unique_slug = f"{original_slug}-{num}"
+                num += 1
+                
+            self.slug = unique_slug
+        
+        # First save to get an ID if this is a new product
+        super(Product, self).save(*args, **kwargs)
+        
+        # Only convert if there's an image and no existing WebP
+        if self.image and not self.image_webp:
+            try:
+                from core.utils.image_optimizer import optimize_image
+                # Create WebP version
+                optimized = optimize_image(self.image, quality=85, format="WEBP")
+                if optimized:
+                    self.image_webp.save(
+                        f"{self.id}_webp.webp",
+                        optimized,
+                        save=False
+                    )
+                    # Save again but don't trigger this method recursively
+                    super(Product, self).save(update_fields=['image_webp'])
+            except ImportError:
+                # If the optimizer module is not available, just continue
+                pass
+            except Exception as e:
+                # Log the error but don't prevent saving
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Error creating WebP image: {e}")
 
     def __str__(self):
         return self.title
@@ -128,11 +175,53 @@ class Banners(models.Model):
 
 class Blog(models.Model):
     title = models.CharField(max_length=200)
+    slug = models.SlugField(max_length=250, unique=True, blank=True, null=True)
     content = models.TextField()
     author = models.ForeignKey(User, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     thumbnail = models.ImageField(upload_to='blog_thumbnails', blank=True, null=True)
+    # New field for optimized WebP thumbnail
+    thumbnail_webp = models.ImageField(upload_to='blog_thumbnails/webp', blank=True, null=True)
+    is_markdown = models.BooleanField(default=True, help_text="Whether content is written in Markdown format")
+    
+    def save(self, *args, **kwargs):
+        # Generate slug from title if not set
+        if not self.slug:
+            from django.utils.text import slugify
+            self.slug = slugify(self.title)
+            # Ensure slug uniqueness
+            original_slug = self.slug
+            counter = 1
+            while Blog.objects.filter(slug=self.slug).exists():
+                self.slug = f"{original_slug}-{counter}"
+                counter += 1
+        
+        # First save to get an ID if this is a new blog post
+        super(Blog, self).save(*args, **kwargs)
+        
+        # Only convert if there's a thumbnail and no existing WebP
+        if self.thumbnail and not self.thumbnail_webp:
+            try:
+                from core.utils.image_optimizer import optimize_image
+                # Create WebP version
+                optimized = optimize_image(self.thumbnail, quality=85, format="WEBP")
+                if optimized:
+                    self.thumbnail_webp.save(
+                        f"{self.id}_webp.webp",
+                        optimized,
+                        save=False
+                    )
+                    # Save again but don't trigger this method recursively
+                    super(Blog, self).save(update_fields=['thumbnail_webp'])
+            except ImportError:
+                # If the optimizer module is not available, just continue
+                pass
+            except Exception as e:
+                # Log the error but don't prevent saving
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Error creating WebP thumbnail: {e}")
 
     def __str__(self):
         return self.title
