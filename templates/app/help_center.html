@@ -1,0 +1,421 @@
+{% extends 'app/seo_base.html' %}
+{% load static %}
+{% load custom_filters %}
+
+{% block title %}Help Center - ChuoSmart{% endblock title %}
+
+{% block meta_description %}
+Get help with ChuoSmart marketplace. Find answers to frequently asked questions, step-by-step guides, and connect with our support team.
+{% endblock meta_description %}
+
+{% block additional_css %}
+<style>
+    /* Help Center Specific Styles */
+    .help-hero {
+        background: linear-gradient(135deg, #4a69bd, #38ada9);
+        color: white;
+        padding: 3rem 0;
+        margin-bottom: 2rem;
+        border-radius: 0.5rem;
+    }
+    
+    .help-hero h1 {
+        font-size: 2.5rem;
+        font-weight: 700;
+    }
+    
+    .help-search {
+        max-width: 600px;
+        margin: 0 auto;
+    }
+    
+    .help-search input {
+        border-radius: 30px;
+        padding: 0.75rem 1.5rem;
+        font-size: 1.1rem;
+        border: none;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    
+    .category-card {
+        background: white;
+        border-radius: 0.75rem;
+        transition: all 0.3s ease;
+        height: 100%;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    }
+    
+    .category-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 15px rgba(0,0,0,0.1);
+    }
+    
+    .category-icon {
+        font-size: 2rem;
+        width: 80px;
+        height: 80px;
+        background: #f8f9fa;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1rem;
+        color: #4a69bd;
+    }
+    
+    .accordion-button:not(.collapsed) {
+        background-color: rgba(74, 105, 189, 0.1);
+        color: #4a69bd;
+        box-shadow: none;
+    }
+    
+    .accordion-button:focus {
+        box-shadow: none;
+        border-color: rgba(74, 105, 189, 0.25);
+    }
+    
+    .guide-card {
+        border-radius: 0.75rem;
+        overflow: hidden;
+        height: 100%;
+        transition: all 0.3s ease;
+        border: 1px solid #eee;
+    }
+    
+    .guide-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 15px rgba(0,0,0,0.1);
+    }
+    
+    .guide-icon {
+        font-size: 1.5rem;
+        width: 60px;
+        height: 60px;
+        background: #f8f9fa;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 1rem;
+        color: #4a69bd;
+    }
+    
+    .contact-card {
+        border-radius: 0.75rem;
+        transition: all 0.3s ease;
+        border: 1px solid #eee;
+        height: 100%;
+    }
+    
+    .contact-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 15px rgba(0,0,0,0.1);
+    }
+    
+    .contact-icon {
+        font-size: 1.5rem;
+        color: #4a69bd;
+        margin-bottom: 1rem;
+    }
+    
+    .section-title {
+        position: relative;
+        margin-bottom: 2rem;
+        padding-bottom: 0.5rem;
+    }
+    
+    .section-title:after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 50px;
+        height: 3px;
+        background: #4a69bd;
+    }
+    
+    .jump-to-section {
+        position: sticky;
+        top: 100px;
+        background: white;
+        border-radius: 0.75rem;
+        padding: 1.5rem;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    }
+    
+    .jump-link {
+        display: block;
+        padding: 0.5rem 0;
+        color: #495057;
+        text-decoration: none;
+        transition: all 0.2s ease;
+    }
+    
+    .jump-link:hover, .jump-link.active {
+        color: #4a69bd;
+        transform: translateX(5px);
+    }
+    
+    @media (max-width: 768px) {
+        .jump-to-section {
+            position: relative;
+            top: 0;
+            margin-bottom: 2rem;
+        }
+        
+        .help-hero h1 {
+            font-size: 2rem;
+        }
+    }
+</style>
+{% endblock additional_css %}
+
+{% block main-content %}
+<!-- Help Hero Section -->
+<div class="container my-4">
+    <div class="help-hero text-center p-5">
+        <h1>How can we help you?</h1>
+        <p class="lead mb-4">Find answers, guides, and support for all things ChuoSmart</p>
+        <div class="help-search">
+            <form id="searchForm" class="d-flex position-relative">
+                <input type="text" class="form-control" id="helpSearch" placeholder="Search for help..." aria-label="Search for help">
+                <button class="btn position-absolute" style="right: 10px; top: 50%; transform: translateY(-50%);" type="submit">
+                    <i class="fas fa-search"></i>
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="container mb-5">
+    <div class="row">
+        <!-- Left Sidebar - Jump Links -->
+        <div class="col-lg-3 d-none d-lg-block">
+            <div class="jump-to-section">
+                <h5 class="mb-3">Jump to Section</h5>
+                <a href="#categories" class="jump-link"><i class="fas fa-th me-2"></i> Help Categories</a>
+                <a href="#faqs" class="jump-link"><i class="fas fa-question-circle me-2"></i> FAQs</a>
+                <a href="#guides" class="jump-link"><i class="fas fa-book-open me-2"></i> Guides</a>
+                <a href="#contact" class="jump-link"><i class="fas fa-headset me-2"></i> Contact Support</a>
+            </div>
+        </div>
+        
+        <!-- Main Content -->
+        <div class="col-lg-9">
+            <!-- Help Categories -->
+            <section id="categories" class="mb-5">
+                <h2 class="section-title">Help Categories</h2>
+                <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+                    {% for category in categories %}
+                    <div class="col">
+                        <div class="category-card p-4 text-center">
+                            <div class="category-icon">
+                                <i class="{{ category.icon }}"></i>
+                            </div>
+                            <h4>{{ category.title }}</h4>
+                            <a href="#{{ category.id }}-faqs" class="btn btn-outline-primary mt-3">View FAQs</a>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </section>
+            
+            <!-- FAQs Section -->
+            <section id="faqs" class="mb-5">
+                <h2 class="section-title">Frequently Asked Questions</h2>
+                
+                <ul class="nav nav-pills mb-4" id="faqTabs" role="tablist">
+                    {% for category in categories %}
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link {% if forloop.first %}active{% endif %}" 
+                                id="{{ category.id }}-tab" 
+                                data-bs-toggle="pill" 
+                                data-bs-target="#{{ category.id }}-faqs" 
+                                type="button" 
+                                role="tab" 
+                                aria-controls="{{ category.id }}-faqs" 
+                                aria-selected="{% if forloop.first %}true{% else %}false{% endif %}">
+                            <i class="{{ category.icon }} me-2"></i> {{ category.title }}
+                        </button>
+                    </li>
+                    {% endfor %}
+                </ul>
+                
+                <div class="tab-content" id="faqTabContent">
+                    {% for category in categories %}
+                    <div class="tab-pane fade {% if forloop.first %}show active{% endif %}" 
+                         id="{{ category.id }}-faqs" 
+                         role="tabpanel" 
+                         aria-labelledby="{{ category.id }}-tab">
+                        <div class="accordion" id="accordion{{ category.id }}">
+                            {% for faq in faqs|get_item:category.id %}
+                            <div class="accordion-item">
+                                <h3 class="accordion-header" id="heading{{ category.id }}{{ forloop.counter }}">
+                                    <button class="accordion-button collapsed" 
+                                            type="button" 
+                                            data-bs-toggle="collapse" 
+                                            data-bs-target="#collapse{{ category.id }}{{ forloop.counter }}" 
+                                            aria-expanded="false" 
+                                            aria-controls="collapse{{ category.id }}{{ forloop.counter }}">
+                                        {{ faq.question }}
+                                    </button>
+                                </h3>
+                                <div id="collapse{{ category.id }}{{ forloop.counter }}" 
+                                     class="accordion-collapse collapse" 
+                                     aria-labelledby="heading{{ category.id }}{{ forloop.counter }}" 
+                                     data-bs-parent="#accordion{{ category.id }}">
+                                    <div class="accordion-body">
+                                        {{ faq.answer }}
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </section>
+            
+            <!-- Guides Section -->
+            <section id="guides" class="mb-5">
+                <h2 class="section-title">Step-by-Step Guides</h2>
+                <div class="row row-cols-1 row-cols-md-2 g-4">
+                    {% for guide in guides %}
+                    <div class="col">
+                        <div class="guide-card h-100">
+                            <div class="card-body d-flex flex-column">
+                                <div class="guide-icon align-self-start">
+                                    <i class="{{ guide.icon }}"></i>
+                                </div>
+                                <h4 class="card-title">{{ guide.title }}</h4>
+                                <p class="card-text">{{ guide.description }}</p>
+                                <a href="{{ guide.link }}" class="btn btn-primary mt-auto">Read Guide</a>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </section>
+            
+            <!-- Contact Support Section -->
+            <section id="contact">
+                <h2 class="section-title">Still Need Help?</h2>
+                <p class="mb-4">Our support team is ready to assist you with any questions or concerns.</p>
+                
+                <div class="row row-cols-1 row-cols-md-2 g-4">
+                    {% for channel in contact_channels %}
+                    <div class="col">
+                        <div class="contact-card p-4">
+                            <div class="contact-icon">
+                                <i class="{{ channel.icon }} fa-2x"></i>
+                            </div>
+                            <h4>{{ channel.title }}</h4>
+                            <p>{{ channel.description }}</p>
+                            <a href="{{ channel.action }}" class="btn btn-outline-primary">Contact Us</a>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </section>
+        </div>
+    </div>
+</div>
+{% endblock main-content %}
+
+{% block additional_js %}
+<script>
+    // Handle search functionality
+    document.getElementById('searchForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const searchTerm = document.getElementById('helpSearch').value.toLowerCase();
+        
+        if (searchTerm.length < 2) return;
+        
+        // Expand all FAQ items that match the search term
+        const allQuestions = document.querySelectorAll('.accordion-button');
+        const allPanes = document.querySelectorAll('.tab-pane');
+        const allTabs = document.querySelectorAll('.nav-link');
+        
+        // First collapse all
+        allQuestions.forEach(btn => {
+            if (!btn.classList.contains('collapsed')) {
+                btn.classList.add('collapsed');
+                btn.setAttribute('aria-expanded', 'false');
+                const target = document.querySelector(btn.getAttribute('data-bs-target'));
+                target.classList.remove('show');
+            }
+        });
+        
+        // Show all tabs
+        allPanes.forEach(pane => {
+            pane.classList.add('show', 'active');
+        });
+        
+        allTabs.forEach(tab => {
+            tab.classList.add('active');
+            tab.setAttribute('aria-selected', 'true');
+        });
+        
+        // Then expand matching ones
+        let foundMatch = false;
+        allQuestions.forEach(btn => {
+            if (btn.textContent.toLowerCase().includes(searchTerm)) {
+                btn.classList.remove('collapsed');
+                btn.setAttribute('aria-expanded', 'true');
+                const target = document.querySelector(btn.getAttribute('data-bs-target'));
+                target.classList.add('show');
+                
+                // Scroll to first match
+                if (!foundMatch) {
+                    btn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    foundMatch = true;
+                }
+            }
+        });
+        
+        // If no matches in FAQs, check guides
+        if (!foundMatch) {
+            const guideSection = document.getElementById('guides');
+            const guides = guideSection.querySelectorAll('.card-title, .card-text');
+            
+            guides.forEach(guide => {
+                if (guide.textContent.toLowerCase().includes(searchTerm)) {
+                    guide.closest('.guide-card').classList.add('border-primary');
+                    guide.closest('.guide-card').scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    foundMatch = true;
+                    return;
+                }
+            });
+        }
+        
+        // If still no matches, show a message
+        if (!foundMatch) {
+            alert('No results found for "' + searchTerm + '". Please try another search term.');
+        }
+    });
+    
+    // Highlight active section in sidebar when scrolling
+    window.addEventListener('scroll', function() {
+        const sections = ['categories', 'faqs', 'guides', 'contact'];
+        let currentSection = '';
+        
+        sections.forEach(section => {
+            const element = document.getElementById(section);
+            const rect = element.getBoundingClientRect();
+            
+            if (rect.top <= 100 && rect.bottom >= 100) {
+                currentSection = section;
+            }
+        });
+        
+        if (currentSection) {
+            document.querySelectorAll('.jump-link').forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('href') === '#' + currentSection) {
+                    link.classList.add('active');
+                }
+            });
+        }
+    });
+</script>
+{% endblock additional_js %}
