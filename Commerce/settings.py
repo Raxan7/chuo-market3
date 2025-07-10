@@ -22,6 +22,9 @@ SECRET_KEY = os.getenv('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
+# Define the canonical domain (without www)
+CANONICAL_DOMAIN = 'chuosmart.com'
+
 ALLOWED_HOSTS = ['chuo-market3.onrender.com', 'localhost', '127.0.0.1', 'chuosmart.com', 'www.chuosmart.com']
 # CSRF_TRUSTED_ORIGINS = ['https://chuo-market3.onrender.com', 'http://localhost:8000']
 CSRF_TRUSTED_ORIGINS = [
@@ -75,6 +78,8 @@ MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',  # Ensure this is included
     'whitenoise.middleware.WhiteNoiseMiddleware',
+    'core.canonicalization.CanonicalDomainMiddleware',  # URL canonicalization
+    'core.canonicalization.TrailingSlashMiddleware',    # Ensure trailing slashes
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -255,12 +260,12 @@ TINYMCE_DEFAULT_CONFIG = {
 SESSION_ENGINE = 'django.contrib.sessions.backends.db'  # Use database-backed sessions
 
 # Session configuration
-SESSION_COOKIE_AGE = 86400  # 24 hours as the maximum session age
+SESSION_COOKIE_AGE = 31536000  # 1 year in seconds - effectively "forever" in web terms
 SESSION_SAVE_EVERY_REQUEST = True  # Update the session on every request, resetting the expiry time
 SESSION_EXPIRE_AT_BROWSER_CLOSE = False  # Don't expire when browser closes
 SESSION_COOKIE_SECURE = not DEBUG  # Use secure cookies in production
 SESSION_COOKIE_HTTPONLY = True  # Prevent JavaScript from accessing the session cookie
-SESSION_IDLE_TIMEOUT = 7200  # 2 hours in seconds - custom setting for middleware
+SESSION_IDLE_TIMEOUT = 31536000  # 1 year in seconds - effectively disabled
 
 GENERATIVE_AI_KEY = os.getenv('GENERATIVE_AI_KEY')
 
