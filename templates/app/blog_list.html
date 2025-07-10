@@ -1,22 +1,93 @@
 {% extends 'app/base.html' %}
-{% block title %}Blog List{% endblock title %}
+{% load static %}
+{% block title %}Chuo Blog - Latest Articles and Insights{% endblock title %}
+
+{% block meta_description %}Read the latest articles, tips, and insights from Chuo Blog. Stay updated with educational content, market trends, and student life.{% endblock %}
 
 {% block main-content %}
-<div class="container mt-5">
-    <h2>Blog List</h2>
-    <div class="list-group">
+<div class="container py-5">
+    <!-- Hero Section -->
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="bg-primary bg-gradient text-white rounded-3 p-4 p-md-5 shadow">
+                <h1 class="display-4 fw-bold">Chuo Blog</h1>
+                <p class="lead">Discover insights, tips, and stories from our community</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Blog Cards -->
+    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
         {% for blog in blogs %}
-            <a href="{% url 'blog_detail' pk=blog.pk %}" class="list-group-item list-group-item-action d-flex flex-column flex-md-row align-items-start">
-                {% if blog.thumbnail %}
-                    <img src="{{ blog.thumbnail.url }}" alt="{{ blog.title }}" class="img-thumbnail mr-3 mb-3 mb-md-0" style="width: 100px; height: 100px; object-fit: cover;">
-                {% endif %}
-                <div class="flex-grow-1">
-                    <h5 class="mb-1">{{ blog.title }}</h5>
-                    <!-- <p class="mb-1">{{ blog.content|truncatewords:10 }}</p> -->
-                    <small>By {{ blog.author.username }} on {{ blog.created_at }}</small>
+            <div class="col">
+                <div class="card h-100 border-0 shadow-sm hover-shadow">
+                    <a href="{% url 'blog_detail' pk=blog.pk %}" class="text-decoration-none">
+                        {% if blog.thumbnail %}
+                            {% load image_tags %}
+                            <div class="blog-thumbnail-container">
+                                {% picture webp_src=blog.thumbnail_webp|safe_url fallback_src=blog.thumbnail.url alt=blog.title css_class="card-img-top rounded-top" lazy=True width="100%" height="200" style="height: 200px; object-fit: cover;" %}
+                            </div>
+                        {% else %}
+                            <div class="blog-thumbnail-placeholder bg-light d-flex align-items-center justify-content-center" style="height: 200px;">
+                                <i class="fas fa-newspaper text-muted" style="font-size: 3rem;"></i>
+                            </div>
+                        {% endif %}
+                        <div class="card-body">
+                            <h5 class="card-title text-dark">{{ blog.title }}</h5>
+                            <p class="card-text text-muted small">
+                                <i class="fas fa-user-circle me-2"></i>{{ blog.author.username }}
+                                <span class="mx-2">|</span>
+                                <i class="far fa-calendar-alt me-2"></i>{{ blog.created_at|date:"M d, Y" }}
+                            </p>
+                            <div class="mt-3">
+                                <span class="text-primary">Read more <i class="fas fa-arrow-right ms-1"></i></span>
+                            </div>
+                        </div>
+                    </a>
                 </div>
-            </a>
+            </div>
+        {% empty %}
+            <div class="col-12 text-center py-5">
+                <div class="py-5">
+                    <i class="fas fa-newspaper text-muted mb-3" style="font-size: 4rem;"></i>
+                    <h3 class="text-muted">No blog posts available yet</h3>
+                    <p>Check back soon for new content!</p>
+                </div>
+            </div>
         {% endfor %}
     </div>
+    
+    {% if blogs %}
+    <!-- Add Blog Button for Authenticated Users -->
+    <div class="text-center mt-5">
+        {% if user.is_authenticated %}
+            <a href="{% url 'add_blog' %}" class="btn btn-primary btn-lg px-4">
+                <i class="fas fa-plus-circle me-2"></i>Write a Blog Post
+            </a>
+        {% endif %}
+    </div>
+    {% endif %}
 </div>
+
+<style>
+    /* Custom hover effect for blog cards */
+    .hover-shadow {
+        transition: all 0.3s ease;
+    }
+    .hover-shadow:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 .5rem 1rem rgba(0,0,0,.15) !important;
+    }
+    
+    /* Thumbnail animation */
+    .blog-thumbnail-container {
+        overflow: hidden;
+    }
+    .blog-thumbnail-container img {
+        transition: transform 0.5s ease;
+    }
+    .card:hover .blog-thumbnail-container img {
+        transform: scale(1.05);
+    }
+</style>
 {% endblock main-content %}
