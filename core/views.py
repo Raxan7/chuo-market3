@@ -71,15 +71,30 @@ def home(request):
     }
     return render(request, 'app/home.html', context)
 
-def product_detail(request, pk):
-    product = Product.objects.get(pk=pk)
+def product_detail(request, pk=None, slug=None):
+    """
+    View product details using either slug or pk
+    """
+    # Get product using either slug or pk
+    if slug:
+        product = get_object_or_404(Product, slug=slug)
+    else:
+        product = get_object_or_404(Product, pk=pk)
+    
     customer = product.user.customer
     user = request.user
+    
     if isinstance(user, AnonymousUser):
         product_cart = None
     else:
         product_cart = Cart.objects.filter(user=user, product=product.pk).exists()
-    return render(request, 'app/productdetail.html', {'product': product, 'product_cart': product_cart, 'user': user, 'customer': customer})
+    
+    return render(request, 'app/productdetail.html', {
+        'product': product, 
+        'product_cart': product_cart, 
+        'user': user, 
+        'customer': customer
+    })
 
 
 @login_required(login_url='login')
@@ -232,6 +247,8 @@ def user_login(request):
             user = authenticate(request, username=username, password=password)
             if user is not None:
                 login(request, user)
+                # Set session to never expire
+                request.session.set_expiry(31536000)  # 1 year in seconds
                 # Check if user needs to complete their profile
                 if not hasattr(user, 'customer') or not user.customer:
                     messages.info(request, 'Please complete your profile information.')
@@ -369,10 +386,20 @@ def add_product(request):
     if request.method == 'POST':
         product_form = ProductForm(request.POST, request.FILES)
         if product_form.is_valid():
-            product = product_form.save(commit=False)
-            product.user = request.user
-            product_form.save()
-            return redirect('home')
+            try:
+                product = product_form.save(commit=False)
+                product.user = request.user
+                # Ensure description is properly encoded
+                if product.description:
+                    # This ensures emojis are properly saved
+                    product.description = product.description
+                product_form.save()
+                return redirect('home')
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Error saving product with emojis: {e}")
+                messages.error(request, "There was an error saving your product. Please try again.")
     else:
         product_form = ProductForm()
     return render(request, 'app/add_product.html', {'product_form': product_form})
@@ -407,11 +434,29 @@ def create_blog(request):
     return render(request, 'app/create_blog.html', {'form': form})
 
 def blog_list(request):
-    blogs = Blog.objects.all().order_by('?')  # '?' randomizes the order
+    # Order by most recent first rather than random order for consistency
+    blogs = Blog.objects.all().order_by('-created_at')
     return render(request, 'app/blog_list.html', {'blogs': blogs})
 
-def blog_detail(request, pk):
-    blog = Blog.objects.get(pk=pk)
+def blog_detail(request, slug):
+    blog = Blog.objects.get(slug=slug)
+    
+    # Ensure content is properly decoded and handled as HTML if needed
+    if blog.content and not blog.is_markdown:
+        # Check if content appears to be HTML but might be rendered as text
+        content_sample = blog.content[:1000].strip()
+        if content_sample.startswith('{<') or ('{<' in content_sample and '>}' in content_sample):
+            # Content appears to be wrapped in curly braces - clean it up
+            cleaned_content = blog.content
+            
+            # Remove wrapping curly braces if present
+            if cleaned_content.startswith('{<'):
+                cleaned_content = cleaned_content[1:]
+            if cleaned_content.endswith('>}'):
+                cleaned_content = cleaned_content[:-1]
+                
+            blog.content = cleaned_content
+            
     return render(request, 'app/blog_detail.html', {'blog': blog})
 
 
