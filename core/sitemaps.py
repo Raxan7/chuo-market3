@@ -1,3 +1,7 @@
+"""
+Sitemap generators for the ChuoSmart platform.
+Contains classes for generating sitemaps for products, blogs, talents, and static views.
+"""
 from django.contrib.sitemaps import Sitemap
 from django.urls import reverse
 from .models import Product, Blog
@@ -14,7 +18,7 @@ class ProductSitemap(Sitemap):
         return obj.created_at if hasattr(obj, 'created_at') else None
 
     def location(self, obj):
-        return reverse('product-detail', args=[obj.pk])
+        return reverse('product-detail', kwargs={'slug': obj.slug}) if obj.slug else reverse('product-detail-by-id', args=[obj.pk])
 
 
 class BlogSitemap(Sitemap):
@@ -28,7 +32,7 @@ class BlogSitemap(Sitemap):
         return obj.created_at if hasattr(obj, 'created_at') else None
 
     def location(self, obj):
-        return reverse('blog_detail', args=[obj.slug])
+        return reverse('blog_detail', args=[obj.pk])
 
 
 class TalentSitemap(Sitemap):
@@ -46,8 +50,9 @@ class TalentSitemap(Sitemap):
 
 
 class StaticViewSitemap(Sitemap):
-    priority = 0.5
+    priority = 0.7
     changefreq = "daily"
+    protocol = 'https'  # Use HTTPS for better SEO
 
     def items(self):
         return ['home', 'login', 'customerregistration', 'blog_list', 'talent_list', 'lms:lms_home']
