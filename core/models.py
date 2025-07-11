@@ -108,7 +108,7 @@ class Product(models.Model):
         # Only convert if there's an image and no existing WebP
         if self.image and not self.image_webp:
             try:
-                from core.utils.image_optimizer import optimize_image
+                from core.image_utils import optimize_image
                 # Create WebP version
                 optimized = optimize_image(self.image, quality=85, format="WEBP")
                 if optimized:
@@ -203,7 +203,7 @@ class Blog(models.Model):
         # Only convert if there's a thumbnail and no existing WebP
         if self.thumbnail and not self.thumbnail_webp:
             try:
-                from core.utils.image_optimizer import optimize_image
+                from core.image_utils import optimize_image
                 # Create WebP version
                 optimized = optimize_image(self.thumbnail, quality=85, format="WEBP")
                 if optimized:

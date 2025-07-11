@@ -10,7 +10,11 @@ import sys
 import django
 
 # Set up Django environment
-sys.path.append('/home/saidi/Projects/KOMBA/chuo-market3')
+# Get the absolute path of the script's directory and add parent directory to path
+current_dir = os.path.dirname(os.path.abspath(__file__))
+# Go up two levels: from core/scripts to the project root
+project_root = os.path.abspath(os.path.join(current_dir, '..', '..'))
+sys.path.append(project_root)
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'Commerce.settings')
 django.setup()
 

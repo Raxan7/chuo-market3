@@ -17,7 +17,7 @@ from django.core.management.base import BaseCommand
 from django.conf import settings
 from django.db.models import Q
 from core.models import Product, Blog
-from core.utils.image_optimizer import optimize_image
+from core.image_utils import optimize_image
 
 class Command(BaseCommand):
     help = 'Convert existing images to WebP format and manage image consistency'
