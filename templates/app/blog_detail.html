@@ -1,10 +1,11 @@
 {% extends 'app/base.html' %}
 {% load markdown_deux_tags %}  {# Load the markdown filter #}
+{% load blog_filters %}  {# Load our custom blog filters #}
 {% block title %}{{ blog.title }}{% endblock title %}
 
 {% block meta_description %}{{ blog.content|striptags|truncatewords:25 }}{% endblock meta_description %}
 
-{% block meta_keywords %}{{ blog.title }}, chuosmart blog, education blog, tanzania education, {{ blog.category }}{% endblock meta_keywords %}
+{% block meta_keywords %}{{ blog.title }}, chuosmart blog, education blog, tanzania education{% if blog.category %}, {{ blog.category }}{% endif %}{% endblock meta_keywords %}
 
 {% block og_title %}{{ blog.title }} | ChuoSmart Blog{% endblock og_title %}
 {% block og_description %}{{ blog.content|striptags|truncatewords:25 }}{% endblock og_description %}
@@ -376,13 +377,43 @@
                     {% endif %}
                 </div>
                 
+                {% if has_severe_issues and has_emergency_redirect %}
+                <!-- Admin notice for severely problematic content -->
+                <div class="alert alert-warning mb-4">
+                    <h5><i class="fas fa-exclamation-triangle me-2"></i>Content Formatting Issue Detected</h5>
+                    <p>This blog post has formatting issues that may affect its display. As an administrator, you can use the emergency view to fix it.</p>
+                    <a href="{% url 'emergency_blog_view' blog.slug %}" class="btn btn-sm btn-warning">Open Emergency View</a>
+                </div>
+                {% endif %}
+                
                 <div class="blog-content">
                     {% if blog.is_markdown %}
-                        {{ blog.content|markdown|safe }}
+                        <!-- Markdown content rendering -->
+                        {{ blog.content|process_mixed_markdown|safe }}
                     {% else %}
+                        <!-- Process content with potential markdown mixed with HTML -->
                         <div class="tinymce-content" id="tinymce-content-container">
-                            {{ blog.content|safe }}
+                            {% autoescape off %}
+                                <!-- Process any markdown-style formatting like **bold** within HTML using our custom filter -->
+                                {{ blog.content|process_mixed_markdown|safe }}
+                            {% endautoescape %}
                         </div>
+                    {% endif %}
+                    
+                    {% if debug_mode and request.user.is_staff %}
+                    <!-- Debug info for staff only -->
+                    <div class="debug-info mt-5 p-3 bg-light border" style="display:none;">
+                        <h5>Debug Information (Staff Only)</h5>
+                        <p>Content Preview: <pre>{{ original_content_preview }}</pre></p>
+                        <button id="toggleDebugBtn" class="btn btn-sm btn-warning">Toggle Debug Mode</button>
+                        
+                        {% if has_severe_issues %}
+                        <div class="alert alert-danger mt-3">
+                            <p><strong>Severe Content Issues Detected</strong></p>
+                            <a href="{% url 'emergency_blog_view' blog.slug %}" class="btn btn-sm btn-danger">Open Emergency View</a>
+                        </div>
+                        {% endif %}
+                    </div>
                     {% endif %}
                 </div>
                 
@@ -405,66 +436,231 @@
         </div>
     </div>
 </div>
-<!-- Script to clean any remaining data attributes -->
+<!-- Script to handle any remaining edge cases for TinyMCE content -->
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Find all elements with data-start or data-end attributes
-        const elementsWithDataAttrs = document.querySelectorAll('[data-start], [data-end]');
+        const contentContainer = document.getElementById('tinymce-content-container');
+        if (!contentContainer) return;
         
-        // Remove these attributes to prevent them from showing in the rendered output
-        elementsWithDataAttrs.forEach(element => {
-            element.removeAttribute('data-start');
-            element.removeAttribute('data-end');
-        });
-        
-        // Fix any malformed HTML that TinyMCE might generate
-        const tinymceContent = document.querySelector('.tinymce-content');
-        if (tinymceContent) {
-            // Make sure lists have proper structure
-            const orphanedListItems = tinymceContent.querySelectorAll('li:not(ul > li, ol > li)');
-            orphanedListItems.forEach(item => {
-                const ul = document.createElement('ul');
-                item.parentNode.insertBefore(ul, item);
-                ul.appendChild(item);
-            });
+        try {
+            console.log("Content processing starting");
             
-            // Fix HTML tags rendering as text
-            const contentContainer = document.getElementById('tinymce-content-container');
-            if (contentContainer) {
-                // Check if the content appears to contain HTML tags as text
-                const contentText = contentContainer.textContent || '';
-                if (contentText.includes('<p>') || contentText.includes('<div>') || 
-                    contentText.includes('<h') || contentText.includes('<ul>')) {
+            // We now use the server-side filter for markdown processing
+            // processMarkdownStyling is only kept as a fallback
+            
+            // Emergency cleaning for problematic content that wasn't caught by the server-side filter
+            let content = contentContainer.innerHTML.trim();
+            console.log("Original content starts with:", content.substring(0, 50));
+            
+            // Direct check for the problematic pattern
+            if (content.startsWith('{<blockquote data-start=') || 
+                content.startsWith('{<p data-start=') || 
+                (content.startsWith('{') && content.includes('<') && content.includes('data-start'))) {
+                
+                console.log("Found problematic curly brace pattern, attempting emergency fix");
+                
+                // Most aggressive approach: strip everything between the first { and last }
+                if (content.startsWith('{') && content.lastIndexOf('}') > 0) {
+                    content = content.substring(1, content.lastIndexOf('}')).trim();
+                    console.log("Emergency stripped content:", content.substring(0, 50));
+                    contentContainer.innerHTML = content;
+                    console.log("Emergency fix applied");
                     
-                    // Content likely contains HTML tags as text - try to fix it
-                    try {
-                        // Get the raw text content
-                        const rawContent = contentContainer.innerText;
-                        
-                        // Clear the container
-                        contentContainer.innerHTML = '';
-                        
-                        // Create a temporary div to parse the HTML
-                        const tempDiv = document.createElement('div');
-                        
-                        // Use DOMParser to safely parse HTML
-                        const parser = new DOMParser();
-                        const parsedDoc = parser.parseFromString(rawContent, 'text/html');
-                        
-                        // If parsing was successful, use the body content
-                        if (parsedDoc && parsedDoc.body) {
-                            contentContainer.innerHTML = parsedDoc.body.innerHTML;
-                        } else {
-                            // Fallback if parsing fails
-                            tempDiv.innerHTML = rawContent;
-                            contentContainer.innerHTML = tempDiv.innerHTML;
-                        }
-                    } catch (e) {
-                        console.error('Error fixing HTML content:', e);
-                    }
+                    // Process markdown again after fix
+                    processMarkdownStyling(contentContainer);
                 }
             }
+            
+            // Cleanup ALL data attributes - very aggressive approach
+            const allElements = contentContainer.querySelectorAll('*');
+            console.log("Cleaning attributes on", allElements.length, "elements");
+            
+            allElements.forEach(el => {
+                // Get a list of attributes to remove (we need to collect them first before removing)
+                const attrsToRemove = [];
+                Array.from(el.attributes).forEach(attr => {
+                    // Remove all data-* attributes and problematic class attributes
+                    if (attr.name.startsWith('data-') || 
+                        (attr.name === 'class' && (
+                            attr.value.includes('_') || 
+                            attr.value.includes('flex') || 
+                            attr.value.includes('group')
+                        ))) {
+                        attrsToRemove.push(attr.name);
+                    }
+                });
+                
+                // Now remove them
+                attrsToRemove.forEach(attrName => {
+                    el.removeAttribute(attrName);
+                });
+            });
+            
+            // Fix malformed HTML structure
+            // Ensure blockquotes and paragraphs have proper structure
+            const orphanedElements = contentContainer.querySelectorAll('*:not(:has(*))');
+            orphanedElements.forEach(el => {
+                if (el.textContent.trim() === '') {
+                    el.remove(); // Remove empty elements
+                }
+            });
+            
+            // Improve table styling if present
+            const tables = contentContainer.querySelectorAll('table');
+            tables.forEach(table => {
+                table.classList.add('table', 'table-bordered', 'table-striped');
+                
+                // Ensure proper structure
+                if (!table.querySelector('tbody')) {
+                    const rows = Array.from(table.querySelectorAll('tr'));
+                    if (rows.length > 0) {
+                        // Skip the first row which might be header
+                        const tbody = document.createElement('tbody');
+                        rows.slice(1).forEach(row => {
+                            tbody.appendChild(row);
+                        });
+                        table.appendChild(tbody);
+                    }
+                }
+            });
+            
+            // Final check: if we still have content with data attributes showing as text,
+            // we'll try direct string replacement
+            const textContent = contentContainer.textContent;
+            if (textContent.includes('data-start=') || textContent.includes('data-end=')) {
+                console.log("LAST RESORT: Data attributes still present in text, trying direct string replacement");
+                
+                // Create a temporary div to work with
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = contentContainer.innerHTML;
+                
+                // Replace the text content with a version that removes data attributes
+                let newHTML = tempDiv.innerHTML;
+                newHTML = newHTML.replace(/\s+data-[a-zA-Z0-9_-]+=["'][^"']*["']/g, '');
+                
+                // Apply the cleaned HTML
+                contentContainer.innerHTML = newHTML;
+            }
+            
+            console.log("Content cleaning completed");
+        } catch (e) {
+            console.error('Error in blog content cleanup:', e);
+        }
+        
+        // Set up debug buttons if in debug mode
+        const debugInfo = document.querySelector('.debug-info');
+        const toggleDebugBtn = document.getElementById('toggleDebugBtn');
+        
+        if (toggleDebugBtn) {
+            toggleDebugBtn.addEventListener('click', function() {
+                if (debugInfo.style.display === 'none') {
+                    debugInfo.style.display = 'block';
+                } else {
+                    debugInfo.style.display = 'none';
+                }
+            });
         }
     });
+    
+    // Process Markdown-style formatting within HTML content
+    function processMarkdownStyling(container) {
+        if (!container) return;
+        
+        // First, let's get all text nodes that might contain markdown-style formatting
+        const walker = document.createTreeWalker(
+            container,
+            NodeFilter.SHOW_TEXT,
+            null,
+            false
+        );
+        
+        const nodesToProcess = [];
+        let currentNode;
+        while (currentNode = walker.nextNode()) {
+            // Skip text nodes that are children of pre, code, script or style elements
+            if (['PRE', 'CODE', 'SCRIPT', 'STYLE'].includes(currentNode.parentNode.tagName)) {
+                continue;
+            }
+            
+            // Only process nodes that contain markdown-style formatting
+            if (currentNode.nodeValue.includes('**') || 
+                currentNode.nodeValue.includes('*') ||
+                currentNode.nodeValue.includes('__') ||
+                currentNode.nodeValue.includes('_')) {
+                nodesToProcess.push(currentNode);
+            }
+        }
+        
+        // Now process each node that contains markdown
+        for (const node of nodesToProcess) {
+            let content = node.nodeValue;
+            
+            // Replace ** with strong tags (bold)
+            content = content.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            
+            // Replace __ with strong tags (bold alternative)
+            content = content.replace(/__(.*?)__/g, '<strong>$1</strong>');
+            
+            // Replace * with em tags (italic) - but only if not part of ** (already processed)
+            content = content.replace(/(?<!\*)\*(?!\*)(.*?)(?<!\*)\*(?!\*)/g, '<em>$1</em>');
+            
+            // Replace _ with em tags (italic alternative)
+            content = content.replace(/(?<!_)_(?!_)(.*?)(?<!_)_(?!_)/g, '<em>$1</em>');
+            
+            // Only replace the node if we made changes
+            if (content !== node.nodeValue) {
+                // Create a temporary span to hold our HTML
+                const tempSpan = document.createElement('span');
+                tempSpan.innerHTML = content;
+                
+                // Replace the text node with our processed HTML
+                node.parentNode.replaceChild(tempSpan, node);
+                
+                // Move the span's children to the parent and remove the span
+                while (tempSpan.firstChild) {
+                    tempSpan.parentNode.insertBefore(tempSpan.firstChild, tempSpan);
+                }
+                tempSpan.parentNode.removeChild(tempSpan);
+            }
+        }
+        
+        console.log(`Processed ${nodesToProcess.length} text nodes for markdown styling`);
+        return nodesToProcess.length > 0;
+    }
+    
+    // Emergency fix function - can be called from console
+    function emergencyFixContent() {
+        const contentContainer = document.getElementById('tinymce-content-container');
+        if (!contentContainer) return;
+        
+        let content = contentContainer.innerHTML;
+        if (content.startsWith('{') && content.includes('<')) {
+            // Remove outer curly braces
+            content = content.substring(1);
+            if (content.endsWith('}')) {
+                content = content.substring(0, content.length - 1);
+            }
+            
+            contentContainer.innerHTML = content;
+            console.log("Emergency fix applied from console");
+            
+            // Now clean up data attributes
+            const allElements = contentContainer.querySelectorAll('*');
+            allElements.forEach(el => {
+                Array.from(el.attributes).forEach(attr => {
+                    if (attr.name.startsWith('data-')) {
+                        el.removeAttribute(attr.name);
+                    }
+                });
+            });
+            
+            // Process any markdown in the fixed content
+            processMarkdownStyling(contentContainer);
+            
+            return "Fix complete";
+        } else {
+            return "No curly braces found to fix";
+        }
+    }
 </script>
 {% endblock main-content %}

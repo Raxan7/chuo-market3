@@ -1,6 +1,8 @@
 """
 Template tags for image optimization and accessibility.
 """
+import re
+import html
 from django import template
 from django.utils.safestring import mark_safe
 
@@ -196,3 +198,54 @@ def safe_url(image_field):
         logger.debug(f"Error getting URL from image field: {e}")
         
     return None
+
+@register.filter(name='clean_html')
+def clean_html(value):
+    """
+    Cleans HTML content from TinyMCE or other rich text editors.
+    Removes problematic data attributes and unwanted styling.
+    Handles content wrapped in curly braces and with data attributes.
+    
+    Usage: {{ blog.content|clean_html|safe }}
+    """
+    if not value:
+        return value
+    
+    # Handle JSON-like wrapped content
+    if isinstance(value, str):
+        content = value
+        
+        # Remove JSON-like wrapping if present
+        if content.startswith('{') and '<' in content:
+            if content.endswith('}'):
+                content = content[1:-1].strip()
+            else:
+                # Try to find the matching closing brace
+                content = content[1:].strip()
+        
+        # Remove all data-* attributes - more aggressive pattern
+        content = re.sub(r'\s*data-[a-zA-Z0-9_-]+=["|\'][^"|\']*["|\']', '', content)
+        
+        # Remove problematic class attributes for tables and divs
+        content = re.sub(r'\s+class=["|\']_[^"|\']*["|\']', '', content)
+        content = re.sub(r'\s+class=["|\'](?:_tableContainer_[^"\']*|_tableWrapper_[^"\']*|group\s+flex\s+w-fit\s+flex-col-reverse)["|\']', '', content)
+        
+        # Remove table-specific problematic attributes
+        content = re.sub(r'\s+tabindex=["|\'][^"|\']*["|\']', '', content)
+        content = re.sub(r'\s+data-col-size=["|\'][^"|\']*["|\']', '', content)
+        
+        # Handle escaped HTML entities
+        content = html.unescape(content)
+        
+        # Special handling for nested data attributes that might be missed
+        # This catches patterns like <blockquote data-start="184" data-end="273">
+        content = re.sub(r'<([a-zA-Z][a-zA-Z0-9]*)([^>]*?)\s+data-[a-zA-Z0-9_-]+=["|\'][^"|\']*["|\']([^>]*?)>', 
+                         r'<\1\2\3>', content)
+        
+        # Second pass to catch any remaining data attributes
+        content = re.sub(r'<([a-zA-Z][a-zA-Z0-9]*)([^>]*?)\s+data-[a-zA-Z0-9_-]+=["|\'][^"|\']*["|\']([^>]*?)>', 
+                         r'<\1\2\3>', content)
+        
+        return mark_safe(content)
+    
+    return value

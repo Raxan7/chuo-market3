@@ -438,26 +438,177 @@ def blog_list(request):
     blogs = Blog.objects.all().order_by('-created_at')
     return render(request, 'app/blog_list.html', {'blogs': blogs})
 
-def blog_detail(request, slug):
-    blog = Blog.objects.get(slug=slug)
+def deep_clean_html_content(content):
+    """
+    Aggressively clean HTML content from TinyMCE with problematic formatting.
+    This function specifically handles the case where HTML tags and data attributes
+    are showing up as text in the rendered output.
+    """
+    import re
+    import html
+    import logging
     
-    # Ensure content is properly decoded and handled as HTML if needed
-    if blog.content and not blog.is_markdown:
-        # Check if content appears to be HTML but might be rendered as text
-        content_sample = blog.content[:1000].strip()
-        if content_sample.startswith('{<') or ('{<' in content_sample and '>}' in content_sample):
-            # Content appears to be wrapped in curly braces - clean it up
-            cleaned_content = blog.content
-            
-            # Remove wrapping curly braces if present
-            if cleaned_content.startswith('{<'):
-                cleaned_content = cleaned_content[1:]
-            if cleaned_content.endswith('>}'):
-                cleaned_content = cleaned_content[:-1]
+    logger = logging.getLogger(__name__)
+    logger.debug("Starting deep_clean_html_content")
+    
+    if not content:
+        logger.debug("Content is empty")
+        return content
+    
+    # Debug the input content
+    logger.debug(f"Original content starts with: {content[:100]}...")
+    logger.debug(f"Original content ends with: ...{content[-100:]}")
+    logger.debug(f"Content length: {len(content)}")
+    logger.debug(f"Content starts with curly brace: {content.startswith('{')}")
+    logger.debug(f"Content ends with curly brace: {content.endswith('}')}")
+    
+    # Process the content
+    cleaned_content = content
+    
+    # Special debug for the example we're seeing
+    if "{<blockquote data-start=" in content[:100]:
+        logger.debug("DETECTED SPECIFIC PROBLEMATIC PATTERN!")
+        
+    # EXACT PATTERN MATCHING - Check for the specific pattern we're seeing
+    if content.startswith('{<') and '<blockquote data-start=' in content[:100]:
+        logger.debug("Using direct pattern extraction approach")
+        # Try a different approach - extract all HTML without the outer braces
+        try:
+            # If the content is wrapped in {} and contains HTML tags with data attributes,
+            # we need to process it differently
+            if content.startswith('{') and content.endswith('}'):
+                # Remove surrounding braces
+                content_without_braces = content[1:-1]
+                logger.debug(f"Extracted content without braces: {content_without_braces[:50]}...")
                 
-            blog.content = cleaned_content
+                # We'll return the content directly for rendering as HTML
+                return content_without_braces
+        except Exception as e:
+            logger.error(f"Error in direct pattern extraction: {e}")
+    
+    # STEP 1: Remove JSON-like wrapping
+    if cleaned_content.startswith('{') and ('<' in cleaned_content):
+        logger.debug("Removing JSON-like wrapping")
+        if cleaned_content.endswith('}'):
+            cleaned_content = cleaned_content[1:-1].strip()
+            logger.debug(f"Removed both braces, content now starts with: {cleaned_content[:50]}...")
+        else:
+            # Just remove the opening brace if closing one isn't found
+            cleaned_content = cleaned_content[1:].strip()
+            logger.debug(f"Removed opening brace only, content now starts with: {cleaned_content[:50]}...")
+    
+    # STEP 2: Remove all data-* attributes (aggressive pattern)
+    original_len = len(cleaned_content)
+    cleaned_content = re.sub(r'\s+data-[a-zA-Z0-9_-]+=["\'][^"\']*["\']', '', cleaned_content)
+    logger.debug(f"Removed data attributes, content changed by {original_len - len(cleaned_content)} characters")
+    
+    # STEP 3: Remove problematic class attributes
+    class_patterns = [
+        r'\s+class=["\']_[^"\']*["\']',
+        r'\s+class=["\'](?:_tableContainer_[^"\']*|_tableWrapper_[^"\']*|group\s+flex\s+w-fit\s+flex-col-reverse)["\']',
+        r'\s+class=["\'][^"\']*flex[^"\']*["\']'
+    ]
+    
+    for pattern in class_patterns:
+        original_len = len(cleaned_content)
+        cleaned_content = re.sub(pattern, '', cleaned_content)
+        logger.debug(f"Applied class pattern, content changed by {original_len - len(cleaned_content)} characters")
+    
+    # STEP 4: Remove other problematic attributes
+    other_attr_patterns = [
+        r'\s+tabindex=["\'][^"\']*["\']',
+        r'\s+data-col-size=["\'][^"\']*["\']'
+    ]
+    
+    for pattern in other_attr_patterns:
+        original_len = len(cleaned_content)
+        cleaned_content = re.sub(pattern, '', cleaned_content)
+        logger.debug(f"Applied other attribute pattern, content changed by {original_len - len(cleaned_content)} characters")
+    
+    # STEP 5: Handle special edge case where entire HTML content is wrapped in a pair of curly braces
+    # This happens sometimes with TinyMCE and specific formats
+    curly_brace_pattern = r'^\{(<[^>]+>.*</[^>]+>)\}$'
+    curly_match = re.search(curly_brace_pattern, cleaned_content, re.DOTALL)
+    if curly_match:
+        logger.debug("Found curly brace pattern match")
+        cleaned_content = curly_match.group(1)
+        logger.debug(f"Extracted content now starts with: {cleaned_content[:50]}...")
+    
+    # Try more specific extraction for our case
+    if cleaned_content.startswith('{<blockquote') or cleaned_content.startswith('<blockquote data-start='):
+        logger.debug("Trying specialized extraction for blockquote pattern")
+        # This is a targeted fix for the specific pattern we're seeing
+        html_pattern = r'(\{)?(<(?:blockquote|p|div|h[1-6]|ul|ol|li)[\s\S]*>[\s\S]*?</(?:blockquote|p|div|h[1-6]|ul|ol|li)>)(\})?'
+        html_matches = re.findall(html_pattern, cleaned_content, re.DOTALL)
+        
+        if html_matches:
+            logger.debug(f"Found {len(html_matches)} HTML blocks to extract")
+            extracted_html = []
             
-    return render(request, 'app/blog_detail.html', {'blog': blog})
+            for match in html_matches:
+                # Take the middle part (the HTML)
+                extracted_html.append(match[1])
+            
+            # Join them together
+            cleaned_content = ''.join(extracted_html)
+            logger.debug(f"Extracted HTML content now starts with: {cleaned_content[:50]}...")
+    
+    # STEP 6: Replace any doubled open/close tags that might cause issues
+    doubled_tags = [r'<(p|div|span|strong|em)>\s*<\1>', r'</([^>]+)>\s*</\1>']
+    for pattern in doubled_tags:
+        original_len = len(cleaned_content)
+        cleaned_content = re.sub(pattern, r'<\1>', cleaned_content)
+        logger.debug(f"Applied doubled tags pattern, content changed by {original_len - len(cleaned_content)} characters")
+    
+    # STEP 7: Unescape any HTML entities
+    cleaned_content = html.unescape(cleaned_content)
+    
+    # Final debug
+    logger.debug(f"Final cleaned content starts with: {cleaned_content[:100]}...")
+    logger.debug(f"Final cleaned content length: {len(cleaned_content)}")
+    
+    return cleaned_content
+
+def blog_detail(request, slug):
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    logger.debug(f"Processing blog_detail for slug: {slug}")
+    blog = get_object_or_404(Blog, slug=slug)
+    
+    # Try to detect if this blog has serious formatting issues
+    has_severe_issues = False
+    has_emergency_redirect = False
+    original_content = blog.content
+    
+    # Check if the user wants to use the simple template
+    use_simple_template = request.GET.get('simple', 'false').lower() == 'true'
+    template_name = 'app/blog_detail_simple.html' if use_simple_template else 'app/blog_detail.html'
+    
+    # Check for serious content issues
+    if blog.content:
+        # Keep original content for debug info
+        original_content_preview = blog.content[:200] + ('...' if len(blog.content) > 200 else '')
+        
+        # Check for severe issues that might need emergency handling
+        if ((blog.content.startswith('{') and '<' in blog.content[:100]) or
+            'data-start=' in blog.content[:200]):
+            
+            has_severe_issues = True
+            # For admins, show the emergency view option
+            if request.user.is_staff or request.user.is_superuser:
+                has_emergency_redirect = True
+    
+    # Add debug flag to context to enable browser console debugging
+    context = {
+        'blog': blog,
+        'debug_mode': True,
+        'has_severe_issues': has_severe_issues,
+        'has_emergency_redirect': has_emergency_redirect,
+        'original_content_preview': original_content_preview if 'original_content_preview' in locals() else ""
+    }
+    
+    return render(request, template_name, context)
 
 
 @login_required(login_url='login')
@@ -611,3 +762,237 @@ def privacy_policy(request):
 def terms_of_service(request):
     """Render the Terms of Service page"""
     return render(request, 'app/terms.html')
+
+def clean_all_blog_content(request):
+    """
+    Admin utility view to clean all blog content in the database.
+    This is a one-time fix for all blogs with problematic HTML content.
+    """
+    # Only allow staff/admin to run this
+    if not request.user.is_staff:
+        return redirect('home')
+    
+    from .models import Blog
+    blogs = Blog.objects.filter(is_markdown=False)
+    cleaned_count = 0
+    
+    for blog in blogs:
+        if blog.content:
+            original_content = blog.content
+            cleaned_content = deep_clean_html_content(original_content)
+            
+            # Only update if content has actually changed
+            if cleaned_content != original_content:
+                blog.content = cleaned_content
+                blog.save(update_fields=['content'])
+                cleaned_count += 1
+    
+    from django.contrib import messages
+    messages.success(request, f"Successfully cleaned {cleaned_count} blog posts.")
+    return redirect('admin:core_blog_changelist')
+
+def debug_blog_content(request, blog_id):
+    """
+    Debug utility view that shows the original and cleaned versions of blog content side by side.
+    Only accessible to staff users.
+    """
+    import logging
+    import json
+    from django.http import JsonResponse, HttpResponseForbidden
+    
+    # Only allow staff to access this debug tool
+    if not request.user.is_staff and not request.user.is_superuser:
+        return HttpResponseForbidden("Staff access required")
+    
+    logger = logging.getLogger(__name__)
+    logger.debug(f"Debug blog content for ID: {blog_id}")
+    
+    try:
+        blog = Blog.objects.get(pk=blog_id)
+        
+        # Get original content
+        original_content = blog.content
+        
+        # Get cleaned content using our function
+        cleaned_content = deep_clean_html_content(original_content)
+        
+        # Specialized direct fix - if direct method is specified in the URL
+        if request.GET.get('direct_fix') == '1':
+            logger.debug("Using direct fix method")
+            if original_content.startswith('{') and original_content.endswith('}'):
+                direct_fixed = original_content[1:-1]  # Simply remove outer braces
+                
+                # Save this version if save parameter is provided
+                if request.GET.get('save') == '1':
+                    logger.debug("Saving direct fix to database")
+                    blog.content = direct_fixed
+                    blog.save(update_fields=['content'])
+                    return JsonResponse({
+                        "status": "saved", 
+                        "message": "Content fixed and saved to database"
+                    })
+                
+                # Just preview the changes
+                return JsonResponse({
+                    "original_length": len(original_content),
+                    "direct_fixed_length": len(direct_fixed),
+                    "original_preview": original_content[:500],
+                    "direct_fixed_preview": direct_fixed[:500]
+                })
+        
+        # If save parameter is provided, save the cleaned content
+        if request.GET.get('save') == '1':
+            logger.debug("Saving cleaned content to database")
+            blog.content = cleaned_content
+            blog.save(update_fields=['content'])
+            return JsonResponse({"status": "saved", "message": "Content cleaned and saved to database"})
+        
+        # Compare content and provide detailed debugging info
+        return JsonResponse({
+            "blog_id": blog.id,
+            "blog_title": blog.title,
+            "original_length": len(original_content),
+            "cleaned_length": len(cleaned_content),
+            "starts_with_brace": original_content.startswith('{'),
+            "ends_with_brace": original_content.endswith('}'),
+            "original_preview": original_content[:500],
+            "cleaned_preview": cleaned_content[:500]
+        })
+    
+    except Blog.DoesNotExist:
+        logger.error(f"Blog with ID {blog_id} not found")
+        return JsonResponse({"error": "Blog not found"}, status=404)
+    except Exception as e:
+        logger.error(f"Error debugging blog content: {e}")
+        return JsonResponse({"error": str(e)}, status=500)
+
+def emergency_blog_view(request, slug):
+    """
+    Emergency view that directly strips curly braces from blog content.
+    """
+    blog = get_object_or_404(Blog, slug=slug)
+    
+    # Create a copy of the blog for the template
+    from copy import deepcopy
+    display_blog = deepcopy(blog)
+    
+    # Direct brace removal
+    if display_blog.content.startswith('{') and display_blog.content.endswith('}'):
+        display_blog.content = display_blog.content[1:-1]
+    
+    return render(request, 'app/blog_detail.html', {'blog': display_blog, 'emergency_mode': True})
+
+def blog_detail_emergency(request, slug):
+    """
+    Emergency view for blogs with problematic HTML content.
+    This view directly processes the blog content, ensuring proper display
+    and offers several repair options for admin users.
+    """
+    import logging
+    import re
+    import html
+    import json
+    from django.http import JsonResponse
+    
+    logger = logging.getLogger(__name__)
+    
+    # Get the blog post or return 404
+    blog = get_object_or_404(Blog, slug=slug)
+    
+    # Process the save request if applicable (admin only)
+    if request.method == 'POST' and request.user.is_superuser:
+        # Different save options for different fixing strategies
+        if 'save_fixed_content' in request.POST:
+            # Option 1: Use the basic emergency fix (just remove braces)
+            original_content = blog.content
+            content = original_content
+            
+            # Step 1: Remove braces if content is wrapped in them
+            if content.startswith('{') and content.endswith('}'):
+                content = content[1:-1]
+                
+            # Step 2: Remove data attributes
+            content = re.sub(r'\s+data-[a-zA-Z0-9_-]+=["|\'][^"\']*["|\']', '', content)
+            
+            # Save the fixed content to the database
+            blog.content = content
+            blog.save(update_fields=['content'])
+            
+            # Redirect to normal view with success message
+            messages.success(request, "Blog content has been fixed and saved successfully.")
+            return redirect('blog_detail', slug=slug)
+            
+        elif 'save_aggressive_fix' in request.POST:
+            # Option 2: Use more aggressive cleaning approach
+            from core.management.commands.fix_blog_content_advanced import Command
+            cmd = Command()
+            
+            # Get the original content
+            original_content = blog.content
+            
+            # Fix content using the command's fix_content method
+            fixed_content = cmd.fix_content(original_content)
+            
+            # Save the fixed content to the database
+            blog.content = fixed_content
+            blog.save(update_fields=['content'])
+            
+            messages.success(request, "Blog content has been aggressively cleaned and saved.")
+            return redirect('blog_detail', slug=slug)
+            
+        elif 'recreate_content' in request.POST:
+            # Option 3: Full recreation, preserving only important elements
+            from core.management.commands.fix_blog_content_advanced import Command
+            cmd = Command()
+            
+            # Use the recreation method
+            cmd._recreate_blog_content(blog, verbose=True)
+            
+            messages.success(request, "Blog content has been recreated from scratch.")
+            return redirect('blog_detail', slug=slug)
+            
+        elif 'raw_content' in request.POST:
+            # Option 4: Admin provided raw content
+            raw_content = request.POST.get('raw_html_content', '')
+            if raw_content.strip():
+                blog.content = raw_content
+                blog.save(update_fields=['content'])
+                messages.success(request, "Custom HTML content has been saved.")
+                return redirect('blog_detail', slug=slug)
+    
+    # Process the blog content for display
+    content = blog.content
+    fixed_content = ""
+    
+    if content:
+        # Try different approaches to fix the content for display
+        # Approach 1: Handle content wrapped in braces
+        if content.startswith('{') and '<' in content and '}' in content[-10:]:
+            fixed_content = content[1:-1] if content.endswith('}') else content[1:]
+        # Approach 2: Use the full clean function
+        elif 'data-start=' in content or '<blockquote data-start=' in content:
+            fixed_content = deep_clean_html_content(content)
+        else:
+            # For other cases, just use the content directly
+            fixed_content = content
+    
+    # Get the raw content for display in the admin edit form
+    raw_content = blog.content
+    
+    # Extract images for preservation (in case we need to recreate content)
+    image_tags = []
+    if content:
+        img_pattern = r'<img[^>]*src=["\']([^"\']+)["\'][^>]*/?>'
+        image_tags = re.findall(img_pattern, content)
+    
+    # Return the emergency template with various options
+    return render(request, 'app/blog_detail_emergency.html', {
+        'blog': blog,
+        'fixed_content': fixed_content,
+        'raw_content': raw_content,
+        'image_tags': image_tags,
+        'is_admin': request.user.is_superuser or request.user.is_staff,
+        'has_braces': content.startswith('{') and content.endswith('}') if content else False,
+        'has_data_attrs': 'data-start=' in content if content else False,
+        'content_length': len(content) if content else 0
+    })

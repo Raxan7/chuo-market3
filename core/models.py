@@ -183,7 +183,59 @@ class Blog(models.Model):
     thumbnail = models.ImageField(upload_to='blog_thumbnails', blank=True, null=True)
     # New field for optimized WebP thumbnail
     thumbnail_webp = models.ImageField(upload_to='blog_thumbnails/webp', blank=True, null=True)
-    is_markdown = models.BooleanField(default=True, help_text="Whether content is written in Markdown format")
+    is_markdown = models.BooleanField(default=False, help_text="Whether content is written in Markdown format")
+    category = models.CharField(max_length=100, blank=True, null=True)
+    
+    def clean_html_content(self):
+        """Clean HTML content from TinyMCE to prevent data attributes from being stored"""
+        if not self.content:
+            return self.content
+            
+        import re
+        import html
+        
+        content = self.content
+        
+        # If content is wrapped in braces (common TinyMCE issue)
+        if content.startswith('{') and content.endswith('}') and '<' in content[:100]:
+            content = content[1:-1].strip()
+        
+        # Remove all data-* attributes (safer regex pattern)
+        content = re.sub(r'\s+data-[a-zA-Z0-9_-]+=["|\'][^"|\']*["|\']', '', content)
+        
+        # Remove problematic class attributes that might cause rendering issues
+        content = re.sub(r'\s+class=["|\']_[^"|\']*["|\']', '', content)
+        content = re.sub(r'\s+class=["|\'][^"|\']*["|\']', '', content)  # Remove all classes
+        
+        # Remove other problematic attributes
+        content = re.sub(r'\s+tabindex=["|\'][^"|\']*["|\']', '', content)
+        content = re.sub(r'\s+style=["|\'][^"|\']*["|\']', '', content)  # Remove inline styles
+        
+        # Handle escaped HTML entities
+        content = html.unescape(content)
+        
+        # If Markdown format, do additional Markdown-specific processing
+        if self.is_markdown:
+            # No additional processing needed here, will be rendered by the markdown filter
+            pass
+        else:
+            # Process any Markdown-style formatting within HTML content
+            # These operations match those in our custom template filter
+            
+            # Handle **bold** syntax (convert to <strong>)
+            content = re.sub(r'\*\*(.*?)\*\*', r'<strong>\1</strong>', content)
+            
+            # Handle *italic* syntax (convert to <em>)
+            # Use negative lookbehind/lookahead to avoid matching inside **text**
+            content = re.sub(r'(?<!\*)\*(?!\*)(.*?)(?<!\*)\*(?!\*)', r'<em>\1</em>', content)
+            
+            # Handle __bold__ alternate syntax
+            content = re.sub(r'__(.*?)__', r'<strong>\1</strong>', content)
+            
+            # Handle _italic_ alternate syntax
+            content = re.sub(r'(?<!_)_(?!_)(.*?)(?<!_)_(?!_)', r'<em>\1</em>', content)
+        
+        return content
     
     def save(self, *args, **kwargs):
         # Generate slug from title if not set
@@ -196,6 +248,11 @@ class Blog(models.Model):
             while Blog.objects.filter(slug=self.slug).exists():
                 self.slug = f"{original_slug}-{counter}"
                 counter += 1
+        
+        # Always clean the content regardless of markdown or HTML
+        cleaned_content = self.clean_html_content()
+        if cleaned_content:
+            self.content = cleaned_content
         
         # First save to get an ID if this is a new blog post
         super(Blog, self).save(*args, **kwargs)
