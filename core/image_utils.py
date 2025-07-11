@@ -51,7 +51,7 @@ def convert_to_webp(image_field):
     
     return webp_image
 
-def optimize_image(image_field, max_size=(1200, 1200), quality=85):
+def optimize_image(image_field, max_size=(1200, 1200), quality=85, format=None):
     """
     Optimize an uploaded image by resizing and compressing
     
@@ -59,6 +59,7 @@ def optimize_image(image_field, max_size=(1200, 1200), quality=85):
         image_field: The uploaded image field from a form
         max_size: The maximum dimensions (width, height) the image should have
         quality: The quality of the output image (1-100)
+        format: The format to save the image as (e.g. "WEBP"). If None, uses original format.
         
     Returns:
         InMemoryUploadedFile: The optimized image
@@ -81,28 +82,68 @@ def optimize_image(image_field, max_size=(1200, 1200), quality=85):
     output = BytesIO()
     
     # Determine format
-    file_ext = os.path.splitext(image_field.name)[1].lower()
+    save_format = None
     
-    if file_ext in ['.jpg', '.jpeg']:
-        img = img.convert('RGB')  # Remove alpha channel if present
-        img.save(output, format='JPEG', quality=quality, optimize=True)
-    elif file_ext == '.png':
-        img.save(output, format='PNG', optimize=True)
-    elif file_ext == '.gif':
-        img.save(output, format='GIF', optimize=True)
-    elif file_ext == '.webp':
-        img.save(output, format='WEBP', quality=quality, optimize=True)
+    if format:
+        # Use the specified format
+        save_format = format
+        if save_format.upper() in ['JPEG', 'JPG']:
+            img = img.convert('RGB')  # Remove alpha channel for JPEG
+        elif save_format.upper() == 'WEBP':
+            # WebP can handle transparency
+            pass
     else:
-        # Default to JPEG for unknown formats
-        img = img.convert('RGB')
-        img.save(output, format='JPEG', quality=quality, optimize=True)
+        # Use format based on file extension if no format specified
+        file_ext = os.path.splitext(image_field.name)[1].lower()
+        
+        if file_ext in ['.jpg', '.jpeg']:
+            save_format = 'JPEG'
+            img = img.convert('RGB')  # Remove alpha channel if present
+        elif file_ext == '.png':
+            save_format = 'PNG'
+        elif file_ext == '.gif':
+            save_format = 'GIF'
+        elif file_ext == '.webp':
+            save_format = 'WEBP'
+        else:
+            # Default to JPEG for unknown formats
+            save_format = 'JPEG'
+            img = img.convert('RGB')
+    
+    # Save the image in the determined format
+    if save_format in ['JPEG', 'WEBP']:
+        img.save(output, format=save_format, quality=quality, optimize=True)
+    else:
+        img.save(output, format=save_format, optimize=True)
     
     # Create a new Django file object
+    output_name = image_field.name
+    
+    # Update file extension if format is specified
+    if format:
+        base_name = os.path.splitext(output_name)[0]
+        ext = format.lower()
+        if ext == 'jpeg':
+            ext = 'jpg'
+        output_name = f"{base_name}.{ext}"
+    
+    # Determine the appropriate content_type based on the format
+    content_type = image_field.content_type
+    if format:
+        if format.upper() == 'WEBP':
+            content_type = 'image/webp'
+        elif format.upper() in ['JPEG', 'JPG']:
+            content_type = 'image/jpeg'
+        elif format.upper() == 'PNG':
+            content_type = 'image/png'
+        elif format.upper() == 'GIF':
+            content_type = 'image/gif'
+    
     optimized_image = InMemoryUploadedFile(
         output,
         'ImageField',
-        image_field.name,
-        image_field.content_type,
+        output_name,
+        content_type,
         sys.getsizeof(output),
         None
     )
