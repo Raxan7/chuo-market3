@@ -182,6 +182,17 @@ def safe_url(image_field):
     Returns:
         str or None: The URL of the image if available, otherwise None
     """
-    if image_field and hasattr(image_field, 'url') and image_field.name:
-        return image_field.url
+    if image_field is None:
+        return None
+        
+    # Check if it's a valid image field with a file
+    try:
+        if hasattr(image_field, 'url') and image_field.name:
+            return image_field.url
+    except (ValueError, AttributeError, Exception) as e:
+        # Log error if needed, but don't crash
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.debug(f"Error getting URL from image field: {e}")
+        
     return None

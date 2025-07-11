@@ -127,8 +127,11 @@ def optimize_image(image_field, max_size=(1200, 1200), quality=85, format=None):
             ext = 'jpg'
         output_name = f"{base_name}.{ext}"
     
-    # Determine the appropriate content_type based on the format
-    content_type = image_field.content_type
+    # Determine the appropriate content_type based on the format or filename
+    # ImageFieldFile might not have content_type, so we need to determine it from the file extension or specified format
+    content_type = None
+    
+    # First try to determine from the specified format parameter
     if format:
         if format.upper() == 'WEBP':
             content_type = 'image/webp'
@@ -138,6 +141,27 @@ def optimize_image(image_field, max_size=(1200, 1200), quality=85, format=None):
             content_type = 'image/png'
         elif format.upper() == 'GIF':
             content_type = 'image/gif'
+    
+    # If format wasn't specified or recognized, use the file extension
+    if not content_type:
+        file_ext = os.path.splitext(image_field.name)[1].lower()
+        if file_ext in ['.jpg', '.jpeg']:
+            content_type = 'image/jpeg'
+        elif file_ext == '.png':
+            content_type = 'image/png'
+        elif file_ext == '.gif':
+            content_type = 'image/gif'
+        elif file_ext == '.webp':
+            content_type = 'image/webp'
+        else:
+            # Default to jpeg if we can't determine
+            content_type = 'image/jpeg'
+    
+    # Try to get content_type attribute if available (for uploaded files)
+    if hasattr(image_field, 'content_type') and image_field.content_type:
+        # Only use it if we haven't specified a different format
+        if not format:
+            content_type = image_field.content_type
     
     optimized_image = InMemoryUploadedFile(
         output,
