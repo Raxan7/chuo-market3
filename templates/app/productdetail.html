@@ -3,13 +3,39 @@
 {% block title %}{{ product.title }}{% endblock title %}
 
 {% block extra_head %}
+<!-- Product Description Styling -->
+<style>
+  .product-description {
+    margin-bottom: 1.5rem;
+    line-height: 1.6;
+  }
+  .product-description p {
+    margin-bottom: 1rem;
+  }
+  .product-description strong,
+  .product-description em,
+  .product-description b,
+  .product-description i {
+    display: inline-block;
+  }
+  .product-description img {
+    max-width: 100%;
+    height: auto;
+    margin: 1rem 0;
+  }
+  .product-description ul,
+  .product-description ol {
+    padding-left: 2rem;
+    margin-bottom: 1rem;
+  }
+</style>
 <!-- SEO Meta Tags -->
-<meta name="description" content="{{ product.description|truncatechars:160 }}">
+<meta name="description" content="{{ product.description|striptags|truncatechars:160 }}">
 <meta name="keywords" content="{{ product.title }}, ChuoSmart, product, {{ customer.university }}, {{ customer.college }}">
 
 <!-- Open Graph Meta Tags for better social media sharing -->
 <meta property="og:title" content="{{ product.title }} | ChuoSmart">
-<meta property="og:description" content="{{ product.description|truncatechars:200 }}">
+<meta property="og:description" content="{{ product.description|striptags|truncatechars:200 }}">
 <meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{{ product.image.url }}">
 <meta property="og:url" content="{{ request.scheme }}://{{ request.get_host }}{% url 'product-detail' slug=product.slug %}">
 <meta property="og:type" content="product">
@@ -18,7 +44,7 @@
 <!-- Twitter Card data -->
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="{{ product.title }}">
-<meta name="twitter:description" content="{{ product.description|truncatechars:200 }}">
+<meta property="twitter:description" content="{{ product.description|striptags|truncatechars:200 }}">
 <meta name="twitter:image" content="{{ request.scheme }}://{{ request.get_host }}{{ product.image.url }}">
 {% endblock extra_head %}
 
@@ -32,7 +58,7 @@
     </div>
     <div class="col-md-6">
       <h1>{{ product.title }}</h1>
-      <p>{{ product.description|linebreaks }}</p>
+      <div class="product-description">{{ product.description|safe }}</div>
       <p><i class="fas fa-tag"></i> <strong>Price:</strong> TSh {{ product.price }}</p>
       <p><i class="fas fa-user"></i> <strong>Posted by:</strong> {{ customer.name }}</p>
       <p><i class="fas fa-university"></i> <strong>University:</strong> {{ customer.university }}</p>
