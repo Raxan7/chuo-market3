@@ -81,6 +81,10 @@ def product_detail(request, pk=None, slug=None):
     else:
         product = get_object_or_404(Product, pk=pk)
     
+    # Clean product description if needed (remove outer curly braces)
+    if product.description and product.description.startswith('{') and product.description.endswith('}'):
+        product.description = product.description[1:-1]  # Remove first and last characters (curly braces)
+    
     customer = product.user.customer
     user = request.user
     
