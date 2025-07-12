@@ -103,6 +103,7 @@ TEMPLATES = [
                 'django.contrib.messages.context_processors.messages',
                 'core.context_processors.auth_status',  # Authentication status
                 'core.seo_context.seo_context',  # SEO context data
+                'core.context_processors.dashboard_notification',  # Dashboard notification
             ],
         },
     },

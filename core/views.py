@@ -48,6 +48,13 @@ def home(request):
         messages = list(ChatMessage.objects.filter(user=user))
         # request.session.flush()  # Comment out this line to prevent session flush on login
         customers = Customer.objects.filter(user=user).exists()
+        
+        # Check if we should show the dashboard notification (only once)
+        if 'dashboard_notification_shown' not in request.session:
+            # Set the session flag so we don't show it again
+            request.session['dashboard_notification_shown'] = True
+            # Set a session variable to show the modal that will be picked up by our context processor
+            request.session['show_dashboard_modal'] = True
     else:
         messages = request.session.get('messages', [])
         if not messages:
@@ -62,10 +69,14 @@ def home(request):
     
     # You can still get category-specific products for category pages if needed
     # but for home page, we'll use randomized products
+    # Get the dashboard notification status from session
+    show_dashboard_modal = request.session.pop('show_dashboard_modal', False)
+    
     context = {
         'customers': customers,
         'products': products, 
         'banners': banners,
+        'show_dashboard_modal': show_dashboard_modal,
         'messages': messages,
         'is_authenticated': is_authenticated,
     }
