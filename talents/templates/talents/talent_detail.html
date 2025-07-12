@@ -16,7 +16,19 @@
 <div class="container d-flex justify-content-center align-items-center" style="min-height: 100vh;">
   <div class="card text-center shadow-lg" style="width: 100%; max-width: 800px; margin: 20px; padding: 20px;">
     <div class="card-header text-white">
-      <h1 class="text-dark">{{ talent.title }}</h1>
+      <div class="d-flex justify-content-between align-items-start">
+        <h1 class="text-dark">{{ talent.title }}</h1>
+        {% if user.is_authenticated and talent.user == user %}
+          <div class="talent-actions">
+            <a href="{% url 'edit-talent' pk=talent.pk %}" class="btn btn-primary btn-sm">
+              <i class="fas fa-edit"></i> Edit
+            </a>
+            <a href="{% url 'delete-talent' pk=talent.pk %}" class="btn btn-danger btn-sm">
+              <i class="fas fa-trash"></i> Delete
+            </a>
+          </div>
+        {% endif %}
+      </div>
       {% if talent.media %}
         <img src="{{ talent.media.url }}" class="img-fluid mt-3" alt="{{ talent.title }}">
       {% endif %}

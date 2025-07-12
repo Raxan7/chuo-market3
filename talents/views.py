@@ -1,7 +1,9 @@
+from django.contrib import messages
 from django.shortcuts import render, get_object_or_404, redirect
+from django.contrib.auth.decorators import login_required
 from .models import Talent, Comment, Like
 from .forms import TalentForm, CommentForm
-from django.contrib.auth.decorators import login_required
+from core.decorators.customer_required import customer_required
 
 def talent_list(request):
     talents = Talent.objects.all().order_by('-created_at')
@@ -53,5 +55,61 @@ def like_talent(request, pk):
         like.delete()  # Unlike if already liked
     
     return redirect('talent_list')
+
+
+@login_required
+@customer_required
+def edit_talent(request, pk):
+    """
+    Edit a talent - only the owner can edit it
+    """
+    talent = get_object_or_404(Talent, pk=pk)
+    
+    # Check if current user is the owner
+    if talent.user != request.user:
+        messages.error(request, "You can only edit talents that you've posted.")
+        return redirect('talent_detail', pk=talent.pk)
+    
+    if request.method == 'POST':
+        form = TalentForm(request.POST, request.FILES, instance=talent)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Your talent post has been updated successfully.")
+            return redirect('talent_detail', pk=talent.pk)
+    else:
+        form = TalentForm(instance=talent)
+    
+    return render(request, 'talents/edit_talent.html', {
+        'form': form,
+        'talent': talent,
+    })
+
+
+@login_required
+@customer_required
+def delete_talent(request, pk):
+    """
+    Delete a talent - only the owner can delete it
+    """
+    talent = get_object_or_404(Talent, pk=pk)
+    
+    # Check if current user is the owner
+    if talent.user != request.user:
+        messages.error(request, "You can only delete talents that you've posted.")
+        return redirect('talent_detail', pk=talent.pk)
+    
+    if request.method == 'POST':
+        # Store information for confirmation message
+        talent_title = talent.title
+        
+        # Delete the talent
+        talent.delete()
+        
+        messages.success(request, f"Your talent post '{talent_title}' has been deleted successfully.")
+        return redirect('user_dashboard')  # We'll create this view later
+    
+    return render(request, 'talents/delete_talent_confirm.html', {
+        'talent': talent,
+    })
 
 
