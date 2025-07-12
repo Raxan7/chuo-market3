@@ -1,0 +1,106 @@
+{% extends 'app/base.html' %}
+{% load static %}
+{% block title %}Edit: {{ blog.title }}{% endblock title %}
+
+{% block extra_head %}
+<!-- Include TinyMCE editor -->
+{{ form.media }}
+<style>
+    .edit-blog-form {
+        padding: 2rem;
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    }
+    
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+    
+    .preview-image {
+        max-width: 200px;
+        margin-bottom: 1rem;
+        border-radius: 8px;
+    }
+</style>
+{% endblock extra_head %}
+
+{% block main-content %}
+<div class="container my-5">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'user_dashboard' %}">Dashboard</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'blog_detail' slug=blog.slug %}">{{ blog.title }}</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Edit</li>
+                </ol>
+            </nav>
+            
+            <div class="edit-blog-form">
+                <h2 class="mb-4">Edit Blog</h2>
+                
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert alert-{{ message.tags }}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+                
+                <form method="post" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    
+                    <div class="form-group">
+                        <label for="{{ form.title.id_for_label }}" class="form-label">Title</label>
+                        {{ form.title }}
+                        {% if form.title.errors %}
+                            <div class="text-danger">{{ form.title.errors }}</div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="{{ form.category.id_for_label }}" class="form-label">Category</label>
+                        {{ form.category }}
+                        {% if form.category.errors %}
+                            <div class="text-danger">{{ form.category.errors }}</div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="{{ form.content.id_for_label }}" class="form-label">Content</label>
+                        {{ form.content }}
+                        {% if form.content.errors %}
+                            <div class="text-danger">{{ form.content.errors }}</div>
+                        {% endif %}
+                    </div>
+                    
+                    {% if blog.thumbnail %}
+                        <div class="form-group">
+                            <label>Current Thumbnail</label>
+                            <div>
+                                <img src="{{ blog.thumbnail.url }}" alt="{{ blog.title }}" class="preview-image">
+                            </div>
+                        </div>
+                    {% endif %}
+                    
+                    <div class="form-group">
+                        <label for="{{ form.thumbnail.id_for_label }}" class="form-label">Thumbnail Image (Optional)</label>
+                        {{ form.thumbnail }}
+                        <small class="form-text text-muted">Leave empty to keep the current image</small>
+                        {% if form.thumbnail.errors %}
+                            <div class="text-danger">{{ form.thumbnail.errors }}</div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="d-flex justify-content-between">
+                        <button type="submit" class="btn btn-primary">Update Blog</button>
+                        <a href="{% url 'blog_detail' slug=blog.slug %}" class="btn btn-outline-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock main-content %}
