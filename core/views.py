@@ -1069,7 +1069,7 @@ def delete_product(request, pk=None, slug=None):
         product.delete()
         
         messages.success(request, f"Your product '{product_title}' has been deleted successfully.")
-        return redirect('profile')  # Redirect to user profile after deletion
+        return redirect(f"{reverse('user_dashboard')}?tab=products")  # Redirect to dashboard products tab
     
     return render(request, 'app/delete_product_confirm.html', {
         'product': product,
@@ -1123,7 +1123,7 @@ def delete_blog(request, slug):
         blog.delete()
         
         messages.success(request, f"Your blog '{blog_title}' has been deleted successfully.")
-        return redirect('user_dashboard')  # We'll create this view later
+        return redirect(f"{reverse('user_dashboard')}?tab=blogs")  # Redirect to dashboard blogs tab
     
     return render(request, 'app/delete_blog_confirm.html', {
         'blog': blog,

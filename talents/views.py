@@ -106,7 +106,8 @@ def delete_talent(request, pk):
         talent.delete()
         
         messages.success(request, f"Your talent post '{talent_title}' has been deleted successfully.")
-        return redirect('user_dashboard')  # We'll create this view later
+        from django.urls import reverse
+        return redirect(f"{reverse('user_dashboard')}?tab=talents")  # Redirect to dashboard talents tab
     
     return render(request, 'talents/delete_talent_confirm.html', {
         'talent': talent,
