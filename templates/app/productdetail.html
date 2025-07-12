@@ -29,6 +29,10 @@
     padding-left: 2rem;
     margin-bottom: 1rem;
   }
+  .product-actions {
+    display: flex;
+    gap: 0.5rem;
+  }
 </style>
 <!-- SEO Meta Tags -->
 <meta name="description" content="{{ product.description|process_product_description|striptags|truncatechars:160 }}">
@@ -58,7 +62,19 @@
       {% picture webp_src=product.image_webp|safe_url fallback_src=product.image.url alt=product.title css_class="img-fluid img-thumbnail" lazy=False %}
     </div>
     <div class="col-md-6">
-      <h1>{{ product.title }}</h1>
+      <div class="d-flex justify-content-between align-items-start">
+        <h1>{{ product.title }}</h1>
+        {% if user.is_authenticated and product.user == user %}
+          <div class="product-actions">
+            <a href="{% url 'edit-product' slug=product.slug %}" class="btn btn-primary btn-sm">
+              <i class="fas fa-edit"></i> Edit
+            </a>
+            <a href="{% url 'delete-product' slug=product.slug %}" class="btn btn-danger btn-sm">
+              <i class="fas fa-trash"></i> Delete
+            </a>
+          </div>
+        {% endif %}
+      </div>
       <div class="product-description">
         {{ product.description|process_product_description|safe }}
       </div>

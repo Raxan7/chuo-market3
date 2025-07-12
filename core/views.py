@@ -192,6 +192,9 @@ def profile(request):
                     messages.error(request, f"{field}: {error}")
     else:
         form = CustomerProfileForm(instance=customer)
+    
+    # Get user's products
+    user_products = Product.objects.filter(user=user).order_by('-created_at')
 
     context = {
         'user': user,
@@ -199,6 +202,7 @@ def profile(request):
         'UNIVERSITY_CHOICES': UNIVERSITY_CHOICES,
         'COLLEGE_CHOICES': COLLEGE_CHOICES,
         'universities_data': universities_data,
+        'user_products': user_products,
     }
     return render(request, 'app/profile.html', context)
 
@@ -999,4 +1003,60 @@ def blog_detail_emergency(request, slug):
         'has_braces': content.startswith('{') and content.endswith('}') if content else False,
         'has_data_attrs': 'data-start=' in content if content else False,
         'content_length': len(content) if content else 0
+    })
+
+from core.decorators.product_owner import owns_product
+
+@login_required
+@customer_required
+@owns_product
+def edit_product(request, pk=None, slug=None):
+    """
+    Edit a product - only the owner of the product can edit it
+    """
+    # Get product using either slug or pk
+    if slug:
+        product = get_object_or_404(Product, slug=slug)
+    else:
+        product = get_object_or_404(Product, pk=pk)
+    
+    if request.method == 'POST':
+        form = ProductForm(request.POST, request.FILES, instance=product)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Your product has been updated successfully.")
+            return redirect('product-detail', slug=product.slug if product.slug else product.pk)
+    else:
+        form = ProductForm(instance=product)
+    
+    return render(request, 'app/edit_product.html', {
+        'form': form,
+        'product': product,
+    })
+
+@login_required
+@customer_required
+@owns_product
+def delete_product(request, pk=None, slug=None):
+    """
+    Delete a product - only the owner of the product can delete it
+    """
+    # Get product using either slug or pk
+    if slug:
+        product = get_object_or_404(Product, slug=slug)
+    else:
+        product = get_object_or_404(Product, pk=pk)
+    
+    if request.method == 'POST':
+        # Store information for confirmation message
+        product_title = product.title
+        
+        # Delete the product
+        product.delete()
+        
+        messages.success(request, f"Your product '{product_title}' has been deleted successfully.")
+        return redirect('profile')  # Redirect to user profile after deletion
+    
+    return render(request, 'app/delete_product_confirm.html', {
+        'product': product,
     })

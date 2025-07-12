@@ -18,6 +18,12 @@ urlpatterns = [
     # Product detail paths - support both slug and pk for backward compatibility
     path('product/<slug:slug>/', views.product_detail, name='product-detail'),
     path('product-detail/<int:pk>/', views.product_detail, name='product-detail-by-id'),  # Keep old URL pattern for backwards compatibility
+    
+    # Product edit/delete paths
+    path('product/<slug:slug>/edit/', views.edit_product, name='edit-product'),
+    path('product/<int:pk>/edit/', views.edit_product, name='edit-product-by-id'),
+    path('product/<slug:slug>/delete/', views.delete_product, name='delete-product'),
+    path('product/<int:pk>/delete/', views.delete_product, name='delete-product-by-id'),
     path('add-to-cart/', views.add_to_cart, name='add-to-cart'),
     path('cart/', views.view_cart, name='carts'),
     path('remove-cart/<int:pk>/', views.remove_cart, name='remove-cart'),

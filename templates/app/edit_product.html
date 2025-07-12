@@ -1,0 +1,123 @@
+{% extends 'app/base.html' %}
+{% load static %}
+{% block title %}Edit: {{ product.title }}{% endblock title %}
+
+{% block extra_head %}
+<!-- Include TinyMCE editor -->
+{{ form.media }}
+<style>
+    .edit-product-form {
+        padding: 2rem;
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    }
+    
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+    
+    .preview-image {
+        max-width: 200px;
+        margin-bottom: 1rem;
+        border-radius: 8px;
+    }
+</style>
+{% endblock extra_head %}
+
+{% block main-content %}
+<div class="container my-5">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <div class="edit-product-form">
+                <h2 class="mb-4">Edit Product</h2>
+                
+                <form method="post" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    
+                    <div class="form-group">
+                        <label for="{{ form.title.id_for_label }}">Title</label>
+                        {{ form.title }}
+                        {% if form.title.errors %}
+                            <div class="text-danger mt-1">
+                                {{ form.title.errors }}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="{{ form.category.id_for_label }}">Category</label>
+                        {{ form.category }}
+                        {% if form.category.errors %}
+                            <div class="text-danger mt-1">
+                                {{ form.category.errors }}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="{{ form.description.id_for_label }}">Description</label>
+                        {{ form.description }}
+                        {% if form.description.errors %}
+                            <div class="text-danger mt-1">
+                                {{ form.description.errors }}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="{{ form.price.id_for_label }}">Price (TSh)</label>
+                                {{ form.price }}
+                                {% if form.price.errors %}
+                                    <div class="text-danger mt-1">
+                                        {{ form.price.errors }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="{{ form.discount_price.id_for_label }}">Discount Price (optional)</label>
+                                {{ form.discount_price }}
+                                {% if form.discount_price.errors %}
+                                    <div class="text-danger mt-1">
+                                        {{ form.discount_price.errors }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="{{ form.image.id_for_label }}">Product Image</label>
+                        {% if product.image %}
+                            <div>
+                                <p>Current image:</p>
+                                <img src="{{ product.image.url }}" alt="{{ product.title }}" class="preview-image">
+                            </div>
+                        {% endif %}
+                        {{ form.image }}
+                        <small class="form-text text-muted">Upload a new image only if you want to change the current one.</small>
+                        {% if form.image.errors %}
+                            <div class="text-danger mt-1">
+                                {{ form.image.errors }}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="d-flex mt-4">
+                        <button type="submit" class="btn btn-primary me-2">
+                            <i class="fas fa-save"></i> Save Changes
+                        </button>
+                        <a href="{% url 'product-detail' slug=product.slug %}" class="btn btn-secondary">
+                            <i class="fas fa-times"></i> Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock main-content %}
