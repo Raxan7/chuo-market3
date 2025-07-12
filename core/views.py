@@ -1060,3 +1060,87 @@ def delete_product(request, pk=None, slug=None):
     return render(request, 'app/delete_product_confirm.html', {
         'product': product,
     })
+
+@login_required
+@customer_required
+def edit_blog(request, slug):
+    """
+    Edit a blog - only the author of the blog can edit it
+    """
+    blog = get_object_or_404(Blog, slug=slug)
+    
+    # Check if the current user is the author of the blog
+    if blog.author != request.user:
+        messages.error(request, "You can only edit blogs that you've authored.")
+        return redirect('blog_detail', slug=blog.slug)
+    
+    if request.method == 'POST':
+        form = BlogForm(request.POST, request.FILES, instance=blog)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Your blog has been updated successfully.")
+            return redirect('blog_detail', slug=blog.slug)
+    else:
+        form = BlogForm(instance=blog)
+    
+    return render(request, 'app/edit_blog.html', {
+        'form': form,
+        'blog': blog,
+    })
+
+@login_required
+@customer_required
+def delete_blog(request, slug):
+    """
+    Delete a blog - only the author of the blog can delete it
+    """
+    blog = get_object_or_404(Blog, slug=slug)
+    
+    # Check if the current user is the author of the blog
+    if blog.author != request.user:
+        messages.error(request, "You can only delete blogs that you've authored.")
+        return redirect('blog_detail', slug=blog.slug)
+    
+    if request.method == 'POST':
+        # Store information for confirmation message
+        blog_title = blog.title
+        
+        # Delete the blog
+        blog.delete()
+        
+        messages.success(request, f"Your blog '{blog_title}' has been deleted successfully.")
+        return redirect('user_dashboard')  # We'll create this view later
+    
+    return render(request, 'app/delete_blog_confirm.html', {
+        'blog': blog,
+    })
+
+@login_required
+def user_dashboard(request):
+    """
+    User dashboard showing all user content - products, blogs, and talents
+    """
+    user = request.user
+    
+    # Get user's content
+    user_products = Product.objects.filter(user=user).order_by('-created_at')
+    user_blogs = Blog.objects.filter(author=user).order_by('-created_at')
+    
+    # Get user talents from the talents app
+    from talents.models import Talent
+    user_talents = Talent.objects.filter(user=user).order_by('-created_at')
+    
+    # Default active tab
+    active_tab = request.GET.get('tab', 'products')
+    
+    context = {
+        'user': user,
+        'user_products': user_products,
+        'user_blogs': user_blogs,
+        'user_talents': user_talents,
+        'active_tab': active_tab,
+        'product_count': user_products.count(),
+        'blog_count': user_blogs.count(),
+        'talent_count': user_talents.count(),
+    }
+    return render(request, 'app/dashboard.html', context)

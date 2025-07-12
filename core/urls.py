@@ -1,7 +1,11 @@
 from django.urls import path
 from . import views
 from django.contrib.auth import views as auth_views
-from .views import add_product, add_blog, create_blog, blog_list, blog_detail, products_by_category, about_us, contact_us, privacy_policy, terms_of_service, clean_all_blog_content
+from .views import (
+    add_product, add_blog, create_blog, blog_list, blog_detail, products_by_category, 
+    about_us, contact_us, privacy_policy, terms_of_service, clean_all_blog_content, 
+    edit_blog, delete_blog, user_dashboard
+)
 from .notifications import send_test_notification, send_notification_to_user, send_notification_to_group
 from .help_views import help_center
 
@@ -48,11 +52,15 @@ urlpatterns = [
     path('add-product/', add_product, name='add_product'),
     path('add-blog/', add_blog, name='add_blog'),
     path('create-blog/', create_blog, name='create_blog'),
+    
+    # Blog URLs
     path('blogs/', blog_list, name='blog_list'),
     path('blogs/<slug:slug>/', blog_detail, name='blog_detail'),
-    path('subscribe/', views.subscribe, name='subscribe'),
-    path('upload-payment-proof/<int:subscription_id>/', views.upload_payment_proof, name='upload_payment_proof'),
-    path('category/<str:category>/', products_by_category, name='products-by-category'),
+    path('blogs/<slug:slug>/edit/', edit_blog, name='edit-blog'),
+    path('blogs/<slug:slug>/delete/', delete_blog, name='delete-blog'),
+    
+    # Dashboard
+    path('dashboard/', user_dashboard, name='user_dashboard'),
     
     # Push Notification URLs
     path('notifications/test/', send_test_notification, name='test_notification'),
