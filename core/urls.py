@@ -62,6 +62,9 @@ urlpatterns = [
     # Dashboard
     path('dashboard/', user_dashboard, name='user_dashboard'),
     
+    # Subscription
+    path('subscription/', views.subscription_view, name='subscribe'),
+    
     # Push Notification URLs
     path('notifications/test/', send_test_notification, name='test_notification'),
     path('notifications/send/', send_notification_to_user, name='send_notification'),

@@ -21,6 +21,7 @@ from core.decorators.customer_required import customer_required, phone_required
 import re
 from django.core.mail import send_mail
 from django.conf import settings
+from django.core.exceptions import ObjectDoesNotExist
 
 logger = logging.getLogger(__name__)
 
@@ -196,6 +197,8 @@ def profile(request):
         if form.is_valid():
             form.save()
             messages.success(request, "Profile updated successfully.")
+            # Redirect to add_product page after successful profile update
+            return redirect('add_product')
         else:
             # Display form errors
             for field, errors in form.errors.items():
@@ -1155,3 +1158,39 @@ def user_dashboard(request):
         'talent_count': user_talents.count(),
     }
     return render(request, 'app/dashboard.html', context)
+
+@login_required(login_url='login')
+def subscription_view(request):
+    """
+    View for managing user subscriptions
+    """
+    user = request.user
+    # Get or create customer instance
+    customer, created = Customer.objects.get_or_create(user=user)
+    
+    # Get customer's current subscription if it exists
+    try:
+        current_subscription = customer.subscription
+        subscription_level = current_subscription.level if current_subscription else "Free"
+    except (AttributeError, ObjectDoesNotExist):
+        subscription_level = "Free"
+    
+    # Handle subscription form submission
+    if request.method == 'POST':
+        form = SubscriptionForm(request.POST)
+        if form.is_valid():
+            subscription = form.save(commit=False)
+            subscription.customer = customer
+            subscription.save()
+            messages.success(request, "Subscription updated successfully.")
+            return redirect('profile')
+    else:
+        form = SubscriptionForm()
+    
+    context = {
+        'user': user,
+        'form': form,
+        'subscription_level': subscription_level,
+    }
+    
+    return render(request, 'app/subscription.html', context)
