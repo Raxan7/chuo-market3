@@ -1,5 +1,6 @@
 {% extends 'app/base.html' %}
 {% load static %}
+{% load product_filters %}
 {% block title %}{{ product.title }}{% endblock title %}
 
 {% block extra_head %}
@@ -30,12 +31,12 @@
   }
 </style>
 <!-- SEO Meta Tags -->
-<meta name="description" content="{{ product.description|striptags|truncatechars:160 }}">
+<meta name="description" content="{{ product.description|process_product_description|striptags|truncatechars:160 }}">
 <meta name="keywords" content="{{ product.title }}, ChuoSmart, product, {{ customer.university }}, {{ customer.college }}">
 
 <!-- Open Graph Meta Tags for better social media sharing -->
 <meta property="og:title" content="{{ product.title }} | ChuoSmart">
-<meta property="og:description" content="{{ product.description|striptags|truncatechars:200 }}">
+<meta property="og:description" content="{{ product.description|process_product_description|striptags|truncatechars:200 }}">
 <meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{{ product.image.url }}">
 <meta property="og:url" content="{{ request.scheme }}://{{ request.get_host }}{% url 'product-detail' slug=product.slug %}">
 <meta property="og:type" content="product">
@@ -44,7 +45,7 @@
 <!-- Twitter Card data -->
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="{{ product.title }}">
-<meta property="twitter:description" content="{{ product.description|striptags|truncatechars:200 }}">
+<meta property="twitter:description" content="{{ product.description|process_product_description|striptags|truncatechars:200 }}">
 <meta name="twitter:image" content="{{ request.scheme }}://{{ request.get_host }}{{ product.image.url }}">
 {% endblock extra_head %}
 
@@ -59,11 +60,7 @@
     <div class="col-md-6">
       <h1>{{ product.title }}</h1>
       <div class="product-description">
-        {% if product.description|first == '{' and product.description|last == '}' %}
-          {{ product.description|slice:"1:-1"|safe }}
-        {% else %}
-          {{ product.description|safe }}
-        {% endif %}
+        {{ product.description|process_product_description|safe }}
       </div>
       <p><i class="fas fa-tag"></i> <strong>Price:</strong> TSh {{ product.price }}</p>
       <p><i class="fas fa-user"></i> <strong>Posted by:</strong> {{ customer.name }}</p>
