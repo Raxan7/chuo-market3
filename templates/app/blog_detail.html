@@ -357,7 +357,19 @@
                 </div>
                 
                 <div class="blog-header">
-                    <h1 class="blog-title">{{ blog.title }}</h1>
+                    <div class="d-flex justify-content-between align-items-start">
+                        <h1 class="blog-title">{{ blog.title }}</h1>
+                        {% if user.is_authenticated and blog.author == user %}
+                          <div class="blog-actions">
+                            <a href="{% url 'edit-blog' slug=blog.slug %}" class="btn btn-primary btn-sm">
+                              <i class="fas fa-edit"></i> Edit
+                            </a>
+                            <a href="{% url 'delete-blog' slug=blog.slug %}" class="btn btn-danger btn-sm">
+                              <i class="fas fa-trash"></i> Delete
+                            </a>
+                          </div>
+                        {% endif %}
+                    </div>
                     
                     <div class="blog-meta">
                         <div class="blog-author">

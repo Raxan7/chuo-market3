@@ -443,10 +443,11 @@
                 {{request.user.username}}
               </a>
               <ul class="dropdown-menu" aria-labelledby="profileDropdown">
-                <li><a class="dropdown-item" href="{% url 'profile' %}">Profile</a></li>
-                <li><a class="dropdown-item" href="{% url 'orders' %}">Orders</a></li>
-                <li><a class="dropdown-item" href="{% url 'changepassword' %}">Change Password</a></li>
-                <li><a class="dropdown-item" href="{% url "logout" %}">Logout</a></li>
+                <li><a class="dropdown-item" href="{% url 'user_dashboard' %}"><i class="fas fa-th-large fa-fw me-1"></i> Dashboard</a></li>
+                <li><a class="dropdown-item" href="{% url 'profile' %}"><i class="fas fa-user fa-fw me-1"></i> Profile</a></li>
+                <li><a class="dropdown-item" href="{% url 'orders' %}"><i class="fas fa-shopping-bag fa-fw me-1"></i> Orders</a></li>
+                <li><a class="dropdown-item" href="{% url 'changepassword' %}"><i class="fas fa-key fa-fw me-1"></i> Change Password</a></li>
+                <li><a class="dropdown-item" href="{% url "logout" %}"><i class="fas fa-sign-out-alt fa-fw me-1"></i> Logout</a></li>
               </ul>
             </li>
             <li class="nav-item mx-2">
