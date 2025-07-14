@@ -4,10 +4,19 @@ Contains classes for generating sitemaps for products, blogs, talents, and stati
 """
 from django.contrib.sitemaps import Sitemap
 from django.urls import reverse
+from django.conf import settings
 from .models import Product, Blog
 from talents.models import Talent
 
-class ProductSitemap(Sitemap):
+class ChuoSmartSitemap(Sitemap):
+    """Base Sitemap class for ChuoSmart with common settings"""
+    protocol = 'https'  # Use HTTPS for better SEO
+    
+    def get_domain(self, site=None):
+        """Override to use the configured SITE_DOMAIN from settings"""
+        return settings.SITE_DOMAIN
+
+class ProductSitemap(ChuoSmartSitemap):
     changefreq = "weekly"
     priority = 0.8
 
@@ -21,7 +30,7 @@ class ProductSitemap(Sitemap):
         return reverse('product-detail', kwargs={'slug': obj.slug}) if obj.slug else reverse('product-detail-by-id', args=[obj.pk])
 
 
-class BlogSitemap(Sitemap):
+class BlogSitemap(ChuoSmartSitemap):
     changefreq = "monthly"
     priority = 0.7
 
@@ -35,7 +44,7 @@ class BlogSitemap(Sitemap):
         return reverse('blog_detail', args=[obj.pk])
 
 
-class TalentSitemap(Sitemap):
+class TalentSitemap(ChuoSmartSitemap):
     changefreq = "monthly"
     priority = 0.7
 
@@ -49,10 +58,9 @@ class TalentSitemap(Sitemap):
         return reverse('talent_detail', args=[obj.id])
 
 
-class StaticViewSitemap(Sitemap):
+class StaticViewSitemap(ChuoSmartSitemap):
     priority = 0.7
     changefreq = "daily"
-    protocol = 'https'  # Use HTTPS for better SEO
 
     def items(self):
         return ['home', 'login', 'customerregistration', 'blog_list', 'talent_list', 'lms:lms_home']

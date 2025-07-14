@@ -6,4 +6,4 @@ Disallow: /admin/
 Disallow: /accounts/
 
 # Sitemaps
-Sitemap: {{ request.scheme }}://{{ request.get_host }}/sitemap.xml
+Sitemap: https://chuosmart.com/sitemap.xml

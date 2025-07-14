@@ -63,8 +63,9 @@ INSTALLED_APPS = [
     'lms',
 ]
 
-# Site ID for the sites framework
+# Site ID and domain for the sites framework
 SITE_ID = 1
+SITE_DOMAIN = 'chuosmart.com'
 
 # filepath: /home/saidi/Projects/KOMBA/chuo-market3/Commerce/settings.py
 # Web Push Notification Settings
