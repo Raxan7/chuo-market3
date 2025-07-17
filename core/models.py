@@ -170,7 +170,7 @@ class Banners(models.Model):
     image = models.ImageField(upload_to='banner_images')
 
     def __str__(self):
-        return self.title
+        return self.title or ""
 
 
 class Blog(models.Model):
