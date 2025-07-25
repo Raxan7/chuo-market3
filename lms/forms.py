@@ -94,7 +94,7 @@ class CourseForm(forms.ModelForm):
     class Meta:
         model = Course
         fields = ['title', 'course_type', 'code', 'credit', 'summary', 'program', 
-                  'level', 'year', 'semester', 'is_elective', 'instructors', 'image']
+                  'level', 'year', 'semester', 'is_elective', 'is_free', 'instructors', 'image']
         widgets = {
             'title': forms.TextInput(attrs={
                 'class': 'form-control',
@@ -123,6 +123,7 @@ class CourseForm(forms.ModelForm):
             'year': forms.Select(attrs={'class': 'form-select'}),
             'semester': forms.Select(attrs={'class': 'form-select'}),
             'is_elective': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'is_free': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'instructors': forms.SelectMultiple(attrs={'class': 'form-select'}),
             'image': forms.ClearableFileInput(attrs={'class': 'form-control'}),
         }

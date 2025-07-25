@@ -117,6 +117,18 @@
                             <div class="form-text">Write a brief summary of what students will learn in this course</div>
                         </div>
                         
+                        <!-- Toggle for Free or Paid course -->
+                        <div class="mb-4">
+                            <div class="form-check form-switch">
+                                {{ form.is_free|add_class:"form-check-input" }}
+                                <label for="{{ form.is_free.id_for_label }}" class="form-check-label fw-bold">
+                                    <i class="fas fa-dollar-sign me-2 text-primary"></i>{{ form.is_free.label }}
+                                </label>
+                                {% if form.is_free.help_text %}
+                                    <div class="form-text">{{ form.is_free.help_text }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
                         <hr class="my-4">
                         <h5 class="text-primary mb-3"><i class="fas fa-cogs me-2"></i>Course Settings</h5>
 
