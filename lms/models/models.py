@@ -160,6 +160,7 @@ class Course(models.Model):
     semester = models.CharField(choices=SEMESTER_CHOICES, max_length=10, null=True, blank=True,
                              help_text=_("Required for university courses only"))
     is_elective = models.BooleanField(default=False, help_text=_("Applies to university courses only"))
+    is_pinned = models.BooleanField(default=False, help_text=_("Pin this course at the top of listings"))
     
     def __str__(self):
         if self.course_type == 'university' and self.code:

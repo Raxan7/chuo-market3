@@ -302,7 +302,8 @@ class CourseListView(ListView):
     paginate_by = 10
     
     def get_queryset(self):
-        queryset = Course.objects.all()
+        # Base queryset: pinned courses first, then by title
+        queryset = Course.objects.all().order_by('-is_pinned', 'title')
         
         # Filter by course type if provided
         course_type = self.request.GET.get('course_type')
@@ -333,7 +334,8 @@ class CourseListView(ListView):
                 Q(summary__icontains=query)
             )
         
-        return queryset
+        # Order pinned courses first, then by title
+        return queryset.order_by('-is_pinned', 'title')
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)

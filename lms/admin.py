@@ -46,8 +46,9 @@ class ProgramAdmin(admin.ModelAdmin):
 
 @admin.register(Course)
 class CourseAdmin(admin.ModelAdmin):
-    list_display = ('title', 'code', 'program', 'level', 'semester', 'year', 'is_free')
-    list_filter = ('program', 'level', 'semester', 'year', 'is_elective', 'is_free')
+    list_display = ('title', 'code', 'program', 'level', 'semester', 'year', 'is_free', 'is_pinned')
+    list_filter = ('program', 'level', 'semester', 'year', 'is_elective', 'is_free', 'is_pinned')
+    list_editable = ('is_pinned',)
     search_fields = ('title', 'code', 'summary')
     prepopulated_fields = {'slug': ('title',)}
     inlines = [CourseModuleInline, CourseEnrollmentInline]
