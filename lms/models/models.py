@@ -177,21 +177,113 @@ class Course(models.Model):
     def is_current_semester(self):
         current_semester = Semester.objects.filter(is_current_semester=True).first()
         return self.semester == current_semester.semester if current_semester else False
+        
+    def user_has_access(self, user):
+        """
+        Check if the user has access to this course
+        """
+        if self.is_free:
+            return True
+            
+        if not user.is_authenticated:
+            return False
+            
+        try:
+            enrollment = CourseEnrollment.objects.get(
+                student__user=user, 
+                course=self
+            )
+            return enrollment.payment_status == 'approved'
+        except CourseEnrollment.DoesNotExist:
+            return False
+
+
+class PaymentMethod(models.Model):
+    """
+    Stores payment method information like lipa number
+    """
+    name = models.CharField(max_length=100)
+    instructor = models.ForeignKey('LMSProfile', on_delete=models.CASCADE, related_name='payment_methods', help_text="Instructor who accepts this payment method", null=True, blank=True)
+    payment_number = models.CharField(max_length=100, help_text="Payment number or account (e.g. phone number, bank account)", null=False, blank=True, default='N/A')
+    instructions = models.TextField(blank=True)
+    image = models.ImageField(upload_to='lms/payment_methods/', blank=True, null=True)
+    is_active = models.BooleanField(default=True)
+
+    def __str__(self):
+        return f"{self.name} ({self.payment_number}) - {self.instructor.user.username}"
 
 
 class CourseEnrollment(models.Model):
     """
     Represents a student's enrollment in a course
     """
+    PAYMENT_STATUS_CHOICES = (
+        ('not_required', _('Not Required')),
+        ('pending', _('Pending')),
+        ('approved', _('Approved')),
+        ('rejected', _('Rejected')),
+    )
+    
     student = models.ForeignKey(LMSProfile, on_delete=models.CASCADE)
     course = models.ForeignKey(Course, on_delete=models.CASCADE)
     date_enrolled = models.DateTimeField(auto_now_add=True)
+    
+    # Payment related fields
+    payment_status = models.CharField(
+        max_length=20, 
+        choices=PAYMENT_STATUS_CHOICES, 
+        default='not_required',
+        help_text=_("Payment status for premium courses")
+    )
+    payment_proof = models.ImageField(
+        upload_to='lms/payment_proofs/', 
+        blank=True, 
+        null=True,
+        help_text=_("Upload proof of payment for premium courses")
+    )
+    payment_date = models.DateTimeField(blank=True, null=True)
+    payment_method = models.ForeignKey(
+        PaymentMethod, 
+        on_delete=models.SET_NULL, 
+        blank=True, 
+        null=True,
+        help_text=_("Payment method used")
+    )
+    payment_approved_by = models.ForeignKey(
+        User, 
+        on_delete=models.SET_NULL, 
+        blank=True, 
+        null=True, 
+        related_name='approved_enrollments',
+        help_text=_("Admin who approved the payment")
+    )
+    payment_approved_date = models.DateTimeField(blank=True, null=True)
+    payment_notes = models.TextField(blank=True, null=True)
     
     class Meta:
         unique_together = ['student', 'course']
     
     def __str__(self):
         return f"{self.student.user.username} enrolled in {self.course.title}"
+    
+    @property
+    def has_access(self):
+        """Determine if student has access to the course"""
+        if self.course.is_free:
+            return True
+        return self.payment_status == 'approved'
+        
+    def save(self, *args, **kwargs):
+        # For free courses, automatically set payment_status to not_required
+        if self.course.is_free and self.payment_status == 'pending':
+            self.payment_status = 'not_required'
+        
+        # If payment proof is uploaded, update status to pending
+        if self.payment_proof and self.payment_status == 'not_required' and not self.course.is_free:
+            self.payment_status = 'pending'
+            self.payment_date = timezone.now()
+            
+        super().save(*args, **kwargs)
 
 
 class CourseModule(models.Model):
@@ -609,3 +701,23 @@ def log_program_delete(sender, instance, **kwargs):
     Log when a program is deleted
     """
     ActivityLog.objects.create(message=_(f"The program '{instance}' has been deleted."))
+
+
+@receiver(pre_save, sender=CourseEnrollment)
+def enrollment_payment_status_change(sender, instance, **kwargs):
+    """
+    Track payment status changes for course enrollments
+    """
+    if instance.pk:  # Only for existing instances (updates)
+        old_instance = CourseEnrollment.objects.get(pk=instance.pk)
+        if old_instance.payment_status != instance.payment_status:
+            # Payment status changed
+            if instance.payment_status == 'approved':
+                instance.payment_approved_date = timezone.now()
+                ActivityLog.objects.create(
+                    message=_(f"Payment for '{instance.course}' by {instance.student.user.username} has been approved.")
+                )
+            elif instance.payment_status == 'rejected':
+                ActivityLog.objects.create(
+                    message=_(f"Payment for '{instance.course}' by {instance.student.user.username} has been rejected.")
+                )

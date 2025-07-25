@@ -2,7 +2,44 @@
 {% load static %}
 {% load lms_extras %}
 
-{% block title %}{{ course.title }}{% endblock title %}
+{% block title %}{{ course.title }}{% endblock %}
+                            <span>
+                                {% if has_access %}
+                                    <i class="fas fa-check-circle"></i> You are enrolled in this course
+                                {% elif payment_status == 'pending' %}
+                                    <i class="fas fa-clock"></i> Payment pending approval
+                                {% elif payment_status == 'rejected' %}
+                                    <i class="fas fa-times-circle"></i> Payment was rejected
+                                {% endif %}
+                            </span>
+                            <a href="{% url 'lms:unenroll_course' slug=course.slug %}" class="btn btn-sm btn-outline-danger">
+                                <i class="fas fa-times"></i> Unenroll
+                            </a>
+                        </div>
+                        
+                        {% if not has_access and not course.is_free %}
+                            {% if payment_status == 'pending' %}
+                                <div class="mt-2">
+                                    <p>Your payment is being processed. This usually takes just a few minutes.</p>
+                                    <a href="{% url 'lms:payment_pending' slug=course.slug %}" class="btn btn-sm btn-warning">
+                                        <i class="fas fa-eye"></i> View Payment Status
+                                    </a>
+                                </div>
+                            {% elif payment_status == 'rejected' %}
+                                <div class="mt-2">
+                                    <p>Your payment was rejected. Please submit a new payment proof.</p>
+                                    <a href="{% url 'lms:payment_form' slug=course.slug %}" class="btn btn-sm btn-primary">
+                                        <i class="fas fa-upload"></i> Submit Payment
+                                    </a>
+                                </div>
+                            {% else %}
+                                <div class="mt-2">
+                                    <a href="{% url 'lms:payment_form' slug=course.slug %}" class="btn btn-sm btn-primary">
+                                        <i class="fas fa-upload"></i> Submit Payment
+                                    </a>
+                                </div>
+                            {% endif %}
+                        {% endif %}ck title %}
 
 {% block extra_head %}
 <link rel="stylesheet" href="{% static 'lms/css/course_content.css' %}">
@@ -216,8 +253,27 @@
                     </div>
                     
                     {% else %}
-                    <!-- Full course content for enrolled students -->
-                    {% if modules %}
+                    <!-- Check if user has access to this content -->
+                    {% if not has_access and is_enrolled and not course.is_free and not is_course_instructor %}
+                        <div class="alert alert-warning">
+                            <div class="text-center">
+                                <i class="fas fa-lock fa-3x mb-3"></i>
+                                <h4>Premium Content</h4>
+                                <p>This content is only available after payment approval.</p>
+                                
+                                {% if payment_status == 'pending' %}
+                                    <p>Your payment is being processed. This usually takes just a few minutes.</p>
+                                    <a href="{% url 'lms:payment_pending' slug=course.slug %}" class="btn btn-warning">
+                                        <i class="fas fa-clock"></i> View Payment Status
+                                    </a>
+                                {% else %}
+                                    <a href="{% url 'lms:payment_form' slug=course.slug %}" class="btn btn-primary">
+                                        <i class="fas fa-credit-card"></i> Make Payment
+                                    </a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% elif modules %}
                     <div class="accordion" id="moduleAccordion">
                         {% for module in modules %}
                         <div class="accordion-item">
@@ -240,6 +296,7 @@
                                     <h5 class="mt-3">Module Content</h5>
                                     <ul class="list-group">
                                         {% for content in module.contents.all %}
+                                        {% if has_access or is_course_instructor %}
                                         <li class="list-group-item">
                                             <div class="d-flex justify-content-between align-items-center">
                                                 <div>
@@ -259,6 +316,12 @@
                                                 {% endif %}
                                             </div>
                                         </li>
+                                        {% else %}
+                                        <!-- Only show limited info for premium content -->
+                                        <li class="list-group-item text-muted">
+                                            <i class="fas fa-lock me-2"></i> {{ content.title }} <span class="badge bg-warning">Premium Content</span>
+                                        </li>
+                                        {% endif %}
                                         {% endfor %}
                                     </ul>
                                     {% else %}

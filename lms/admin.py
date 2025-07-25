@@ -4,11 +4,13 @@ Admin interface for the LMS app
 
 from django.contrib import admin
 from django.utils.translation import gettext_lazy as _
+from django.utils import timezone
+from django.contrib import messages
 from .models import (
     ActivityLog, Semester, LMSProfile, Program, Course, CourseModule, 
     CourseContent, Quiz, Question, MCQuestion, Choice, TF_Question, 
     Essay_Question, QuizTaker, StudentAnswer, Grade, CourseEnrollment,
-    InstructorRequest, ContentAccess, SiteSettings, AdExemptUser
+    InstructorRequest, ContentAccess, SiteSettings, AdExemptUser, PaymentMethod
 )
 
 
@@ -25,7 +27,8 @@ class ChoiceInline(admin.TabularInline):
 class CourseEnrollmentInline(admin.TabularInline):
     model = CourseEnrollment
     extra = 1
-    readonly_fields = ('date_enrolled',)
+    readonly_fields = ('date_enrolled', 'payment_date', 'payment_approved_date')
+    fields = ('student', 'date_enrolled', 'payment_status', 'payment_proof', 'payment_method', 'payment_notes')
 
 
 @admin.register(LMSProfile)
@@ -142,12 +145,7 @@ class SemesterAdmin(admin.ModelAdmin):
     list_filter = ('year', 'semester', 'is_current_semester')
 
 
-@admin.register(CourseEnrollment)
-class CourseEnrollmentAdmin(admin.ModelAdmin):
-    list_display = ('student', 'course', 'date_enrolled')
-    list_filter = ('course',)
-    search_fields = ('student__user__username', 'student__user__first_name', 'student__user__last_name', 'course__title')
-    readonly_fields = ('date_enrolled',)
+# The CourseEnrollmentAdmin class is now defined below with payment management features
 
 
 @admin.register(InstructorRequest)
@@ -249,5 +247,67 @@ class AdExemptUserAdmin(admin.ModelAdmin):
 # Register all question types
 admin.site.register(MCQuestion, MCQuestionAdmin)
 admin.site.register(TF_Question, TFQuestionAdmin)
+
+
+@admin.register(PaymentMethod)
+class PaymentMethodAdmin(admin.ModelAdmin):
+    """Admin interface for payment methods"""
+    list_display = ('name', 'payment_number', 'instructor', 'is_active')
+    list_filter = ('is_active', 'instructor')
+    search_fields = ('name', 'payment_number', 'instructor__user__username')
+
+
+@admin.register(CourseEnrollment)
+class CourseEnrollmentAdmin(admin.ModelAdmin):
+    """Admin interface for course enrollments with payment management"""
+    list_display = ('student', 'course', 'date_enrolled', 'payment_status')
+    list_filter = ('payment_status', 'date_enrolled')
+    search_fields = ('student__user__username', 'student__user__email', 'course__title')
+    readonly_fields = ('date_enrolled', 'payment_date', 'payment_approved_date', 'payment_approved_by')
+    raw_id_fields = ('student', 'course')
+    fieldsets = (
+        (_('Enrollment Information'), {
+            'fields': ('student', 'course', 'date_enrolled')
+        }),
+        (_('Payment Information'), {
+            'fields': ('payment_status', 'payment_proof', 'payment_method', 'payment_date', 
+                     'payment_approved_by', 'payment_approved_date', 'payment_notes')
+        }),
+    )
+    
+    actions = ['approve_payments', 'reject_payments']
+    
+    def approve_payments(self, request, queryset):
+        """Bulk approve pending payments"""
+        updated = 0
+        for enrollment in queryset.filter(payment_status='pending'):
+            enrollment.payment_status = 'approved'
+            enrollment.payment_approved_by = request.user
+            enrollment.payment_approved_date = timezone.now()
+            enrollment.save()
+            updated += 1
+        
+        if updated > 0:
+            messages.success(request, _(f"{updated} payment(s) successfully approved."))
+        else:
+            messages.info(request, _("No pending payments were selected."))
+    
+    approve_payments.short_description = _("Approve selected payments")
+    
+    def reject_payments(self, request, queryset):
+        """Bulk reject pending payments"""
+        updated = 0
+        for enrollment in queryset.filter(payment_status='pending'):
+            enrollment.payment_status = 'rejected'
+            enrollment.payment_notes = _("Payment proof rejected by admin.")
+            enrollment.save()
+            updated += 1
+        
+        if updated > 0:
+            messages.success(request, _(f"{updated} payment(s) rejected."))
+        else:
+            messages.info(request, _("No pending payments were selected."))
+    
+    reject_payments.short_description = _("Reject selected payments")
 admin.site.register(Essay_Question, EssayQuestionAdmin)
 admin.site.register(SiteSettings, SiteSettingsAdmin)

@@ -13,7 +13,7 @@ from .models import (
     ActivityLog, Semester, LMSProfile, Program, Course, CourseEnrollment, 
     CourseModule, CourseContent, ContentAccess, Quiz, Question, MCQuestion,
     Choice, TF_Question, Essay_Question, QuizTaker, StudentAnswer, Grade,
-    InstructorRequest
+    InstructorRequest, PaymentMethod
 )
 
 # Import utility functions from models.py

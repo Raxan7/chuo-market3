@@ -76,4 +76,14 @@ urlpatterns = [
     
     # Ad Exemption Management
     path('ad-exemption/toggle/<int:user_id>/', views.toggle_ad_exemption, name='toggle_ad_exemption'),
+    
+    # Payment Management
+    path('courses/<slug:slug>/payment/', views.payment_form, name='payment_form'),
+    path('courses/<slug:slug>/payment/pending/', views.payment_pending, name='payment_pending'),
+    
+    # Instructor payment methods
+    path('instructor/payment-methods/', views.instructor_payment_methods, name='instructor_payment_methods'),
+    path('instructor/payment-methods/add/', views.add_payment_method, name='add_payment_method'),
+    path('instructor/payment-methods/<int:pk>/edit/', views.edit_payment_method, name='edit_payment_method'),
+    path('instructor/payment-methods/<int:pk>/delete/', views.delete_payment_method, name='delete_payment_method'),
 ]

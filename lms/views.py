@@ -1,7 +1,6 @@
 """
 Views for the LMS application
 """
-
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse, reverse_lazy
 from django.http import HttpResponseRedirect, JsonResponse, HttpResponse, Http404
@@ -17,13 +16,12 @@ from django.db.models import Q, Count, Avg
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 import time
-import time
 
 from .models import (
     LMSProfile, Program, Course, CourseModule, CourseContent, Quiz, Question,
     MCQuestion, Choice, TF_Question, Essay_Question, QuizTaker, StudentAnswer, ContentAccess,
     Grade, Semester, CourseEnrollment, ActivityLog, InstructorRequest, SiteSettings,
-    AdExemptUser
+    AdExemptUser, PaymentMethod
 )
 from .forms import (
     LMSProfileForm, CourseForm, CourseModuleForm, CourseContentForm,
@@ -31,6 +29,71 @@ from .forms import (
     GradeForm, CourseEnrollForm, EssayAnswerForm, InstructorRequestForm,
     ProgramForm
 )
+
+from .forms import PaymentMethodForm
+# Instructor: Manage Payment Methods
+@login_required(login_url='login')
+def instructor_payment_methods(request):
+    """List and manage instructor's payment methods"""
+    if not hasattr(request.user, 'lms_profile') or request.user.lms_profile.role != 'instructor':
+        messages.error(request, _("You are not registered as an instructor."))
+        return redirect('lms:lms_home')
+    profile = request.user.lms_profile
+    payment_methods = PaymentMethod.objects.filter(instructor=profile)
+    return render(request, 'lms/instructor_payment_methods.html', {
+        'payment_methods': payment_methods
+    })
+
+@login_required(login_url='login')
+def add_payment_method(request):
+    """Add a new payment method for instructor"""
+    if not hasattr(request.user, 'lms_profile') or request.user.lms_profile.role != 'instructor':
+        messages.error(request, _("You are not registered as an instructor."))
+        return redirect('lms:lms_home')
+    profile = request.user.lms_profile
+    if request.method == 'POST':
+        form = PaymentMethodForm(request.POST, request.FILES)
+        if form.is_valid():
+            payment_method = form.save(commit=False)
+            payment_method.instructor = profile
+            payment_method.save()
+            messages.success(request, _(f"Payment method '{payment_method.name}' added."))
+            return redirect('lms:instructor_payment_methods')
+    else:
+        form = PaymentMethodForm()
+    return render(request, 'lms/add_payment_method.html', {'form': form})
+
+@login_required(login_url='login')
+def edit_payment_method(request, pk):
+    """Edit an existing payment method for instructor"""
+    if not hasattr(request.user, 'lms_profile') or request.user.lms_profile.role != 'instructor':
+        messages.error(request, _("You are not registered as an instructor."))
+        return redirect('lms:lms_home')
+    profile = request.user.lms_profile
+    payment_method = get_object_or_404(PaymentMethod, pk=pk, instructor=profile)
+    if request.method == 'POST':
+        form = PaymentMethodForm(request.POST, request.FILES, instance=payment_method)
+        if form.is_valid():
+            form.save()
+            messages.success(request, _(f"Payment method '{payment_method.name}' updated."))
+            return redirect('lms:instructor_payment_methods')
+    else:
+        form = PaymentMethodForm(instance=payment_method)
+    return render(request, 'lms/edit_payment_method.html', {'form': form, 'payment_method': payment_method})
+
+@login_required(login_url='login')
+def delete_payment_method(request, pk):
+    """Delete a payment method for instructor"""
+    if not hasattr(request.user, 'lms_profile') or request.user.lms_profile.role != 'instructor':
+        messages.error(request, _("You are not registered as an instructor."))
+        return redirect('lms:lms_home')
+    profile = request.user.lms_profile
+    payment_method = get_object_or_404(PaymentMethod, pk=pk, instructor=profile)
+    if request.method == 'POST':
+        payment_method.delete()
+        messages.success(request, _(f"Payment method deleted."))
+        return redirect('lms:instructor_payment_methods')
+    return render(request, 'lms/delete_payment_method.html', {'payment_method': payment_method})
 
 
 def is_instructor(user):
@@ -301,24 +364,37 @@ class CourseDetailView(DetailView):
         # Get quizzes for this course
         quizzes = Quiz.objects.filter(course=course)
         
-        # Check if user is enrolled
+        # Check if user is enrolled and get enrollment status
         is_enrolled = False
         student_profile = None
+        enrollment = None
+        payment_status = None
+        has_access = False
+        
         if self.request.user.is_authenticated and hasattr(self.request.user, 'lms_profile'):
             student_profile = self.request.user.lms_profile
-            is_enrolled = CourseEnrollment.objects.filter(
-                student=student_profile,
-                course=course
-            ).exists()
+            try:
+                enrollment = CourseEnrollment.objects.get(
+                    student=student_profile,
+                    course=course
+                )
+                is_enrolled = True
+                payment_status = enrollment.payment_status
+                has_access = course.is_free or payment_status == 'approved'
+            except CourseEnrollment.DoesNotExist:
+                pass
         
         # Check if user is instructor for this course
         is_course_instructor = False
         if self.request.user.is_authenticated and hasattr(self.request.user, 'lms_profile'):
             is_course_instructor = course.instructors.filter(id=self.request.user.lms_profile.id).exists()
+            # Instructors always have access
+            if is_course_instructor:
+                has_access = True
         
-        # Get course progress if user is enrolled
+        # Get course progress if user is enrolled and has access
         course_progress = None
-        if is_enrolled and student_profile:
+        if is_enrolled and student_profile and has_access:
             from .utils import calculate_course_progress
             course_progress = calculate_course_progress(course, student_profile)
             
@@ -331,6 +407,11 @@ class CourseDetailView(DetailView):
             from .utils import get_all_enrolled_students_progress
             students_progress = get_all_enrolled_students_progress(course)
         
+        # Get payment methods for premium courses
+        payment_methods = None
+        if not course.is_free:
+            payment_methods = PaymentMethod.objects.filter(is_active=True)
+        
         context.update({
             'modules': modules,
             'quizzes': quizzes,
@@ -338,6 +419,10 @@ class CourseDetailView(DetailView):
             'is_course_instructor': is_course_instructor,
             'course_progress': course_progress,
             'students_progress': students_progress,
+            'has_access': has_access,
+            'payment_status': payment_status,
+            'enrollment': enrollment,
+            'payment_methods': payment_methods,
         })
         
         return context
@@ -355,20 +440,27 @@ def enroll_course(request, slug):
         profile = request.user.lms_profile
     
     # Check if already enrolled
-    if CourseEnrollment.objects.filter(student=profile, course=course).exists():
+    enrollment = CourseEnrollment.objects.filter(student=profile, course=course).first()
+    if enrollment:
         messages.info(request, _("You are already enrolled in this course."))
         return redirect('lms:course_detail', slug=course.slug)
     
-    # Create enrollment
-    CourseEnrollment.objects.create(student=profile, course=course)
-    
-    # Log activity
-    ActivityLog.objects.create(
-        message=_(f"User {request.user.username} enrolled in course {course.title}.")
-    )
-    
-    messages.success(request, _(f"You have successfully enrolled in {course.title}."))
-    return redirect('lms:course_detail', slug=course.slug)
+    # For free courses, enroll immediately
+    if course.is_free:
+        enrollment = CourseEnrollment.objects.create(
+            student=profile, 
+            course=course,
+            payment_status='not_required'
+        )
+        # Log activity
+        ActivityLog.objects.create(
+            message=_(f"User {request.user.username} enrolled in free course {course.title}.")
+        )
+        messages.success(request, _(f"You have successfully enrolled in {course.title}."))
+        return redirect('lms:course_detail', slug=course.slug)
+    else:
+        # For paid courses, redirect to payment form (do not create enrollment yet)
+        return redirect('lms:payment_form', slug=course.slug)
 
 
 @login_required(login_url='login')
@@ -1524,6 +1616,9 @@ def instructor_dashboard(request):
             if empty_modules / modules.count() > 0.3:  # More than 30% of modules are empty
                 incomplete_courses += 1
     
+    # Get instructor's payment methods
+    payment_methods = PaymentMethod.objects.filter(instructor=profile)
+
     context = {
         'profile': profile,
         'current_semester': current_semester,
@@ -1535,7 +1630,8 @@ def instructor_dashboard(request):
         'course_completion_stats': course_completion_stats,
         'total_students': total_students,
         'active_quizzes': active_quizzes,
-        'incomplete_courses': incomplete_courses
+        'incomplete_courses': incomplete_courses,
+        'payment_methods': payment_methods,
     }
     
     return render(request, 'lms/instructor_dashboard.html', context)
@@ -1711,3 +1807,112 @@ def toggle_ad_exemption(request, user_id):
     
     # Redirect to the user's admin page
     return redirect(f'/admin/auth/user/{user.id}/change/')
+
+
+@login_required(login_url='login')
+def payment_form(request, slug):
+    """View for submitting payment proof for a premium course"""
+    course = get_object_or_404(Course, slug=slug)
+    
+    # Redirect if course is free
+    if course.is_free:
+        messages.warning(request, _("This is a free course and does not require payment."))
+        return redirect('lms:course_detail', slug=course.slug)
+    
+    # Get user's profile
+    if not hasattr(request.user, 'lms_profile'):
+        profile = LMSProfile.objects.create(user=request.user, role='student')
+    else:
+        profile = request.user.lms_profile
+    
+    # Try to get enrollment
+    enrollment = CourseEnrollment.objects.filter(student=profile, course=course).first()
+    # Don't allow payment if already approved
+    if enrollment and enrollment.payment_status == 'approved':
+        messages.info(request, _("Your payment for this course has already been approved."))
+        return redirect('lms:course_detail', slug=course.slug)
+
+    # Show only payment methods for the course's instructor(s)
+    instructors = course.instructors.all()
+    payment_methods = PaymentMethod.objects.filter(is_active=True, instructor__in=instructors)
+
+    if request.method == 'POST':
+        payment_method_id = request.POST.get('payment_method')
+        payment_proof = request.FILES.get('payment_proof')
+        payment_notes = request.POST.get('payment_notes', '')
+
+        if not payment_proof:
+            messages.error(request, _("Please upload a payment proof image."))
+        elif not payment_method_id:
+            messages.error(request, _("Please select a payment method."))
+        else:
+            try:
+                payment_method = PaymentMethod.objects.get(id=payment_method_id)
+                # If not enrolled, create enrollment now
+                if not enrollment:
+                    enrollment = CourseEnrollment.objects.create(
+                        student=profile,
+                        course=course,
+                        payment_status='pending',
+                        payment_method=payment_method,
+                        payment_proof=payment_proof,
+                        payment_notes=payment_notes,
+                        payment_date=timezone.now(),
+                    )
+                else:
+                    enrollment.payment_method = payment_method
+                    enrollment.payment_proof = payment_proof
+                    enrollment.payment_notes = payment_notes
+                    enrollment.payment_date = timezone.now()
+                    enrollment.payment_status = 'pending'
+                    enrollment.save()
+                # Log activity
+                ActivityLog.objects.create(
+                    message=_(f"User {request.user.username} submitted payment proof for {course.title}.")
+                )
+                messages.success(request, _("Your payment proof has been submitted and is awaiting approval."))
+                return redirect('lms:payment_pending', slug=course.slug)
+            except PaymentMethod.DoesNotExist:
+                messages.error(request, _("Invalid payment method selected."))
+
+    return render(request, 'lms/payment_form.html', {
+        'course': course,
+        'enrollment': enrollment,
+        'payment_methods': payment_methods,
+    })
+
+
+@login_required(login_url='login')
+def payment_pending(request, slug):
+    """View for showing payment pending status"""
+    course = get_object_or_404(Course, slug=slug)
+    
+    # Get user's profile
+    if not hasattr(request.user, 'lms_profile'):
+        return redirect('lms:course_detail', slug=course.slug)
+    
+    profile = request.user.lms_profile
+    
+    # Get enrollment
+    try:
+        enrollment = CourseEnrollment.objects.get(student=profile, course=course)
+    except CourseEnrollment.DoesNotExist:
+        return redirect('lms:course_detail', slug=course.slug)
+    
+    # Redirect if payment is not pending
+    if enrollment.payment_status == 'approved':
+        messages.success(request, _("Your payment has been approved! You now have full access to the course."))
+        return redirect('lms:course_detail', slug=course.slug)
+    elif enrollment.payment_status == 'rejected':
+        messages.error(request, _("Your payment was rejected. Please submit a new payment proof."))
+        return redirect('lms:payment_form', slug=course.slug)
+    elif enrollment.payment_status == 'not_required':
+        return redirect('lms:course_detail', slug=course.slug)
+    
+    # Show pending page for pending status
+    user_role = profile.role if hasattr(profile, 'role') else 'student'
+    return render(request, 'lms/payment_pending.html', {
+        'course': course,
+        'enrollment': enrollment,
+        'user_role': user_role,
+    })

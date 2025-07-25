@@ -1,0 +1,10 @@
+{% extends 'app/base.html' %}
+{% block main-content %}
+<h2>Delete Payment Method</h2>
+<p>Are you sure you want to delete the payment method <strong>{{ payment_method.name }}</strong> ({{ payment_method.payment_number }})?</p>
+<form method="post">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-danger">Delete</button>
+    <a href="{% url 'lms:instructor_payment_methods' %}" class="btn btn-secondary">Cancel</a>
+</form>
+{% endblock %}

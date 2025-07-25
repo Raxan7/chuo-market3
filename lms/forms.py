@@ -11,7 +11,7 @@ import re
 from .models import (
     LMSProfile, Program, Course, CourseModule, CourseContent,
     Quiz, Question, MCQuestion, Choice, TF_Question, Essay_Question,
-    Grade, InstructorRequest
+    Grade, InstructorRequest, PaymentMethod
 )
 
 # Import utility function from core app
@@ -30,6 +30,19 @@ class PhoneNumberField(forms.CharField):
             raise forms.ValidationError(_("Please enter a valid phone number with country code (e.g., +255123456789)"))
         
         return cleaned_phone
+    
+
+class PaymentMethodForm(forms.ModelForm):
+    class Meta:
+        model = PaymentMethod
+        fields = ['name', 'payment_number', 'instructions', 'image', 'is_active']
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g. M-Pesa, Tigo Pesa, Bank Transfer'}),
+            'payment_number': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g. 07XXXXXXXX'}),
+            'instructions': forms.Textarea(attrs={'class': 'form-control', 'rows': 2, 'placeholder': 'Any special instructions for payment'}),
+            'image': forms.ClearableFileInput(attrs={'class': 'form-control'}),
+            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
 
 
 class LMSProfileForm(forms.ModelForm):

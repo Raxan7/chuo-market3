@@ -1,0 +1,47 @@
+{% extends 'app/base.html' %}
+{% load i18n %}
+{% load static %}
+
+{% block title %}{% trans "Payment Pending" %} - {{ course.title }}{% endblock %}
+
+{% block main-content %}
+<div class="container py-5">
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="card shadow-sm">
+                <div class="card-header bg-warning">
+                    <h3 class="mb-0">{% trans "Payment Processing" %}</h3>
+                </div>
+                <div class="card-body">
+                    <div class="text-center mb-4">
+                        <i class="fas fa-clock fa-4x text-warning mb-3"></i>
+                        <h4>{% trans "Your payment is being processed" %}</h4>
+                        <p class="lead">{% trans "Thank you for your payment for" %} <strong>{{ course.title }}</strong>.</p>
+                        <p>{% trans "Your payment proof has been submitted and is awaiting approval by our team. This typically takes just a few minutes during business hours." %}</p>
+                        
+                        {% if enrollment.payment_proof %}
+                            <div class="my-4">
+                                <p><strong>{% trans "Your uploaded payment proof:" %}</strong></p>
+                                <img src="{{ enrollment.payment_proof.url }}" alt="Payment Proof" class="img-fluid border" style="max-width: 300px;">
+                            </div>
+                        {% endif %}
+                        
+                        <div class="alert alert-info mt-3">
+                            <p><i class="fas fa-info-circle"></i> {% trans "You will gain access to the course content as soon as your payment is approved." %}</p>
+                        </div>
+                        
+                        <div class="mt-4">
+                            {% if user_role == 'instructor' %}
+                                <a href="{% url 'lms:instructor_dashboard' %}" class="btn btn-secondary">{% trans "Go to Dashboard" %}</a>
+                            {% else %}
+                                <a href="{% url 'lms:student_dashboard' %}" class="btn btn-secondary">{% trans "Go to Dashboard" %}</a>
+                            {% endif %}
+                            <button class="btn btn-primary" onclick="location.reload()">{% trans "Check Status" %}</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock main-content %}
