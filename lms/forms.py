@@ -88,13 +88,24 @@ class CourseForm(forms.ModelForm):
             for field in university_fields:
                 if not cleaned_data.get(field):
                     self.add_error(field, _(f'{field.title()} is required for university courses'))
-                    
+        
+        # Validate price for paid courses
+        is_free = cleaned_data.get('is_free')
+        price = cleaned_data.get('price')
+        if is_free is False:
+            # Paid course must have a positive price
+            if price is None or price <= 0:
+                self.add_error('price', _('Price must be greater than zero for paid courses'))
+        else:
+            # Free course should have zero price
+            cleaned_data['price'] = 0
+        
         return cleaned_data
             
     class Meta:
         model = Course
         fields = ['title', 'course_type', 'code', 'credit', 'summary', 'program', 
-                  'level', 'year', 'semester', 'is_elective', 'is_free', 'instructors', 'image']
+                  'level', 'year', 'semester', 'is_elective', 'is_free', 'price', 'instructors', 'image']
         widgets = {
             'title': forms.TextInput(attrs={
                 'class': 'form-control',
@@ -124,6 +135,7 @@ class CourseForm(forms.ModelForm):
             'semester': forms.Select(attrs={'class': 'form-select'}),
             'is_elective': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'is_free': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'price': forms.NumberInput(attrs={'class': 'form-control', 'min': '0.00', 'step': '0.01'}),
             'instructors': forms.SelectMultiple(attrs={'class': 'form-select'}),
             'image': forms.ClearableFileInput(attrs={'class': 'form-control'}),
         }
