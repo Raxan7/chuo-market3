@@ -1,0 +1,59 @@
+<!-- templates/affiliates/dashboard.html -->
+{% extends 'app/base.html' %}
+
+{% block main-content %}
+<div class="container">
+    <h1>Your Affiliate Dashboard</h1>
+    
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">Your Affiliate Code</h5>
+            <p class="display-4">{{ affiliate.affiliate_code }}</p>
+            <p>Your share link: <code>https://useuniservices.com/?ref={{ affiliate.affiliate_code }}</code></p>
+        </div>
+    </div>
+    
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Total Earnings</h5>
+                    <p class="display-4">${{ total_earnings|floatformat:2 }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Available Balance</h5>
+                    <p class="display-4">${{ unpaid_balance|floatformat:2 }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <h3>Your Referrals</h3>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Student</th>
+                <th>Course</th>
+                <th>Commission</th>
+                <th>Date</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for referral in referrals %}
+            <tr>
+                <td>{{ referral.referred_user.username }}</td>
+                <td>{{ referral.user_course.course.title }}</td>
+                <td>${{ referral.commission_earned|floatformat:2 }}</td>
+                <td>{{ referral.created_at|date:"M d, Y" }}</td>
+                <td>{% if referral.is_paid %}Paid{% else %}Pending{% endif %}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
