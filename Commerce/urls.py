@@ -17,6 +17,7 @@ sitemaps = {
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('core.urls')),
+    path('affiliates/', include('affiliates.urls')),
     path('talents/', include('talents.urls')),
     path('chatbot/', include('chatbotapp.urls')),
     path('lms/', include('lms.urls')),

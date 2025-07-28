@@ -61,6 +61,7 @@ INSTALLED_APPS = [
     'talents',
     'chatbotapp',
     'lms',
+    'affiliates',
 ]
 
 # Site ID and domain for the sites framework
