@@ -277,3 +277,13 @@ if not GENERATIVE_AI_KEY:
 
 # Authentication
 LOGIN_URL = 'login'  # Use the name of the login URL pattern, not the URL path
+
+# Email backend configuration for user verification
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'chuosmart.com'
+EMAIL_PORT = 465
+EMAIL_HOST_USER = 'support@chuosmart.com'
+EMAIL_HOST_PASSWORD = os.getenv('SUPPORT_EMAIL_HOST_PASSWORD')  # Set this in your .env file
+EMAIL_USE_SSL = True
+EMAIL_USE_TLS = False
+DEFAULT_FROM_EMAIL = 'ChuoSmart <support@chuosmart.com>'
