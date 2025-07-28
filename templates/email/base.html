@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>{% block title %}ChuoSmart Email{% endblock %}</title>
+</head>
+<body style="background: #f4f4f4; margin: 0; padding: 0;">
+  <div style="max-width: 600px; margin: 40px auto; background: #fff; border-radius: 8px; box-shadow: 0 2px 8px #eee;">
+    {% block content %}{% endblock %}
+  </div>
+  <div style="text-align: center; color: #aaa; font-size: 12px; margin-top: 20px;">
+    &copy; {{ year|default:2025 }} ChuoSmart. All rights reserved.
+  </div>
+</body>
+</html>
