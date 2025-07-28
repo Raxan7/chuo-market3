@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="sw">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kozi ya Masoko ya Kidijitali | ChuoSmart</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: linear-gradient(to bottom, #0c1c48, #2c5f9e);
+      color: white;
+      padding: 40px 20px;
+    }
+    .container {
+      max-width: 700px;
+      margin: auto;
+      text-align: center;
+    }
+    h1 {
+      font-size: 2.5rem;
+      margin-bottom: 1rem;
+    }
+    p {
+      font-size: 1.1rem;
+      margin-bottom: 1.5rem;
+    }
+    .input-email {
+      padding: 10px;
+      width: 80%;
+      max-width: 400px;
+      margin: 10px auto;
+      font-size: 1rem;
+    }
+    .submit-btn {
+      padding: 10px 20px;
+      font-size: 1rem;
+      background-color: #ffa500;
+      border: none;
+      color: white;
+      cursor: pointer;
+    }
+    .card {
+      background: #143d6c;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 8px;
+    }
+    .footer {
+      font-size: 0.8rem;
+      color: #ccc;
+      margin-top: 2rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Jifunze Masoko ya Kidijitali kwa Kiswahili - TZS 10,000 Tu!</h1>
+    <p>
+      Pata ujuzi wa kuuza bidhaa mtandaoni kupitia SEO, mitandao ya kijamii, matangazo ya kulipia na zaidi – yote kwa Kiswahili.
+    </p>
+
+    <form method="POST">
+      {% csrf_token %}
+      {{ form.email }}
+      <br>
+      <button type="submit" class="submit-btn">
+        {% if submitted %}Ahsante kwa kujisajili!{% else %}Pata Mafunzo{% endif %}
+      </button>
+    </form>
+
+    <div class="card">
+      <h3>🛍️ Faa Bila Bidhaa Yako</h3>
+      <p>Jifunze kuuza bidhaa za wengine na kupata tume (affiliate marketing).</p>
+    </div>
+
+    <div class="card">
+      <h3>🚀 Anza Haraka</h3>
+      <p>Kozi ya wiki 4 tu, yenye video, majaribio, na mazoezi ya vitendo.</p>
+    </div>
+
+    <div class="card">
+      <h3>🏆 Pata Zawadi na Umaarufu</h3>
+      <p>Washiriki bora hupata T-shirt, matangazo ya biashara, na nafasi ya kuonekana!</p>
+    </div>
+
+    <p class="footer">*Kozi hii inatolewa na ChuoSmart – kwa Kiswahili, kwa Watanzania.</p>
+  </div>
+</body>
+</html>
