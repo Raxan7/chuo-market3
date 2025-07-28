@@ -8,6 +8,15 @@ class EmailSignupForm(forms.ModelForm):
         widgets = {
             'email': forms.EmailInput(attrs={
                 'placeholder': 'Ingiza Email yako...',
-                'class': 'input-email'
+                'class': 'input-email',
+                'required': 'required',
+                'type': 'email',
+                'autocomplete': 'email',
             })
         }
+
+    def clean_email(self):
+        email = self.cleaned_data.get('email')
+        if not email:
+            raise forms.ValidationError('Tafadhali ingiza email sahihi.')
+        return email
