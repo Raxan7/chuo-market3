@@ -20,6 +20,7 @@ urlpatterns = [
     path('affiliates/', include('affiliates.urls')),
     path('talents/', include('talents.urls')),
     path('chatbot/', include('chatbotapp.urls')),
+    path('landing/', include('landing.urls')),
     path('lms/', include('lms.urls')),
     path('webpush/', include('webpush.urls')),  # Web Push Notifications
     

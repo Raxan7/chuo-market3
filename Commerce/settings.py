@@ -61,6 +61,7 @@ INSTALLED_APPS = [
     'talents',
     'chatbotapp',
     'lms',
+    'landing',
     'affiliates',
 ]
 
