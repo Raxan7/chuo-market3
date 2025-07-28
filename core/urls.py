@@ -11,6 +11,8 @@ from .help_views import help_center
 
 urlpatterns = [
     path('', views.home, name='home'),
+    # Email verification
+    path('activate/<uidb64>/<token>/', views.activate, name='activate'),
     
     # Information pages
     path('about/', about_us, name='about'),

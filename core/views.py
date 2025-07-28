@@ -1,27 +1,30 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from .models import *
-from .forms import RegistrationForm, LoginForm, ProductForm, BlogForm, SubscriptionForm, SubscriptionPaymentForm, CustomerProfileForm
-from django.contrib import messages
-from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
-import logging
-from django.contrib.auth.decorators import login_required
-from django.http import HttpResponseRedirect, JsonResponse
 from django.urls import reverse
-from django.contrib.auth.hashers import check_password
-from django.contrib.auth import update_session_auth_hash
+from django.http import HttpResponseRedirect, JsonResponse, HttpResponseForbidden
 from django.contrib import messages
+from django.contrib.auth import authenticate, login, logout, update_session_auth_hash, get_user_model
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.hashers import check_password
 from django.contrib.auth.models import AnonymousUser
-from .universities_colleges_tanzania import universities_data
-from chatbotapp.models import ChatMessage, UnauthenticatedChatMessage
-from asgiref.sync import sync_to_async
-from django.utils import timezone
-from datetime import timedelta
-from django.utils.decorators import method_decorator
-from core.decorators.customer_required import customer_required, phone_required
-import re
 from django.core.mail import send_mail
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
+from django.utils import timezone
+from django.utils.decorators import method_decorator
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from django.utils.encoding import force_bytes
+from django.contrib.auth.tokens import default_token_generator
+
+from .models import *
+from .forms import RegistrationForm, LoginForm, ProductForm, BlogForm, SubscriptionForm, SubscriptionPaymentForm, CustomerProfileForm
+from .universities_colleges_tanzania import universities_data
+from chatbotapp.models import ChatMessage, UnauthenticatedChatMessage
+from asgiref.sync import sync_to_async
+from datetime import timedelta
+from core.decorators.customer_required import customer_required, phone_required
+
+import logging
+import re
 
 logger = logging.getLogger(__name__)
 
@@ -295,14 +298,37 @@ def customerregistration(request):
         form = RegistrationForm(request.POST)
         if form.is_valid():
             try:
-                user = form.save()  # Save the user
+                user = form.save(commit=False)
+                user.is_active = False  # Deactivate account until it is confirmed
+                user.save()
                 # Customer profile will be created by signal handler
-                
-                # Log success
-                logger.info("User %s registered successfully", user.username)
-                
-                # Show success message
-                messages.success(request, "Registration successful! You can now log in.")
+
+                # Generate email verification token
+                token = default_token_generator.make_token(user)
+                uid = urlsafe_base64_encode(force_bytes(user.pk))
+                activation_link = request.build_absolute_uri(
+                    reverse('activate', kwargs={'uidb64': uid, 'token': token})
+                )
+
+
+                # Send verification email with HTML template
+                from django.template.loader import render_to_string
+                subject = 'Verify your email address - ChuoSmart'
+                message = render_to_string('email/activation_email.html', {
+                    'user': user,
+                    'activation_link': activation_link,
+                })
+                send_mail(
+                    subject,
+                    '',  # Plain text fallback (optional)
+                    settings.DEFAULT_FROM_EMAIL,
+                    [user.email],
+                    fail_silently=False,
+                    html_message=message
+                )
+
+                logger.info("Verification email sent to %s", user.email)
+                messages.success(request, "Registration successful! Please check your email to verify your account.")
                 return redirect('login')
             except Exception as e:
                 logger.error("Error occurred during user registration: %s", str(e))
@@ -316,6 +342,23 @@ def customerregistration(request):
     else:
         form = RegistrationForm()
     return render(request, 'app/customerregistration.html', {'form': form})
+# Email verification activation view
+def activate(request, uidb64, token):
+    User = get_user_model()
+    try:
+        uid = urlsafe_base64_decode(uidb64).decode()
+        user = User.objects.get(pk=uid)
+    except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+        user = None
+
+    if user is not None and default_token_generator.check_token(user, token):
+        user.is_active = True
+        user.save()
+        messages.success(request, 'Your email has been verified. You can now log in.')
+        return redirect('login')
+    else:
+        messages.error(request, 'Activation link is invalid or has expired.')
+        return redirect('login')
 
 @login_required(login_url='login')
 @customer_required
@@ -809,7 +852,7 @@ def clean_all_blog_content(request):
                 blog.save(update_fields=['content'])
                 cleaned_count += 1
     
-    from django.contrib import messages
+    # messages already imported at top
     messages.success(request, f"Successfully cleaned {cleaned_count} blog posts.")
     return redirect('admin:core_blog_changelist')
 
@@ -820,7 +863,7 @@ def debug_blog_content(request, blog_id):
     """
     import logging
     import json
-    from django.http import JsonResponse, HttpResponseForbidden
+    # JsonResponse, HttpResponseForbidden already imported at top
     
     # Only allow staff to access this debug tool
     if not request.user.is_staff and not request.user.is_superuser:
@@ -914,7 +957,7 @@ def blog_detail_emergency(request, slug):
     import re
     import html
     import json
-    from django.http import JsonResponse
+    # JsonResponse already imported at top
     
     logger = logging.getLogger(__name__)
     
