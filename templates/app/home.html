@@ -325,3 +325,65 @@
   });
 </script>
 {% endblock main-content %}
+
+{% block extra_scripts %}
+{{ block.super }}
+<style>
+  #floating-video-player {
+    position: fixed;
+    bottom: 24px;
+    left: 24px;
+    z-index: 2147483647;
+    width: 340px;
+    max-width: 90vw;
+    background: #111c;
+    border-radius: 14px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.25);
+    overflow: hidden;
+    transition: box-shadow 0.2s;
+    display: block;
+  }
+  #floating-video-player .close-btn {
+    position: absolute;
+    top: 4px;
+    right: 8px;
+    background: #fff;
+    border: none;
+    border-radius: 50%;
+    width: 28px;
+    height: 28px;
+    font-size: 1.2rem;
+    color: #333;
+    cursor: pointer;
+    z-index: 2;
+    box-shadow: 0 2px 8px #0002;
+  }
+  @media (max-width: 600px) {
+    #floating-video-player { width: 98vw; left: 1vw; bottom: 1vw; }
+  }
+</style>
+<div id="floating-video-player">
+  <button class="close-btn" onclick="document.getElementById('floating-video-player').style.display='none'; document.getElementById('yt-float-iframe').src='';">&times;</button>
+  <div style="position:relative; width:100%; padding-bottom:56.25%; height:0;">
+    <iframe id="yt-float-iframe" style="position:absolute;top:0;left:0;width:100%;height:100%;border-radius:12px;" frameborder="0" allowfullscreen allow="autoplay; encrypted-media"></iframe>
+  </div>
+</div>
+<script>
+  // List of YouTube video IDs from your channel (replace with your own)
+  const YT_CHANNEL_VIDEO_IDS = [
+    'D2_fVcIYmKc', // Example video IDs
+    'QH2-TGUlwu4',
+    'M7lc1UVf-VE'
+    // Add more video IDs from your channel here
+  ];
+  function getRandomVideoId() {
+    return YT_CHANNEL_VIDEO_IDS[Math.floor(Math.random() * YT_CHANNEL_VIDEO_IDS.length)];
+  }
+  function setFloatingVideo() {
+    const videoId = getRandomVideoId();
+    const iframe = document.getElementById('yt-float-iframe');
+    iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=0&mute=0&rel=0&showinfo=0&modestbranding=1`;
+  }
+  setFloatingVideo();
+</script>
+{% endblock %}
