@@ -369,20 +369,11 @@
   </div>
 </div>
 <script>
-  // List of YouTube video IDs from your channel (replace with your own)
-  const YT_CHANNEL_VIDEO_IDS = [
-    'D2_fVcIYmKc', // Example video IDs
-    'QH2-TGUlwu4',
-    'M7lc1UVf-VE'
-    // Add more video IDs from your channel here
-  ];
-  function getRandomVideoId() {
-    return YT_CHANNEL_VIDEO_IDS[Math.floor(Math.random() * YT_CHANNEL_VIDEO_IDS.length)];
-  }
+  // Play videos from the @chuosmartTv channel uploads playlist
   function setFloatingVideo() {
-    const videoId = getRandomVideoId();
     const iframe = document.getElementById('yt-float-iframe');
-    iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&rel=0&showinfo=0&modestbranding=1`;
+    // This uses the channel's uploads playlist (user_uploads)
+    iframe.src = 'https://www.youtube.com/embed?listType=user_uploads&list=chuosmartTv&autoplay=1&mute=1&rel=0&showinfo=0&modestbranding=1';
   }
   setFloatingVideo();
 </script>
