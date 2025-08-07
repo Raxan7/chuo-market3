@@ -157,7 +157,7 @@ DATABASES = {
         'PORT': os.getenv('DB_PORT', default='3306'),  # Database port from .env
         'OPTIONS': {
             'charset': 'utf8',  # Changed from utf8mb4 to avoid key length issues
-            'init_command': "SET sql_mode='STRICT_TRANS_TABLES', innodb_strict_mode=1, innodb_large_prefix=1, innodb_file_format='Barracuda'",
+            'init_command': "SET sql_mode='STRICT_TRANS_TABLES', innodb_strict_mode=1",
             'use_unicode': True,
         },
         # Fix for "Specified key was too long; max key length is 1000 bytes" error
