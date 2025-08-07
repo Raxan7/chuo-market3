@@ -5,7 +5,7 @@ def seo_context(request):
     Add common SEO variables to the context
     """
     site_name = "ChuoSmart"
-    default_description = "ChuoSmart - The smartest place to buy and sell college essentials, find talent, and access educational resources."
+    default_description = "College & university student marketplace in Tanzania. Buy, sell products, find talented students, and access educational resources."
     
     # Get domain from settings
     domain = getattr(settings, 'SITE_DOMAIN', 'chuosmart.com')
