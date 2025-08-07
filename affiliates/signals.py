@@ -13,11 +13,18 @@ from core.models import OrderPlaced  # Using OrderPlaced which is the actual ord
 @receiver(post_save, sender=CourseEnrollment)
 def track_course_referral(sender, instance, created, **kwargs):
     """Track referrals for course enrollments"""
-    if not created or not instance.paid:
+    # Only track referral if:
+    # - The enrollment was just created, and
+    # - (the course is free OR payment_status is 'approved')
+    if not created:
         return
-    
-    user = instance.user
     course = instance.course
+    # For free courses, allow immediately. For paid, only if payment_status is 'approved'.
+    if not (course.is_free or instance.payment_status == 'approved'):
+        return
+
+    user = instance.student.user
+    # ...existing code...
     
     # Instead of relying on the request object (which won't be available in signals),
     # we need to check if there's a cookie or other method of tracking the referral
