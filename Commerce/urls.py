@@ -23,7 +23,7 @@ urlpatterns = [
     path('landing/', include('landing.urls')),
     path('lms/', include('lms.urls')),
     path('webpush/', include('webpush.urls')),  # Web Push Notifications
-    path('promotions/', include('promotions.urls', namespace='promotions')),
+    # path('promotions/', include('promotions.urls', namespace='promotions')),
     path('jobs/', include('jobs.urls')),
     
     # Sitemap and SEO URLs

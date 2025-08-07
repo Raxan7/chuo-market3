@@ -65,7 +65,7 @@ INSTALLED_APPS = [
     'lms',
     'landing',
     'affiliates',
-    'promotions',
+    # 'promotions',
     'jobs',  # Our new job portal app
 ]
 
