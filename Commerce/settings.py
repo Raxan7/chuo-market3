@@ -56,6 +56,8 @@ INSTALLED_APPS = [
     'markdown_deux',
     'widget_tweaks',
     'webpush',  # For push notifications
+    'rest_framework',  # For the API
+    'django_apscheduler',  # For scheduling jobs
 
     'core',
     'talents',
@@ -63,6 +65,8 @@ INSTALLED_APPS = [
     'lms',
     'landing',
     'affiliates',
+    'promotions',
+    'jobs',  # Our new job portal app
 ]
 
 # Site ID and domain for the sites framework
