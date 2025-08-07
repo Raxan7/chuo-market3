@@ -1,0 +1,145 @@
+{% extends "jobs/base.html" %}
+{% load static %}
+
+{% block job_content %}
+<div class="card mb-4">
+    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">My Job Applications</h5>
+        <span class="badge bg-light text-dark">{{ applications|length }} applications</span>
+    </div>
+    <div class="card-body p-0">
+        {% if applications %}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Job</th>
+                            <th>Company</th>
+                            <th>Applied</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for application in applications %}
+                        <tr>
+                            <td>
+                                <a href="{% url 'jobs:job_detail' application.job.id %}" class="text-decoration-none fw-semibold">
+                                    {{ application.job.title }}
+                                </a>
+                            </td>
+                            <td>{{ application.job.company.name }}</td>
+                            <td>{{ application.created_at|date:"M d, Y" }}</td>
+                            <td>
+                                <span class="badge status-badge-{{ application.id }} bg-{{ application.get_status_color }}">
+                                    {{ application.get_status_display }}
+                                </span>
+                            </td>
+                            <td>
+                                <div class="btn-group">
+                                    <a href="{% url 'jobs:job_detail' application.job.id %}" class="btn btn-sm btn-outline-primary">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    <a href="{% url 'jobs:application_detail' application.id %}" class="btn btn-sm btn-outline-secondary">
+                                        <i class="bi bi-file-earmark-text"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="p-5 text-center">
+                <div class="mb-4">
+                    <i class="bi bi-file-earmark-text fs-1 text-muted"></i>
+                </div>
+                <h4>No job applications</h4>
+                <p class="text-muted mb-4">You haven't applied to any jobs yet. Browse jobs and submit applications to see them here.</p>
+                <a href="{% url 'jobs:job_list' %}" class="btn btn-primary">Browse Jobs</a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0">Application Status Guide</h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-4">
+                <div class="d-flex align-items-center mb-3">
+                    <span class="badge bg-pending me-2">Pending</span>
+                    <span>Your application has been submitted but not yet reviewed</span>
+                </div>
+                <div class="d-flex align-items-center mb-3">
+                    <span class="badge bg-reviewing me-2">Reviewing</span>
+                    <span>Your application is being reviewed by the employer</span>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="d-flex align-items-center mb-3">
+                    <span class="badge bg-shortlisted me-2">Shortlisted</span>
+                    <span>You've been shortlisted for an interview or next steps</span>
+                </div>
+                <div class="d-flex align-items-center mb-3">
+                    <span class="badge bg-rejected me-2">Rejected</span>
+                    <span>Your application was not selected for this position</span>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="d-flex align-items-center mb-3">
+                    <span class="badge bg-hired me-2">Hired</span>
+                    <span>Congratulations! You've been offered the position</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0">Application Tips</h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <h6><i class="bi bi-check-circle-fill text-success me-2"></i> Do</h6>
+                <ul class="mb-4">
+                    <li>Tailor your resume and cover letter to each job</li>
+                    <li>Follow up after 1-2 weeks if you haven't heard back</li>
+                    <li>Research the company before applying</li>
+                    <li>Highlight your relevant skills and experience</li>
+                    <li>Check your application for spelling and grammar errors</li>
+                </ul>
+            </div>
+            <div class="col-md-6">
+                <h6><i class="bi bi-x-circle-fill text-danger me-2"></i> Don't</h6>
+                <ul>
+                    <li>Submit the same generic application to every job</li>
+                    <li>Include irrelevant information or skills</li>
+                    <li>Exaggerate your qualifications or experience</li>
+                    <li>Follow up too frequently (once a week maximum)</li>
+                    <li>Apply to jobs you're clearly not qualified for</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast for status updates -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+    <div id="statusToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="toast-header">
+            <strong class="me-auto">Job Application</strong>
+            <small>Just now</small>
+            <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+        <div class="toast-body" id="toastMessage">
+            Application status updated successfully
+        </div>
+    </div>
+</div>
+{% endblock %}

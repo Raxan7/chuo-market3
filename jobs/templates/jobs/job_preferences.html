@@ -1,0 +1,335 @@
+{% extends "jobs/base.html" %}
+{% load static %}
+
+{% block job_content %}
+<div class="card mb-4">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0">Job Preferences</h5>
+    </div>
+    <div class="card-body">
+        <form method="post">
+            {% csrf_token %}
+            
+            {% if form.non_field_errors %}
+            <div class="alert alert-danger">
+                {% for error in form.non_field_errors %}
+                {{ error }}
+                {% endfor %}
+            </div>
+            {% endif %}
+            
+            <div class="mb-4">
+                <h5>Basic Preferences</h5>
+                <div class="row g-3">
+                    <!-- Job Type -->
+                    <div class="col-md-6 mb-3">
+                        <label for="{{ form.preferred_job_types.id_for_label }}" class="form-label">Job Types</label>
+                        {{ form.preferred_job_types }}
+                        {% if form.preferred_job_types.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in form.preferred_job_types.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        <div class="form-text">Select all job types you're interested in</div>
+                    </div>
+                    
+                    <!-- Categories -->
+                    <div class="col-md-6 mb-3">
+                        <label for="{{ form.preferred_categories.id_for_label }}" class="form-label">Job Categories</label>
+                        {{ form.preferred_categories }}
+                        {% if form.preferred_categories.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in form.preferred_categories.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        <div class="form-text">Select all categories you're interested in</div>
+                    </div>
+                    
+                    <!-- Location -->
+                    <div class="col-md-6 mb-3">
+                        <label for="{{ form.preferred_locations.id_for_label }}" class="form-label">Preferred Locations</label>
+                        {{ form.preferred_locations }}
+                        {% if form.preferred_locations.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in form.preferred_locations.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        <div class="form-text">Enter locations where you'd like to work (comma separated)</div>
+                    </div>
+                    
+                    <!-- Remote -->
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Remote Work</label>
+                        <div class="form-check mt-2">
+                            {{ form.remote_only }}
+                            <label class="form-check-label" for="{{ form.remote_only.id_for_label }}">
+                                Only show remote jobs
+                            </label>
+                            {% if form.remote_only.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.remote_only.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mb-4">
+                <h5>Salary & Experience</h5>
+                <div class="row g-3">
+                    <!-- Minimum Salary -->
+                    <div class="col-md-6 mb-3">
+                        <label for="{{ form.min_salary.id_for_label }}" class="form-label">Minimum Salary (TZS)</label>
+                        {{ form.min_salary }}
+                        {% if form.min_salary.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in form.min_salary.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Experience Level -->
+                    <div class="col-md-6 mb-3">
+                        <label for="{{ form.experience_level.id_for_label }}" class="form-label">Experience Level</label>
+                        {{ form.experience_level }}
+                        {% if form.experience_level.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in form.experience_level.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mb-4">
+                <h5>Skills & Keywords</h5>
+                <div class="row g-3">
+                    <!-- Skills -->
+                    <div class="col-md-12 mb-3">
+                        <label for="{{ form.skills.id_for_label }}" class="form-label">Skills</label>
+                        {{ form.skills }}
+                        {% if form.skills.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in form.skills.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        <div class="form-text">Select skills that you have and want to use in your next job</div>
+                    </div>
+                    
+                    <!-- Keywords -->
+                    <div class="col-md-12 mb-3">
+                        <label for="{{ form.keywords.id_for_label }}" class="form-label">Keywords</label>
+                        {{ form.keywords }}
+                        {% if form.keywords.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in form.keywords.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        <div class="form-text">Enter keywords related to your desired job (comma separated)</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mb-4">
+                <h5>Notification Settings</h5>
+                <div class="row g-3">
+                    <!-- Email Notifications -->
+                    <div class="col-md-12">
+                        <div class="form-check mb-2">
+                            {{ form.notify_new_jobs }}
+                            <label class="form-check-label" for="{{ form.notify_new_jobs.id_for_label }}">
+                                Send email notifications for new matching jobs
+                            </label>
+                            {% if form.notify_new_jobs.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.notify_new_jobs.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="form-check">
+                            {{ form.notify_application_updates }}
+                            <label class="form-check-label" for="{{ form.notify_application_updates.id_for_label }}">
+                                Send email notifications for application status updates
+                            </label>
+                            {% if form.notify_application_updates.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.notify_application_updates.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <hr class="my-4">
+            
+            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                <a href="{% url 'jobs:dashboard' %}" class="btn btn-outline-secondary me-md-2">Cancel</a>
+                <button type="submit" class="btn btn-primary">Save Preferences</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0">Job Alerts</h5>
+    </div>
+    <div class="card-body">
+        {% if job_alerts %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead class="table-light">
+                    <tr>
+                        <th>Name</th>
+                        <th>Keywords</th>
+                        <th>Categories</th>
+                        <th>Created</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for alert in job_alerts %}
+                    <tr>
+                        <td>{{ alert.name }}</td>
+                        <td>{{ alert.keywords }}</td>
+                        <td>
+                            {% for category in alert.categories.all %}
+                            <span class="badge bg-secondary">{{ category.name }}</span>
+                            {% endfor %}
+                        </td>
+                        <td>{{ alert.created_at|date:"M d, Y" }}</td>
+                        <td>
+                            <div class="btn-group">
+                                <a href="{% url 'jobs:edit_alert' alert.id %}" class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <a href="{% url 'jobs:delete_alert' alert.id %}" class="btn btn-sm btn-outline-danger">
+                                    <i class="bi bi-trash"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-4">
+            <div class="mb-3">
+                <i class="bi bi-bell fs-1 text-muted"></i>
+            </div>
+            <h5>No job alerts</h5>
+            <p class="text-muted mb-3">Create job alerts to receive notifications when new matching jobs are posted.</p>
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createAlertModal">
+                Create Job Alert
+            </button>
+        </div>
+        {% endif %}
+    </div>
+    {% if job_alerts %}
+    <div class="card-footer text-center">
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createAlertModal">
+            Create New Alert
+        </button>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Create Job Alert Modal -->
+<div class="modal fade" id="createAlertModal" tabindex="-1" aria-labelledby="createAlertModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createAlertModalLabel">Create Job Alert</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="createJobAlertForm">
+                    {% csrf_token %}
+                    <div id="alertFormErrors"></div>
+                    
+                    <div class="mb-3">
+                        <label for="alert_name" class="form-label">Alert Name</label>
+                        <input type="text" class="form-control" id="alert_name" name="name" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="alert_keywords" class="form-label">Keywords</label>
+                        <input type="text" class="form-control" id="alert_keywords" name="keywords" required>
+                        <div class="form-text">Enter keywords separated by commas</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="alert_location" class="form-label">Location</label>
+                        <input type="text" class="form-control" id="alert_location" name="location">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="alert_categories" class="form-label">Categories</label>
+                        <select class="form-select" id="alert_categories" name="categories" multiple>
+                            {% for category in categories %}
+                            <option value="{{ category.id }}">{{ category.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="alert_remote" name="remote_only">
+                        <label class="form-check-label" for="alert_remote">
+                            Remote jobs only
+                        </label>
+                    </div>
+                    
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="alert_daily" name="frequency" value="daily">
+                        <label class="form-check-label" for="alert_daily">
+                            Daily notifications (if unchecked, weekly)
+                        </label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" form="createJobAlertForm" class="btn btn-primary">Create Alert</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast for alert creation -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+    <div id="alertToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="toast-header">
+            <strong class="me-auto">Job Alerts</strong>
+            <small>Just now</small>
+            <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+        <div class="toast-body" id="alertToastMessage">
+            Job alert created successfully
+        </div>
+    </div>
+</div>
+{% endblock %}

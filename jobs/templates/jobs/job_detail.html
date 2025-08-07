@@ -1,0 +1,263 @@
+{% extends "jobs/base.html" %}
+{% load static %}
+
+{% block job_content %}
+<div class="card mb-4">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0">Job Details</h5>
+    </div>
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start mb-4">
+            <div>
+                <h3 class="mb-2">{{ job.title }}</h3>
+                <div>
+                    <span class="text-muted">{{ job.company.name }}</span> • 
+                    <span class="text-muted">{{ job.location }}</span> •
+                    <span class="badge bg-{{ job.job_type|slugify }}-subtle text-{{ job.job_type|slugify }}">
+                        {{ job.get_job_type_display }}
+                    </span>
+                    {% if job.source != 'internal' %}
+                    <span class="badge bg-secondary ms-2">{{ job.get_source_display }}</span>
+                    {% endif %}
+                </div>
+            </div>
+            {% if job.company.logo %}
+            <div>
+                <img src="{{ job.company.logo.url }}" alt="{{ job.company.name }}" 
+                    class="company-logo" style="width: 80px; height: 80px; object-fit: contain;">
+            </div>
+            {% endif %}
+        </div>
+        
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <h5 class="card-title">Job Overview</h5>
+                        <ul class="list-unstyled">
+                            <li class="mb-2">
+                                <i class="bi bi-geo-alt me-2"></i> <strong>Location:</strong> {{ job.location }}
+                            </li>
+                            <li class="mb-2">
+                                <i class="bi bi-briefcase me-2"></i> <strong>Job Type:</strong> {{ job.get_job_type_display }}
+                            </li>
+                            {% if job.salary_min and job.salary_max %}
+                            <li class="mb-2">
+                                <i class="bi bi-cash me-2"></i> <strong>Salary Range:</strong> 
+                                TZS {{ job.salary_min|floatformat:0 }} - {{ job.salary_max|floatformat:0 }}
+                            </li>
+                            {% endif %}
+                            <li class="mb-2">
+                                <i class="bi bi-calendar me-2"></i> <strong>Posted:</strong> {{ job.created_at|date:"F j, Y" }}
+                            </li>
+                            <li class="mb-2">
+                                <i class="bi bi-hourglass-split me-2"></i> <strong>Application Deadline:</strong> 
+                                {% if job.deadline %}
+                                    {{ job.deadline|date:"F j, Y" }}
+                                {% else %}
+                                    Not specified
+                                {% endif %}
+                            </li>
+                            <li>
+                                <i class="bi bi-globe me-2"></i> <strong>Source:</strong> 
+                                {% if job.source == 'internal' %}
+                                    Chuo Market
+                                {% else %}
+                                    {{ job.get_source_display }}
+                                {% endif %}
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <h5 class="card-title">Required Skills</h5>
+                        {% if job.skills.all %}
+                        <div class="skills-container">
+                            {% for skill in job.skills.all %}
+                            <span class="badge bg-light text-dark me-2 mb-2 p-2">{{ skill.name }}</span>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <p class="text-muted">No specific skills listed</p>
+                        {% endif %}
+                        
+                        {% if job.experience_level %}
+                        <h6 class="mt-3">Experience Level</h6>
+                        <p>{{ job.get_experience_level_display }}</p>
+                        {% endif %}
+                        
+                        {% if job.education_level %}
+                        <h6 class="mt-3">Education Requirements</h6>
+                        <p>{{ job.get_education_level_display }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="job-description mb-4">
+            <h4>Job Description</h4>
+            <div class="formatted-content">
+                {{ job.description|safe }}
+            </div>
+        </div>
+        
+        {% if job.responsibilities %}
+        <div class="job-responsibilities mb-4">
+            <h4>Responsibilities</h4>
+            <div class="formatted-content">
+                {{ job.responsibilities|safe }}
+            </div>
+        </div>
+        {% endif %}
+        
+        {% if job.qualifications %}
+        <div class="job-qualifications mb-4">
+            <h4>Qualifications</h4>
+            <div class="formatted-content">
+                {{ job.qualifications|safe }}
+            </div>
+        </div>
+        {% endif %}
+        
+        {% if job.benefits %}
+        <div class="job-benefits mb-4">
+            <h4>Benefits</h4>
+            <div class="formatted-content">
+                {{ job.benefits|safe }}
+            </div>
+        </div>
+        {% endif %}
+        
+        <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+            {% if user.is_authenticated %}
+            <button class="btn btn-outline-secondary toggle-saved-job" 
+                data-job-id="{{ job.id }}" data-csrf="{{ csrf_token }}">
+                <i class="bi {% if job.is_saved %}bi-bookmark-fill{% else %}bi-bookmark{% endif %} me-1"></i>
+                {% if job.is_saved %}Saved{% else %}Save Job{% endif %}
+            </button>
+            {% endif %}
+            
+            {% if job.application_url %}
+            <a href="{{ job.application_url }}" target="_blank" class="btn btn-primary">
+                Apply on {{ job.get_source_display }}
+            </a>
+            {% elif job.source == 'internal' %}
+            <a href="{% url 'jobs:apply' job.id %}" class="btn btn-primary">Apply Now</a>
+            {% else %}
+            <a href="{{ job.url }}" target="_blank" class="btn btn-primary">View Original Posting</a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% if similar_jobs %}
+<div class="card mb-4">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0">Similar Jobs</h5>
+    </div>
+    <div class="card-body p-0">
+        <div class="row row-cols-1 row-cols-md-2 g-3 p-3">
+            {% for similar_job in similar_jobs %}
+            <div class="col">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">
+                            <a href="{% url 'jobs:detail' similar_job.id %}" class="text-decoration-none">
+                                {{ similar_job.title }}
+                            </a>
+                        </h5>
+                        <h6 class="card-subtitle mb-2 text-muted">{{ similar_job.company.name }}</h6>
+                        <p class="card-text">{{ similar_job.description|safe|truncatewords:15 }}</p>
+                        <div class="d-flex justify-content-between align-items-center mt-auto">
+                            <small class="text-muted">{{ similar_job.created_at|timesince }} ago</small>
+                            <a href="{% url 'jobs:detail' similar_job.id %}" class="btn btn-sm btn-outline-primary">View</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% if job.company.description and job.source == 'internal' %}
+<div class="card mb-4">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0">About {{ job.company.name }}</h5>
+    </div>
+    <div class="card-body">
+        <div class="d-flex align-items-center mb-3">
+            {% if job.company.logo %}
+            <img src="{{ job.company.logo.url }}" alt="{{ job.company.name }}" 
+                class="company-logo me-3" style="width: 100px; height: 100px; object-fit: contain;">
+            {% endif %}
+            <div>
+                <h4>{{ job.company.name }}</h4>
+                <p class="text-muted mb-0">{{ job.company.location }}</p>
+                {% if job.company.website %}
+                <a href="{{ job.company.website }}" target="_blank" class="text-decoration-none">
+                    <i class="bi bi-globe"></i> Company Website
+                </a>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="company-description">
+            {{ job.company.description|safe }}
+        </div>
+        
+        {% if job.company.jobs.count > 1 %}
+        <div class="text-end mt-3">
+            <a href="{% url 'jobs:company_detail' job.company.id %}" class="btn btn-outline-primary">
+                See All Jobs from {{ job.company.name }}
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Toggle saved job status
+        const saveButton = document.querySelector('.toggle-saved-job');
+        if (saveButton) {
+            saveButton.addEventListener('click', function() {
+                const jobId = this.getAttribute('data-job-id');
+                const csrf = this.getAttribute('data-csrf');
+                
+                fetch(`/jobs/toggle-saved/${jobId}/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrf
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    const icon = this.querySelector('i');
+                    if (data.saved) {
+                        icon.classList.remove('bi-bookmark');
+                        icon.classList.add('bi-bookmark-fill');
+                        this.innerHTML = '<i class="bi bi-bookmark-fill me-1"></i> Saved';
+                    } else {
+                        icon.classList.remove('bi-bookmark-fill');
+                        icon.classList.add('bi-bookmark');
+                        this.innerHTML = '<i class="bi bi-bookmark me-1"></i> Save Job';
+                    }
+                })
+                .catch(error => console.error('Error:', error));
+            });
+        }
+    });
+</script>
+{% endblock %}

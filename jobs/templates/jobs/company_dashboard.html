@@ -1,0 +1,308 @@
+{% extends "jobs/base.html" %}
+{% load static %}
+
+{% block job_content %}
+<div class="card mb-4">
+    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Company Dashboard: {{ company.name }}</h5>
+        {% if company.is_verified %}
+        <span class="badge bg-success">
+            <i class="bi bi-check-circle me-1"></i> Verified
+        </span>
+        {% else %}
+        <a href="{% url 'jobs:request_verification' company.id %}" class="badge bg-warning text-decoration-none">
+            <i class="bi bi-shield-exclamation me-1"></i> Request Verification
+        </a>
+        {% endif %}
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-4 mb-4">
+                <div class="text-center">
+                    {% if company.logo %}
+                    <img src="{{ company.logo.url }}" alt="{{ company.name }}" 
+                        class="img-fluid rounded" style="max-width: 200px; max-height: 200px;">
+                    {% else %}
+                    <div class="company-placeholder bg-light d-flex align-items-center justify-content-center rounded" 
+                        style="width: 200px; height: 200px; margin: 0 auto;">
+                        <i class="bi bi-building fs-1 text-muted"></i>
+                    </div>
+                    {% endif %}
+                    <div class="mt-3">
+                        <a href="{% url 'jobs:edit_company' company.id %}" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-pencil"></i> Edit Company
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-8">
+                <h4>{{ company.name }}</h4>
+                <p class="text-muted">{{ company.location }}</p>
+                
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <p>
+                            <i class="bi bi-globe me-2"></i>
+                            {% if company.website %}
+                            <a href="{{ company.website }}" target="_blank">{{ company.website }}</a>
+                            {% else %}
+                            <span class="text-muted">No website provided</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <p>
+                            <i class="bi bi-envelope me-2"></i>
+                            {% if company.email %}
+                            <a href="mailto:{{ company.email }}">{{ company.email }}</a>
+                            {% else %}
+                            <span class="text-muted">No email provided</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <p>
+                            <i class="bi bi-telephone me-2"></i>
+                            {% if company.phone %}
+                            {{ company.phone }}
+                            {% else %}
+                            <span class="text-muted">No phone provided</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+                
+                <div class="mt-4">
+                    <div class="d-flex flex-wrap gap-2">
+                        <a href="{% url 'jobs:create_job' %}?company={{ company.id }}" class="btn btn-primary">
+                            <i class="bi bi-plus-circle me-1"></i> Post New Job
+                        </a>
+                        <a href="{% url 'jobs:job_applications' company.id %}" class="btn btn-info">
+                            <i class="bi bi-people me-1"></i> View All Applications
+                        </a>
+                        <a href="{% url 'jobs:company_analytics' company.id %}" class="btn btn-secondary">
+                            <i class="bi bi-graph-up me-1"></i> Analytics
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Active Jobs</h5>
+                <span class="badge bg-light text-dark">{{ active_jobs|length }}</span>
+            </div>
+            <div class="card-body p-0">
+                {% if active_jobs %}
+                <ul class="list-group list-group-flush">
+                    {% for job in active_jobs %}
+                    <li class="list-group-item">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <h6 class="mb-0">
+                                    <a href="{% url 'jobs:job_detail' job.id %}" class="text-decoration-none">
+                                        {{ job.title }}
+                                    </a>
+                                </h6>
+                                <div class="d-flex flex-wrap gap-2 mt-1">
+                                    <small class="text-muted">{{ job.get_job_type_display }}</small>
+                                    <small class="text-muted">{{ job.location }}</small>
+                                    <small class="text-muted">
+                                        <i class="bi bi-calendar me-1"></i> Posted {{ job.created_at|date:"M d, Y" }}
+                                    </small>
+                                </div>
+                            </div>
+                            <div class="dropdown">
+                                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" 
+                                    type="button" id="jobActions{{ job.id }}" data-bs-toggle="dropdown" 
+                                    aria-expanded="false">
+                                    Actions
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="jobActions{{ job.id }}">
+                                    <li>
+                                        <a class="dropdown-item" href="{% url 'jobs:job_detail' job.id %}">
+                                            <i class="bi bi-eye me-2"></i> View
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" href="{% url 'jobs:edit_job' job.id %}">
+                                            <i class="bi bi-pencil me-2"></i> Edit
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" href="{% url 'jobs:job_applications' job.id %}">
+                                            <i class="bi bi-people me-2"></i> Applications
+                                            {% if job.unread_applications_count > 0 %}
+                                            <span class="badge bg-danger ms-1">{{ job.unread_applications_count }}</span>
+                                            {% endif %}
+                                        </a>
+                                    </li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li>
+                                        <a class="dropdown-item text-danger" href="{% url 'jobs:delete_job' job.id %}">
+                                            <i class="bi bi-trash me-2"></i> Delete
+                                        </a>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mt-2">
+                            <div>
+                                <span class="badge bg-success">{{ job.applications_count }} Applications</span>
+                                {% if job.is_featured %}
+                                <span class="badge bg-warning text-dark">Featured</span>
+                                {% endif %}
+                            </div>
+                            <small class="text-muted">
+                                {% if job.deadline %}
+                                Deadline: {{ job.deadline|date:"M d, Y" }}
+                                {% else %}
+                                No deadline
+                                {% endif %}
+                            </small>
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <div class="text-center py-4">
+                    <div class="mb-3">
+                        <i class="bi bi-briefcase fs-1 text-muted"></i>
+                    </div>
+                    <h5>No active jobs</h5>
+                    <p class="text-muted mb-3">Post your first job to start receiving applications</p>
+                    <a href="{% url 'jobs:create_job' %}?company={{ company.id }}" class="btn btn-primary">
+                        <i class="bi bi-plus-circle me-1"></i> Post New Job
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+            {% if active_jobs %}
+            <div class="card-footer text-center">
+                <a href="{% url 'jobs:my_jobs' %}" class="btn btn-sm btn-outline-primary">View All Jobs</a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Recent Applications</h5>
+                <span class="badge bg-light text-dark">{{ recent_applications|length }}</span>
+            </div>
+            <div class="card-body p-0">
+                {% if recent_applications %}
+                <ul class="list-group list-group-flush">
+                    {% for application in recent_applications %}
+                    <li class="list-group-item">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <h6 class="mb-0">
+                                    <a href="{% url 'jobs:application_detail' application.id %}" class="text-decoration-none">
+                                        {{ application.job.title }}
+                                    </a>
+                                </h6>
+                                <p class="mb-1">
+                                    <span class="fw-medium">{{ application.user.get_full_name|default:application.user.username }}</span>
+                                </p>
+                                <small class="text-muted">
+                                    <i class="bi bi-calendar me-1"></i> Applied {{ application.created_at|date:"M d, Y" }}
+                                </small>
+                            </div>
+                            <div>
+                                <span class="badge status-badge-{{ application.id }} bg-{{ application.get_status_color }}">
+                                    {{ application.get_status_display }}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-end mt-2">
+                            <a href="{% url 'jobs:application_detail' application.id %}" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-eye me-1"></i> View
+                            </a>
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <div class="text-center py-4">
+                    <div class="mb-3">
+                        <i class="bi bi-people fs-1 text-muted"></i>
+                    </div>
+                    <h5>No applications yet</h5>
+                    <p class="text-muted mb-3">Active job postings will attract applicants</p>
+                </div>
+                {% endif %}
+            </div>
+            {% if recent_applications %}
+            <div class="card-footer text-center">
+                <a href="{% url 'jobs:job_applications' company.id %}" class="btn btn-sm btn-outline-primary">
+                    View All Applications
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0">Analytics Summary</h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-3 mb-3">
+                <div class="card text-center h-100">
+                    <div class="card-body">
+                        <h6 class="text-muted">Total Jobs</h6>
+                        <h3 class="mb-0">{{ company_stats.total_jobs }}</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card text-center h-100">
+                    <div class="card-body">
+                        <h6 class="text-muted">Applications</h6>
+                        <h3 class="mb-0">{{ company_stats.total_applications }}</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card text-center h-100">
+                    <div class="card-body">
+                        <h6 class="text-muted">Views</h6>
+                        <h3 class="mb-0">{{ company_stats.total_views }}</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card text-center h-100">
+                    <div class="card-body">
+                        <h6 class="text-muted">Conversion Rate</h6>
+                        <h3 class="mb-0">{{ company_stats.conversion_rate }}%</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if company.description %}
+<div class="card mb-4">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0">Company Description</h5>
+    </div>
+    <div class="card-body">
+        <div class="company-description">
+            {{ company.description|safe }}
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

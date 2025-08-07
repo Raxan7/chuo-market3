@@ -1,0 +1,204 @@
+{% extends "jobs/base.html" %}
+{% load static %}
+
+{% block job_content %}
+<div class="card mb-4">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0">Application Details</h5>
+    </div>
+    <div class="card-body">
+        <div class="row mb-4">
+            <div class="col-md-8">
+                <h4 class="mb-2">{{ application.job.title }}</h4>
+                <p class="text-muted">
+                    <span>{{ application.job.company.name }}</span> • 
+                    <span>{{ application.job.location }}</span> •
+                    <span>{{ application.job.get_job_type_display }}</span>
+                </p>
+            </div>
+            <div class="col-md-4 text-md-end">
+                <span class="badge bg-{{ application.get_status_color }} fs-6">{{ application.get_status_display }}</span>
+                <p class="text-muted mt-2">Applied on {{ application.created_at|date:"F j, Y" }}</p>
+            </div>
+        </div>
+        
+        <div class="row mb-4">
+            <div class="col-md-8">
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h5 class="mb-0">Application Details</h5>
+                    </div>
+                    <div class="card-body">
+                        {% if application.cover_letter %}
+                        <div class="mb-4">
+                            <h6>Cover Letter</h6>
+                            <div class="p-3 bg-light rounded">
+                                {{ application.cover_letter|linebreaks }}
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <h6>Phone Number</h6>
+                                <p>{{ application.phone_number }}</p>
+                            </div>
+                            
+                            {% if application.portfolio_url %}
+                            <div class="col-md-6 mb-3">
+                                <h6>Portfolio URL</h6>
+                                <p><a href="{{ application.portfolio_url }}" target="_blank">{{ application.portfolio_url }}</a></p>
+                            </div>
+                            {% endif %}
+                            
+                            <div class="col-md-6 mb-3">
+                                <h6>Availability</h6>
+                                <p>{{ application.get_availability_display }}</p>
+                            </div>
+                            
+                            {% if application.salary_expectation %}
+                            <div class="col-md-6 mb-3">
+                                <h6>Salary Expectation</h6>
+                                <p>TZS {{ application.salary_expectation|floatformat:0 }}</p>
+                            </div>
+                            {% endif %}
+                        </div>
+                        
+                        {% if application_answers %}
+                        <div class="mt-4">
+                            <h6>Additional Questions</h6>
+                            {% for answer in application_answers %}
+                            <div class="mb-3">
+                                <p class="fw-bold mb-1">{{ answer.question.question }}</p>
+                                <div class="p-3 bg-light rounded">
+                                    {{ answer.answer|linebreaks }}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h5 class="mb-0">Documents</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <h6>Resume/CV</h6>
+                            <a href="{{ application.resume.url }}" class="btn btn-outline-primary btn-sm" target="_blank">
+                                <i class="bi bi-file-earmark-pdf me-1"></i> View Resume
+                            </a>
+                        </div>
+                        
+                        {% if application.additional_documents %}
+                        <div>
+                            <h6>Additional Documents</h6>
+                            <a href="{{ application.additional_documents.url }}" class="btn btn-outline-secondary btn-sm" target="_blank">
+                                <i class="bi bi-file-earmark me-1"></i> View Documents
+                            </a>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h5 class="mb-0">Application Timeline</h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <ul class="list-group list-group-flush">
+                            <li class="list-group-item">
+                                <div class="d-flex align-items-center">
+                                    <div class="timeline-icon bg-primary text-white">
+                                        <i class="bi bi-check-circle"></i>
+                                    </div>
+                                    <div class="ms-3">
+                                        <p class="mb-0 fw-semibold">Application Submitted</p>
+                                        <small class="text-muted">{{ application.created_at|date:"M d, Y, H:i" }}</small>
+                                    </div>
+                                </div>
+                            </li>
+                            
+                            {% if application.status != 'pending' %}
+                            <li class="list-group-item">
+                                <div class="d-flex align-items-center">
+                                    <div class="timeline-icon {% if application.status == 'reviewing' %}bg-info{% elif application.status == 'shortlisted' %}bg-success{% elif application.status == 'rejected' %}bg-danger{% elif application.status == 'hired' %}bg-purple{% endif %} text-white">
+                                        <i class="bi bi-eye"></i>
+                                    </div>
+                                    <div class="ms-3">
+                                        <p class="mb-0 fw-semibold">Application Reviewed</p>
+                                        <small class="text-muted">{{ application.updated_at|date:"M d, Y, H:i" }}</small>
+                                    </div>
+                                </div>
+                            </li>
+                            {% endif %}
+                            
+                            {% if application.interview_date %}
+                            <li class="list-group-item">
+                                <div class="d-flex align-items-center">
+                                    <div class="timeline-icon bg-warning text-white">
+                                        <i class="bi bi-calendar-event"></i>
+                                    </div>
+                                    <div class="ms-3">
+                                        <p class="mb-0 fw-semibold">Interview Scheduled</p>
+                                        <small class="text-muted">{{ application.interview_date|date:"M d, Y, H:i" }}</small>
+                                    </div>
+                                </div>
+                            </li>
+                            {% endif %}
+                            
+                            {% if application.status == 'hired' %}
+                            <li class="list-group-item">
+                                <div class="d-flex align-items-center">
+                                    <div class="timeline-icon bg-success text-white">
+                                        <i class="bi bi-trophy"></i>
+                                    </div>
+                                    <div class="ms-3">
+                                        <p class="mb-0 fw-semibold">Hired</p>
+                                        <small class="text-muted">{{ application.updated_at|date:"M d, Y" }}</small>
+                                    </div>
+                                </div>
+                            </li>
+                            {% endif %}
+                            
+                            {% if application.status == 'rejected' %}
+                            <li class="list-group-item">
+                                <div class="d-flex align-items-center">
+                                    <div class="timeline-icon bg-danger text-white">
+                                        <i class="bi bi-x-circle"></i>
+                                    </div>
+                                    <div class="ms-3">
+                                        <p class="mb-0 fw-semibold">Not Selected</p>
+                                        <small class="text-muted">{{ application.updated_at|date:"M d, Y" }}</small>
+                                    </div>
+                                </div>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+            <a href="{% url 'jobs:my_applications' %}" class="btn btn-outline-secondary">Back to Applications</a>
+            <a href="{% url 'jobs:job_detail' application.job.id %}" class="btn btn-primary">View Job</a>
+        </div>
+    </div>
+</div>
+
+<style>
+    .timeline-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+</style>
+{% endblock %}

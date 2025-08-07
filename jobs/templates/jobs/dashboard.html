@@ -1,0 +1,259 @@
+{% extends "jobs/base.html" %}
+{% load static %}
+
+{% block job_content %}
+<div class="row">
+    <div class="col-md-12 mb-4">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Job Portal Dashboard</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="card text-center mb-4 dashboard-card">
+                            <div class="card-body">
+                                <div class="icon-circle bg-primary text-white mb-3">
+                                    <i class="bi bi-briefcase fs-1"></i>
+                                </div>
+                                <h5 class="card-title">Browse Jobs</h5>
+                                <p class="card-text">Explore thousands of job opportunities</p>
+                                <a href="{% url 'jobs:job_list' %}" class="btn btn-primary">Find Jobs</a>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <div class="card text-center mb-4 dashboard-card">
+                            <div class="card-body">
+                                <div class="icon-circle bg-success text-white mb-3">
+                                    <i class="bi bi-bookmark-heart fs-1"></i>
+                                </div>
+                                <h5 class="card-title">Saved Jobs</h5>
+                                <p class="card-text">View your bookmarked job listings</p>
+                                <a href="{% url 'jobs:saved_jobs' %}" class="btn btn-success">View Saved</a>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <div class="card text-center mb-4 dashboard-card">
+                            <div class="card-body">
+                                <div class="icon-circle bg-info text-white mb-3">
+                                    <i class="bi bi-file-earmark-text fs-1"></i>
+                                </div>
+                                <h5 class="card-title">My Applications</h5>
+                                <p class="card-text">Track your job applications</p>
+                                <a href="{% url 'jobs:my_applications' %}" class="btn btn-info">View Applications</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                {% if user.is_authenticated and user.is_company %}
+                <div class="row mt-4">
+                    <div class="col-md-4">
+                        <div class="card text-center mb-4 dashboard-card">
+                            <div class="card-body">
+                                <div class="icon-circle bg-warning text-white mb-3">
+                                    <i class="bi bi-building fs-1"></i>
+                                </div>
+                                <h5 class="card-title">My Companies</h5>
+                                <p class="card-text">Manage your company profiles</p>
+                                <a href="{% url 'jobs:my_companies' %}" class="btn btn-warning">Manage</a>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <div class="card text-center mb-4 dashboard-card">
+                            <div class="card-body">
+                                <div class="icon-circle bg-danger text-white mb-3">
+                                    <i class="bi bi-plus-circle fs-1"></i>
+                                </div>
+                                <h5 class="card-title">Post a Job</h5>
+                                <p class="card-text">Create a new job listing</p>
+                                <a href="{% url 'jobs:create_job' %}" class="btn btn-danger">Post Now</a>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <div class="card text-center mb-4 dashboard-card">
+                            <div class="card-body">
+                                <div class="icon-circle bg-secondary text-white mb-3">
+                                    <i class="bi bi-people fs-1"></i>
+                                </div>
+                                <h5 class="card-title">Applicants</h5>
+                                <p class="card-text">Review job applications</p>
+                                <a href="{% url 'jobs:my_jobs' %}" class="btn btn-secondary">View Jobs</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    {% if recent_jobs %}
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Recent Job Listings</h5>
+            </div>
+            <div class="card-body p-0">
+                <ul class="list-group list-group-flush">
+                    {% for job in recent_jobs %}
+                    <li class="list-group-item">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <a href="{% url 'jobs:job_detail' job.id %}" class="text-decoration-none">
+                                    <h6 class="mb-0">{{ job.title }}</h6>
+                                </a>
+                                <small class="text-muted">{{ job.company.name }} • {{ job.location }}</small>
+                            </div>
+                            <small class="text-muted">{{ job.created_at|timesince }} ago</small>
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            <div class="card-footer text-center">
+                <a href="{% url 'jobs:job_list' %}" class="btn btn-sm btn-outline-primary">View All Jobs</a>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
+    {% if user.is_authenticated %}
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">{% if my_applications %}My Recent Applications{% else %}Job Recommendations{% endif %}</h5>
+            </div>
+            <div class="card-body p-0">
+                {% if my_applications %}
+                <ul class="list-group list-group-flush">
+                    {% for application in my_applications %}
+                    <li class="list-group-item">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <a href="{% url 'jobs:job_detail' application.job.id %}" class="text-decoration-none">
+                                    <h6 class="mb-0">{{ application.job.title }}</h6>
+                                </a>
+                                <small class="text-muted">{{ application.job.company.name }}</small>
+                            </div>
+                            <span class="badge bg-{{ application.get_status_color }}">{{ application.get_status_display }}</span>
+                        </div>
+                        <small class="text-muted">Applied {{ application.created_at|timesince }} ago</small>
+                    </li>
+                    {% endfor %}
+                </ul>
+                <div class="card-footer text-center">
+                    <a href="{% url 'jobs:my_applications' %}" class="btn btn-sm btn-outline-primary">View All Applications</a>
+                </div>
+                {% else %}
+                <ul class="list-group list-group-flush">
+                    {% for job in recommended_jobs %}
+                    <li class="list-group-item">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <a href="{% url 'jobs:job_detail' job.id %}" class="text-decoration-none">
+                                    <h6 class="mb-0">{{ job.title }}</h6>
+                                </a>
+                                <small class="text-muted">{{ job.company.name }} • {{ job.location }}</small>
+                            </div>
+                            <a href="{% url 'jobs:job_detail' job.id %}" class="btn btn-sm btn-outline-primary">View</a>
+                        </div>
+                    </li>
+                    {% empty %}
+                    <li class="list-group-item text-center py-4">
+                        <div class="text-muted">
+                            <i class="bi bi-lightbulb fs-2 mb-2"></i>
+                            <p>Complete your job preferences to get personalized recommendations</p>
+                            <a href="{% url 'jobs:job_preferences' %}" class="btn btn-sm btn-primary">Set Preferences</a>
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+{% if job_stats %}
+<div class="row">
+    <div class="col-md-12 mb-4">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Job Market Insights</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        <div class="card text-center h-100">
+                            <div class="card-body">
+                                <h6 class="text-muted">Total Jobs</h6>
+                                <h3 class="mb-0">{{ job_stats.total_jobs }}</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card text-center h-100">
+                            <div class="card-body">
+                                <h6 class="text-muted">New Today</h6>
+                                <h3 class="mb-0">{{ job_stats.new_today }}</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card text-center h-100">
+                            <div class="card-body">
+                                <h6 class="text-muted">Companies</h6>
+                                <h3 class="mb-0">{{ job_stats.companies }}</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card text-center h-100">
+                            <div class="card-body">
+                                <h6 class="text-muted">Top Salary</h6>
+                                <h3 class="mb-0">TZS {{ job_stats.top_salary }}</h3>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                {% if job_stats.popular_categories %}
+                <div class="mt-4">
+                    <h6>Popular Categories</h6>
+                    <div class="row">
+                        {% for category in job_stats.popular_categories %}
+                        <div class="col-md-3 mb-2">
+                            <div class="d-flex justify-content-between">
+                                <span>{{ category.name }}</span>
+                                <span class="badge bg-primary">{{ category.count }}</span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Add any dashboard-specific JavaScript here
+    });
+</script>
+{% endblock %}

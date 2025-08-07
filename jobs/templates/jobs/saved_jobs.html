@@ -1,0 +1,98 @@
+{% extends "jobs/base.html" %}
+{% load static %}
+
+{% block job_content %}
+<div class="card mb-4">
+    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Saved Jobs</h5>
+        <span class="badge bg-light text-dark">{{ saved_jobs|length }} jobs saved</span>
+    </div>
+    <div class="card-body p-0">
+        {% if saved_jobs %}
+            {% for saved_job in saved_jobs %}
+            <div class="job-item p-3 border-bottom" data-source="{{ saved_job.job.source|default:'internal' }}">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <h5 class="mb-1">
+                            <a href="{% url 'jobs:job_detail' saved_job.job.id %}" class="text-decoration-none">
+                                {{ saved_job.job.title }}
+                            </a>
+                        </h5>
+                        <div class="mb-2">
+                            <span class="text-muted">{{ saved_job.job.company.name }}</span> • 
+                            <span class="text-muted">{{ saved_job.job.location }}</span> •
+                            <span class="badge bg-{{ saved_job.job.job_type|slugify }}-subtle text-{{ saved_job.job.job_type|slugify }}">
+                                {{ saved_job.job.get_job_type_display }}
+                            </span>
+                        </div>
+                        <p class="mb-0 text-truncate-3">
+                            {{ saved_job.job.description|safe|truncatewords:30 }}
+                        </p>
+                    </div>
+                    {% if saved_job.job.company.logo %}
+                    <div class="ms-3">
+                        <img src="{{ saved_job.job.company.logo.url }}" alt="{{ saved_job.job.company.name }}" 
+                            class="company-logo" style="width: 60px; height: 60px; object-fit: contain;">
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="d-flex justify-content-between align-items-center mt-3">
+                    <div>
+                        <small class="text-muted">Saved {{ saved_job.created_at|timesince }} ago</small>
+                    </div>
+                    <div>
+                        {% if saved_job.job.source != 'internal' %}
+                        <span class="badge bg-secondary">{{ saved_job.job.get_source_display }}</span>
+                        {% endif %}
+                        <a href="{% url 'jobs:job_detail' saved_job.job.id %}" class="btn btn-sm btn-outline-primary ms-2">View Details</a>
+                        <a href="{% url 'jobs:remove_saved_job' saved_job.job.id %}" class="btn btn-sm btn-outline-danger ms-2">
+                            <i class="bi bi-bookmark-x"></i> Remove
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="p-5 text-center">
+                <div class="mb-4">
+                    <i class="bi bi-bookmark fs-1 text-muted"></i>
+                </div>
+                <h4>No saved jobs</h4>
+                <p class="text-muted mb-4">You haven't saved any jobs yet. Browse jobs and click the bookmark icon to save them for later.</p>
+                <a href="{% url 'jobs:job_list' %}" class="btn btn-primary">Browse Jobs</a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+{% if similar_jobs %}
+<div class="card mb-4">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0">Recommended Jobs</h5>
+    </div>
+    <div class="card-body p-0">
+        <div class="row row-cols-1 row-cols-md-3 g-3 p-3">
+            {% for job in similar_jobs %}
+            <div class="col">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">
+                            <a href="{% url 'jobs:job_detail' job.id %}" class="text-decoration-none">
+                                {{ job.title }}
+                            </a>
+                        </h5>
+                        <h6 class="card-subtitle mb-2 text-muted">{{ job.company.name }}</h6>
+                        <p class="card-text">{{ job.description|safe|truncatewords:15 }}</p>
+                        <div class="d-flex justify-content-between align-items-center mt-auto">
+                            <small class="text-muted">{{ job.created_at|timesince }} ago</small>
+                            <a href="{% url 'jobs:job_detail' job.id %}" class="btn btn-sm btn-outline-primary">View</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

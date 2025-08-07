@@ -1,0 +1,657 @@
+{% extends "jobs/base.html" %}
+{% load static %}
+
+{% block job_content %}
+<div class="card mb-4">
+    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">
+            {% if job %}
+                Applications for: {{ job.title }}
+            {% else %}
+                All Applications for {{ company.name }}
+            {% endif %}
+        </h5>
+        <span class="badge bg-light text-dark">{{ applications|length }} applications</span>
+    </div>
+    <div class="card-body">
+        <!-- Filter Controls -->
+        <div class="row mb-3">
+            <div class="col-md-12">
+                <form method="get" class="d-flex flex-wrap gap-2">
+                    <div class="input-group" style="max-width: 300px;">
+                        <input type="text" class="form-control" placeholder="Search applicants" 
+                            name="search" value="{{ request.GET.search|default:'' }}">
+                        <button class="btn btn-outline-secondary" type="submit">
+                            <i class="bi bi-search"></i>
+                        </button>
+                    </div>
+                    
+                    {% if not job %}
+                    <select class="form-select" name="job" style="max-width: 200px;">
+                        <option value="">All Jobs</option>
+                        {% for job_item in company_jobs %}
+                        <option value="{{ job_item.id }}" {% if request.GET.job == job_item.id|stringformat:"i" %}selected{% endif %}>
+                            {{ job_item.title }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    {% endif %}
+                    
+                    <select class="form-select" name="status" style="max-width: 150px;">
+                        <option value="">All Statuses</option>
+                        <option value="pending" {% if request.GET.status == 'pending' %}selected{% endif %}>Pending</option>
+                        <option value="reviewing" {% if request.GET.status == 'reviewing' %}selected{% endif %}>Reviewing</option>
+                        <option value="shortlisted" {% if request.GET.status == 'shortlisted' %}selected{% endif %}>Shortlisted</option>
+                        <option value="rejected" {% if request.GET.status == 'rejected' %}selected{% endif %}>Rejected</option>
+                        <option value="hired" {% if request.GET.status == 'hired' %}selected{% endif %}>Hired</option>
+                    </select>
+                    
+                    <select class="form-select" name="sort" style="max-width: 150px;">
+                        <option value="newest" {% if request.GET.sort == 'newest' %}selected{% endif %}>Newest First</option>
+                        <option value="oldest" {% if request.GET.sort == 'oldest' %}selected{% endif %}>Oldest First</option>
+                        <option value="name" {% if request.GET.sort == 'name' %}selected{% endif %}>Name</option>
+                    </select>
+                    
+                    <button type="submit" class="btn btn-primary">Apply Filters</button>
+                    {% if request.GET %}
+                    <a href="{% if job %}{% url 'jobs:job_applications' job.id %}{% else %}{% url 'jobs:job_applications' company.id %}{% endif %}" class="btn btn-outline-secondary">
+                        Clear Filters
+                    </a>
+                    {% endif %}
+                </form>
+            </div>
+        </div>
+        
+        {% if applications %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead class="table-light">
+                    <tr>
+                        <th>Applicant</th>
+                        {% if not job %}<th>Job Position</th>{% endif %}
+                        <th>Applied On</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for application in applications %}
+                    <tr {% if application.is_new %}class="table-info"{% endif %}>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <div class="flex-shrink-0">
+                                    {% if application.user.profile.avatar %}
+                                    <img src="{{ application.user.profile.avatar.url }}" alt="{{ application.user.get_full_name }}" 
+                                        class="rounded-circle" style="width: 40px; height: 40px;">
+                                    {% else %}
+                                    <div class="bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center" 
+                                        style="width: 40px; height: 40px;">
+                                        <i class="bi bi-person"></i>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                <div class="ms-3">
+                                    <h6 class="mb-0">{{ application.user.get_full_name|default:application.user.username }}</h6>
+                                    <small class="text-muted">{{ application.phone_number }}</small>
+                                </div>
+                            </div>
+                        </td>
+                        {% if not job %}
+                        <td>
+                            <a href="{% url 'jobs:job_detail' application.job.id %}" class="text-decoration-none">
+                                {{ application.job.title }}
+                            </a>
+                        </td>
+                        {% endif %}
+                        <td>{{ application.created_at|date:"M d, Y" }}</td>
+                        <td>
+                            <select class="form-select form-select-sm application-status-select" 
+                                data-application-id="{{ application.id }}" 
+                                data-csrf="{{ csrf_token }}" 
+                                style="width: 140px;">
+                                <option value="pending" {% if application.status == 'pending' %}selected{% endif %}>Pending</option>
+                                <option value="reviewing" {% if application.status == 'reviewing' %}selected{% endif %}>Reviewing</option>
+                                <option value="shortlisted" {% if application.status == 'shortlisted' %}selected{% endif %}>Shortlisted</option>
+                                <option value="rejected" {% if application.status == 'rejected' %}selected{% endif %}>Rejected</option>
+                                <option value="hired" {% if application.status == 'hired' %}selected{% endif %}>Hired</option>
+                            </select>
+                        </td>
+                        <td>
+                            <div class="btn-group">
+                                <a href="{% url 'jobs:application_detail' application.id %}" class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                <a href="{{ application.resume.url }}" target="_blank" class="btn btn-sm btn-outline-secondary">
+                                    <i class="bi bi-file-earmark-pdf"></i>
+                                </a>
+                                <button type="button" class="btn btn-sm btn-outline-info" 
+                                    data-bs-toggle="modal" data-bs-target="#scheduleModal" 
+                                    data-application-id="{{ application.id }}" 
+                                    data-applicant-name="{{ application.user.get_full_name|default:application.user.username }}">
+                                    <i class="bi bi-calendar-plus"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-success" 
+                                    data-bs-toggle="modal" data-bs-target="#emailModal" 
+                                    data-application-id="{{ application.id }}" 
+                                    data-applicant-email="{{ application.user.email }}">
+                                    <i class="bi bi-envelope"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+            <div class="mb-3">
+                <i class="bi bi-people fs-1 text-muted"></i>
+            </div>
+            <h4>No applications found</h4>
+            <p class="text-muted">No applications match your current filters or there are no applications yet.</p>
+            {% if request.GET %}
+            <a href="{% if job %}{% url 'jobs:job_applications' job.id %}{% else %}{% url 'jobs:job_applications' company.id %}{% endif %}" class="btn btn-primary mt-2">
+                Clear Filters
+            </a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Bulk Actions Card -->
+{% if applications %}
+<div class="card mb-4">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0">Bulk Actions</h5>
+    </div>
+    <div class="card-body">
+        <form method="post" action="{% url 'jobs:bulk_application_action' %}">
+            {% csrf_token %}
+            {% if job %}
+            <input type="hidden" name="job_id" value="{{ job.id }}">
+            {% else %}
+            <input type="hidden" name="company_id" value="{{ company.id }}">
+            {% endif %}
+            
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <select name="action" class="form-select" required>
+                        <option value="">Select Action</option>
+                        <option value="update_status">Update Status</option>
+                        <option value="send_email">Send Email</option>
+                        <option value="schedule_interview">Schedule Interview</option>
+                        <option value="export">Export to CSV</option>
+                    </select>
+                </div>
+                
+                <div class="col-md-6">
+                    <div class="action-options" id="updateStatusOptions" style="display: none;">
+                        <select name="status" class="form-select">
+                            <option value="pending">Pending</option>
+                            <option value="reviewing">Reviewing</option>
+                            <option value="shortlisted">Shortlisted</option>
+                            <option value="rejected">Rejected</option>
+                            <option value="hired">Hired</option>
+                        </select>
+                    </div>
+                    
+                    <div class="action-options" id="sendEmailOptions" style="display: none;">
+                        <select name="email_template" class="form-select">
+                            <option value="interview_invitation">Interview Invitation</option>
+                            <option value="application_received">Application Received</option>
+                            <option value="rejection">Rejection</option>
+                            <option value="offer">Job Offer</option>
+                            <option value="custom">Custom Message</option>
+                        </select>
+                    </div>
+                    
+                    <div class="action-options" id="scheduleInterviewOptions" style="display: none;">
+                        <input type="datetime-local" name="interview_date" class="form-control">
+                    </div>
+                </div>
+                
+                <div class="col-md-12" id="customEmailContainer" style="display: none;">
+                    <textarea name="custom_email" class="form-control" rows="4" placeholder="Enter your custom message"></textarea>
+                </div>
+                
+                <div class="col-md-12">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="selectAll">
+                                            <label class="form-check-label" for="selectAll">Select All</label>
+                                        </div>
+                                    </th>
+                                    <th>Applicant</th>
+                                    {% if not job %}<th>Job Position</th>{% endif %}
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for application in applications %}
+                                <tr>
+                                    <td>
+                                        <div class="form-check">
+                                            <input class="form-check-input application-checkbox" type="checkbox" 
+                                                name="application_ids" value="{{ application.id }}" 
+                                                id="application{{ application.id }}">
+                                            <label class="form-check-label" for="application{{ application.id }}"></label>
+                                        </div>
+                                    </td>
+                                    <td>{{ application.user.get_full_name|default:application.user.username }}</td>
+                                    {% if not job %}
+                                    <td>{{ application.job.title }}</td>
+                                    {% endif %}
+                                    <td>
+                                        <span class="badge bg-{{ application.get_status_color }}">
+                                            {{ application.get_status_display }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <div class="col-md-12 text-end">
+                    <button type="submit" class="btn btn-primary" id="bulkActionButton" disabled>
+                        Apply to Selected
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+<!-- Schedule Interview Modal -->
+<div class="modal fade" id="scheduleModal" tabindex="-1" aria-labelledby="scheduleModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="scheduleModalLabel">Schedule Interview</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="scheduleForm">
+                    {% csrf_token %}
+                    <input type="hidden" name="application_id" id="scheduleApplicationId">
+                    
+                    <div class="mb-3">
+                        <label for="interviewDate" class="form-label">Interview Date & Time</label>
+                        <input type="datetime-local" class="form-control" id="interviewDate" name="interview_date" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="interviewType" class="form-label">Interview Type</label>
+                        <select class="form-select" id="interviewType" name="interview_type" required>
+                            <option value="in_person">In Person</option>
+                            <option value="phone">Phone</option>
+                            <option value="video">Video Conference</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="interviewLocation" class="form-label">Location/Link</label>
+                        <input type="text" class="form-control" id="interviewLocation" name="interview_location">
+                        <div class="form-text">For in-person, provide the address. For video, provide the meeting link.</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="interviewNotes" class="form-label">Notes for Candidate</label>
+                        <textarea class="form-control" id="interviewNotes" name="interview_notes" rows="3"></textarea>
+                    </div>
+                    
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="sendInterviewEmail" name="send_email" checked>
+                        <label class="form-check-label" for="sendInterviewEmail">
+                            Send email notification to candidate
+                        </label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" form="scheduleForm" class="btn btn-primary">Schedule Interview</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Email Modal -->
+<div class="modal fade" id="emailModal" tabindex="-1" aria-labelledby="emailModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="emailModalLabel">Send Email to Applicant</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="emailForm">
+                    {% csrf_token %}
+                    <input type="hidden" name="application_id" id="emailApplicationId">
+                    
+                    <div class="mb-3">
+                        <label for="recipientEmail" class="form-label">To</label>
+                        <input type="email" class="form-control" id="recipientEmail" readonly>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="emailTemplate" class="form-label">Email Template</label>
+                        <select class="form-select" id="emailTemplate" name="template">
+                            <option value="custom">Custom Message</option>
+                            <option value="interview_invitation">Interview Invitation</option>
+                            <option value="application_received">Application Received</option>
+                            <option value="rejection">Rejection</option>
+                            <option value="offer">Job Offer</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="emailSubject" class="form-label">Subject</label>
+                        <input type="text" class="form-control" id="emailSubject" name="subject" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="emailMessage" class="form-label">Message</label>
+                        <textarea class="form-control" id="emailMessage" name="message" rows="6" required></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" form="emailForm" class="btn btn-primary">Send Email</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast for status updates -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+    <div id="statusToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="toast-header">
+            <strong class="me-auto">Job Application</strong>
+            <small>Just now</small>
+            <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+        <div class="toast-body" id="toastMessage">
+            Application status updated successfully
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+{{ block.super }}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Application status updates
+        const statusDropdowns = document.querySelectorAll('.application-status-select');
+        if (statusDropdowns.length > 0) {
+            statusDropdowns.forEach(dropdown => {
+                dropdown.addEventListener('change', function() {
+                    const applicationId = this.getAttribute('data-application-id');
+                    const status = this.value;
+                    const csrf = this.getAttribute('data-csrf');
+                    
+                    fetch('/jobs/application/' + applicationId + '/status/', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': csrf
+                        },
+                        body: JSON.stringify({ status: status })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Show success toast
+                            const toast = new bootstrap.Toast(document.getElementById('statusToast'));
+                            if (toast) {
+                                document.getElementById('toastMessage').textContent = 'Application status updated successfully';
+                                toast.show();
+                            }
+                        }
+                    })
+                    .catch(error => console.error('Error:', error));
+                });
+            });
+        }
+        
+        // Bulk action form handling
+        const actionSelect = document.querySelector('select[name="action"]');
+        const actionOptions = document.querySelectorAll('.action-options');
+        const customEmailContainer = document.getElementById('customEmailContainer');
+        
+        if (actionSelect) {
+            actionSelect.addEventListener('change', function() {
+                const selectedAction = this.value;
+                
+                // Hide all option containers first
+                actionOptions.forEach(container => {
+                    container.style.display = 'none';
+                });
+                customEmailContainer.style.display = 'none';
+                
+                // Show the relevant container based on selection
+                if (selectedAction === 'update_status') {
+                    document.getElementById('updateStatusOptions').style.display = 'block';
+                } else if (selectedAction === 'send_email') {
+                    document.getElementById('sendEmailOptions').style.display = 'block';
+                    
+                    // Check if custom email is selected
+                    const emailTemplateSelect = document.querySelector('select[name="email_template"]');
+                    if (emailTemplateSelect.value === 'custom') {
+                        customEmailContainer.style.display = 'block';
+                    }
+                    
+                    // Add listener for email template changes
+                    emailTemplateSelect.addEventListener('change', function() {
+                        if (this.value === 'custom') {
+                            customEmailContainer.style.display = 'block';
+                        } else {
+                            customEmailContainer.style.display = 'none';
+                        }
+                    });
+                } else if (selectedAction === 'schedule_interview') {
+                    document.getElementById('scheduleInterviewOptions').style.display = 'block';
+                }
+            });
+        }
+        
+        // Checkbox selection handling
+        const selectAllCheckbox = document.getElementById('selectAll');
+        const applicationCheckboxes = document.querySelectorAll('.application-checkbox');
+        const bulkActionButton = document.getElementById('bulkActionButton');
+        
+        if (selectAllCheckbox && applicationCheckboxes.length > 0) {
+            // Select all checkbox functionality
+            selectAllCheckbox.addEventListener('change', function() {
+                applicationCheckboxes.forEach(checkbox => {
+                    checkbox.checked = this.checked;
+                });
+                
+                // Enable/disable bulk action button
+                bulkActionButton.disabled = !this.checked;
+            });
+            
+            // Individual checkboxes
+            applicationCheckboxes.forEach(checkbox => {
+                checkbox.addEventListener('change', function() {
+                    const anyChecked = Array.from(applicationCheckboxes).some(cb => cb.checked);
+                    bulkActionButton.disabled = !anyChecked;
+                    
+                    // Update "select all" checkbox state
+                    const allChecked = Array.from(applicationCheckboxes).every(cb => cb.checked);
+                    selectAllCheckbox.checked = allChecked;
+                    selectAllCheckbox.indeterminate = anyChecked && !allChecked;
+                });
+            });
+        }
+        
+        // Schedule Interview Modal
+        const scheduleModal = document.getElementById('scheduleModal');
+        if (scheduleModal) {
+            scheduleModal.addEventListener('show.bs.modal', function(event) {
+                const button = event.relatedTarget;
+                const applicationId = button.getAttribute('data-application-id');
+                const applicantName = button.getAttribute('data-applicant-name');
+                
+                // Set modal values
+                document.getElementById('scheduleApplicationId').value = applicationId;
+                document.getElementById('scheduleModalLabel').textContent = 'Schedule Interview with ' + applicantName;
+                
+                // Set default interview time (next business day at 10:00 AM)
+                const now = new Date();
+                let nextDay = new Date(now);
+                nextDay.setDate(now.getDate() + 1);
+                
+                // Skip to Monday if it's Friday/Saturday/Sunday
+                const dayOfWeek = nextDay.getDay();
+                if (dayOfWeek === 0) { // Sunday
+                    nextDay.setDate(nextDay.getDate() + 1);
+                } else if (dayOfWeek === 6) { // Saturday
+                    nextDay.setDate(nextDay.getDate() + 2);
+                }
+                
+                nextDay.setHours(10, 0, 0, 0);
+                
+                // Format for datetime-local input
+                const year = nextDay.getFullYear();
+                const month = String(nextDay.getMonth() + 1).padStart(2, '0');
+                const day = String(nextDay.getDate()).padStart(2, '0');
+                const hours = String(nextDay.getHours()).padStart(2, '0');
+                const minutes = String(nextDay.getMinutes()).padStart(2, '0');
+                
+                document.getElementById('interviewDate').value = `${year}-${month}-${day}T${hours}:${minutes}`;
+            });
+            
+            // Schedule form submission
+            const scheduleForm = document.getElementById('scheduleForm');
+            scheduleForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const formData = new FormData(this);
+                const csrf = this.querySelector('[name="csrfmiddlewaretoken"]').value;
+                
+                fetch('/jobs/schedule-interview/', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': csrf
+                    },
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Close modal
+                        bootstrap.Modal.getInstance(scheduleModal).hide();
+                        
+                        // Show success toast
+                        const toast = new bootstrap.Toast(document.getElementById('statusToast'));
+                        if (toast) {
+                            document.getElementById('toastMessage').textContent = 'Interview scheduled successfully';
+                            toast.show();
+                        }
+                        
+                        // Refresh the page after a delay
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 2000);
+                    } else {
+                        alert('Failed to schedule interview: ' + data.error);
+                    }
+                })
+                .catch(error => console.error('Error:', error));
+            });
+        }
+        
+        // Email Modal
+        const emailModal = document.getElementById('emailModal');
+        if (emailModal) {
+            emailModal.addEventListener('show.bs.modal', function(event) {
+                const button = event.relatedTarget;
+                const applicationId = button.getAttribute('data-application-id');
+                const applicantEmail = button.getAttribute('data-applicant-email');
+                
+                // Set modal values
+                document.getElementById('emailApplicationId').value = applicationId;
+                document.getElementById('recipientEmail').value = applicantEmail;
+                
+                // Email template selection handling
+                const emailTemplateSelect = document.getElementById('emailTemplate');
+                const emailSubjectInput = document.getElementById('emailSubject');
+                const emailMessageInput = document.getElementById('emailMessage');
+                
+                emailTemplateSelect.addEventListener('change', function() {
+                    const template = this.value;
+                    
+                    // Set default subject and message based on template
+                    switch (template) {
+                        case 'interview_invitation':
+                            emailSubjectInput.value = 'Interview Invitation';
+                            emailMessageInput.value = `Dear Applicant,\n\nWe are pleased to invite you for an interview for the position you applied for. Please find the details below:\n\nDate: [Interview Date]\nTime: [Interview Time]\nLocation: [Interview Location]\n\nPlease confirm your availability by replying to this email.\n\nBest regards,\n[Company Name]`;
+                            break;
+                        case 'application_received':
+                            emailSubjectInput.value = 'Application Received';
+                            emailMessageInput.value = `Dear Applicant,\n\nThank you for applying for the position with us. We have received your application and are currently reviewing it.\n\nWe will contact you if your qualifications match our requirements.\n\nBest regards,\n[Company Name]`;
+                            break;
+                        case 'rejection':
+                            emailSubjectInput.value = 'Application Status Update';
+                            emailMessageInput.value = `Dear Applicant,\n\nThank you for your interest in the position and for taking the time to apply.\n\nAfter careful consideration, we have decided to move forward with other candidates whose qualifications better match our current needs.\n\nWe appreciate your interest in our company and wish you success in your job search.\n\nBest regards,\n[Company Name]`;
+                            break;
+                        case 'offer':
+                            emailSubjectInput.value = 'Job Offer';
+                            emailMessageInput.value = `Dear Applicant,\n\nWe are pleased to offer you the position of [Job Title] at [Company Name].\n\nPlease find attached the offer letter with details regarding your compensation, benefits, and start date.\n\nTo accept this offer, please sign and return the attached document by [Date].\n\nCongratulations, and we look forward to welcoming you to our team!\n\nBest regards,\n[Company Name]`;
+                            break;
+                        case 'custom':
+                            emailSubjectInput.value = '';
+                            emailMessageInput.value = '';
+                            break;
+                    }
+                });
+            });
+            
+            // Email form submission
+            const emailForm = document.getElementById('emailForm');
+            emailForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const formData = new FormData(this);
+                const csrf = this.querySelector('[name="csrfmiddlewaretoken"]').value;
+                
+                fetch('/jobs/send-applicant-email/', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': csrf
+                    },
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Close modal
+                        bootstrap.Modal.getInstance(emailModal).hide();
+                        
+                        // Show success toast
+                        const toast = new bootstrap.Toast(document.getElementById('statusToast'));
+                        if (toast) {
+                            document.getElementById('toastMessage').textContent = 'Email sent successfully';
+                            toast.show();
+                        }
+                    } else {
+                        alert('Failed to send email: ' + data.error);
+                    }
+                })
+                .catch(error => console.error('Error:', error));
+            });
+        }
+    });
+</script>
+{% endblock %}
+{% endblock %}

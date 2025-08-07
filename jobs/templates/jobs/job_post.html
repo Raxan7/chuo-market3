@@ -1,0 +1,471 @@
+{% extends "jobs/base.html" %}
+{% load static %}
+
+{% block job_content %}
+<div class="card mb-4">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0">{% if form.instance.id %}Edit{% else %}Post{% endif %} a Job</h5>
+    </div>
+    <div class="card-body">
+        <form method="post" enctype="multipart/form-data" class="needs-validation" novalidate>
+            {% csrf_token %}
+            
+            {% if form.non_field_errors %}
+            <div class="alert alert-danger">
+                {% for error in form.non_field_errors %}
+                {{ error }}
+                {% endfor %}
+            </div>
+            {% endif %}
+            
+            <div class="mb-4">
+                <h5>Basic Information</h5>
+                <div class="row g-3">
+                    <!-- Job Title -->
+                    <div class="col-md-12 mb-3">
+                        <label for="{{ form.title.id_for_label }}" class="form-label">Job Title <span class="text-danger">*</span></label>
+                        {{ form.title }}
+                        {% if form.title.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in form.title.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Job Type -->
+                    <div class="col-md-6 mb-3">
+                        <label for="{{ form.job_type.id_for_label }}" class="form-label">Job Type <span class="text-danger">*</span></label>
+                        {{ form.job_type }}
+                        {% if form.job_type.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in form.job_type.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Category -->
+                    <div class="col-md-6 mb-3">
+                        <label for="{{ form.category.id_for_label }}" class="form-label">Category <span class="text-danger">*</span></label>
+                        {{ form.category }}
+                        {% if form.category.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in form.category.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Location -->
+                    <div class="col-md-6 mb-3">
+                        <label for="{{ form.location.id_for_label }}" class="form-label">Location <span class="text-danger">*</span></label>
+                        {{ form.location }}
+                        {% if form.location.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in form.location.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Remote -->
+                    <div class="col-md-6 mb-3">
+                        <label for="{{ form.is_remote.id_for_label }}" class="form-label">Remote Work</label>
+                        <div class="form-check mt-2">
+                            {{ form.is_remote }}
+                            <label class="form-check-label" for="{{ form.is_remote.id_for_label }}">
+                                This job can be done remotely
+                            </label>
+                            {% if form.is_remote.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.is_remote.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <!-- Deadline -->
+                    <div class="col-md-6 mb-3">
+                        <label for="{{ form.deadline.id_for_label }}" class="form-label">Application Deadline</label>
+                        {{ form.deadline }}
+                        {% if form.deadline.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in form.deadline.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Vacancies -->
+                    <div class="col-md-6 mb-3">
+                        <label for="{{ form.vacancies.id_for_label }}" class="form-label">Number of Vacancies</label>
+                        {{ form.vacancies }}
+                        {% if form.vacancies.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in form.vacancies.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mb-4">
+                <h5>Salary Information</h5>
+                <div class="row g-3">
+                    <!-- Salary Min -->
+                    <div class="col-md-6 mb-3">
+                        <label for="{{ form.salary_min.id_for_label }}" class="form-label">Minimum Salary (TZS)</label>
+                        {{ form.salary_min }}
+                        {% if form.salary_min.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in form.salary_min.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Salary Max -->
+                    <div class="col-md-6 mb-3">
+                        <label for="{{ form.salary_max.id_for_label }}" class="form-label">Maximum Salary (TZS)</label>
+                        {{ form.salary_max }}
+                        {% if form.salary_max.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in form.salary_max.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Hide Salary -->
+                    <div class="col-md-12 mb-3">
+                        <div class="form-check">
+                            {{ form.hide_salary }}
+                            <label class="form-check-label" for="{{ form.hide_salary.id_for_label }}">
+                                Hide salary information from job listing
+                            </label>
+                            {% if form.hide_salary.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.hide_salary.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mb-4">
+                <h5>Requirements</h5>
+                <div class="row g-3">
+                    <!-- Experience Level -->
+                    <div class="col-md-6 mb-3">
+                        <label for="{{ form.experience_level.id_for_label }}" class="form-label">Experience Level</label>
+                        {{ form.experience_level }}
+                        {% if form.experience_level.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in form.experience_level.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Education Level -->
+                    <div class="col-md-6 mb-3">
+                        <label for="{{ form.education_level.id_for_label }}" class="form-label">Education Level</label>
+                        {{ form.education_level }}
+                        {% if form.education_level.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in form.education_level.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Skills -->
+                    <div class="col-md-12 mb-3">
+                        <label for="{{ form.skills.id_for_label }}" class="form-label">Required Skills</label>
+                        {{ form.skills }}
+                        {% if form.skills.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in form.skills.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        <div class="form-text">Select skills that are required for this position. If a skill is not listed, you can add it in the description.</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mb-4">
+                <h5>Job Details</h5>
+                <div class="row g-3">
+                    <!-- Description -->
+                    <div class="col-md-12 mb-3">
+                        <label for="{{ form.description.id_for_label }}" class="form-label">Job Description <span class="text-danger">*</span></label>
+                        {{ form.description }}
+                        {% if form.description.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in form.description.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        <div class="form-text">Provide a comprehensive description of the job.</div>
+                    </div>
+                    
+                    <!-- Responsibilities -->
+                    <div class="col-md-12 mb-3">
+                        <label for="{{ form.responsibilities.id_for_label }}" class="form-label">Responsibilities</label>
+                        {{ form.responsibilities }}
+                        {% if form.responsibilities.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in form.responsibilities.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Qualifications -->
+                    <div class="col-md-12 mb-3">
+                        <label for="{{ form.qualifications.id_for_label }}" class="form-label">Qualifications</label>
+                        {{ form.qualifications }}
+                        {% if form.qualifications.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in form.qualifications.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Benefits -->
+                    <div class="col-md-12 mb-3">
+                        <label for="{{ form.benefits.id_for_label }}" class="form-label">Benefits</label>
+                        {{ form.benefits }}
+                        {% if form.benefits.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in form.benefits.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mb-4">
+                <h5>Application Settings</h5>
+                <div class="row g-3">
+                    <!-- External URL -->
+                    <div class="col-md-12 mb-3">
+                        <label for="{{ form.application_url.id_for_label }}" class="form-label">External Application URL</label>
+                        {{ form.application_url }}
+                        {% if form.application_url.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in form.application_url.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        <div class="form-text">If provided, applicants will be redirected to this URL instead of using our application form.</div>
+                    </div>
+                    
+                    <!-- Application Email -->
+                    <div class="col-md-12 mb-3">
+                        <label for="{{ form.application_email.id_for_label }}" class="form-label">Application Email</label>
+                        {{ form.application_email }}
+                        {% if form.application_email.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in form.application_email.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        <div class="form-text">Email address where applications will be sent.</div>
+                    </div>
+                    
+                    <!-- Application Instructions -->
+                    <div class="col-md-12 mb-3">
+                        <label for="{{ form.application_instructions.id_for_label }}" class="form-label">Application Instructions</label>
+                        {{ form.application_instructions }}
+                        {% if form.application_instructions.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in form.application_instructions.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mb-4">
+                <h5>Visibility Settings</h5>
+                <div class="row g-3">
+                    <!-- Status -->
+                    <div class="col-md-6 mb-3">
+                        <label for="{{ form.status.id_for_label }}" class="form-label">Job Status</label>
+                        {{ form.status }}
+                        {% if form.status.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in form.status.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Featured -->
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label d-block">Featured Job</label>
+                        <div class="form-check">
+                            {{ form.is_featured }}
+                            <label class="form-check-label" for="{{ form.is_featured.id_for_label }}">
+                                Mark as featured (appears at the top of listings)
+                            </label>
+                            {% if form.is_featured.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.is_featured.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mb-4">
+                <h5>SEO Information</h5>
+                <div class="row g-3">
+                    <!-- Meta Title -->
+                    <div class="col-md-12 mb-3">
+                        <label for="{{ form.meta_title.id_for_label }}" class="form-label">Meta Title</label>
+                        {{ form.meta_title }}
+                        {% if form.meta_title.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in form.meta_title.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        <div class="form-text">Leave blank to use the job title. Recommended length: 50-60 characters.</div>
+                    </div>
+                    
+                    <!-- Meta Description -->
+                    <div class="col-md-12 mb-3">
+                        <label for="{{ form.meta_description.id_for_label }}" class="form-label">Meta Description</label>
+                        {{ form.meta_description }}
+                        {% if form.meta_description.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in form.meta_description.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        <div class="form-text">Leave blank to use the job description. Recommended length: 150-160 characters.</div>
+                    </div>
+                </div>
+            </div>
+            
+            <hr class="my-4">
+            
+            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                <a href="{% url 'jobs:dashboard' %}" class="btn btn-outline-secondary me-md-2">Cancel</a>
+                <button type="submit" class="btn btn-primary">
+                    {% if form.instance.id %}Update{% else %}Post{% endif %} Job
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Form validation
+        const forms = document.querySelectorAll('.needs-validation');
+        
+        Array.from(forms).forEach(form => {
+            form.addEventListener('submit', event => {
+                if (!form.checkValidity()) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+                
+                form.classList.add('was-validated');
+            }, false);
+        });
+        
+        // Initialize rich text editors
+        if (typeof ClassicEditor !== 'undefined') {
+            const richTextFields = [
+                'id_description', 
+                'id_responsibilities', 
+                'id_qualifications', 
+                'id_benefits', 
+                'id_application_instructions'
+            ];
+            
+            richTextFields.forEach(fieldId => {
+                const element = document.getElementById(fieldId);
+                if (element) {
+                    ClassicEditor
+                        .create(element, {
+                            toolbar: ['heading', '|', 'bold', 'italic', 'link', 'bulletedList', 'numberedList', '|', 'outdent', 'indent', '|', 'undo', 'redo'],
+                            heading: {
+                                options: [
+                                    { model: 'paragraph', title: 'Paragraph', class: 'ck-heading_paragraph' },
+                                    { model: 'heading1', view: 'h1', title: 'Heading 1', class: 'ck-heading_heading1' },
+                                    { model: 'heading2', view: 'h2', title: 'Heading 2', class: 'ck-heading_heading2' },
+                                    { model: 'heading3', view: 'h3', title: 'Heading 3', class: 'ck-heading_heading3' }
+                                ]
+                            }
+                        })
+                        .catch(error => {
+                            console.error(error);
+                        });
+                }
+            });
+        }
+        
+        // Salary range validation
+        const salaryMin = document.getElementById('id_salary_min');
+        const salaryMax = document.getElementById('id_salary_max');
+        
+        if (salaryMin && salaryMax) {
+            [salaryMin, salaryMax].forEach(input => {
+                input.addEventListener('change', () => {
+                    const min = parseInt(salaryMin.value) || 0;
+                    const max = parseInt(salaryMax.value) || 0;
+                    
+                    if (min > 0 && max > 0 && min > max) {
+                        salaryMax.setCustomValidity('Maximum salary must be greater than minimum salary');
+                    } else {
+                        salaryMax.setCustomValidity('');
+                    }
+                });
+            });
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,105 @@
+{% extends "jobs/base.html" %}
+{% load static %}
+
+{% block job_content %}
+<div class="card mb-4">
+    <div class="card-body">
+        <h2 class="mb-3">Welcome to Chuo Market Jobs</h2>
+        <p class="lead">Find your next opportunity or post a job to reach top talent in Tanzania and beyond.</p>
+    </div>
+</div>
+
+<!-- Featured Jobs -->
+{% if featured_jobs %}
+<div class="card mb-5">
+    <div class="card-header bg-primary text-white">
+        <h4 class="mb-0">Featured Jobs</h4>
+    </div>
+    <div class="card-body">
+        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+            {% for job in featured_jobs %}
+            <div class="col">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">
+                            <a href="{% url 'jobs:job_detail' job.id %}" class="text-decoration-none">{{ job.title }}</a>
+                        </h5>
+                        <h6 class="card-subtitle mb-2 text-muted">{{ job.company.name }}</h6>
+                        <div class="mb-2">
+                            <span class="badge bg-light text-dark">{{ job.get_job_type_display }}</span>
+                            {% if job.is_remote %}<span class="badge bg-success ms-1">Remote</span>{% endif %}
+                        </div>
+                        <p class="card-text text-truncate-3">{{ job.description|striptags|truncatewords:20 }}</p>
+                    </div>
+                    <div class="card-footer bg-transparent d-flex justify-content-between align-items-center">
+                        <small class="text-muted">{{ job.posted_date|timesince }} ago</small>
+                        <a href="{% url 'jobs:job_detail' job.id %}" class="btn btn-sm btn-primary">View</a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Recent Jobs -->
+<div class="card mb-5">
+    <div class="card-header bg-primary text-white">
+        <h4 class="mb-0">Recent Jobs</h4>
+    </div>
+    <div class="card-body">
+        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+            {% for job in recent_jobs %}
+            <div class="col">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">
+                            <a href="{% url 'jobs:job_detail' job.id %}" class="text-decoration-none">{{ job.title }}</a>
+                        </h5>
+                        <h6 class="card-subtitle mb-2 text-muted">{{ job.company.name }}</h6>
+                        <div class="mb-2">
+                            <span class="badge bg-light text-dark">{{ job.get_job_type_display }}</span>
+                            {% if job.is_remote %}<span class="badge bg-success ms-1">Remote</span>{% endif %}
+                        </div>
+                        <p class="card-text text-truncate-3">{{ job.description|striptags|truncatewords:20 }}</p>
+                    </div>
+                    <div class="card-footer bg-transparent d-flex justify-content-between align-items-center">
+                        <small class="text-muted">{{ job.posted_date|timesince }} ago</small>
+                        <a href="{% url 'jobs:job_detail' job.id %}" class="btn btn-sm btn-primary">View</a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- Industries -->
+{% if industries %}
+<div class="card mb-5">
+    <div class="card-header bg-primary text-white">
+        <h4 class="mb-0">Popular Industries</h4>
+    </div>
+    <div class="card-body">
+        <div class="row row-cols-2 row-cols-md-4 g-3">
+            {% for industry in industries %}
+            <div class="col">
+                <a href="{% url 'jobs:job_list' %}?industry={{ industry.id }}" class="btn btn-outline-primary w-100">
+                    {{ industry.name }} <span class="badge bg-primary ms-2">{{ industry.job_count }}</span>
+                </a>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Call to Action -->
+<div class="card my-5">
+    <div class="card-body text-center">
+        <a href="{% url 'jobs:job_list' %}" class="btn btn-lg btn-primary me-2">Browse All Jobs</a>
+        <a href="{% url 'jobs:create_job' %}" class="btn btn-lg btn-outline-success">Post a Job</a>
+    </div>
+</div>
+{% endblock %}

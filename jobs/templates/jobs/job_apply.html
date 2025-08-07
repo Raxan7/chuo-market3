@@ -1,0 +1,234 @@
+{% extends "jobs/base.html" %}
+{% load static %}
+
+{% block job_content %}
+<div class="card mb-4">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0">Apply for Job</h5>
+    </div>
+    <div class="card-body">
+        <h4 class="mb-3">{{ job.title }}</h4>
+        <p class="text-muted mb-4">
+            <span>{{ job.company.name }}</span> • 
+            <span>{{ job.location }}</span> •
+            <span>{{ job.get_job_type_display }}</span>
+        </p>
+        
+        <form method="post" enctype="multipart/form-data" class="needs-validation" novalidate>
+            {% csrf_token %}
+            
+            {% if form.non_field_errors %}
+            <div class="alert alert-danger">
+                {% for error in form.non_field_errors %}
+                {{ error }}
+                {% endfor %}
+            </div>
+            {% endif %}
+            
+            <div class="row g-3">
+                <!-- Resume Upload -->
+                <div class="col-12 mb-3">
+                    <label for="{{ form.resume.id_for_label }}" class="form-label">Resume/CV <span class="text-danger">*</span></label>
+                    {{ form.resume }}
+                    {% if form.resume.errors %}
+                    <div class="invalid-feedback d-block">
+                        {% for error in form.resume.errors %}
+                        {{ error }}
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    <div class="form-text">Upload your resume/CV (PDF format, max 5MB)</div>
+                </div>
+                
+                <!-- Cover Letter -->
+                <div class="col-12 mb-3">
+                    <label for="{{ form.cover_letter.id_for_label }}" class="form-label">Cover Letter</label>
+                    {{ form.cover_letter }}
+                    {% if form.cover_letter.errors %}
+                    <div class="invalid-feedback d-block">
+                        {% for error in form.cover_letter.errors %}
+                        {{ error }}
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    <div class="form-text">Explain why you're a good fit for this position (max 2000 characters)</div>
+                </div>
+                
+                <!-- Phone Number -->
+                <div class="col-md-6 mb-3">
+                    <label for="{{ form.phone_number.id_for_label }}" class="form-label">Phone Number <span class="text-danger">*</span></label>
+                    {{ form.phone_number }}
+                    {% if form.phone_number.errors %}
+                    <div class="invalid-feedback d-block">
+                        {% for error in form.phone_number.errors %}
+                        {{ error }}
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <!-- Portfolio URL -->
+                <div class="col-md-6 mb-3">
+                    <label for="{{ form.portfolio_url.id_for_label }}" class="form-label">Portfolio URL</label>
+                    {{ form.portfolio_url }}
+                    {% if form.portfolio_url.errors %}
+                    <div class="invalid-feedback d-block">
+                        {% for error in form.portfolio_url.errors %}
+                        {{ error }}
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    <div class="form-text">Link to your portfolio, GitHub, LinkedIn, etc.</div>
+                </div>
+                
+                <!-- Additional Documents -->
+                <div class="col-12 mb-3">
+                    <label for="{{ form.additional_documents.id_for_label }}" class="form-label">Additional Documents</label>
+                    {{ form.additional_documents }}
+                    {% if form.additional_documents.errors %}
+                    <div class="invalid-feedback d-block">
+                        {% for error in form.additional_documents.errors %}
+                        {{ error }}
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    <div class="form-text">Additional certificates, recommendation letters, etc. (PDF format, max 10MB)</div>
+                </div>
+                
+                <!-- Availability -->
+                <div class="col-md-6 mb-3">
+                    <label for="{{ form.availability.id_for_label }}" class="form-label">Availability <span class="text-danger">*</span></label>
+                    {{ form.availability }}
+                    {% if form.availability.errors %}
+                    <div class="invalid-feedback d-block">
+                        {% for error in form.availability.errors %}
+                        {{ error }}
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <!-- Salary Expectation -->
+                <div class="col-md-6 mb-3">
+                    <label for="{{ form.salary_expectation.id_for_label }}" class="form-label">Salary Expectation (TZS)</label>
+                    {{ form.salary_expectation }}
+                    {% if form.salary_expectation.errors %}
+                    <div class="invalid-feedback d-block">
+                        {% for error in form.salary_expectation.errors %}
+                        {{ error }}
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <!-- Questions -->
+                {% if job.application_questions %}
+                <div class="col-12 mb-3">
+                    <hr>
+                    <h5>Additional Questions</h5>
+                    <p class="text-muted">Please answer the following questions from the employer</p>
+                    
+                    {% for question in job.application_questions.all %}
+                    <div class="mb-3">
+                        <label for="question_{{ question.id }}" class="form-label">
+                            {{ question.question }}
+                            {% if question.required %}<span class="text-danger">*</span>{% endif %}
+                        </label>
+                        <textarea id="question_{{ question.id }}" name="question_{{ question.id }}" 
+                            class="form-control" rows="3" {% if question.required %}required{% endif %}></textarea>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                
+                <!-- Agreement -->
+                <div class="col-12 mb-3">
+                    <div class="form-check">
+                        {{ form.agreement }}
+                        <label class="form-check-label" for="{{ form.agreement.id_for_label }}">
+                            I confirm that all information provided is true and accurate.
+                        </label>
+                        {% if form.agreement.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in form.agreement.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <hr class="my-4">
+            
+            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                <a href="{% url 'jobs:detail' job.id %}" class="btn btn-outline-secondary me-md-2">Cancel</a>
+                <button type="submit" class="btn btn-primary">Submit Application</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0">Job Details</h5>
+    </div>
+    <div class="card-body">
+        <h4>{{ job.title }}</h4>
+        <p class="text-muted">
+            <span>{{ job.company.name }}</span> • 
+            <span>{{ job.location }}</span> •
+            <span>{{ job.get_job_type_display }}</span>
+        </p>
+        
+        <div class="job-description">
+            {{ job.description|safe }}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+<script>
+    // Form validation
+    document.addEventListener('DOMContentLoaded', function() {
+        const forms = document.querySelectorAll('.needs-validation');
+        
+        Array.from(forms).forEach(form => {
+            form.addEventListener('submit', event => {
+                if (!form.checkValidity()) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+                
+                form.classList.add('was-validated');
+            }, false);
+        });
+        
+        // File size validation for resume
+        const resumeInput = document.getElementById('{{ form.resume.id_for_label }}');
+        if (resumeInput) {
+            resumeInput.addEventListener('change', function() {
+                if (this.files[0] && this.files[0].size > 5 * 1024 * 1024) {
+                    this.setCustomValidity('File size must not exceed 5MB');
+                } else {
+                    this.setCustomValidity('');
+                }
+            });
+        }
+        
+        // File size validation for additional documents
+        const docsInput = document.getElementById('{{ form.additional_documents.id_for_label }}');
+        if (docsInput) {
+            docsInput.addEventListener('change', function() {
+                if (this.files[0] && this.files[0].size > 10 * 1024 * 1024) {
+                    this.setCustomValidity('File size must not exceed 10MB');
+                } else {
+                    this.setCustomValidity('');
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}
