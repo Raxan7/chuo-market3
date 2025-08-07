@@ -412,6 +412,17 @@
     </style>
 
     <title>ChuoSmart | {% block title %} {% endblock title %} </title>
+    
+    <script>
+    // Check if URL contains '/blogs/' or '/lms/'
+    if (window.location.pathname.includes('/blogs/') || window.location.pathname.includes('/lms/')) {
+        // Load Propeller Ads script dynamically
+        const script = document.createElement('script');
+        script.src = 'https://otieu.com/4/9681003';
+        script.async = true;
+        document.head.appendChild(script);
+    }
+    </script>
   </head>
   <body class="d-flex flex-column min-vh-100">
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
@@ -437,6 +448,9 @@
            <li class="nav-item">
              <a class="nav-link text-white" href="{% url 'lms:lms_home' %}">Learning</a>
            </li>
+           <!-- <li class="nav-item">
+             <a class="nav-link text-white" href="{% url 'jobs:home' %}">Jobs</a>
+           </li> -->
          </ul>
          
          <!-- Search form - visible on mobile when collapsed -->
