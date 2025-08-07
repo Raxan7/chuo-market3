@@ -60,7 +60,7 @@ INSTALLED_APPS = [
     
     # Put core first to ensure our fix migrations run before django_apscheduler
     'core',
-    'django_apscheduler', 
+    # 'django_apscheduler', 
     
     'talents',
     'chatbotapp',
@@ -68,7 +68,7 @@ INSTALLED_APPS = [
     'landing',
     'affiliates',
     # 'promotions',
-    'jobs',  # Our new job portal app
+    # 'jobs',  # Our new job portal app
 ]
 
 # Site ID and domain for the sites framework

@@ -24,7 +24,7 @@ urlpatterns = [
     path('lms/', include('lms.urls')),
     path('webpush/', include('webpush.urls')),  # Web Push Notifications
     # path('promotions/', include('promotions.urls', namespace='promotions')),
-    path('jobs/', include('jobs.urls')),
+    # path('jobs/', include('jobs.urls')),
     
     # Sitemap and SEO URLs
     path('sitemap.xml', sitemap, {'sitemaps': sitemaps}, name='django.contrib.sitemaps.views.sitemap'),
