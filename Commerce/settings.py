@@ -60,7 +60,7 @@ INSTALLED_APPS = [
     
     # Put core first to ensure our fix migrations run before django_apscheduler
     'core',
-    # 'django_apscheduler',  # For scheduling jobs (temporarily disabled due to migration issues)
+    'django_apscheduler', 
     
     'talents',
     'chatbotapp',
