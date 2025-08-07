@@ -57,9 +57,11 @@ INSTALLED_APPS = [
     'widget_tweaks',
     'webpush',  # For push notifications
     'rest_framework',  # For the API
-    'django_apscheduler',  # For scheduling jobs
-
+    
+    # Put core first to ensure our fix migrations run before django_apscheduler
     'core',
+    'django_apscheduler',  # For scheduling jobs
+    
     'talents',
     'chatbotapp',
     'lms',
@@ -156,7 +158,13 @@ DATABASES = {
         'OPTIONS': {
             'charset': 'utf8mb4',
             'init_command': "SET sql_mode='STRICT_TRANS_TABLES', innodb_strict_mode=1",
+            'use_unicode': True,
         },
+        # Fix for "Specified key was too long; max key length is 1000 bytes" error
+        'TEST': {
+            'CHARSET': 'utf8',
+            'COLLATION': 'utf8_general_ci',
+        }
     }
 }
 
