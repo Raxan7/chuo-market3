@@ -147,6 +147,7 @@ WSGI_APPLICATION = 'Commerce.wsgi.application'
 #     }
 # }
 
+# Production MySQL Database Configuration (Fixed for emoji support)
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
@@ -156,14 +157,13 @@ DATABASES = {
         'HOST': os.getenv('DB_HOST', default='localhost'),  # Database host from .env
         'PORT': os.getenv('DB_PORT', default='3306'),  # Database port from .env
         'OPTIONS': {
-            'charset': 'utf8',  # Changed from utf8mb4 to avoid key length issues
-            'init_command': "SET sql_mode='STRICT_TRANS_TABLES', innodb_strict_mode=1",
+            'charset': 'utf8mb4',  # Use utf8mb4 for full UTF-8 support including emojis
+            'init_command': "SET sql_mode='STRICT_TRANS_TABLES', innodb_strict_mode=1, NAMES utf8mb4 COLLATE utf8mb4_unicode_ci",
             'use_unicode': True,
         },
-        # Fix for "Specified key was too long; max key length is 1000 bytes" error
         'TEST': {
-            'CHARSET': 'utf8',
-            'COLLATION': 'utf8_general_ci',
+            'CHARSET': 'utf8mb4',
+            'COLLATION': 'utf8mb4_unicode_ci',
         }
     }
 }
