@@ -1,6 +1,8 @@
+
 {% extends "app/base.html" %}
 {% load static %}
 
+{# Title block for <title> tag #}
 {% block title %}
     {% if title %}
         {{ title }} | Chuo Market Jobs
@@ -9,180 +11,34 @@
     {% endif %}
 {% endblock %}
 
+{# Meta description and keywords for SEO #}
+{% block meta_description %}Find the latest jobs, internships, and career opportunities on Chuo Market Jobs.{% endblock %}
+{% block meta_keywords %}jobs, careers, internships, employment, Tanzania, Chuo Market{% endblock %}
+
+{# Open Graph and Twitter meta tags #}
+{% block og_title %}Chuo Market Jobs{% endblock %}
+{% block og_description %}Find your next opportunity on Chuo Market Jobs.{% endblock %}
+{% block og_image %}{{ base_url }}{% static 'jobs/images/jobs-og.png' %}{% endblock %}
+{% block og_type %}website{% endblock %}
+
+{% block twitter_title %}Chuo Market Jobs{% endblock %}
+{% block twitter_description %}Find your next opportunity on Chuo Market Jobs.{% endblock %}
+{% block twitter_image %}{{ base_url }}{% static 'jobs/images/jobs-og.png' %}{% endblock %}
+
+{# Extra CSS #}
 {% block extra_css %}
     {{ block.super }}
     <link rel="stylesheet" href="{% static 'jobs/css/style.css' %}">
 {% endblock %}
 
-{% block content %}
+{# Main content area, mapped to app/base.html's main-content block #}
+{% block main-content %}
 <div class="container mt-4">
     <div class="row">
         <div class="col-lg-3">
             <!-- Sidebar -->
-            <div class="card mb-4">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0">Job Search</h5>
-                </div>
-                <div class="card-body">
-                    <form method="get" action="{% url 'jobs:job_list' %}">
-                        <div class="mb-3">
-                            <label for="keywords" class="form-label">Keywords</label>
-                            <input type="text" class="form-control" id="keywords" name="keywords" 
-                                value="{{ search_form.keywords.value|default:'' }}">
-                        </div>
-                        <div class="mb-3">
-                            <label for="location" class="form-label">Location</label>
-                            <input type="text" class="form-control" id="location" name="location"
-                                value="{{ search_form.location.value|default:'' }}">
-                        </div>
-                        <div class="mb-3">
-                            <label for="industry" class="form-label">Industry</label>
-                            <select class="form-select" id="industry" name="industry">
-                                <option value="">All Industries</option>
-                                {% for industry in industries %}
-                                    <option value="{{ industry.id }}" 
-                                        {% if search_form.industry.value == industry.id %}selected{% endif %}>
-                                        {{ industry.name }}
-                                    </option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="mb-3 form-check">
-                            <input type="checkbox" class="form-check-input" id="remoteOnly" name="remote_only" 
-                                {% if search_form.remote_only.value %}checked{% endif %}>
-                            <label class="form-check-label" for="remoteOnly">Remote jobs only</label>
-                        </div>
-                        <button type="submit" class="btn btn-primary w-100">Search</button>
-                    </form>
-                </div>
-            </div>
-            
-            <!-- Job Categories -->
-            <div class="card mb-4">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0">Industries</h5>
-                </div>
-                <div class="card-body p-0">
-                    <ul class="list-group list-group-flush">
-                        {% for industry in industries %}
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            <a href="{% url 'jobs:job_list' %}?industry={{ industry.id }}" class="text-decoration-none">
-                                {{ industry.name }}
-                            </a>
-                            <span class="badge bg-primary rounded-pill">{{ industry.job_count }}</span>
-                        </li>
-                        {% endfor %}
-                    </ul>
-                </div>
-            </div>
-            
-            <!-- Job Sources -->
-            <div class="card mb-4">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0">Job Sources</h5>
-                </div>
-                <div class="card-body">
-                    <ul class="list-group list-group-flush">
-                        <li class="list-group-item">
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="source_internal" checked>
-                                <label class="form-check-label" for="source_internal">
-                                    Chuo Market
-                                </label>
-                            </div>
-                        </li>
-                        <li class="list-group-item">
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="source_linkedin" checked>
-                                <label class="form-check-label" for="source_linkedin">
-                                    LinkedIn
-                                </label>
-                            </div>
-                        </li>
-                        <li class="list-group-item">
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="source_indeed" checked>
-                                <label class="form-check-label" for="source_indeed">
-                                    Indeed
-                                </label>
-                            </div>
-                        </li>
-                        <li class="list-group-item">
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="source_adzuna" checked>
-                                <label class="form-check-label" for="source_adzuna">
-                                    Adzuna
-                                </label>
-                            </div>
-                        </li>
-                        <li class="list-group-item">
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="source_brightermonday" checked>
-                                <label class="form-check-label" for="source_brightermonday">
-                                    BrighterMonday
-                                </label>
-                            </div>
-                        </li>
-                    </ul>
-                </div>
-            </div>
-            
-            {% if user.is_authenticated %}
-            <!-- User Actions -->
-            <div class="card mb-4">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0">My Jobs</h5>
-                </div>
-                <div class="card-body p-0">
-                    <div class="list-group list-group-flush">
-                        <a href="{% url 'jobs:saved_jobs' %}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
-                            <span><i class="bi bi-bookmark me-2"></i> Saved Jobs</span>
-                        </a>
-                        <a href="{% url 'jobs:my_applications' %}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
-                            <span><i class="bi bi-briefcase me-2"></i> My Applications</span>
-                        </a>
-                        <a href="{% url 'jobs:job_preferences' %}" class="list-group-item list-group-item-action">
-                            <i class="bi bi-gear me-2"></i> Job Preferences
-                        </a>
-                    </div>
-                </div>
-            </div>
-            
-            {% if user.companies.exists %}
-            <!-- Employer Actions -->
-            <div class="card mb-4">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0">Employer</h5>
-                </div>
-                <div class="card-body p-0">
-                    <div class="list-group list-group-flush">
-                        <a href="{% url 'jobs:my_companies' %}" class="list-group-item list-group-item-action">
-                            <i class="bi bi-building me-2"></i> My Companies
-                        </a>
-                        <a href="{% url 'jobs:my_jobs' %}" class="list-group-item list-group-item-action">
-                            <i class="bi bi-briefcase me-2"></i> Posted Jobs
-                        </a>
-                        <a href="{% url 'jobs:create_job' %}" class="list-group-item list-group-item-action">
-                            <i class="bi bi-plus-circle me-2"></i> Post a Job
-                        </a>
-                    </div>
-                </div>
-            </div>
-            {% else %}
-            <!-- Become an Employer -->
-            <div class="card mb-4">
-                <div class="card-body text-center">
-                    <h5>Want to post jobs?</h5>
-                    <p class="text-muted">Create a company profile and start posting jobs.</p>
-                    <a href="{% url 'jobs:create_company' %}" class="btn btn-primary">
-                        <i class="bi bi-building me-2"></i> Create Company
-                    </a>
-                </div>
-            </div>
-            {% endif %}
-            {% endif %}
+            ...existing code...
         </div>
-        
         <div class="col-lg-9">
             <!-- Main Content Area -->
             {% block job_content %}
@@ -195,7 +51,8 @@
 </div>
 {% endblock %}
 
-{% block extra_js %}
-{{ block.super }}
-<script src="{% static 'jobs/js/jobs.js' %}"></script>
+{# Extra JS #}
+{% block extra_scripts %}
+    {{ block.super }}
+    <script src="{% static 'jobs/js/jobs.js' %}"></script>
 {% endblock %}

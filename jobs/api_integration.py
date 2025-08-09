@@ -5,6 +5,11 @@ import json
 from abc import ABC, abstractmethod
 from django.utils import timezone
 from django.db import transaction
+from bs4 import BeautifulSoup
+import pandas as pd
+from datetime import datetime
+import warnings
+from urllib3.exceptions import InsecureRequestWarning
 from .models import Job, Company, ApiConfiguration, ApiRequestLog, Industry, Skill
 
 logger = logging.getLogger(__name__)
@@ -440,6 +445,8 @@ def get_api_client(api_name):
             return AdzunaJobsClient(api_config)
         elif api_name == 'brightermonday':
             return BrighterMondayJobsClient(api_config)
+        elif api_name == 'ajira':
+            return AjiraJobsClient(api_config)
         else:
             logger.error(f"Unknown API name: {api_name}")
             return None
@@ -502,13 +509,14 @@ def save_job_from_api(job_data):
         description=job_data.get('description', ''),
         company=company,
         location=job_data.get('location', ''),
-        requirements=job_data.get('description', ''),  # Use description as requirements if no specific requirements
+        requirements=job_data.get('requirements', job_data.get('description', '')),  # Use specific requirements if available
+        responsibilities=job_data.get('responsibilities', ''),  # Use responsibilities if available
         external_id=external_id,
         external_url=job_data.get('external_url', ''),
         source=source,
         created_by_id=1,  # Default admin user ID
         posted_date=timezone.now(),
-        application_deadline=timezone.now() + timezone.timedelta(days=30)  # Default 30 days
+        application_deadline=job_data.get('application_deadline', timezone.now() + timezone.timedelta(days=30))  # Use provided deadline or default
     )
     
     # Set job type if provided
@@ -517,8 +525,11 @@ def save_job_from_api(job_data):
     else:
         new_job.job_type = 'full_time'  # Default to full time
     
-    # Set experience level
-    new_job.experience_level = 'mid'  # Default to mid level
+    # Set experience level if provided
+    if 'experience_level' in job_data:
+        new_job.experience_level = job_data.get('experience_level')
+    else:
+        new_job.experience_level = 'mid'  # Default to mid level
     
     # Set salary if provided
     if 'salary_min' in job_data:
@@ -600,3 +611,258 @@ def fetch_all_jobs():
     
     logger.info(f"Completed fetching jobs from all APIs. Total Created: {total_created}, Total Updated: {total_updated}")
     return all_saved_jobs, total_created, total_updated
+
+
+class AjiraJobsClient(JobApiClient):
+    """Client for scraping jobs from Ajira Portal Tanzania"""
+    
+    BASE_URL = "https://portal.ajira.go.tz/"
+    
+    def __init__(self, api_config):
+        super().__init__(api_config)
+        # Suppress only the InsecureRequestWarning from urllib3
+        warnings.simplefilter('ignore', InsecureRequestWarning)
+    
+    def fetch_jobs(self, **kwargs):
+        """Fetch jobs from Ajira Portal Tanzania"""
+        logger.info("Starting job scraping from Ajira Portal")
+        
+        jobs_data = []
+        
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        }
+        
+        # Create log entry for the main page request
+        log_entry = ApiRequestLog(
+            api_config=self.api_config,
+            endpoint=self.BASE_URL,
+            request_params={}
+        )
+        
+        try:
+            # Fetch the main page
+            response = requests.get(self.BASE_URL, headers=headers, verify=False)
+            response.raise_for_status()
+            
+            log_entry.response_status = response.status_code
+            soup = BeautifulSoup(response.text, 'html.parser')
+            
+            # Collect all category links
+            category_links = []
+            for link in soup.find_all('a'):
+                href = link.get('href')
+                if href and '/advert/index/' in href and href != '#':
+                    if not href.startswith('http'):
+                        href = self.BASE_URL.rstrip('/') + '/' + href.lstrip('/')
+                    category_links.append(href)
+            
+            log_entry.jobs_fetched = 0  # Will be updated later
+            
+            logger.info(f"Found {len(category_links)} category links on Ajira Portal")
+            
+            # Scrape jobs from each category
+            for cat_link in category_links:
+                try:
+                    cat_resp = requests.get(cat_link, headers=headers, verify=False)
+                    cat_resp.raise_for_status()
+                    cat_soup = BeautifulSoup(cat_resp.text, 'html.parser')
+                    tables = cat_soup.find_all('table')
+                    
+                    if tables:
+                        table = tables[0]
+                        rows = table.find_all('tr')
+                        for row in rows[1:]:  # skip header
+                            cells = row.find_all('td')
+                            if not cells:
+                                continue
+                                
+                            summary = cells[0].get_text(strip=True)
+                            closing_date_text = cells[1].get_text(strip=True) if len(cells) > 1 else ''
+                            
+                            # Find the More Details link
+                            more_link = row.find('a', string=lambda s: s and 'More Details' in s)
+                            job_url = ''
+                            if more_link and more_link.get('href'):
+                                job_url = more_link.get('href')
+                                if not job_url.startswith('http'):
+                                    job_url = self.BASE_URL.rstrip('/') + '/' + job_url.lstrip('/')
+                            
+                            # Parse job details
+                            job_data = {
+                                'summary': summary,
+                                'closing_date_text': closing_date_text,
+                                'job_url': job_url,
+                                'title': summary,  # Default to summary if specific title not found
+                                'employer': '',
+                                'description': '',
+                                'requirements': '',
+                                'external_id': job_url.split('/')[-1] if job_url else '',  # Extract ID from URL
+                                'source': 'ajira'  # Set the source explicitly
+                            }
+                            
+                            # Visit job details page if URL exists
+                            if job_url:
+                                try:
+                                    job_resp = requests.get(job_url, headers=headers, verify=False)
+                                    job_resp.raise_for_status()
+                                    job_soup = BeautifulSoup(job_resp.text, 'html.parser')
+                                    
+                                    # Try to extract job title
+                                    title_tag = job_soup.find(['h1', 'h2'])
+                                    if title_tag:
+                                        job_data['title'] = title_tag.get_text(strip=True)
+                                    
+                                    # Try to extract employer
+                                    employer_tag = job_soup.find(string=lambda s: s and 'Employer' in s)
+                                    if employer_tag:
+                                        parent = employer_tag.parent
+                                        if parent and parent.name == 'td':
+                                            next_sibling = parent.find_next_sibling('td')
+                                            if next_sibling:
+                                                job_data['employer'] = next_sibling.get_text(strip=True)
+                                        else:
+                                            job_data['employer'] = employer_tag.strip()
+                                    
+                                    # Try to extract description
+                                    desc_tag = job_soup.find('div', class_='panel-body')
+                                    if desc_tag:
+                                        job_data['description'] = desc_tag.get_text(strip=True)
+                                    else:
+                                        p_tag = job_soup.find('p')
+                                        if p_tag:
+                                            job_data['description'] = p_tag.get_text(strip=True)
+                                    
+                                    # Try to extract requirements
+                                    req_tag = job_soup.find(string=lambda s: s and 'Requirement' in s)
+                                    if req_tag:
+                                        req_parent = req_tag.parent
+                                        if req_parent:
+                                            job_data['requirements'] = req_parent.get_text(strip=True)
+                                except Exception as e:
+                                    logger.error(f"Error fetching job details from {job_url}: {e}")
+                            
+                            # If no external_id was found, generate one from the title
+                            if not job_data['external_id'] and job_data['title']:
+                                import hashlib
+                                job_data['external_id'] = hashlib.md5(job_data['title'].encode()).hexdigest()
+                                
+                            # Parse the job data to get a fully normalized job object
+                            normalized_job = self.parse_job(job_data)
+                            if normalized_job:
+                                jobs_data.append(normalized_job)
+                            else:
+                                logger.warning(f"Failed to normalize job data: {job_data}")
+                except Exception as e:
+                    logger.error(f"Error processing category {cat_link}: {e}")
+            
+            log_entry.jobs_fetched = len(jobs_data)
+            logger.info(f"Successfully scraped {len(jobs_data)} jobs from Ajira Portal")
+            
+        except Exception as e:
+            logger.error(f"Error scraping Ajira Portal: {e}")
+            log_entry.error_message = str(e)
+            log_entry.response_status = 0
+        finally:
+            log_entry.save()
+            
+            # Update API config request count
+            self.api_config.request_count += 1
+            self.api_config.last_fetch_date = timezone.now()
+            self.api_config.save(update_fields=['request_count', 'last_fetch_date'])
+        
+        return jobs_data
+    
+    def parse_job(self, job_data):
+        """Parse job data from Ajira Portal into normalized format"""
+        
+        # Parse closing date
+        closing_date = None
+        closing_date_text = job_data.get('closing_date_text', '')
+        
+        try:
+            # Try various date formats
+            date_formats = [
+                '%d/%m/%Y', '%d-%m-%Y', '%Y-%m-%d', 
+                '%d %b %Y', '%d %B %Y', '%B %d, %Y'
+            ]
+            
+            for fmt in date_formats:
+                try:
+                    closing_date = datetime.strptime(closing_date_text, fmt)
+                    break
+                except ValueError:
+                    continue
+            
+            # If no format works, set a default expiration of 30 days from now
+            if not closing_date:
+                closing_date = timezone.now() + timezone.timedelta(days=30)
+                logger.warning(f"Could not parse closing date: {closing_date_text}. Using default (30 days).")
+        except Exception as e:
+            logger.error(f"Error parsing closing date: {e}")
+            # Default to 30 days from now
+            closing_date = timezone.now() + timezone.timedelta(days=30)
+        
+        # Determine job type
+        job_type = 'full_time'  # Default
+        title_lower = job_data.get('title', '').lower()
+        
+        if 'part time' in title_lower or 'part-time' in title_lower:
+            job_type = 'part_time'
+        elif 'contract' in title_lower:
+            job_type = 'contract'
+        elif 'intern' in title_lower:
+            job_type = 'internship'
+        
+        # Determine experience level
+        experience_level = 'mid'  # Default
+        if 'senior' in title_lower or 'experienced' in title_lower:
+            experience_level = 'senior'
+        elif 'junior' in title_lower or 'entry' in title_lower:
+            experience_level = 'entry'
+        elif 'manager' in title_lower or 'director' in title_lower or 'executive' in title_lower:
+            experience_level = 'executive'
+        
+        # Make sure we have an external_id
+        external_id = job_data.get('external_id', '')
+        if not external_id:
+            # If no external_id, try to extract it from the URL
+            job_url = job_data.get('job_url', '')
+            if job_url:
+                external_id = job_url.split('/')[-1]
+            
+            # If still no external_id, create a hash from the title
+            if not external_id and job_data.get('title'):
+                import hashlib
+                external_id = hashlib.md5(job_data.get('title', '').encode()).hexdigest()
+        
+        # Ensure we have a company name
+        company_name = job_data.get('employer', '')
+        if not company_name:
+            title = job_data.get('title', '')
+            if 'Employer:' in title:
+                parts = title.split('Employer:')
+                if len(parts) > 1:
+                    company_parts = parts[1].split('More Details')
+                    company_name = company_parts[0].strip()
+        
+        if not company_name:
+            company_name = 'Ajira Portal Tanzania'
+        
+        # Create a normalized job data structure
+        normalized_data = {
+            'title': job_data.get('title', ''),
+            'description': job_data.get('description', ''),
+            'requirements': job_data.get('requirements', ''),
+            'responsibilities': '',  # Not available separately from description
+            'location': 'Tanzania',  # Default location
+            'job_type': job_type,
+            'experience_level': experience_level,
+            'application_deadline': closing_date,
+            'external_url': job_data.get('job_url', ''),
+            'external_id': external_id,
+            'company_name': company_name,
+            'source': 'ajira'  # Make sure this is always set
+        }
+        
+        return normalized_data

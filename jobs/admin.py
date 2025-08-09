@@ -1,9 +1,14 @@
 from django.contrib import admin
 from django.utils.translation import gettext_lazy as _
+from django.contrib import messages
+from django.http import HttpResponseRedirect
+from django.urls import path, reverse
+from django.template.response import TemplateResponse
 from .models import (
     Company, Industry, Skill, Job, JobApplication, 
     SavedJob, JobSearchPreference, ApiConfiguration, ApiRequestLog
 )
+from .api_integration import fetch_jobs_from_api
 
 @admin.register(Company)
 class CompanyAdmin(admin.ModelAdmin):
@@ -38,9 +43,9 @@ class SkillAdmin(admin.ModelAdmin):
 
 @admin.register(Job)
 class JobAdmin(admin.ModelAdmin):
-    list_display = ('title', 'company', 'location', 'job_type', 'salary_range', 'posted_date', 'is_active')
+    list_display = ('title', 'company', 'location', 'job_type', 'salary_range', 'posted_date', 'is_active', 'source')
     list_filter = ('is_active', 'is_featured', 'job_type', 'experience_level', 'is_remote', 'source')
-    search_fields = ('title', 'description', 'requirements', 'company__name', 'location')
+    search_fields = ('title', 'description', 'requirements', 'company__name', 'location', 'external_id')
     readonly_fields = ('views_count', 'applications_count', 'posted_date', 'created_by')
     filter_horizontal = ('skills',)
     date_hierarchy = 'posted_date'
@@ -62,7 +67,6 @@ class JobAdmin(admin.ModelAdmin):
         }),
         (_('API Information'), {
             'fields': ('source', 'external_id', 'external_url'),
-            'classes': ('collapse',)
         }),
     )
     
@@ -130,24 +134,59 @@ class JobSearchPreferenceAdmin(admin.ModelAdmin):
 
 @admin.register(ApiConfiguration)
 class ApiConfigurationAdmin(admin.ModelAdmin):
-    list_display = ('name', 'is_active', 'last_fetch_date', 'request_count', 'daily_limit')
+    list_display = ('name', 'is_active', 'last_fetch_date', 'request_count')
     list_filter = ('is_active', 'name')
-    readonly_fields = ('request_count', 'last_fetch_date', 'created_at', 'updated_at')
+    readonly_fields = ('last_fetch_date', 'request_count', 'created_at', 'updated_at')
     fieldsets = (
         (_('API Details'), {
-            'fields': ('name', 'is_active')
+            'fields': ('name', 'api_key', 'api_secret', 'additional_params')
         }),
-        (_('Credentials'), {
-            'fields': ('api_key', 'api_secret'),
+        (_('Status'), {
+            'fields': ('is_active', 'daily_limit', 'request_count', 'last_fetch_date')
+        }),
+        (_('Timestamps'), {
+            'fields': ('created_at', 'updated_at'),
             'classes': ('collapse',)
         }),
-        (_('Additional Settings'), {
-            'fields': ('additional_params', 'daily_limit')
-        }),
-        (_('Status & Statistics'), {
-            'fields': ('request_count', 'last_fetch_date', 'created_at', 'updated_at')
-        }),
     )
+    actions = ['run_api_fetch']
+    
+    def run_api_fetch(self, request, queryset):
+        """Admin action to manually fetch jobs from selected API configurations"""
+        total_created = 0
+        total_updated = 0
+        for config in queryset:
+            if not config.is_active:
+                self.message_user(
+                    request, 
+                    f"Skipped {config.name} - API configuration is not active", 
+                    level=messages.WARNING
+                )
+                continue
+                
+            try:
+                saved_jobs, created, updated = fetch_jobs_from_api(config.name)
+                total_created += created
+                total_updated += updated
+                self.message_user(
+                    request, 
+                    f"Successfully fetched jobs from {config.name}. Created: {created}, Updated: {updated}",
+                    level=messages.SUCCESS
+                )
+            except Exception as e:
+                self.message_user(
+                    request, 
+                    f"Error fetching jobs from {config.name}: {str(e)}", 
+                    level=messages.ERROR
+                )
+        
+        self.message_user(
+            request, 
+            f"Job fetch completed. Total created: {total_created}, Total updated: {total_updated}",
+            level=messages.INFO
+        )
+    
+    run_api_fetch.short_description = _("Fetch jobs from selected APIs")
 
 
 @admin.register(ApiRequestLog)

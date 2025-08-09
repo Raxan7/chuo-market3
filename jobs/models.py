@@ -221,7 +221,8 @@ class ApiConfiguration(models.Model):
                            choices=[('linkedin', 'LinkedIn'), 
                                    ('indeed', 'Indeed'), 
                                    ('adzuna', 'Adzuna'), 
-                                   ('brightermonday', 'BrighterMonday')])
+                                   ('brightermonday', 'BrighterMonday'),
+                                   ('ajira', 'Ajira Portal')])
     api_key = models.CharField(_('API Key/Client ID'), max_length=255)
     api_secret = models.CharField(_('API Secret/Client Secret'), max_length=255, blank=True)
     additional_params = models.JSONField(_('Additional Parameters'), default=dict, blank=True)
