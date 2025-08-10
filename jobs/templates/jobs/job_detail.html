@@ -17,7 +17,14 @@
                         {{ job.get_job_type_display }}
                     </span>
                     {% if job.source != 'internal' %}
-                    <span class="badge bg-secondary ms-2">{{ job.get_source_display }}</span>
+                    <span class="badge bg-secondary ms-2">
+                        {% if job.source == 'linkedin' %}LinkedIn
+                        {% elif job.source == 'indeed' %}Indeed
+                        {% elif job.source == 'adzuna' %}Adzuna
+                        {% elif job.source == 'brightermonday' %}BrighterMonday
+                        {% elif job.source == 'ajira' %}Ajira Portal
+                        {% else %}{{ job.source|capfirst }}{% endif %}
+                    </span>
                     {% endif %}
                 </div>
             </div>
@@ -48,7 +55,7 @@
                             </li>
                             {% endif %}
                             <li class="mb-2">
-                                <i class="bi bi-calendar me-2"></i> <strong>Posted:</strong> {{ job.created_at|date:"F j, Y" }}
+                                <i class="bi bi-calendar me-2"></i> <strong>Posted:</strong> {{ job.posted_date|date:"F j, Y" }}
                             </li>
                             <li class="mb-2">
                                 <i class="bi bi-hourglass-split me-2"></i> <strong>Application Deadline:</strong> 
@@ -62,8 +69,18 @@
                                 <i class="bi bi-globe me-2"></i> <strong>Source:</strong> 
                                 {% if job.source == 'internal' %}
                                     Chuo Market
+                                {% elif job.source == 'linkedin' %}
+                                    LinkedIn
+                                {% elif job.source == 'indeed' %}
+                                    Indeed
+                                {% elif job.source == 'adzuna' %}
+                                    Adzuna
+                                {% elif job.source == 'brightermonday' %}
+                                    BrighterMonday
+                                {% elif job.source == 'ajira' %}
+                                    Ajira Portal
                                 {% else %}
-                                    {{ job.get_source_display }}
+                                    {{ job.source|capfirst }}
                                 {% endif %}
                             </li>
                         </ul>
@@ -144,12 +161,18 @@
             
             {% if job.application_url %}
             <a href="{{ job.application_url }}" target="_blank" class="btn btn-primary">
-                Apply on {{ job.get_source_display }}
+                Apply on 
+                {% if job.source == 'linkedin' %}LinkedIn
+                {% elif job.source == 'indeed' %}Indeed
+                {% elif job.source == 'adzuna' %}Adzuna
+                {% elif job.source == 'brightermonday' %}BrighterMonday
+                {% elif job.source == 'ajira' %}Ajira Portal
+                {% else %}{{ job.source|capfirst }}{% endif %}
             </a>
             {% elif job.source == 'internal' %}
             <a href="{% url 'jobs:apply' job.id %}" class="btn btn-primary">Apply Now</a>
             {% else %}
-            <a href="{{ job.url }}" target="_blank" class="btn btn-primary">View Original Posting</a>
+            <a href="{{ job.external_url }}" target="_blank" class="btn btn-primary">View Original Posting</a>
             {% endif %}
         </div>
     </div>
@@ -167,7 +190,7 @@
                 <div class="card h-100">
                     <div class="card-body">
                         <h5 class="card-title">
-                            <a href="{% url 'jobs:detail' similar_job.id %}" class="text-decoration-none">
+                                <a href="{% url 'jobs:job_detail' similar_job.id %}" class="text-decoration-none">
                                 {{ similar_job.title }}
                             </a>
                         </h5>
@@ -175,7 +198,7 @@
                         <p class="card-text">{{ similar_job.description|safe|truncatewords:15 }}</p>
                         <div class="d-flex justify-content-between align-items-center mt-auto">
                             <small class="text-muted">{{ similar_job.created_at|timesince }} ago</small>
-                            <a href="{% url 'jobs:detail' similar_job.id %}" class="btn btn-sm btn-outline-primary">View</a>
+                                <a href="{% url 'jobs:job_detail' similar_job.id %}" class="btn btn-sm btn-outline-primary">View</a>
                         </div>
                     </div>
                 </div>
@@ -235,7 +258,7 @@
                 const jobId = this.getAttribute('data-job-id');
                 const csrf = this.getAttribute('data-csrf');
                 
-                fetch(`/jobs/toggle-saved/${jobId}/`, {
+                fetch(`/jobs/job/${jobId}/save/`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -245,14 +268,16 @@
                 .then(response => response.json())
                 .then(data => {
                     const icon = this.querySelector('i');
-                    if (data.saved) {
+                    if (data.status === 'success') {
                         icon.classList.remove('bi-bookmark');
                         icon.classList.add('bi-bookmark-fill');
-                        this.innerHTML = '<i class="bi bi-bookmark-fill me-1"></i> Saved';
+                        this.textContent = ' Saved';
+                        this.prepend(icon);
                     } else {
                         icon.classList.remove('bi-bookmark-fill');
                         icon.classList.add('bi-bookmark');
-                        this.innerHTML = '<i class="bi bi-bookmark me-1"></i> Save Job';
+                        this.textContent = ' Save Job';
+                        this.prepend(icon);
                     }
                 })
                 .catch(error => console.error('Error:', error));

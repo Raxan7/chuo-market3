@@ -210,12 +210,18 @@ def application_submitted(request, job_id):
 @require_POST
 def save_job(request, job_id):
     job = get_object_or_404(Job, id=job_id, is_active=True)
-    saved_job, created = SavedJob.objects.get_or_create(job=job, user=request.user)
+    saved_job = SavedJob.objects.filter(job=job, user=request.user).first()
     
-    if created:
-        messages.success(request, _('Job saved to your bookmarks.'))
+    if saved_job:
+        # If job was already saved, remove it
+        saved_job.delete()
+        created = False
+        messages.success(request, _('Job removed from your bookmarks.'))
     else:
-        messages.info(request, _('This job is already in your bookmarks.'))
+        # If job wasn't saved, save it
+        SavedJob.objects.create(job=job, user=request.user)
+        created = True
+        messages.success(request, _('Job saved to your bookmarks.'))
     
     if request.headers.get('x-requested-with') == 'XMLHttpRequest':
         return JsonResponse({'status': 'success', 'created': created})

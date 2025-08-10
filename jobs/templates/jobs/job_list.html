@@ -555,11 +555,11 @@
                     })
                     .then(response => response.json())
                     .then(data => {
-                        if (data.success) {
+                        if (data.status === 'success') {
                             // Update all instances of the save button for this job
                             document.querySelectorAll(`.toggle-saved-job[data-job-id="${jobId}"]`).forEach(btn => {
                                 const icon = btn.querySelector('i');
-                                if (data.saved) {
+                                if (data.created) {
                                     icon.classList.remove('bi-bookmark');
                                     icon.classList.add('bi-bookmark-fill');
                                     btn.classList.remove('btn-outline-secondary');
