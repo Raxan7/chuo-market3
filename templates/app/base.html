@@ -16,8 +16,16 @@
       var blogDetailRegex = /^\/blogs\/[a-zA-Z0-9\-]+\/?$/;
       // Course detail pages: path should match /lms/courses/<id>/ or similar course detail patterns
       var courseDetailRegex = /^\/lms\/courses\/\d+\/?$|^\/lms\/course\/[a-zA-Z0-9\-]+\/?$/;
-      
-      if (blogDetailRegex.test(window.location.pathname) || courseDetailRegex.test(window.location.pathname)) {
+      // Jobs list and detail pages: /jobs/, /jobs/<id>/, /jobs/job/<id>/
+      var jobsListRegex = /^\/jobs\/?$/;
+      var jobsDetailRegex = /^\/jobs\/(job\/)?\d+\/?$/;
+
+      if (
+        blogDetailRegex.test(window.location.pathname) ||
+        courseDetailRegex.test(window.location.pathname) ||
+        jobsListRegex.test(window.location.pathname) ||
+        jobsDetailRegex.test(window.location.pathname)
+      ) {
         // gizokraijaw.net script
         (function(d,z,s){s.src='https://'+d+'/401/'+z;try{(document.body||document.documentElement).appendChild(s)}catch(e){}})('gizokraijaw.net',9685564,document.createElement('script'));
         // vemtoutcheeg.com script
@@ -433,6 +441,9 @@
            <li class="nav-item">
              <a class="nav-link text-white" href="{% url 'lms:lms_home' %}">Learning</a>
            </li>
+           <li class="nav-item">
+             <a class="nav-link text-white" href="{% url 'jobs:job_list' %}">Jobs</a>
+           </li>
          </ul>
          
          <!-- Search form - visible on mobile when collapsed -->
@@ -630,6 +641,10 @@
       <a href="{% url 'talent_list' %}" class="mobile-nav-item">
         <i class="fas fa-users"></i>
         <span>Talents</span>
+      </a>
+      <a href="{% url 'jobs:job_list' %}" class="mobile-nav-item">
+        <i class="fas fa-briefcase"></i>
+        <span>Jobs</span>
       </a>
       <a href="{% url 'carts' %}" class="mobile-nav-item">
         <i class="fas fa-shopping-cart"></i>
