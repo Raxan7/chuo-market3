@@ -197,7 +197,7 @@
                         <h6 class="card-subtitle mb-2 text-muted">{{ similar_job.company.name }}</h6>
                         <p class="card-text">{{ similar_job.description|safe|truncatewords:15 }}</p>
                         <div class="d-flex justify-content-between align-items-center mt-auto">
-                            <small class="text-muted">{{ similar_job.created_at|timesince }} ago</small>
+                            <small class="text-muted">{{ similar_job.posted_date|timesince }} ago</small>
                                 <a href="{% url 'jobs:job_detail' similar_job.id %}" class="btn btn-sm btn-outline-primary">View</a>
                         </div>
                     </div>
