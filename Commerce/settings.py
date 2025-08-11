@@ -58,17 +58,14 @@ INSTALLED_APPS = [
     'webpush',  # For push notifications
     'rest_framework',  # For the API
     
-    # Put core first to ensure our fix migrations run before django_apscheduler
     'core',
-    # 'django_apscheduler', 
-    
     'talents',
     'chatbotapp',
     'lms',
     'landing',
     'affiliates',
     # 'promotions',
-    # 'jobs',  # Our new job portal app
+    'jobs',  # Our new job portal app
 ]
 
 # Site ID and domain for the sites framework

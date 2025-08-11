@@ -3,7 +3,7 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib.sitemaps.views import sitemap
-from core.sitemaps import ProductSitemap, BlogSitemap, TalentSitemap, StaticViewSitemap
+from core.sitemaps import ProductSitemap, BlogSitemap, TalentSitemap, JobSitemap, StaticViewSitemap
 from core.views import robots_txt
 
 # Define the sitemaps dictionary
@@ -11,6 +11,7 @@ sitemaps = {
     'products': ProductSitemap,
     'blogs': BlogSitemap,
     'talents': TalentSitemap,
+    'jobs': JobSitemap,
     'static': StaticViewSitemap,
 }
 
@@ -24,7 +25,7 @@ urlpatterns = [
     path('lms/', include('lms.urls')),
     path('webpush/', include('webpush.urls')),  # Web Push Notifications
     # path('promotions/', include('promotions.urls', namespace='promotions')),
-    # path('jobs/', include('jobs.urls')),
+    path('jobs/', include('jobs.urls')),
     
     # Sitemap and SEO URLs
     path('sitemap.xml', sitemap, {'sitemaps': sitemaps}, name='django.contrib.sitemaps.views.sitemap'),
