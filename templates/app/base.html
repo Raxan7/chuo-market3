@@ -418,81 +418,175 @@
     <!-- Remove the duplicate script that was previously added at the top -->
   </head>
   <body class="d-flex flex-column min-vh-100">
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-     <div class="container">
-       <a class="navbar-brand d-flex align-items-center" href="/">
-         <img src="{% static 'app/images/logo.png' %}" alt="Logo" class="me-2" style="width: 30px; height: 30px;">
-         ChuoSmart
-       </a>
-       <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
-         <span class="navbar-toggler-icon"></span>
-       </button>
-       <div class="collapse navbar-collapse" id="navbarSupportedContent">
-         <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-           <li class="nav-item">
-             <a class="nav-link text-white" href="{% url 'home' %}">Home</a>
-           </li>
-           <li class="nav-item">
-             <a class="nav-link text-white" href="{% url 'blog_list' %}">Blog</a>
-           </li>
-           <li class="nav-item">
-             <a class="nav-link text-white" href="{% url 'talent_list' %}">Talents</a>
-           </li>
-           <li class="nav-item">
-             <a class="nav-link text-white" href="{% url 'lms:lms_home' %}">Learning</a>
-           </li>
-           <li class="nav-item">
-             <a class="nav-link text-white" href="{% url 'jobs:job_list' %}">Jobs</a>
-           </li>
-         </ul>
-         
-         <!-- Search form - visible on mobile when collapsed -->
-         <form class="d-flex mb-2 mb-lg-0" method="post" action="{% url "search" %}">
-          {% csrf_token %}
-           <input class="form-control me-2" name="search" type="search" placeholder="Search" aria-label="Search">
-           <button class="btn btn-warning" type="submit">Search</button>
-         </form>
-         
-         <!-- User menu - visible on mobile when collapsed -->
-         <ul class="navbar-nav mb-2 mb-lg-0">
-            {% if is_authenticated %}
-            <li class="nav-item dropdown mx-2">
-              <a class="nav-link dropdown-toggle text-white" href="#" id="profileDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                {{request.user.username}}
+    <!-- Professional Modern Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm sticky-top">
+      <div class="container">
+        <!-- Brand Logo with improved styling -->
+        <a class="navbar-brand d-flex align-items-center" href="/" style="font-weight: 600;">
+          <img src="{% static 'app/images/logo.png' %}" alt="ChuoSmart Logo" class="me-2" style="width: 32px; height: 32px;">
+          <span class="d-none d-sm-inline">ChuoSmart</span>
+        </a>
+        <!-- Mobile Toggle Button -->
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavbar" aria-controls="mainNavbar" aria-expanded="false" aria-label="Toggle navigation">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <!-- Main Navbar Content -->
+        <div class="collapse navbar-collapse" id="mainNavbar">
+          <!-- Primary Navigation -->
+          <ul class="navbar-nav me-auto">
+            <li class="nav-item">
+              <a class="nav-link {% if request.path == '/' %}active fw-bold{% endif %}" href="{% url 'home' %}">
+                <i class="fas fa-home fa-fw me-1 d-lg-none"></i> Home
               </a>
-              <ul class="dropdown-menu" aria-labelledby="profileDropdown">
-                <li><a class="dropdown-item" href="{% url 'user_dashboard' %}"><i class="fas fa-th-large fa-fw me-1"></i> Dashboard</a></li>
-                <li><a class="dropdown-item" href="{% url 'profile' %}"><i class="fas fa-user fa-fw me-1"></i> Profile</a></li>
-                <li><a class="dropdown-item" href="{% url 'orders' %}"><i class="fas fa-shopping-bag fa-fw me-1"></i> Orders</a></li>
-                <li><a class="dropdown-item" href="{% url 'changepassword' %}"><i class="fas fa-key fa-fw me-1"></i> Change Password</a></li>
-                <li><a class="dropdown-item" href="{% url "logout" %}"><i class="fas fa-sign-out-alt fa-fw me-1"></i> Logout</a></li>
-              </ul>
             </li>
-            <li class="nav-item mx-2">
-             <a href="{% url 'carts' %}" class="nav-link text-white"><span class="badge bg-danger" id="cart-count">{{ cart_count }}</span> Cart </a>
-            </li>
-            <li class="nav-item dropdown mx-2">
-              <a class="nav-link dropdown-toggle text-white" href="#" id="addDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                <i class="fas fa-plus"></i> Add
+            <li class="nav-item">
+              <a class="nav-link {% if 'blog' in request.path %}active fw-bold{% endif %}" href="{% url 'blog_list' %}">
+                <i class="fas fa-newspaper fa-fw me-1 d-lg-none"></i> Blog
               </a>
-              <ul class="dropdown-menu" aria-labelledby="addDropdown">
-                <li><a class="dropdown-item" href="{% url 'add_product' %}">Add Product</a></li>
-                <li><a class="dropdown-item" href="{% url 'add_blog' %}">Add Blog</a></li>
-                <li><a class="dropdown-item" href="{% url 'post_talent' %}">Add Talent</a></li>
-              </ul>
             </li>
+            <li class="nav-item">
+              <a class="nav-link {% if 'talent' in request.path %}active fw-bold{% endif %}" href="{% url 'talent_list' %}">
+                <i class="fas fa-users fa-fw me-1 d-lg-none"></i> Talents
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link {% if 'lms' in request.path %}active fw-bold{% endif %}" href="{% url 'lms:lms_home' %}">
+                <i class="fas fa-graduation-cap fa-fw me-1 d-lg-none"></i> Learning
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link {% if 'jobs' in request.path %}active fw-bold{% endif %}" href="{% url 'jobs:job_list' %}">
+                <i class="fas fa-briefcase fa-fw me-1 d-lg-none"></i> Jobs
+              </a>
+            </li>
+          </ul>
+          <!-- Search Form - Enhanced Design -->
+          <form class="d-flex me-2 mb-2 mb-lg-0" method="post" action="{% url 'search' %}">
+            {% csrf_token %}
+            <div class="input-group">
+              <input class="form-control border-end-0" name="search" type="search" placeholder="Search..." aria-label="Search" style="min-width: 200px;">
+              <button class="btn btn-light border-start-0" type="submit">
+                <i class="fas fa-search"></i>
+              </button>
+            </div>
+          </form>
+          <!-- User Actions -->
+          <ul class="navbar-nav">
+            {% if user.is_authenticated %}
+              <!-- Cart with Badge -->
+              <li class="nav-item me-2">
+                <a href="{% url 'carts' %}" class="nav-link position-relative">
+                  <i class="fas fa-shopping-cart fa-fw"></i>
+                  <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="cart-count">
+                    {{ cart_count }}
+                    <span class="visually-hidden">items in cart</span>
+                  </span>
+                </a>
+              </li>
+              <!-- Add Content Dropdown -->
+              <li class="nav-item dropdown me-2">
+                <a class="nav-link dropdown-toggle" href="#" id="addDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                  <i class="fas fa-plus-circle fa-fw"></i> Create
+                </a>
+                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="addDropdown">
+                  <li><a class="dropdown-item" href="{% url 'add_product' %}"><i class="fas fa-box fa-fw me-2"></i> Product</a></li>
+                  <li><a class="dropdown-item" href="{% url 'add_blog' %}"><i class="fas fa-blog fa-fw me-2"></i> Blog Post</a></li>
+                  <li><a class="dropdown-item" href="{% url 'post_talent' %}"><i class="fas fa-star fa-fw me-2"></i> Talent</a></li>
+                </ul>
+              </li>
+              <!-- User Profile Dropdown -->
+              <li class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                  <span class="d-none d-lg-inline me-2">{{ request.user.username }}</span>
+                  <i class="fas fa-user-circle fa-fw"></i>
+                </a>
+                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                  <li><h6 class="dropdown-header">Welcome, {{ request.user.username }}</h6></li>
+                  <li><hr class="dropdown-divider"></li>
+                  <li><a class="dropdown-item" href="{% url 'user_dashboard' %}"><i class="fas fa-th-large fa-fw me-2"></i> Dashboard</a></li>
+                  <li><a class="dropdown-item" href="{% url 'profile' %}"><i class="fas fa-user fa-fw me-2"></i> Profile</a></li>
+                  <li><a class="dropdown-item" href="{% url 'orders' %}"><i class="fas fa-shopping-bag fa-fw me-2"></i> Orders</a></li>
+                  <li><hr class="dropdown-divider"></li>
+                  <li><a class="dropdown-item" href="{% url 'logout' %}"><i class="fas fa-sign-out-alt fa-fw me-2"></i> Logout</a></li>
+                </ul>
+              </li>
             {% else %}
-            <li class="nav-item mx-2">
-             <a href="{% url 'login' %}" class="nav-link text-white">Login</a>
-            </li>
-            <li class="nav-item mx-2">
-             <a href="{% url 'customerregistration' %}" class="nav-link text-white">Registration</a>
-            </li>
+              <!-- Login/Register Links -->
+              <li class="nav-item">
+                <a href="{% url 'login' %}" class="nav-link"><i class="fas fa-sign-in-alt fa-fw me-1"></i> Login</a>
+              </li>
+              <li class="nav-item ms-1">
+                <a href="{% url 'customerregistration' %}" class="btn btn-outline-light">Register</a>
+              </li>
             {% endif %}
           </ul>
-       </div>
-     </div>
+        </div>
+      </div>
     </nav>
+    <style>
+      /* Navbar Styling */
+      .navbar {
+        padding: 0.5rem 0;
+        transition: all 0.3s ease;
+      }
+      .navbar-brand {
+        font-size: 1.25rem;
+      }
+      .nav-link {
+        padding: 0.5rem 1rem;
+        border-radius: 0.25rem;
+        transition: all 0.2s ease;
+      }
+      .nav-link:hover, .nav-link:focus {
+        background-color: rgba(255,255,255,0.1);
+      }
+      .nav-link.active {
+        background-color: rgba(255,255,255,0.15);
+      }
+      .dropdown-menu {
+        border: none;
+        box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.15);
+      }
+      .dropdown-item {
+        padding: 0.5rem 1rem;
+        transition: all 0.2s ease;
+      }
+      .dropdown-item:hover, .dropdown-item:focus {
+        background-color: #f8f9fa;
+        color: #0d6efd;
+      }
+      /* Search input styling */
+      .input-group .form-control {
+        border-radius: 0.25rem 0 0 0.25rem;
+      }
+      .input-group .btn {
+        border-radius: 0 0.25rem 0.25rem 0;
+      }
+      /* Cart badge styling */
+      #cart-count {
+        font-size: 0.65rem;
+        padding: 0.25rem 0.4rem;
+      }
+      /* Mobile menu adjustments */
+      @media (max-width: 992px) {
+        .navbar-collapse {
+          padding: 1rem;
+          background-color: rgba(13, 110, 253, 0.98);
+          border-radius: 0 0 0.5rem 0.5rem;
+          margin-top: 0.5rem;
+        }
+        .nav-item {
+          margin: 0.25rem 0;
+        }
+        .nav-link {
+          padding: 0.75rem 1rem;
+        }
+        .dropdown-menu {
+          margin-left: 1rem;
+          width: calc(100% - 2rem);
+        }
+      }
+    </style>
     <!-- Message container for standard messages -->
     <div class="container mt-3">
       {% if messages %}
