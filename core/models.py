@@ -73,6 +73,9 @@ CATEGORY = (
 
 
 class Product(models.Model):
+    def get_absolute_url(self):
+        from django.urls import reverse
+        return reverse('product-detail', kwargs={'slug': self.slug})
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     title = models.CharField(max_length=255)
     slug = models.SlugField(max_length=255, unique=True, null=True, blank=True)

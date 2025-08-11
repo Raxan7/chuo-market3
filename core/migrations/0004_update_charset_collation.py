@@ -2,8 +2,8 @@ from django.db import migrations
 
 class Migration(migrations.Migration):
     """
-    This migration sets the correct character set and collation for all tables
-    to prevent "Specified key was too long" errors.
+    This is a replacement migration for charset/collation settings
+    that maintains the migration history chain
     """
     
     dependencies = [
@@ -11,12 +11,9 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        # No-op operation
         migrations.RunSQL(
-            sql="""
-            ALTER DATABASE CHARACTER SET utf8 COLLATE utf8_general_ci;
-            """,
-            reverse_sql="""
-            -- No reverse SQL needed
-            """
+            sql="SELECT 1;",
+            reverse_sql="SELECT 1;"
         ),
     ]
