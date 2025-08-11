@@ -2,9 +2,9 @@ aiohappyeyeballs==2.6.1
 aiohttp==3.12.14
 aiosignal==1.4.0
 annotated-types==0.7.0
-APScheduler==3.11.0
 asgiref==3.8.1
 attrs==25.3.0
+beautifulsoup4==4.12.3
 cachetools==5.5.2
 certifi==2025.1.31
 cffi==1.17.1
@@ -12,7 +12,6 @@ charset-normalizer==3.4.1
 cryptography==45.0.5
 dj-database-url==2.3.0
 Django==4.2.20
-django-apscheduler==0.7.0
 django-crispy-forms==2.1
 django-markdown-deux==1.0.6
 django-model-utils==4.4.0
@@ -37,7 +36,9 @@ idna==3.10
 Markdown==3.5.2
 markdown2==2.5.3
 multidict==6.6.3
+numpy==1.26.4
 packaging==24.2
+pandas==2.2.2
 pdfkit==1.0.0
 pillow==10.2.0
 propcache==0.3.2
@@ -52,11 +53,14 @@ pydantic==2.10.6
 pydantic_core==2.27.2
 PyMySQL==1.1.1
 pyparsing==3.2.1
+python-dateutil==2.9.0
 python-dotenv==1.0.1
+pytz==2024.1
 pywebpush==2.0.3
 requests==2.32.3
 rsa==4.9
 six==1.17.0
+soupsieve==2.5
 sqlparse==0.5.0
 tqdm==4.67.1
 typing_extensions==4.12.2
