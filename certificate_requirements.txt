@@ -1,0 +1,14 @@
+# Certificate Generation Requirements
+
+# PDF Generation
+reportlab==4.0.5            # PDF generation library
+qrcode==7.4.2               # For QR code generation in certificates
+weasyprint==60.1            # Alternative HTML to PDF renderer
+
+# Django Extensions
+django-cleanup==8.0.0       # Auto-delete files when model is deleted
+
+# Optional - Fonts
+# (Download separately and place in static/fonts/)
+# - Montserrat: https://fonts.google.com/specimen/Montserrat
+# - Open Sans: https://fonts.google.com/specimen/Open+Sans
