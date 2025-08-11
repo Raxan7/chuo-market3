@@ -3,13 +3,13 @@
 
 {% block job_content %}
 <div class="card mb-4">
-    <div class="card-header bg-primary text-white">
+    <div class="card-header bg-primary text-white d-flex align-items-center">
+        <i class="fas fa-sliders-h me-2"></i>
         <h5 class="mb-0">Job Preferences</h5>
     </div>
     <div class="card-body">
         <form method="post">
             {% csrf_token %}
-            
             {% if form.non_field_errors %}
             <div class="alert alert-danger">
                 {% for error in form.non_field_errors %}
@@ -17,9 +17,8 @@
                 {% endfor %}
             </div>
             {% endif %}
-            
             <div class="mb-4">
-                <h5>Basic Preferences</h5>
+                <h5><i class="fas fa-briefcase me-2 text-primary"></i>Basic Preferences</h5>
                 <div class="row g-3">
                     <!-- Job Type -->
                     <div class="col-md-6 mb-3">
@@ -34,7 +33,6 @@
                         {% endif %}
                         <div class="form-text">Select all job types you're interested in</div>
                     </div>
-                    
                     <!-- Categories -->
                     <div class="col-md-6 mb-3">
                         <label for="{{ form.preferred_categories.id_for_label }}" class="form-label">Job Categories</label>
@@ -48,7 +46,6 @@
                         {% endif %}
                         <div class="form-text">Select all categories you're interested in</div>
                     </div>
-                    
                     <!-- Location -->
                     <div class="col-md-6 mb-3">
                         <label for="{{ form.preferred_locations.id_for_label }}" class="form-label">Preferred Locations</label>
@@ -62,7 +59,6 @@
                         {% endif %}
                         <div class="form-text">Enter locations where you'd like to work (comma separated)</div>
                     </div>
-                    
                     <!-- Remote -->
                     <div class="col-md-6 mb-3">
                         <label class="form-label">Remote Work</label>
@@ -82,9 +78,8 @@
                     </div>
                 </div>
             </div>
-            
             <div class="mb-4">
-                <h5>Salary & Experience</h5>
+                <h5><i class="fas fa-money-bill-wave me-2 text-success"></i>Salary & Experience</h5>
                 <div class="row g-3">
                     <!-- Minimum Salary -->
                     <div class="col-md-6 mb-3">
@@ -98,7 +93,6 @@
                         </div>
                         {% endif %}
                     </div>
-                    
                     <!-- Experience Level -->
                     <div class="col-md-6 mb-3">
                         <label for="{{ form.experience_level.id_for_label }}" class="form-label">Experience Level</label>
@@ -113,14 +107,16 @@
                     </div>
                 </div>
             </div>
-            
             <div class="mb-4">
-                <h5>Skills & Keywords</h5>
+                <h5><i class="fas fa-lightbulb me-2 text-warning"></i>Skills & Keywords</h5>
                 <div class="row g-3">
                     <!-- Skills -->
                     <div class="col-md-12 mb-3">
                         <label for="{{ form.skills.id_for_label }}" class="form-label">Skills</label>
-                        {{ form.skills }}
+                        <div class="input-group">
+                            {{ form.skills }}
+                            <span class="input-group-text" id="skills-counter">0</span>
+                        </div>
                         {% if form.skills.errors %}
                         <div class="invalid-feedback d-block">
                             {% for error in form.skills.errors %}
@@ -130,11 +126,13 @@
                         {% endif %}
                         <div class="form-text">Select skills that you have and want to use in your next job</div>
                     </div>
-                    
                     <!-- Keywords -->
                     <div class="col-md-12 mb-3">
                         <label for="{{ form.keywords.id_for_label }}" class="form-label">Keywords</label>
-                        {{ form.keywords }}
+                        <div class="input-group">
+                            {{ form.keywords }}
+                            <span class="input-group-text" id="keywords-counter">0</span>
+                        </div>
                         {% if form.keywords.errors %}
                         <div class="invalid-feedback d-block">
                             {% for error in form.keywords.errors %}
@@ -143,12 +141,12 @@
                         </div>
                         {% endif %}
                         <div class="form-text">Enter keywords related to your desired job (comma separated)</div>
+                        <div class="form-text">Max 100 characters</div>
                     </div>
                 </div>
             </div>
-            
             <div class="mb-4">
-                <h5>Notification Settings</h5>
+                <h5><i class="fas fa-bell me-2 text-info"></i>Notification Settings</h5>
                 <div class="row g-3">
                     <!-- Email Notifications -->
                     <div class="col-md-12">
@@ -165,7 +163,6 @@
                             </div>
                             {% endif %}
                         </div>
-                        
                         <div class="form-check">
                             {{ form.notify_application_updates }}
                             <label class="form-check-label" for="{{ form.notify_application_updates.id_for_label }}">
@@ -182,12 +179,14 @@
                     </div>
                 </div>
             </div>
-            
             <hr class="my-4">
-            
             <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                <a href="{% url 'jobs:dashboard' %}" class="btn btn-outline-secondary me-md-2">Cancel</a>
-                <button type="submit" class="btn btn-primary">Save Preferences</button>
+                <a href="{% url 'jobs:my_applications' %}" class="btn btn-outline-secondary me-md-2">Cancel</a>
+                <button type="reset" class="btn btn-light me-md-2">Reset</button>
+                <button type="submit" class="btn btn-primary position-relative" id="saveBtn">
+                    <span id="saveBtnSpinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                    Save Preferences
+                </button>
             </div>
         </form>
     </div>
@@ -332,4 +331,35 @@
         </div>
     </div>
 </div>
+
+<script>
+// Live character counter for keywords and skills
+  document.addEventListener('DOMContentLoaded', function() {
+    var keywordsInput = document.getElementById('id_keywords');
+    var keywordsCounter = document.getElementById('keywords-counter');
+    if (keywordsInput && keywordsCounter) {
+      keywordsInput.addEventListener('input', function() {
+        keywordsCounter.textContent = keywordsInput.value.length;
+      });
+      keywordsCounter.textContent = keywordsInput.value.length;
+    }
+    var skillsInput = document.getElementById('id_skills');
+    var skillsCounter = document.getElementById('skills-counter');
+    if (skillsInput && skillsCounter) {
+      skillsInput.addEventListener('input', function() {
+        skillsCounter.textContent = skillsInput.value.length;
+      });
+      skillsCounter.textContent = skillsInput.value.length;
+    }
+    // Show spinner on save
+    var saveBtn = document.getElementById('saveBtn');
+    var saveBtnSpinner = document.getElementById('saveBtnSpinner');
+    if (saveBtn && saveBtnSpinner) {
+      saveBtn.form && saveBtn.form.addEventListener('submit', function() {
+        saveBtnSpinner.classList.remove('d-none');
+        saveBtn.disabled = true;
+      });
+    }
+  });
+</script>
 {% endblock %}

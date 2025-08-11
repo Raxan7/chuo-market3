@@ -1,32 +1,19 @@
 import logging
 from django.conf import settings
-from apscheduler.schedulers.background import BackgroundScheduler
-from apscheduler.triggers.interval import IntervalTrigger
-from django_apscheduler.jobstores import DjangoJobStore
+# APScheduler has been removed
 from django.core.management.base import BaseCommand
 from jobs.api_integration import fetch_all_jobs
 
 logger = logging.getLogger(__name__)
 
-def start_scheduler():
-    """Start the background scheduler to fetch jobs periodically"""
-    scheduler = BackgroundScheduler()
-    scheduler.add_jobstore(DjangoJobStore(), "default")
-    
-    # Schedule job to fetch from APIs every 6 hours
-    scheduler.add_job(
-        fetch_all_jobs,
-        trigger=IntervalTrigger(hours=6),
-        id="fetch_jobs",
-        max_instances=1,
-        replace_existing=True
-    )
-    
-    # Start the scheduler
+def fetch_jobs_manually():
+    """
+    Manual function to fetch jobs - can be called from a management command
+    or view as needed. APScheduler has been removed.
+    """
     try:
-        logger.info("Starting scheduler...")
-        scheduler.start()
+        logger.info("Manually fetching jobs...")
+        fetch_all_jobs()
+        logger.info("Job fetch completed successfully")
     except Exception as e:
-        logger.error(f"Error starting scheduler: {e}")
-        
-    return scheduler
+        logger.error(f"Error fetching jobs: {e}")

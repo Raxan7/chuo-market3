@@ -7,15 +7,7 @@ class JobsConfig(AppConfig):
     
     def ready(self):
         """
-        Initialize scheduler when the app is ready.
-        This will start the background job to fetch jobs from APIs periodically.
+        Initialize job functionality when the app is ready.
+        Note: APScheduler has been removed from the project.
         """
-        # Import here to avoid AppRegistryNotReady exception
-        try:
-            from .scheduler import start_scheduler
-            start_scheduler()
-        except ImportError:
-            # If django-apscheduler is not installed, log a warning
-            import logging
-            logger = logging.getLogger(__name__)
-            logger.warning("django-apscheduler is not installed. Automatic job fetching will not work.")
+        pass

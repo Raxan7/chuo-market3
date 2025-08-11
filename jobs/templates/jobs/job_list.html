@@ -1,13 +1,118 @@
 {% extends "jobs/base.html" %}
 {% load static %}
 
-{% block job_content %}
-<div class="row">
-  <!-- Sidebar Filters now in base template -->
-  <!-- Main Job List -->
-  <div class="col-md-9">
-    <!-- Jobs Found and Sorting -->
+{% block job_sidebar %}
+<!-- Sidebar Filters -->
+<div class="card mb-4">
+  <div class="card-body">
+    <form method="get" action="{% url 'jobs:job_list' %}" id="jobSearchForm">
+      <div class="mb-3">
+        <label class="form-label">Keywords</label>
+        <div class="input-group">
+          <span class="input-group-text"><i class="bi bi-search"></i></span>
+          <input type="text" class="form-control" name="keywords" placeholder="Job title, skills, or keywords" value="{{ search_form.keywords.value|default:'' }}">
+        </div>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Location</label>
+        <div class="input-group">
+          <span class="input-group-text"><i class="bi bi-geo-alt"></i></span>
+          <input type="text" class="form-control" name="location" placeholder="City or region" value="{{ search_form.location.value|default:'' }}">
+        </div>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Job Type</label>
+        <select class="form-select" name="job_type">
+          <option value="">All Job Types</option>
+          {% for value, label in search_form.fields.job_type.choices %}
+            <option value="{{ value }}" {% if value in search_form.job_type.value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Industry</label>
+        <select class="form-select" name="industry">
+          <option value="">All Industries</option>
+          {% for industry in industries %}
+            <option value="{{ industry.id }}" {% if search_form.industry.value == industry.id %}selected{% endif %}>{{ industry.name }} ({{ industry.job_count }})</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Experience Level</label>
+        <select class="form-select" name="experience_level">
+          <option value="">Any Experience</option>
+          {% for value, label in search_form.fields.experience_level.choices %}
+            <option value="{{ value }}" {% if value in search_form.experience_level.value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Salary Range</label>
+        <div class="input-group">
+          <input type="number" class="form-control" name="salary_min" placeholder="Min" value="{{ search_form.salary_min.value|default:'' }}">
+          <span class="input-group-text">TZS</span>
+        </div>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Date Posted</label>
+        <select class="form-select" name="posted_since">
+          <option value="">Any Time</option>
+          {% for value, label in search_form.fields.posted_since.choices %}
+            {% if value %}
+              <option value="{{ value }}" {% if search_form.posted_since.value == value %}selected{% endif %}>{{ label }}</option>
+            {% endif %}
+          {% endfor %}
+        </select>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Job Options</label>
+        <div class="d-flex flex-column gap-2">
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="remote_only" id="remoteOnly" {% if search_form.remote_only.value %}checked{% endif %}>
+            <label class="form-check-label" for="remoteOnly">Remote jobs only</label>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="is_featured" id="featuredOnly" {% if search_form.is_featured.value %}checked{% endif %}>
+            <label class="form-check-label" for="featuredOnly">Featured jobs only</label>
+          </div>
+        </div>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Job Sources</label>
+        <div class="d-flex flex-wrap gap-2">
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="source_internal" checked>
+            <label class="form-check-label" for="source_internal">Chuo Market</label>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="source_linkedin" checked>
+            <label class="form-check-label" for="source_linkedin">LinkedIn</label>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="source_indeed" checked>
+            <label class="form-check-label" for="source_indeed">Indeed</label>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="source_adzuna" checked>
+            <label class="form-check-label" for="source_adzuna">Adzuna</label>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="source_brightermonday" checked>
+            <label class="form-check-label" for="source_brightermonday">BrighterMonday</label>
+          </div>
+        </div>
+      </div>
+      <div class="d-grid gap-2 mt-4">
+        <a href="{% url 'jobs:job_list' %}" class="btn btn-outline-secondary">Clear Filters</a>
+        <button type="submit" class="btn btn-primary">Apply Filters</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
 
+{% block job_content %}
 <!-- Jobs Found and Sorting -->
 <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
@@ -204,7 +309,7 @@
 <div id="gridView" class="job-view" style="display: none;">
     <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4 mb-4">
         {% if page_obj.object_list %}
-            {% for job in jobs %}
+            {% for job in page_obj.object_list %}
             <div class="col" data-source="{{ job.source|default:'internal' }}">
                 <div class="card h-100">
                     <div class="card-body">
