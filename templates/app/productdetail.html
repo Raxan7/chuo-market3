@@ -114,7 +114,7 @@
         </form>
       {% endif %}
       <form action="https://wa.me/{{ customer.phone_number }}" method="get" target="_blank" class="d-inline">
-        <input type="hidden" name="text" value="Hello, I am interested in your product '{{ product.title }}' listed at TSh {{ product.price }}. Please let me know if it is still available.">
+        <input type="hidden" name="text" value="Hello, I am interested in your product '{{ product.title }}' listed at TSh {{ product.price }}. Please let me know if it is still available.\nListed at chuosmart.com">
         <button type="submit" class="btn btn-danger shadow px-5 py-2">Buy Now</button>
       </form>
       <h5 class="mt-5">Available Offers</h5>
