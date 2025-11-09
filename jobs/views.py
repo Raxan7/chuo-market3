@@ -25,6 +25,10 @@ from .forms import (
     CompanyForm, JobForm, JobApplicationForm, JobSearchForm, 
     JobSearchPreferenceForm, ApplicationStatusUpdateForm, CompanyVerificationRequestForm
 )
+from .api_integration import fetch_all_jobs
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Home view for the jobs app
 def jobs_home(request):
@@ -562,3 +566,45 @@ def request_company_verification(request, company_id):
         'company': company,
     }
     return render(request, 'jobs/request_verification.html', context)
+
+
+# Maintenance endpoint: deactivate expired jobs and fetch new ones
+def maintenance_update_jobs(request):
+    """Endpoint to be pinged (e.g., every 6 hours) to deactivate expired jobs
+    and fetch new jobs from configured APIs. Returns simple JSON success/failure.
+
+    Security: requires a secret token. Provide it either via GET param `token`
+    or the header `X-JOBS-MAINTENANCE-TOKEN`. The token should be set in
+    Django settings as JOBS_MAINTENANCE_TOKEN.
+    """
+    # Check token
+    token = request.GET.get('token') or request.headers.get('X-JOBS-MAINTENANCE-TOKEN')
+    expected = getattr(settings, 'JOBS_MAINTENANCE_TOKEN', None)
+    if not expected or token != expected:
+        logger.warning('Unauthorized maintenance_update_jobs attempt')
+        return JsonResponse({'status': 'failure', 'reason': 'unauthorized'}, status=403)
+
+    try:
+        now = timezone.now()
+        # Deactivate jobs past application_deadline
+        expired_qs = Job.objects.filter(is_active=True, application_deadline__lt=now)
+        expired_count = expired_qs.update(is_active=False)
+
+        # Optionally, ensure jobs manually marked inactive remain so
+        inactive_count = Job.objects.filter(is_active=False).count()
+
+        # Fetch new jobs from external APIs
+        saved_jobs, created_count, updated_count = fetch_all_jobs()
+
+        response = {
+            'status': 'success',
+            'expired_deactivated': expired_count,
+            'inactive_total': inactive_count,
+            'jobs_fetched': len(saved_jobs),
+            'jobs_created': created_count,
+            'jobs_updated': updated_count,
+        }
+        return JsonResponse(response)
+    except Exception as e:
+        logger.exception('Error running maintenance_update_jobs')
+        return JsonResponse({'status': 'failure', 'reason': str(e)}, status=500)

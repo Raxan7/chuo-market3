@@ -39,4 +39,6 @@ urlpatterns = [
     
     # User preferences
     path('preferences/', views.job_preferences, name='job_preferences'),
+    # Maintenance endpoint for scheduled fetch/deactivate (used by uptime robot)
+    path('update-jobs/', views.maintenance_update_jobs, name='maintenance_update_jobs'),
 ]
