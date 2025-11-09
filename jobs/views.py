@@ -25,7 +25,8 @@ from .forms import (
     CompanyForm, JobForm, JobApplicationForm, JobSearchForm, 
     JobSearchPreferenceForm, ApplicationStatusUpdateForm, CompanyVerificationRequestForm
 )
-from .api_integration import fetch_all_jobs
+from .api_integration import fetch_all_jobs, fetch_jobs_from_api
+from .models import ApiRequestLog
 import logging
 
 logger = logging.getLogger(__name__)
@@ -593,17 +594,64 @@ def maintenance_update_jobs(request):
         # Optionally, ensure jobs manually marked inactive remain so
         inactive_count = Job.objects.filter(is_active=False).count()
 
-        # Fetch new jobs from external APIs
+        # Ensure there's at least one active API config (Ajira scraper doesn't need credentials)
+        api_configs = ApiConfiguration.objects.filter(is_active=True)
+        if not api_configs.exists():
+            # Create a minimal Ajira config so fetch_all_jobs has something to call
+            try:
+                ApiConfiguration.objects.create(name='ajira', api_key='ajira-scraper', api_secret='', is_active=True)
+                logger.info('Created fallback Ajira ApiConfiguration')
+            except Exception:
+                logger.exception('Failed to create fallback Ajira ApiConfiguration')
+        # First attempt: generic fetch from all APIs
         saved_jobs, created_count, updated_count = fetch_all_jobs()
 
-        response = {
-            'status': 'success',
+        details = {
             'expired_deactivated': expired_count,
             'inactive_total': inactive_count,
             'jobs_fetched': len(saved_jobs),
             'jobs_created': created_count,
             'jobs_updated': updated_count,
+            'per_api': [],
         }
+
+        # If no jobs were fetched, try fetching per active ApiConfiguration to surface errors and act as fallback
+        if len(saved_jobs) == 0:
+            api_configs = ApiConfiguration.objects.filter(is_active=True)
+            for cfg in api_configs:
+                api_result = {'api': cfg.name, 'created': 0, 'updated': 0, 'fetched': 0, 'error': None}
+                try:
+                    api_saved, api_created, api_updated = fetch_jobs_from_api(cfg.name)
+                    api_result['created'] = api_created
+                    api_result['updated'] = api_updated
+                    api_result['fetched'] = len(api_saved)
+                    # attempt to grab last ApiRequestLog for this config
+                    last_log = ApiRequestLog.objects.filter(api_config=cfg).order_by('-request_date').first()
+                    if last_log:
+                        api_result['last_log'] = {
+                            'endpoint': last_log.endpoint,
+                            'response_status': last_log.response_status,
+                            'jobs_fetched': last_log.jobs_fetched,
+                            'jobs_created': last_log.jobs_created,
+                            'error_message': last_log.error_message,
+                        }
+                except Exception as e:
+                    logger.exception(f"Error fetching jobs from API {cfg.name}")
+                    api_result['error'] = str(e)
+                details['per_api'].append(api_result)
+
+            # If there were no active ApiConfigurations or still zero results, try Ajira explicitly as a last resort
+            if not api_configs.exists() or all(p['fetched'] == 0 for p in details['per_api']):
+                try:
+                    ajira_saved, ajira_created, ajira_updated = fetch_jobs_from_api('ajira')
+                    details['ajira_fetched'] = len(ajira_saved)
+                    details['ajira_created'] = ajira_created
+                    details['ajira_updated'] = ajira_updated
+                except Exception as e:
+                    logger.exception('Error running fallback Ajira fetch')
+                    details['ajira_error'] = str(e)
+
+        response = {'status': 'success', **details}
         return JsonResponse(response)
     except Exception as e:
         logger.exception('Error running maintenance_update_jobs')
