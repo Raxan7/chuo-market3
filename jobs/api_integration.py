@@ -446,7 +446,11 @@ def get_api_client(api_name):
         elif api_name == 'brightermonday':
             return BrighterMondayJobsClient(api_config)
         elif api_name == 'ajira':
-            return AjiraJobsClient(api_config)
+            # Prefer GraphQL client when available; fallback to HTML scraper
+            try:
+                return AjiraGraphQLClient(api_config)
+            except Exception:
+                return AjiraJobsClient(api_config)
         else:
             logger.error(f"Unknown API name: {api_name}")
             return None
@@ -644,76 +648,91 @@ class AjiraJobsClient(JobApiClient):
             log_entry.response_status = response.status_code
             response.raise_for_status()
             soup = BeautifulSoup(response.text, 'html.parser')
-            # Step 1: Collect all category links
-            category_links = []
-            for link in soup.find_all('a'):
-                href = link.get('href')
-                if href and '/advert/index/' in href and href != '#':
+            # Step 1: Collect candidate links (categories or direct job links). Be permissive - site structure may change.
+            candidate_links = set()
+            for a in soup.find_all('a', href=True):
+                href = a.get('href')
+                text = (a.get_text(' ', strip=True) or '').lower()
+                if not href or href == '#':
+                    continue
+                href_l = href.lower()
+                # look for patterns that indicate category listing or job details
+                if any(p in href_l for p in ['/advert', '/advert/index', '/advertisement', '/vacancy', '/job', '/jobs']) or 'more details' in text or 'view details' in text:
+                    # normalize relative urls
                     if not href.startswith('http'):
-                        href = self.BASE_URL.rstrip('/') + '/' + href.lstrip('/')
-                    category_links.append(href)
-            logger.info(f"Found {len(category_links)} category links on Ajira Portal")
-            # Step 2: Scrape jobs from each category
-            for cat_link in category_links:
-                logger.info(f"Scraping category: {cat_link}")
+                        if href.startswith('/'):
+                            href = self.BASE_URL.rstrip('/') + href
+                        else:
+                            href = self.BASE_URL.rstrip('/') + '/' + href.lstrip('/')
+                    candidate_links.add(href)
+
+            candidate_links = list(candidate_links)
+            logger.info(f"Found {len(candidate_links)} candidate links on Ajira Portal")
+
+            # Step 2: Scrape jobs from each candidate link (either category pages or direct job pages)
+            for cat_link in candidate_links:
+                logger.info(f"Scraping candidate link: {cat_link}")
                 try:
-                    cat_resp = requests.get(cat_link, headers=headers, verify=False)
+                    cat_resp = requests.get(cat_link, headers=headers, verify=False, timeout=20)
                     cat_resp.raise_for_status()
                     cat_soup = BeautifulSoup(cat_resp.text, 'html.parser')
+
+                    # Prefer table rows if present (older layout), else look for lists or direct job anchors
                     tables = cat_soup.find_all('table')
                     if tables:
                         table = tables[0]
                         rows = table.find_all('tr')
-                        for i, row in enumerate(rows[1:]):  # skip header
+                        for row in rows[1:]:  # skip header
                             cells = row.find_all('td')
                             if not cells:
                                 continue
                             summary_full = cells[0].get_text(strip=True)
                             closing_date = cells[1].get_text(strip=True) if len(cells) > 1 else ''
-                            # Find the More Details link
-                            more_link = row.find('a', string=lambda s: s and 'More Details' in s)
+                            more_link = row.find('a', string=lambda s: s and 'more details' in s.lower())
                             job_url = ''
                             if more_link and more_link.get('href'):
                                 job_url = more_link.get('href')
                                 if not job_url.startswith('http'):
-                                    job_url = self.BASE_URL.rstrip('/') + '/' + job_url.lstrip('/')
-                            # Remove 'More Details' from summary_full if present
+                                    if job_url.startswith('/'):
+                                        job_url = self.BASE_URL.rstrip('/') + job_url
+                                    else:
+                                        job_url = self.BASE_URL.rstrip('/') + '/' + job_url.lstrip('/')
                             summary_clean = summary_full.replace('More Details', '').strip()
-                            # Try to split summary_clean into job_post and employer
                             job_post = summary_clean
                             employer = ''
-                            if 'Employer:' in summary_clean:
+                            if 'employer:' in summary_clean.lower():
                                 parts = summary_clean.split('Employer:')
                                 job_post = parts[0].strip().rstrip(',')
-                                employer = parts[1].strip().rstrip(',')
-                            # Visit the job details page and extract details
+                                employer = parts[1].strip().rstrip(',') if len(parts) > 1 else ''
+
+                            # Fetch details if we have a job URL
                             job_title = ''
                             description = ''
                             requirements = ''
-                            try:
-                                if job_url:
-                                    job_resp = requests.get(job_url, headers=headers, verify=False)
+                            if job_url:
+                                try:
+                                    job_resp = requests.get(job_url, headers=headers, verify=False, timeout=20)
                                     job_resp.raise_for_status()
                                     job_soup = BeautifulSoup(job_resp.text, 'html.parser')
-                                    # Try to extract job title, description, requirements
-                                    title_tag = job_soup.find(['h1', 'h2'])
+                                    title_tag = job_soup.find(['h1', 'h2']) or job_soup.find('title')
                                     if title_tag:
                                         job_title = title_tag.get_text(strip=True)
-                                    desc_tag = job_soup.find('div', class_='panel-body')
+                                    desc_tag = job_soup.find('div', class_='panel-body') or job_soup.find('div', class_='job-desc') or job_soup.find('div', id='job-description')
                                     if desc_tag:
-                                        description = desc_tag.get_text(strip=True)
+                                        description = desc_tag.get_text(' ', strip=True)
                                     else:
                                         p_tag = job_soup.find('p')
                                         if p_tag:
-                                            description = p_tag.get_text(strip=True)
-                                    req_tag = job_soup.find(string=lambda s: s and 'Requirement' in s)
+                                            description = p_tag.get_text(' ', strip=True)
+                                    req_tag = job_soup.find(string=lambda s: s and 'requirement' in s.lower()) or job_soup.find('ul')
                                     if req_tag:
-                                        req_parent = req_tag.parent
-                                        if req_parent:
-                                            requirements = req_parent.get_text(strip=True)
-                            except Exception as e:
-                                logger.warning(f"Error fetching job details: {e}")
-                            # Compose job_data dict for normalization
+                                        if hasattr(req_tag, 'get_text'):
+                                            requirements = req_tag.get_text(' ', strip=True)
+                                        else:
+                                            requirements = str(req_tag)
+                                except Exception as e:
+                                    logger.warning(f"Error fetching job details for {job_url}: {e}")
+
                             job_data = {
                                 'title': job_title or job_post,
                                 'employer': employer,
@@ -723,16 +742,70 @@ class AjiraJobsClient(JobApiClient):
                                 'job_url': job_url,
                                 'external_id': job_url.split('/')[-1] if job_url else '',
                             }
-                            # Normalize and add to jobs_data
                             normalized_job = self.parse_job(job_data)
                             if normalized_job:
                                 jobs_data.append(normalized_job)
                             else:
                                 logger.warning(f"Failed to normalize job data: {job_data}")
                     else:
-                        logger.info("No table found on this category page.")
+                        # No table: look for anchors that look like job detail links and fetch them
+                        anchors = []
+                        for a in cat_soup.find_all('a', href=True):
+                            href = a.get('href')
+                            text = (a.get_text(' ', strip=True) or '').lower()
+                            if not href or href == '#':
+                                continue
+                            if any(tok in href.lower() for tok in ['/job', '/jobs', '/vacancy', '/advert']) or 'more details' in text or 'view details' in text:
+                                if not href.startswith('http'):
+                                    if href.startswith('/'):
+                                        href = self.BASE_URL.rstrip('/') + href
+                                    else:
+                                        href = self.BASE_URL.rstrip('/') + '/' + href.lstrip('/')
+                                anchors.append(href)
+
+                        anchors = list(dict.fromkeys(anchors))
+                        for job_url in anchors:
+                            job_title = ''
+                            description = ''
+                            requirements = ''
+                            try:
+                                job_resp = requests.get(job_url, headers=headers, verify=False, timeout=20)
+                                job_resp.raise_for_status()
+                                job_soup = BeautifulSoup(job_resp.text, 'html.parser')
+                                title_tag = job_soup.find(['h1', 'h2']) or job_soup.find('title')
+                                if title_tag:
+                                    job_title = title_tag.get_text(strip=True)
+                                desc_tag = job_soup.find('div', class_='panel-body') or job_soup.find('div', class_='job-desc')
+                                if desc_tag:
+                                    description = desc_tag.get_text(' ', strip=True)
+                                else:
+                                    p_tag = job_soup.find('p')
+                                    if p_tag:
+                                        description = p_tag.get_text(' ', strip=True)
+                                req_tag = job_soup.find(string=lambda s: s and 'requirement' in s.lower()) or job_soup.find('ul')
+                                if req_tag:
+                                    if hasattr(req_tag, 'get_text'):
+                                        requirements = req_tag.get_text(' ', strip=True)
+                                    else:
+                                        requirements = str(req_tag)
+                            except Exception as e:
+                                logger.warning(f"Error fetching fallback job details: {e}")
+                            job_data = {
+                                'title': job_title or '',
+                                'employer': '',
+                                'closing_date_text': '',
+                                'description': description,
+                                'requirements': requirements,
+                                'job_url': job_url,
+                                'external_id': job_url.split('/')[-1] if job_url else '',
+                            }
+                            normalized_job = self.parse_job(job_data)
+                            if normalized_job:
+                                jobs_data.append(normalized_job)
+                            else:
+                                logger.warning(f"Failed to normalize fallback job data: {job_data}")
                 except Exception as e:
-                    logger.error(f"Error fetching category page: {e}")
+                    logger.error(f"Error fetching candidate page: {e}")
             log_entry.jobs_fetched = len(jobs_data)
             logger.info(f"Successfully scraped {len(jobs_data)} jobs from Ajira Portal")
         except Exception as e:
@@ -835,3 +908,114 @@ class AjiraJobsClient(JobApiClient):
             'source': 'ajira'  # Make sure this is always set
         }
         return normalized_data
+
+
+class AjiraGraphQLClient(JobApiClient):
+    """Client that queries Ajira's GraphQL backend directly (preferred over HTML scraping).
+
+    This client is configurable via the ApiConfiguration record. The base URL used
+    will be taken from api_config.additional_params.get('base_url') or default to
+    'https://portal.ajira.go.tz'. The GraphQL endpoint is assumed to be <base>/graphql.
+    """
+
+    DEFAULT_BASE = "https://portal.ajira.go.tz"
+
+    GET_VACANCIES_QUERY = '''
+    query GetVacancies {
+      getVacancies {
+        id
+        scheme {
+          id
+          codeNo
+          emp { id name }
+        }
+        openDate
+        closeDate
+        noOfPost
+        shortlistConfirmed
+        vacancyStatus { isClosed daysClosedAgo statusText daysRemaining }
+      }
+    }
+    '''
+
+    def __init__(self, api_config):
+        super().__init__(api_config)
+        self.base_url = api_config.additional_params.get('base_url') or self.DEFAULT_BASE
+        self.graphql_url = self.base_url.rstrip('/') + '/graphql'
+
+    def _post_graphql(self, query, variables=None, headers=None, timeout=20):
+        headers = headers or {}
+        headers.setdefault('Content-Type', 'application/json')
+        headers.setdefault('Accept', 'application/json')
+        # Allow callers to specify UA/Origin in api_config.additional_params if needed
+        ua = self.api_config.additional_params.get('user_agent')
+        if ua:
+            headers.setdefault('User-Agent', ua)
+
+        payload = {'query': query}
+        if variables:
+            payload['variables'] = variables
+
+        # Use _make_request to get ApiRequestLog wiring and request counting
+        return self._make_request(self.graphql_url, method='POST', json_data=payload, headers=headers, timeout=timeout)
+
+    def fetch_jobs(self, **kwargs):
+        """Fetch vacancies via GraphQL and map to normalized job dicts."""
+        response = self._post_graphql(self.GET_VACANCIES_QUERY)
+        jobs = []
+        try:
+            if not response:
+                return jobs
+            data = response.get('data') or response
+            vacancies = data.get('getVacancies') if isinstance(data, dict) else None
+            if not vacancies:
+                return jobs
+
+            for vac in vacancies:
+                mapped = self._map_vacancy_to_job(vac)
+                if mapped:
+                    jobs.append(mapped)
+        except Exception as e:
+            logger.error(f"Error parsing GraphQL vacancies response: {e}")
+        return jobs
+
+    def _map_vacancy_to_job(self, vac):
+        """Map a single vacancy GraphQL object to the save_job_from_api expected dict.
+
+        The mapping is conservative: fields that don't exist are skipped and reasonable
+        defaults are used. The external_id will be the vacancy id prefixed with 'ajira:'.
+        """
+        try:
+            vid = vac.get('id')
+            scheme = vac.get('scheme') or {}
+            title = scheme.get('codeNo') or f"Vacancy {vid}"
+            company = (scheme.get('emp') or {}).get('name') or 'Ajira Portal'
+            open_date = vac.get('openDate')
+            close_date = vac.get('closeDate')
+
+            # Convert dates if present to datetime where possible; leave as-is otherwise
+            application_deadline = None
+            if close_date:
+                try:
+                    application_deadline = datetime.fromisoformat(close_date)
+                except Exception:
+                    application_deadline = None
+
+            job = {
+                'title': title,
+                'company_name': company,
+                'location': 'Tanzania',
+                'description': '',
+                'requirements': '',
+                'responsibilities': '',
+                'job_type': 'full_time',
+                'experience_level': 'mid',
+                'application_deadline': application_deadline or (timezone.now() + timezone.timedelta(days=30)),
+                'external_url': f"{self.base_url.rstrip('/')}/vacancy/{vid}",
+                'external_id': f"ajira:{vid}",
+                'source': 'ajira'
+            }
+            return job
+        except Exception as e:
+            logger.error(f"Error mapping vacancy {vac}: {e}")
+            return None
