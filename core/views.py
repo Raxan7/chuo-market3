@@ -71,6 +71,17 @@ def home(request):
     products = list(Product.objects.all().order_by('?'))  # '?' randomizes the order
     banners = list(Banners.objects.all())
     
+    # Get category counts for the category cards
+    from django.db.models import Count
+    category_counts = {
+        'mobiles': Product.objects.filter(category='M').count(),
+        'electronics': Product.objects.filter(category='El').count(),
+        'books': Product.objects.filter(category='B').count(),
+        'clothing': Product.objects.filter(category='C').count(),
+        'accessories': Product.objects.filter(category='AC').count(),
+        'services': Product.objects.filter(category='S').count(),
+    }
+    
     # You can still get category-specific products for category pages if needed
     # but for home page, we'll use randomized products
     # Get the dashboard notification status from session
@@ -83,6 +94,7 @@ def home(request):
         'show_dashboard_modal': show_dashboard_modal,
         'messages': messages,
         'is_authenticated': is_authenticated,
+        'category_counts': category_counts,
     }
     return render(request, 'app/home.html', context)
 
