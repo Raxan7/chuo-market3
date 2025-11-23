@@ -120,11 +120,30 @@ def product_detail(request, pk=None, slug=None):
     else:
         product_cart = Cart.objects.filter(user=user, product=product.pk).exists()
     
+    # Get related products (same category, excluding current product)
+    related_by_category = Product.objects.filter(
+        category=product.category
+    ).exclude(pk=product.pk).order_by('?')[:6]
+    
+    # Get products from same seller (excluding current product)
+    related_by_seller = Product.objects.filter(
+        user=product.user
+    ).exclude(pk=product.pk).order_by('-created_at')[:6]
+    
+    # Combine related products, prioritizing category matches
+    related_products = list(related_by_category)
+    
+    # Add seller products if we have less than 6 category matches
+    if len(related_products) < 6:
+        seller_products = [p for p in related_by_seller if p not in related_products]
+        related_products.extend(seller_products[:6 - len(related_products)])
+    
     return render(request, 'app/productdetail.html', {
         'product': product, 
         'product_cart': product_cart, 
         'user': user, 
-        'customer': customer
+        'customer': customer,
+        'related_products': related_products,
     })
 
 
