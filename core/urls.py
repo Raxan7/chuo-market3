@@ -57,6 +57,9 @@ urlpatterns = [
     path('add-blog/', add_blog, name='add_blog'),
     path('create-blog/', create_blog, name='create_blog'),
     
+    # Category URLs
+    path('category/<str:category>/', products_by_category, name='products-by-category'),
+    
     # Blog URLs
     path('blogs/', blog_list, name='blog_list'),
     path('blogs/<slug:slug>/', blog_detail, name='blog_detail'),
