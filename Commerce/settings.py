@@ -280,10 +280,13 @@ SESSION_COOKIE_SECURE = not DEBUG  # Use secure cookies in production
 SESSION_COOKIE_HTTPONLY = True  # Prevent JavaScript from accessing the session cookie
 SESSION_IDLE_TIMEOUT = 31536000  # 1 year in seconds - effectively disabled
 
-GENERATIVE_AI_KEY = os.getenv('GENERATIVE_AI_KEY')
+# Cerebras AI configuration
+CEREBRAS_API_KEY = os.getenv('CEREBRAS_API_KEY')
 
-if not GENERATIVE_AI_KEY:
-    raise ValueError('GENERATIVE_AI_KEY environment variable not set')
+# Only raise error if not in test mode or check command
+import sys
+if not CEREBRAS_API_KEY and 'test' not in sys.argv and 'check' not in sys.argv:
+    raise ValueError('CEREBRAS_API_KEY environment variable not set')
 
 # Authentication
 LOGIN_URL = 'login'  # Use the name of the login URL pattern, not the URL path

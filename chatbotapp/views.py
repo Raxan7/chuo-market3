@@ -1,7 +1,7 @@
 from django.shortcuts import redirect, render
-from Commerce.settings import GENERATIVE_AI_KEY
+from Commerce.settings import CEREBRAS_API_KEY
 from chatbotapp.models import ChatMessage, UnauthenticatedChatMessage
-import google.generativeai as genai
+from cerebras.cloud.sdk import Cerebras
 from django.http import JsonResponse
 import json
 import asyncio
@@ -18,26 +18,29 @@ def send_message(request):
     We're using sync version of the function for better compatibility with Django's form handling.
     """
     if request.method == 'POST':
-        genai.configure(api_key=GENERATIVE_AI_KEY)
-        model = genai.GenerativeModel("gemini-2.0-flash")
+        client = Cerebras(api_key=CEREBRAS_API_KEY)
 
         user_message = request.POST.get('user_message')
         
         # Modify the user message to include the context and instructions
-        prompt = f"""
-        You are the AI Lecturer Assistant for the ChuoSmart App, designed by the team at ChuoSmart to aid users with any questions they have. 
-        You are not developed by Google, and you are not Gemini. 
+        system_prompt = """You are the AI Lecturer Assistant for the ChuoSmart App, designed by the team at ChuoSmart to aid users with any questions they have. 
+        You are powered by Cerebras AI with ultra-fast inference.
         You are an LLM (Large Language Model) ready to assist with anything university-related and more. 
-        Your tagline is: "Ready to assist you."
+        Your tagline is: "Ready to assist you."""
         
-        User: {user_message}
-        AI Lecturer Assistant:
-        """
-        
-        # Generate the bot's response using synchronous call
+        # Generate the bot's response using Cerebras API
         try:
-            bot_response = model.generate_content(prompt)
-            response_text = bot_response.text
+            response = client.chat.completions.create(
+                model="llama-3.3-70b",
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_message}
+                ],
+                temperature=0.7,
+                max_tokens=1024,
+                top_p=1
+            )
+            response_text = response.choices[0].message.content
         except Exception as e:
             response_text = f"Sorry, I couldn't process that request: {str(e)}"
         
@@ -79,33 +82,48 @@ def list_messages(request):
 
 def chatbot_api(request):
     if request.method == 'POST':
-        genai.configure(api_key=GENERATIVE_AI_KEY)
-        model = genai.GenerativeModel("gemini-2.0-flash")
+        client = Cerebras(api_key=CEREBRAS_API_KEY)
 
         data = json.loads(request.body)
         user_message = data.get('message')
-        bot_response = model.generate_content(user_message)
+        
+        system_prompt = """You are the AI Lecturer Assistant for the ChuoSmart App, designed by the team at ChuoSmart to aid users with any questions they have. 
+        You are powered by Cerebras AI with ultra-fast inference.
+        You are an LLM (Large Language Model) ready to assist with anything university-related and more. 
+        Your tagline is: "Ready to assist you."""
+        
+        response = client.chat.completions.create(
+            model="llama-3.3-70b",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_message}
+            ],
+            temperature=0.7,
+            max_tokens=1024,
+            top_p=1
+        )
+        bot_response_text = response.choices[0].message.content
 
         if request.user.is_authenticated:
             ChatMessage.objects.create(
                 user_message=user_message,
-                bot_response=bot_response.text,
+                bot_response=bot_response_text,
                 user=request.user
             )
         else:
             UnauthenticatedChatMessage.objects.create(
                 user_message=user_message,
-                bot_response=bot_response.text
+                bot_response=bot_response_text
             )
             if 'messages' not in request.session:
                 request.session['messages'] = []
             request.session['messages'].append({
                 'user_message': user_message,
-                'bot_response': bot_response.text
+                'bot_response': bot_response_text
             })
             request.session.modified = True
 
-        return JsonResponse({'reply': bot_response.text})
+        return JsonResponse({'reply': bot_response_text})
     return JsonResponse({'error': 'Invalid request method'}, status=400)
 
 def clear_session(request):
