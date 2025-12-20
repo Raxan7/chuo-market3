@@ -67,11 +67,15 @@ def home(request):
             request.session.modified = True
         customers = False
 
-    # Get all products and randomize them
-    products = list(Product.objects.all().order_by('?'))  # '?' randomizes the order
+    # Get all courses and randomize them (primary content now)
+    from lms.models import Course
+    courses = list(Course.objects.all().order_by('?'))  # '?' randomizes the order
     banners = list(Banners.objects.all())
     
-    # Get category counts for the category cards
+    # Get some featured products for secondary display
+    featured_products = list(Product.objects.all().order_by('?')[:8])  # Just 8 featured products
+    
+    # Get category counts for the category cards  
     from django.db.models import Count
     category_counts = {
         'mobiles': Product.objects.filter(category='M').count(),
@@ -89,7 +93,8 @@ def home(request):
     
     context = {
         'customers': customers,
-        'products': products, 
+        'courses': courses,  # Primary content
+        'featured_products': featured_products,  # Secondary content
         'banners': banners,
         'show_dashboard_modal': show_dashboard_modal,
         'messages': messages,
@@ -97,6 +102,49 @@ def home(request):
         'category_counts': category_counts,
     }
     return render(request, 'app/home.html', context)
+
+def marketplace(request):
+    """Marketplace page showing all products"""
+    user = request.user
+    session_key = request.session.session_key
+
+    if not session_key:
+        request.session.create()
+        session_key = request.session.session_key
+
+    # Set session expiration times
+    request.session.set_expiry(3600)  # 1 hour of constant use
+    request.session.set_expiry(1800)  # 30 minutes if inactive
+
+    is_authenticated = user.is_authenticated
+    if is_authenticated:
+        customers = Customer.objects.filter(user=user).exists()
+    else:
+        customers = False
+
+    # Get all products and randomize them
+    products = list(Product.objects.all().order_by('?'))  # '?' randomizes the order
+    banners = list(Banners.objects.all())
+    
+    # Get category counts for the category cards
+    from django.db.models import Count
+    category_counts = {
+        'mobiles': Product.objects.filter(category='M').count(),
+        'electronics': Product.objects.filter(category='El').count(),
+        'books': Product.objects.filter(category='B').count(),
+        'clothing': Product.objects.filter(category='C').count(),
+        'accessories': Product.objects.filter(category='AC').count(),
+        'services': Product.objects.filter(category='S').count(),
+    }
+    
+    context = {
+        'customers': customers,
+        'products': products, 
+        'banners': banners,
+        'is_authenticated': is_authenticated,
+        'category_counts': category_counts,
+    }
+    return render(request, 'app/marketplace.html', context)
 
 def product_detail(request, pk=None, slug=None):
     """

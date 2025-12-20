@@ -1,0 +1,424 @@
+{% extends 'app/base.html' %}
+{% load static %}
+{% load markdown_deux_tags %}
+{% block title %}Marketplace - ChuoSmart Student Marketplace Tanzania{% endblock title %}
+
+{% block meta_description %}Shop at ChuoSmart student marketplace in Tanzania. Buy and sell products from college and university students.{% endblock meta_description %}
+
+{% block meta_keywords %}marketplace, student marketplace, college marketplace, university shopping, tanzania products, student shopping, buy sell{% endblock meta_keywords %}
+
+<style>
+  .hover-notification {
+    position: fixed;
+    top: 0;
+    width: 100%;
+    z-index: 1000;
+    display: block;
+  }
+
+  .animated-text {
+    animation: fadeInOut 2s infinite;
+  }
+
+  @keyframes fadeInOut {
+    0%, 100% { opacity: 0; }
+    50% { opacity: 1; }
+  }
+
+  .card-text {
+    margin-bottom: 0.5rem;
+  }
+  .card-text.text-muted {
+    font-size: 0.9rem;
+  }
+  @media (max-width: 768px) {
+    .card {
+      width: 100%;
+    }
+  }
+
+  .carousel-control-prev-icon,
+  .carousel-control-next-icon {
+    background-color: rgb(8, 8, 8); /* Set the icon color to grey */
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.8); /* Add a shining shadow */
+    border-radius: 50%; /* Optional: Make the shadow circular */
+  }
+</style>
+
+{% block banner_slider %}
+<!-- Notification for missing customer details -->
+{% if user.is_authenticated and not customers %}
+<div class="alert alert-warning hover-notification" role="alert">
+  Please <a href="{% url 'profile' %}" class="alert-link">update your profile</a> to make your shopping and selling experience smooth.
+</div>
+{% endif %}
+
+<style>
+  /* Banner Slider Styles */
+  .banner-slider {
+    position: relative;
+    width: 100%;
+    overflow: hidden;
+    margin: 0 auto;
+  }
+  
+  .banner-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0;
+  }
+  
+  .carousel-inner {
+    position: relative;
+    width: 100%;
+    overflow: hidden;
+    border-radius: 8px;
+  }
+  
+  .carousel-item {
+    position: relative;
+    width: 100%;
+    /* Adjust this padding-top percentage based on your desired aspect ratio */
+    /* 25% = 4:1, 33.33% = 3:1, 50% = 2:1, 56.25% = 16:9 (common banner ratio) */
+    padding-top: 33.33%; /* Creates a 3:1 aspect ratio container */
+  }
+  
+  .carousel-item img {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain; /* <-- changed from cover */
+    object-position: center;
+  }
+ 
+  /* Responsive adjustments */
+  @media (max-width: 992px) {
+    .carousel-item {
+      padding-top: 40%; /* Slightly taller aspect ratio on medium screens */
+    }
+  }
+  
+  @media (max-width: 768px) {
+    .carousel-item {
+      padding-top: 50%; /* Even taller on small screens for better mobile viewing */
+    }
+  }
+  
+  /* Make sure carousel is visible */
+  .carousel {
+    position: relative;
+    z-index: 1;
+  }
+</style>
+
+<div class="banner-slider mb-4">
+  <div class="banner-container">
+    {% if banners %}
+      <div id="bannerCarousel" class="carousel slide" data-bs-ride="carousel" data-bs-interval="5000">
+        <div class="carousel-inner">
+          {% for banner in banners %}
+            <div class="carousel-item {% if forloop.first %}active{% endif %}">
+              {% load image_tags %}
+              {% if banner.image %}
+                {% picture webp_src=banner.image_webp|safe_url fallback_src=banner.image.url alt=banner.title css_class="d-block w-100" lazy=True %}
+              {% else %}
+                <div class="d-flex align-items-center justify-content-center bg-light text-muted" style="height: 300px;">
+                  <p>{{ banner.title }}</p>
+                </div>
+              {% endif %}
+            </div>
+          {% endfor %}
+        </div>
+        
+        {% if banners|length > 1 %}
+          <!-- Previous button -->
+          <button class="carousel-control-prev" type="button" data-bs-target="#bannerCarousel" data-bs-slide="prev">
+            <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+            <span class="visually-hidden">Previous</span>
+          </button>
+          
+          <!-- Next button -->
+          <button class="carousel-control-next" type="button" data-bs-target="#bannerCarousel" data-bs-slide="next">
+            <span class="carousel-control-next-icon" aria-hidden="true"></span>
+            <span class="visually-hidden">Next</span>
+          </button>
+          
+          <!-- Indicators -->
+          <div class="carousel-indicators">
+            {% for banner in banners %}
+              <button type="button" data-bs-target="#bannerCarousel" data-bs-slide-to="{{ forloop.counter0 }}" {% if forloop.first %}class="active"{% endif %} aria-current="true" aria-label="Slide {{ forloop.counter }}"></button>
+            {% endfor %}
+          </div>
+        {% endif %}
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock banner_slider %}
+
+{% block main-content %}
+
+<!-- Category Cards Section -->
+<div class="container-fluid my-4">
+  <h2 class="text-center mb-4">
+    <span class="text-dark">Shop by Category</span>
+  </h2>
+  <div class="row g-3 px-3">
+    <!-- Mobiles Category -->
+    <div class="col-6 col-md-4 col-lg-2">
+      <a href="{% url 'products-by-category' category='M' %}" class="text-decoration-none">
+        <div class="category-card card h-100 text-center shadow-sm hover-lift">
+          <div class="card-body d-flex flex-column justify-content-center align-items-center p-3">
+            <div class="category-icon mb-3">
+              <i class="fas fa-mobile-alt fa-3x text-primary"></i>
+            </div>
+            <h6 class="card-title fw-bold mb-2">Mobiles</h6>
+            <p class="card-text text-muted small mb-0">
+              <span class="badge bg-light text-dark">{{ category_counts.mobiles }}</span>
+            </p>
+          </div>
+        </div>
+      </a>
+    </div>
+    
+    <!-- Electronics Category -->
+    <div class="col-6 col-md-4 col-lg-2">
+      <a href="{% url 'products-by-category' category='El' %}" class="text-decoration-none">
+        <div class="category-card card h-100 text-center shadow-sm hover-lift">
+          <div class="card-body d-flex flex-column justify-content-center align-items-center p-3">
+            <div class="category-icon mb-3">
+              <i class="fas fa-laptop fa-3x text-info"></i>
+            </div>
+            <h6 class="card-title fw-bold mb-2">Electronics</h6>
+            <p class="card-text text-muted small mb-0">
+              <span class="badge bg-light text-dark">{{ category_counts.electronics }}</span>
+            </p>
+          </div>
+        </div>
+      </a>
+    </div>
+    
+    <!-- Books Category -->
+    <div class="col-6 col-md-4 col-lg-2">
+      <a href="{% url 'products-by-category' category='B' %}" class="text-decoration-none">
+        <div class="category-card card h-100 text-center shadow-sm hover-lift">
+          <div class="card-body d-flex flex-column justify-content-center align-items-center p-3">
+            <div class="category-icon mb-3">
+              <i class="fas fa-book fa-3x text-success"></i>
+            </div>
+            <h6 class="card-title fw-bold mb-2">Books</h6>
+            <p class="card-text text-muted small mb-0">
+              <span class="badge bg-light text-dark">{{ category_counts.books }}</span>
+            </p>
+          </div>
+        </div>
+      </a>
+    </div>
+    
+    <!-- Clothing Category -->
+    <div class="col-6 col-md-4 col-lg-2">
+      <a href="{% url 'products-by-category' category='C' %}" class="text-decoration-none">
+        <div class="category-card card h-100 text-center shadow-sm hover-lift">
+          <div class="card-body d-flex flex-column justify-content-center align-items-center p-3">
+            <div class="category-icon mb-3">
+              <i class="fas fa-tshirt fa-3x text-warning"></i>
+            </div>
+            <h6 class="card-title fw-bold mb-2">Clothing</h6>
+            <p class="card-text text-muted small mb-0">
+              <span class="badge bg-light text-dark">{{ category_counts.clothing }}</span>
+            </p>
+          </div>
+        </div>
+      </a>
+    </div>
+    
+    <!-- Accessories Category -->
+    <div class="col-6 col-md-4 col-lg-2">
+      <a href="{% url 'products-by-category' category='AC' %}" class="text-decoration-none">
+        <div class="category-card card h-100 text-center shadow-sm hover-lift">
+          <div class="card-body d-flex flex-column justify-content-center align-items-center p-3">
+            <div class="category-icon mb-3">
+              <i class="fas fa-watch fa-3x text-danger"></i>
+            </div>
+            <h6 class="card-title fw-bold mb-2">Accessories</h6>
+            <p class="card-text text-muted small mb-0">
+              <span class="badge bg-light text-dark">{{ category_counts.accessories }}</span>
+            </p>
+          </div>
+        </div>
+      </a>
+    </div>
+    
+    <!-- Services Category -->
+    <div class="col-6 col-md-4 col-lg-2">
+      <a href="{% url 'products-by-category' category='S' %}" class="text-decoration-none">
+        <div class="category-card card h-100 text-center shadow-sm hover-lift">
+          <div class="card-body d-flex flex-column justify-content-center align-items-center p-3">
+            <div class="category-icon mb-3">
+              <i class="fas fa-wrench fa-3x text-secondary"></i>
+            </div>
+            <h6 class="card-title fw-bold mb-2">Services</h6>
+            <p class="card-text text-muted small mb-0">
+              <span class="badge bg-light text-dark">{{ category_counts.services }}</span>
+            </p>
+          </div>
+        </div>
+      </a>
+    </div>
+  </div>
+</div>
+
+<!-- Products Section -->
+<div class="m-3">
+  {% if products %}
+    <h2 class="text-center my-4">
+      <span class="text-dark">All Products</span>
+    </h2>
+    <!-- Skeleton loader placeholders (shown while loading) -->
+    <div id="skeleton-products" class="row">
+      {% for i in "12345"|make_list %}
+      <div class="col-6 col-md-4 col-lg-3 mb-4">
+        <div class="card shadow-sm">
+          <div class="skeleton-loader skeleton-img"></div>
+          <div class="card-body">
+            <div class="skeleton-loader skeleton-title"></div>
+            <div class="skeleton-loader skeleton-price"></div>
+            <div class="skeleton-loader skeleton-text"></div>
+            <div class="skeleton-loader skeleton-text"></div>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    
+    <!-- Products Grid (hidden until loaded) -->
+    <div class="row" id="products-grid" style="display: none;">
+      {% for product in products %}
+        <div class="col-6 col-md-4 col-lg-3 mb-4">
+          <a href="{% url 'product-detail' slug=product.slug %}" class="text-decoration-none">
+            <div class="card text-center shadow-sm product-card h-100">
+              {% load image_tags %}
+              <div class="product-image-wrapper">
+                {% picture webp_src=product.image_webp|safe_url fallback_src=product.image.url alt=product.title css_class="card-img-top product-image" lazy=True %}
+              </div>
+              <div class="card-body d-flex flex-column">
+                <h5 class="card-title">{{ product.title |truncatewords:3 }}</h5>
+                <p class="card-text">TSh {{product.price}}</p>
+                <p class="card-text text-muted small">
+                  <i class="fas fa-map-marker-alt"></i> {{ product.user.customer.university }}, {{ product.user.customer.college }}
+                </p>
+                <p class="card-text text-muted small">
+                  <i class="fas fa-star" style="color: 
+                    {% if product.user.customer.subscription.level == 'Bronze' %}#cd7f32
+                    {% elif product.user.customer.subscription.level == 'Silver' %}#c0c0c0
+                    {% elif product.user.customer.subscription.level == 'Gold' %}#ffd700
+                    {% endif %};"></i> {{ product.user.customer.subscription.level }} Seller
+                </p>
+                <!-- Category badge to show what type of product it is -->
+                <span class="badge bg-secondary mt-auto">{{ product.get_category_display }}</span>
+              </div>
+            </div>
+          </a>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="text-center mt-5">
+      <h3>No products available yet</h3>
+      <p class="text-muted">Be the first to add a product to our marketplace!</p>
+      {% if user.is_authenticated %}
+        <a href="{% url 'add_product' %}" class="btn btn-primary">Add Your First Product</a>
+      {% endif %}
+    </div>
+  {% endif %}
+</div>
+
+<script>
+  // Show products when they're loaded
+  document.addEventListener('DOMContentLoaded', function() {
+    // Add a short delay to simulate loading (remove in production)
+    setTimeout(function() {
+      // Hide skeleton loaders
+      document.getElementById('skeleton-products').style.display = 'none';
+      // Show actual products
+      document.getElementById('products-grid').style.display = 'flex';
+    }, 500);
+  });
+</script>
+{% endblock main-content %}
+
+{% block extra_scripts %}
+{{ block.super }}
+<style>
+  /* Category Cards Styles */
+  .category-card {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    border-radius: 10px;
+    cursor: pointer;
+    min-height: 150px;
+  }
+  
+  .category-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15) !important;
+  }
+  
+  .hover-lift {
+    transition: all 0.3s ease;
+  }
+  
+  .category-icon {
+    transition: transform 0.3s ease;
+  }
+  
+  .category-card:hover .category-icon {
+    transform: scale(1.1);
+  }
+
+  /* Product Cards Uniform Sizing */
+  .product-card {
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  
+  .product-image-wrapper {
+    height: 250px;
+    overflow: hidden;
+    background: #f8f9fa;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .product-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  
+  .product-card .card-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 220px;
+  }
+  
+  .product-card .card-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+    height: 3em;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+  
+  .product-card .card-text {
+    margin-bottom: 0.5rem;
+  }
+</style>
+
+{% endblock extra_scripts %}

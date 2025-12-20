@@ -1,11 +1,11 @@
 {% extends 'app/base.html' %}
 {% load static %}
 {% load markdown_deux_tags %}
-{% block title %}ChuoSmart - College & University Student Marketplace Tanzania{% endblock title %}
+{% block title %}ChuoSmart - Premier Learning Management System in Tanzania{% endblock title %}
 
-{% block meta_description %}College & university student marketplace in Tanzania. Buy, sell products, find talented students, and access educational resources.{% endblock meta_description %}
+{% block meta_description %}Premier Learning Management System for college & university students in Tanzania. Access courses, interact with instructors, and enhance your education.{% endblock meta_description %}
 
-{% block meta_keywords %}chuosmart, student marketplace, college marketplace, university shopping, tanzania education, student talents, college students, university students{% endblock meta_keywords %}
+{% block meta_keywords %}chuosmart, LMS, learning management system, online courses, education tanzania, student learning, college courses, university courses, online education{% endblock meta_keywords %}
 
 <style>
   .hover-notification {
@@ -243,308 +243,156 @@
   </div>
 </div>
 
-<!-- Shop by Category Section -->
+<!-- Available Courses Section -->
 <div class="container my-5">
-  <div class="text-center mb-4">
-    <h2 class="fw-bold">Shop by Category</h2>
-    <p class="text-muted">Browse products by category</p>
-  </div>
-  <div class="row g-3">
-    <!-- Mobiles Category -->
-    <div class="col-6 col-md-4 col-lg-2">
-      <a href="{% url 'products-by-category' category='M' %}" class="text-decoration-none">
-        <div class="category-card card h-100 text-center shadow-sm hover-lift">
-          <div class="card-body d-flex flex-column justify-content-center align-items-center p-3">
-            <div class="category-icon mb-3">
-              <i class="fas fa-mobile-alt fa-3x text-primary"></i>
-            </div>
-            <h6 class="card-title fw-bold mb-2">Mobiles</h6>
-            <p class="card-text text-muted small mb-0">
-              <span class="badge bg-light text-dark">{{ category_counts.mobiles }}</span>
-            </p>
-          </div>
-        </div>
-      </a>
+  {% if courses %}
+    <div class="text-center mb-4">
+      <h2 class="fw-bold">Featured Courses</h2>
+      <p class="text-muted">Start learning with our top-rated courses</p>
     </div>
     
-    <!-- Electronics Category -->
-    <div class="col-6 col-md-4 col-lg-2">
-      <a href="{% url 'products-by-category' category='El' %}" class="text-decoration-none">
-        <div class="category-card card h-100 text-center shadow-sm hover-lift">
-          <div class="card-body d-flex flex-column justify-content-center align-items-center p-3">
-            <div class="category-icon mb-3">
-              <i class="fas fa-laptop fa-3x text-info"></i>
-            </div>
-            <h6 class="card-title fw-bold mb-2">Electronics</h6>
-            <p class="card-text text-muted small mb-0">
-              <span class="badge bg-light text-dark">{{ category_counts.electronics }}</span>
-            </p>
-          </div>
-        </div>
-      </a>
-    </div>
-    
-    <!-- Books Category -->
-    <div class="col-6 col-md-4 col-lg-2">
-      <a href="{% url 'products-by-category' category='B' %}" class="text-decoration-none">
-        <div class="category-card card h-100 text-center shadow-sm hover-lift">
-          <div class="card-body d-flex flex-column justify-content-center align-items-center p-3">
-            <div class="category-icon mb-3">
-              <i class="fas fa-book fa-3x text-success"></i>
-            </div>
-            <h6 class="card-title fw-bold mb-2">Books</h6>
-            <p class="card-text text-muted small mb-0">
-              <span class="badge bg-light text-dark">{{ category_counts.books }}</span>
-            </p>
-          </div>
-        </div>
-      </a>
-    </div>
-    
-    <!-- Clothing Category -->
-    <div class="col-6 col-md-4 col-lg-2">
-      <a href="{% url 'products-by-category' category='C' %}" class="text-decoration-none">
-        <div class="category-card card h-100 text-center shadow-sm hover-lift">
-          <div class="card-body d-flex flex-column justify-content-center align-items-center p-3">
-            <div class="category-icon mb-3">
-              <i class="fas fa-tshirt fa-3x text-warning"></i>
-            </div>
-            <h6 class="card-title fw-bold mb-2">Clothing</h6>
-            <p class="card-text text-muted small mb-0">
-              <span class="badge bg-light text-dark">{{ category_counts.clothing }}</span>
-            </p>
-          </div>
-        </div>
-      </a>
-    </div>
-    
-    <!-- Accessories Category -->
-    <div class="col-6 col-md-4 col-lg-2">
-      <a href="{% url 'products-by-category' category='AC' %}" class="text-decoration-none">
-        <div class="category-card card h-100 text-center shadow-sm hover-lift">
-          <div class="card-body d-flex flex-column justify-content-center align-items-center p-3">
-            <div class="category-icon mb-3">
-              <i class="fas fa-watch fa-3x text-danger"></i>
-            </div>
-            <h6 class="card-title fw-bold mb-2">Accessories</h6>
-            <p class="card-text text-muted small mb-0">
-              <span class="badge bg-light text-dark">{{ category_counts.accessories }}</span>
-            </p>
-          </div>
-        </div>
-      </a>
-    </div>
-    
-    <!-- Services Category -->
-    <div class="col-6 col-md-4 col-lg-2">
-      <a href="{% url 'products-by-category' category='S' %}" class="text-decoration-none">
-        <div class="category-card card h-100 text-center shadow-sm hover-lift">
-          <div class="card-body d-flex flex-column justify-content-center align-items-center p-3">
-            <div class="category-icon mb-3">
-              <i class="fas fa-wrench fa-3x text-secondary"></i>
-            </div>
-            <h6 class="card-title fw-bold mb-2">Services</h6>
-            <p class="card-text text-muted small mb-0">
-              <span class="badge bg-light text-dark">{{ category_counts.services }}</span>
-            </p>
-          </div>
-        </div>
-      </a>
-    </div>
-  </div>
-</div>
-
-<!-- Random Products Section -->
-<div class="m-3">
-  {% if products %}
-    <h2 class="text-center my-4">
-      <span class="text-dark">Featured Products</span>
-    </h2>
-    <!-- Skeleton loader placeholders (shown while loading) -->
-    <div id="skeleton-products" class="row">
-      {% for i in "12345"|make_list %}
-      <div class="col-6 col-md-4 col-lg-3 mb-4">
-        <div class="card shadow-sm">
-          <div class="skeleton-loader skeleton-img"></div>
-          <div class="card-body">
-            <div class="skeleton-loader skeleton-title"></div>
-            <div class="skeleton-loader skeleton-price"></div>
-            <div class="skeleton-loader skeleton-text"></div>
-            <div class="skeleton-loader skeleton-text"></div>
-          </div>
-        </div>
-      </div>
-      {% endfor %}
-    </div>
-    
-    <!-- Random Products Slider (hidden until loaded) -->
-    <div class="owl-carousel" id="slider1" style="display: none;">
-      {% for product in products %}
-        <a href="{% url 'product-detail' slug=product.slug %}" class="btn">
-          <div class="card text-center shadow-sm product-card">
-            {% load image_tags %}
-            <div class="product-image-wrapper">
-              {% picture webp_src=product.image_webp|safe_url fallback_src=product.image.url alt=product.title css_class="card-img-top product-image" lazy=True %}
-            </div>
+    <!-- Courses Grid -->
+    <div class="row g-4">
+      {% for course in courses %}
+        <div class="col-lg-4 col-md-6 mb-4">
+          <div class="card course-card h-100 shadow-sm border-0">
+            {% if course.image %}
+              <img src="{{ course.image.url }}" class="card-img-top course-image" alt="{{ course.title }}">
+            {% else %}
+              <div class="card-img-top course-image-placeholder d-flex align-items-center justify-content-center bg-light">
+                <i class="fas fa-book fa-3x text-muted"></i>
+              </div>
+            {% endif %}
+            
             <div class="card-body d-flex flex-column">
-              <h5 class="card-title">{{ product.title |truncatewords:3 }}</h5>
-              <p class="card-text">TSh {{product.price}}</p>
-              <p class="card-text text-muted small">
-                <i class="fas fa-map-marker-alt"></i> {{ product.user.customer.university }}, {{ product.user.customer.college }}
-              </p>
-              <p class="card-text text-muted small">
-                <i class="fas fa-star" style="color: 
-                  {% if product.user.customer.subscription.level == 'Bronze' %}#cd7f32
-                  {% elif product.user.customer.subscription.level == 'Silver' %}#c0c0c0
-                  {% elif product.user.customer.subscription.level == 'Gold' %}#ffd700
-                  {% endif %};"></i> {{ product.user.customer.subscription.level }} Seller
-              </p>
-              <!-- Category badge to show what type of product it is -->
-              <span class="badge bg-secondary mt-auto">{{ product.get_category_display }}</span>
+              <div class="d-flex justify-content-between align-items-start mb-2">
+                <span class="badge bg-primary">{{ course.category }}</span>
+                <span class="text-muted small">
+                  <i class="fas fa-clock"></i> {{ course.duration_weeks }} weeks
+                </span>
+              </div>
+              
+              <h5 class="card-title fw-bold">{{ course.title }}</h5>
+              <p class="card-text text-muted">{{ course.description|truncatewords:20 }}</p>
+              
+              <div class="mt-auto">
+                <div class="row align-items-center mb-3">
+                  <div class="col-6">
+                    <small class="text-muted">
+                      <i class="fas fa-user"></i> {{ course.instructor.user.first_name }} {{ course.instructor.user.last_name }}
+                    </small>
+                  </div>
+                  <div class="col-6 text-end">
+                    <small class="text-muted">
+                      <i class="fas fa-users"></i> {{ course.enrolled_students.count }} students
+                    </small>
+                  </div>
+                </div>
+                
+                <div class="d-flex justify-content-between align-items-center">
+                  {% if course.price > 0 %}
+                    <span class="fw-bold text-success h5 mb-0">TSh {{ course.price }}</span>
+                  {% else %}
+                    <span class="badge bg-success">Free</span>
+                  {% endif %}
+                  <a href="{% url 'lms:course_detail' course.id %}" class="btn btn-primary">
+                    View Course
+                  </a>
+                </div>
+              </div>
             </div>
           </div>
-        </a>
+        </div>
       {% endfor %}
+    </div>
+    
+    <div class="text-center mt-4">
+      <a href="{% url 'lms:lms_home' %}" class="btn btn-outline-primary btn-lg">
+        <i class="fas fa-graduation-cap me-2"></i> Browse All Courses
+      </a>
+    </div>
+  {% else %}
+    <div class="text-center mt-5">
+      <i class="fas fa-graduation-cap fa-4x text-muted mb-3"></i>
+      <h3>No courses available yet</h3>
+      <p class="text-muted">Check back soon for exciting new courses!</p>
     </div>
   {% endif %}
 </div>
 
-<script>
-  // Show products when they're loaded
-  document.addEventListener('DOMContentLoaded', function() {
-    // Add a short delay to simulate loading (remove in production)
-    setTimeout(function() {
-      // Hide skeleton loaders
-      document.getElementById('skeleton-products').style.display = 'none';
-      // Show actual products
-      document.getElementById('slider1').style.display = 'block';
-    }, 500);
-  });
-</script>
+<!-- Marketplace Promotion Section -->
+<div class="container my-5">
+  <div class="row">
+    <div class="col-md-12">
+      <div class="card shadow border-0 bg-gradient" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+        <div class="card-body text-white text-center p-5">
+          <i class="fas fa-store fa-3x mb-3"></i>
+          <h3 class="fw-bold mb-3">Student Marketplace</h3>
+          <p class="lead mb-4">Buy and sell products with fellow students. Find textbooks, electronics, and more!</p>
+          <div class="row">
+            <div class="col-md-8 offset-md-2">
+              <div class="row text-center">
+                <div class="col-4">
+                  <i class="fas fa-mobile-alt fa-2x mb-2"></i>
+                  <p class="small">Mobile Phones</p>
+                </div>
+                <div class="col-4">
+                  <i class="fas fa-book fa-2x mb-2"></i>
+                  <p class="small">Textbooks</p>
+                </div>
+                <div class="col-4">
+                  <i class="fas fa-laptop fa-2x mb-2"></i>
+                  <p class="small">Electronics</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <a href="{% url 'marketplace' %}" class="btn btn-light btn-lg mt-3">
+            <i class="fas fa-shopping-cart me-2"></i> Visit Marketplace
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock main-content %}
 
 {% block extra_scripts %}
 {{ block.super }}
 <style>
-  /* Category Cards Styles */
-  .category-card {
+  /* Course Cards Styles */
+  .course-card {
     transition: transform 0.3s ease, box-shadow 0.3s ease;
-    border-radius: 10px;
-    cursor: pointer;
-    min-height: 150px;
+    border-radius: 15px;
+    overflow: hidden;
   }
   
-  .category-card:hover {
+  .course-card:hover {
     transform: translateY(-5px);
-    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15) !important;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1) !important;
   }
   
-  .hover-lift {
-    transition: all 0.3s ease;
-  }
-  
-  .category-icon {
+  .course-image {
+    height: 200px;
+    object-fit: cover;
     transition: transform 0.3s ease;
   }
   
-  .category-card:hover .category-icon {
-    transform: scale(1.1);
+  .course-image-placeholder {
+    height: 200px;
+  }
+  
+  .course-card:hover .course-image {
+    transform: scale(1.05);
+  }
+  
+  /* LMS Feature Card Styles */
+  .bg-gradient {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
   }
 
-  /* Product Cards Uniform Sizing */
-  .product-card {
-    width: 18rem;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    border-radius: 10px;
-    overflow: hidden;
-  }
-  
-  .product-image-wrapper {
-    height: 250px;
-    overflow: hidden;
-    background: #f8f9fa;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  
-  .product-image {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-  
-  .product-card .card-body {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    min-height: 220px;
-  }
-  
-  .product-card .card-title {
-    font-size: 1.1rem;
-    font-weight: 600;
-    margin-bottom: 0.75rem;
-    height: 3em;
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-  }
-  
-  .product-card .card-text {
-    margin-bottom: 0.5rem;
-  }
-
-  #floating-video-player {
-    position: fixed;
-    bottom: 24px;
-    left: 24px;
-    z-index: 2147483647;
-    width: 340px;
-    max-width: 90vw;
-    background: #111c;
-    border-radius: 14px;
-    box-shadow: 0 4px 24px rgba(0,0,0,0.25);
-    overflow: hidden;
-    transition: box-shadow 0.2s;
-    display: block;
-  }
-  #floating-video-player .close-btn {
-    position: absolute;
-    top: 4px;
-    right: 8px;
-    background: #fff;
-    border: none;
-    border-radius: 50%;
-    width: 28px;
-    height: 28px;
-    font-size: 1.2rem;
-    color: #333;
-    cursor: pointer;
-    z-index: 2;
-    box-shadow: 0 2px 8px #0002;
-  }
   @media (max-width: 600px) {
-    #floating-video-player { width: 98vw; left: 1vw; bottom: 1vw; }
-    .product-card { width: 100%; }
+    .course-card { width: 100%; }
   }
 </style>
-<div id="floating-video-player">
-  <button class="close-btn" onclick="document.getElementById('floating-video-player').style.display='none'; document.getElementById('yt-float-iframe').src='';">&times;</button>
-  <div style="position:relative; width:100%; padding-bottom:56.25%; height:0;">
-    <iframe id="yt-float-iframe" style="position:absolute;top:0;left:0;width:100%;height:100%;border-radius:12px;" frameborder="0" allowfullscreen allow="autoplay; encrypted-media"></iframe>
-  </div>
-</div>
-<script>
-  // Play videos from the @chuosmartTv channel uploads playlist
-  function setFloatingVideo() {
-    const iframe = document.getElementById('yt-float-iframe');
-    // Play the specific video requested by the user
-    iframe.src = 'https://www.youtube.com/embed/7tU3TfaFOrk?autoplay=1&mute=1&rel=0&showinfo=0&modestbranding=1';
-  }
-  setFloatingVideo();
-</script>
 {% endblock %}

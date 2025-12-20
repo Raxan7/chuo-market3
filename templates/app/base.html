@@ -445,7 +445,12 @@
           <ul class="navbar-nav me-auto">
             <li class="nav-item">
               <a class="nav-link {% if request.path == '/' %}active fw-bold{% endif %}" href="{% url 'home' %}">
-                <i class="fas fa-home fa-fw me-1 d-lg-none"></i> Home
+                <i class="fas fa-graduation-cap fa-fw me-1 d-lg-none"></i> Home
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link {% if 'marketplace' in request.path %}active fw-bold{% endif %}" href="{% url 'marketplace' %}">
+                <i class="fas fa-store fa-fw me-1 d-lg-none"></i> Marketplace
               </a>
             </li>
             <li class="nav-item">
@@ -460,7 +465,7 @@
             </li>
             <li class="nav-item">
               <a class="nav-link {% if 'lms' in request.path %}active fw-bold{% endif %}" href="{% url 'lms:lms_home' %}">
-                <i class="fas fa-graduation-cap fa-fw me-1 d-lg-none"></i> Learning
+                <i class="fas fa-book fa-fw me-1 d-lg-none"></i> Learning
               </a>
             </li>
             <li class="nav-item">
@@ -734,16 +739,16 @@
     <!-- Mobile Bottom Navigation -->
     <div class="mobile-bottom-nav">
       <a href="/" class="mobile-nav-item active">
-        <i class="fas fa-home"></i>
+        <i class="fas fa-graduation-cap"></i>
         <span>Home</span>
+      </a>
+      <a href="{% url 'marketplace' %}" class="mobile-nav-item">
+        <i class="fas fa-store"></i>
+        <span>Shop</span>
       </a>
       <a href="{% url 'blog_list' %}" class="mobile-nav-item">
         <i class="fas fa-newspaper"></i>
         <span>Blog</span>
-      </a>
-      <a href="{% url 'talent_list' %}" class="mobile-nav-item">
-        <i class="fas fa-users"></i>
-        <span>Talents</span>
       </a>
       <a href="{% url 'jobs:job_list' %}" class="mobile-nav-item">
         <i class="fas fa-briefcase"></i>
