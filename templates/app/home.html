@@ -209,6 +209,36 @@
 
 {% block main-content %}
 
+<!-- Marketplace Quick Access Card -->
+<div class="container my-4">
+  <div class="row">
+    <div class="col-12">
+      <a href="{% url 'marketplace' %}" class="text-decoration-none">
+        <div class="card border-0 bg-gradient shadow-sm" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); cursor: pointer; transition: transform 0.3s ease, box-shadow 0.3s ease;" 
+             onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 10px 25px rgba(0,0,0,0.15)';" 
+             onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 0 0 0';">
+          <div class="card-body text-white text-center py-3 px-4">
+            <div class="row align-items-center">
+              <div class="col-auto">
+                <i class="fas fa-shopping-cart fa-2x"></i>
+              </div>
+              <div class="col">
+                <div class="text-start">
+                  <h6 class="mb-0 fw-bold">📦 Student Marketplace</h6>
+                  <small class="text-opacity-75">Buy & sell with fellow students</small>
+                </div>
+              </div>
+              <div class="col-auto">
+                <i class="fas fa-arrow-right"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+      </a>
+    </div>
+  </div>
+</div>
+
 <!-- Available Courses Section -->
 <div class="container my-5">
   {% if courses %}

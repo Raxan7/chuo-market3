@@ -360,7 +360,7 @@ class CourseDetailView(DetailView):
         context = super().get_context_data(**kwargs)
         course = self.get_object()
         
-        # Get course modules with contents
+        # Get course modules with contents - accessible to everyone
         modules = CourseModule.objects.filter(course=course).prefetch_related('contents')
         
         # Get quizzes for this course
@@ -372,6 +372,7 @@ class CourseDetailView(DetailView):
         enrollment = None
         payment_status = None
         has_access = False
+        can_view_content = False  # New flag for unauthenticated users
         
         if self.request.user.is_authenticated and hasattr(self.request.user, 'lms_profile'):
             student_profile = self.request.user.lms_profile
@@ -385,6 +386,9 @@ class CourseDetailView(DetailView):
                 has_access = course.is_free or payment_status == 'approved'
             except CourseEnrollment.DoesNotExist:
                 pass
+        else:
+            # Unauthenticated users can view content for preview purposes
+            can_view_content = True
         
         # Check if user is instructor for this course
         is_course_instructor = False
@@ -422,6 +426,7 @@ class CourseDetailView(DetailView):
             'course_progress': course_progress,
             'students_progress': students_progress,
             'has_access': has_access,
+            'can_view_content': can_view_content,  # Allow unauthenticated preview
             'payment_status': payment_status,
             'enrollment': enrollment,
             'payment_methods': payment_methods,
@@ -794,27 +799,24 @@ def quiz_results(request, quiz_taker_id):
     return render(request, 'lms/quiz_results.html', context)
 
 
-@login_required(login_url='login')
 def course_content_detail(request, course_slug, content_id):
-    """Show course content details"""
+    """Show course content details - accessible without login"""
     course = get_object_or_404(Course, slug=course_slug)
     content = get_object_or_404(CourseContent, id=content_id, module__course=course)
     
     # Check if user is enrolled or is instructor
     is_enrolled = False
     is_instructor = False
+    profile = None
     
-    if hasattr(request.user, 'lms_profile'):
+    if request.user.is_authenticated and hasattr(request.user, 'lms_profile'):
         profile = request.user.lms_profile
         is_enrolled = CourseEnrollment.objects.filter(student=profile, course=course).exists()
         is_instructor = course.instructors.filter(id=profile.id).exists()
     
-    if not (is_enrolled or is_instructor or request.user.is_staff):
-        messages.error(request, _("You must be enrolled in this course to view its content."))
-        return redirect('lms:course_detail', slug=course.slug)
-    
-    # Track content access for students (not instructors or staff)
-    if is_enrolled and not is_instructor and not request.user.is_staff:
+    # Allow access to all: unauthenticated users, students, and instructors
+    # Track content access for authenticated students (not instructors or staff)
+    if is_enrolled and not is_instructor and not request.user.is_staff and profile:
         content_access, created = ContentAccess.objects.get_or_create(
             student=profile,
             content=content
@@ -828,7 +830,7 @@ def course_content_detail(request, course_slug, content_id):
     
     # Check if this content is completed by the student
     content_completed = False
-    if hasattr(request.user, 'lms_profile') and is_enrolled:
+    if profile and is_enrolled:
         content_completed = ContentAccess.objects.filter(
             student=profile,
             content=content,
@@ -839,7 +841,9 @@ def course_content_detail(request, course_slug, content_id):
         'course': course,
         'content': content,
         'module': content.module,
-        'content_completed': content_completed
+        'content_completed': content_completed,
+        'is_enrolled': is_enrolled,
+        'is_authenticated': request.user.is_authenticated,
     }
     
     return render(request, 'lms/course_content_detail.html', context)

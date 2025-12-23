@@ -295,6 +295,13 @@
                             </div>
                         </div>
                     {% elif modules %}
+                    <!-- Unauthenticated users can preview content; show preview notice -->
+                    {% if not is_authenticated and can_view_content %}
+                    <div class="alert alert-info mb-4">
+                        <i class="fas fa-info-circle me-2"></i>
+                        You're previewing this course. <a href="{% url 'login' %}?next={% url 'lms:enroll_course' slug=course.slug %}" class="alert-link">Login to enroll</a> to save your progress.
+                    </div>
+                    {% endif %}
                     <div class="accordion" id="moduleAccordion">
                         {% for module in modules %}
                         <div class="accordion-item">
@@ -317,7 +324,7 @@
                                     <h5 class="mt-3">Module Content</h5>
                                     <ul class="list-group">
                                         {% for content in module.contents.all %}
-                                        {% if has_access or is_course_instructor %}
+                                        {% if has_access or is_course_instructor or can_view_content %}
                                         <li class="list-group-item">
                                             <div class="d-flex justify-content-between align-items-center">
                                                 <div>
@@ -368,7 +375,6 @@
                     </div>
                     {% else %}
                     <p class="text-muted">No modules have been created for this course yet.</p>
-                    {% endif %}
                     {% endif %}
                 </div>
             </div>
