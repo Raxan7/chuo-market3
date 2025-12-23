@@ -939,7 +939,7 @@
                 navigator.serviceWorker.register('{% static "js/service-worker.min.js" %}')
                     .then(function(registration) {
                         console.log('Service Worker registered with scope:', registration.scope);
-                        {% webpush_button with_class="d-none" %}
+                        {# {% webpush_button with_class="d-none" %} #}
                     })
                     .catch(function(error) {
                         console.error('Service Worker registration failed:', error);
