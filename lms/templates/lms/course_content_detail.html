@@ -111,14 +111,26 @@
                 <div class="card-footer text-muted d-flex justify-content-between align-items-center">
                     <span>Added on {{ content.date_added|date:"F d, Y" }}</span>
                     
-                    {% if content_completed %}
-                    <span class="badge bg-success p-2">
-                        <i class="fas fa-check-circle me-1"></i> Completed
-                    </span>
+                    {% if can_save_progress %}
+                        {% if content_completed %}
+                        <span class="badge bg-success p-2">
+                            <i class="fas fa-check-circle me-1"></i> Completed
+                        </span>
+                        {% else %}
+                        <a href="{% url 'lms:content_detail' course_slug=course.slug content_id=content.id %}?mark_complete=true" class="btn btn-success btn-sm">
+                            <i class="fas fa-check me-1"></i> Mark as Complete
+                        </a>
+                        {% endif %}
                     {% else %}
-                    <a href="{% url 'lms:content_detail' course_slug=course.slug content_id=content.id %}?mark_complete=true" class="btn btn-success btn-sm">
-                        <i class="fas fa-check me-1"></i> Mark as Complete
-                    </a>
+                        <div class="text-muted small">
+                            {% if not is_authenticated %}
+                                <a href="{% url 'login' %}?next={% url 'lms:content_detail' course_slug=course.slug content_id=content.id %}" class="text-decoration-none">Login</a> 
+                                and enroll to track completion
+                            {% elif not is_enrolled %}
+                                <a href="{% url 'lms:enroll_course' slug=course.slug %}" class="text-decoration-none">Enroll</a> 
+                                to track completion
+                            {% endif %}
+                        </div>
                     {% endif %}
                 </div>
             </div>

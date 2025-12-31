@@ -4,7 +4,7 @@ from django.contrib import messages
 from django.db.models import Q
 from django.utils.translation import gettext_lazy as _
 from django.utils import timezone
-from django.http import JsonResponse
+from django.http import JsonResponse, Http404
 from django.core.paginator import Paginator
 from django.views.decorators.csrf import csrf_protect
 from django.urls import reverse
@@ -33,12 +33,23 @@ logger = logging.getLogger(__name__)
 
 # Home view for the jobs app
 def jobs_home(request):
-    featured_jobs = Job.objects.filter(is_active=True, is_featured=True)[:5]
-    recent_jobs = Job.objects.filter(is_active=True).order_by('-posted_date')[:10]
-    job_count = Job.objects.filter(is_active=True).count()
+    public_jobs = Job.public_queryset().select_related('company', 'industry')
+    featured_jobs = public_jobs.filter(is_featured=True)[:5]
+    recent_jobs = public_jobs.order_by('-posted_date')[:10]
+    job_count = public_jobs.count()
     
     # Group jobs by industry
-    industries = Industry.objects.annotate(job_count=Count('jobs')).filter(job_count__gt=0).order_by('-job_count')[:8]
+    industry_public_filter = (
+        Q(jobs__is_active=True)
+        & (~(Q(jobs__source__isnull=True) | Q(jobs__source="") | Q(jobs__source="internal"))
+           | ((Q(jobs__source__isnull=True) | Q(jobs__source="") | Q(jobs__source="internal")) & Q(jobs__company__is_verified=True)))
+    )
+    industries = (
+        Industry.objects
+        .annotate(job_count=Count('jobs', filter=industry_public_filter, distinct=True))
+        .filter(job_count__gt=0)
+        .order_by('-job_count')[:8]
+    )
     
     context = {
         'featured_jobs': featured_jobs,
@@ -50,7 +61,7 @@ def jobs_home(request):
 
 # Job listing view
 def job_list(request):
-    jobs = Job.objects.filter(is_active=True)
+    jobs = Job.public_queryset().select_related('company', 'industry').prefetch_related('skills')
     search_form = JobSearchForm(request.GET)
     
     # Process search filters
@@ -106,23 +117,36 @@ def job_list(request):
     page_obj = paginator.get_page(page_number)
     
     # Get industries and job types for sidebar filters
-    industries = Industry.objects.annotate(job_count=Count('jobs')).filter(job_count__gt=0)
+    industry_public_filter = (
+        Q(jobs__is_active=True)
+        & (~(Q(jobs__source__isnull=True) | Q(jobs__source="") | Q(jobs__source="internal"))
+           | ((Q(jobs__source__isnull=True) | Q(jobs__source="") | Q(jobs__source="internal")) & Q(jobs__company__is_verified=True)))
+    )
+    industries = Industry.objects.annotate(job_count=Count('jobs', filter=industry_public_filter, distinct=True)).filter(job_count__gt=0)
     
     context = {
         'page_obj': page_obj,
         'search_form': search_form,
         'industries': industries,
         'total_jobs': jobs.count(),
+        'today': timezone.now(),
     }
     return render(request, 'jobs/job_list.html', context)
 
 # Job detail view
 def job_detail(request, job_id):
-    job = get_object_or_404(Job, id=job_id, is_active=True)
+    job_qs = Job.objects.select_related('company', 'industry').prefetch_related('skills')
+    job = get_object_or_404(job_qs, id=job_id)
+    is_owner_or_admin = request.user.is_authenticated and (job.created_by_id == request.user.id or request.user.is_superuser)
+
+    # Only show public jobs to everyone; owners/admins can always view
+    if not job.is_public and not is_owner_or_admin:
+        raise Http404(_('Job not available'))
     
-    # Update view count
-    job.views_count += 1
-    job.save(update_fields=['views_count'])
+    # Update view count only for active jobs
+    if job.is_active:
+        job.views_count += 1
+        job.save(update_fields=['views_count'])
     
     # Check if user has already applied
     user_has_applied = False
@@ -132,12 +156,13 @@ def job_detail(request, job_id):
         user_has_applied = JobApplication.objects.filter(job=job, applicant=request.user).exists()
         user_has_saved = SavedJob.objects.filter(job=job, user=request.user).exists()
     
-    # Get similar jobs
-    similar_jobs = Job.objects.filter(
+    # Get similar jobs (only public listings)
+    location_hint = job.location.split(',')[0] if job.location else ''
+    similar_jobs = Job.public_queryset().filter(
         Q(industry=job.industry) | 
         Q(job_type=job.job_type) |
-        Q(location__icontains=job.location.split(',')[0])
-    ).exclude(id=job.id).filter(is_active=True)[:5]
+        Q(location__icontains=location_hint)
+    ).exclude(id=job.id)[:5]
     
     context = {
         'job': job,
@@ -145,6 +170,8 @@ def job_detail(request, job_id):
         'user_has_saved': user_has_saved,
         'similar_jobs': similar_jobs,
         'application_form': JobApplicationForm() if request.user.is_authenticated and not user_has_applied else None,
+        'is_owner_or_admin': is_owner_or_admin,
+        'visibility_label': job.visibility_label,
     }
     return render(request, 'jobs/job_detail.html', context)
 
@@ -152,7 +179,11 @@ def job_detail(request, job_id):
 @login_required
 @csrf_protect
 def apply_for_job(request, job_id):
-    job = get_object_or_404(Job, id=job_id, is_active=True)
+    job = get_object_or_404(Job.objects.select_related('company'), id=job_id)
+    is_owner_or_admin = request.user.is_authenticated and (job.created_by_id == request.user.id or request.user.is_superuser)
+
+    if (not job.is_public or not job.is_active) and not is_owner_or_admin:
+        raise Http404(_('Job not available'))
     
     # Check if application deadline has passed
     if job.is_expired():
@@ -214,7 +245,11 @@ def application_submitted(request, job_id):
 @login_required
 @require_POST
 def save_job(request, job_id):
-    job = get_object_or_404(Job, id=job_id, is_active=True)
+    job = get_object_or_404(Job.objects.select_related('company'), id=job_id)
+    is_owner_or_admin = request.user.is_authenticated and (job.created_by_id == request.user.id or request.user.is_superuser)
+
+    if (not job.is_public or not job.is_active) and not is_owner_or_admin:
+        raise Http404(_('Job not available'))
     saved_job = SavedJob.objects.filter(job=job, user=request.user).first()
     
     if saved_job:
@@ -236,7 +271,11 @@ def save_job(request, job_id):
 @login_required
 @require_POST
 def remove_saved_job(request, job_id):
-    job = get_object_or_404(Job, id=job_id)
+    job = get_object_or_404(Job.objects.select_related('company'), id=job_id)
+    is_owner_or_admin = request.user.is_authenticated and (job.created_by_id == request.user.id or request.user.is_superuser)
+
+    if (not job.is_public or not job.is_active) and not is_owner_or_admin:
+        raise Http404(_('Job not available'))
     SavedJob.objects.filter(job=job, user=request.user).delete()
     
     messages.success(request, _('Job removed from your bookmarks.'))
@@ -358,21 +397,39 @@ def company_dashboard(request, company_id):
 # Job CRUD views
 @login_required
 def create_job(request):
+    user_companies = Company.objects.filter(created_by=request.user)
+    has_verified_company = user_companies.filter(is_verified=True).exists()
+    has_companies = user_companies.exists()
+
     if request.method == 'POST':
         form = JobForm(request.POST, user=request.user)
         if form.is_valid():
-            job = form.save()
-            messages.success(request, _('Job posted successfully.'))
+            job = form.save(commit=False)
+            if not job.source:
+                job.source = 'internal'
+            job.save()
+            form.save_m2m()
+
+            if job.is_public:
+                messages.success(request, _('Job posted successfully and is live.'))
+            else:
+                messages.info(request, _('Job saved but will stay hidden until your company is verified.'))
             return redirect('jobs:my_jobs')
     else:
         form = JobForm(user=request.user)
     
-    # If user has no companies, redirect to create company page
-    if not Company.objects.filter(created_by=request.user).exists():
-        messages.info(request, _('You need to create a company before posting jobs.'))
-        return redirect('jobs:create_company')
-    
-    return render(request, 'jobs/job_form.html', {'form': form, 'is_create': True})
+    return render(
+        request,
+        'jobs/job_form.html',
+        {
+            'form': form,
+            'is_create': True,
+            'has_verified_company': has_verified_company,
+            'has_companies': has_companies,
+            'verified_companies': user_companies.filter(is_verified=True),
+            'unverified_companies': user_companies.filter(is_verified=False),
+        },
+    )
 
 @login_required
 def edit_job(request, job_id):
@@ -381,6 +438,9 @@ def edit_job(request, job_id):
     # Check if user is the owner
     if job.created_by != request.user and not request.user.is_superuser:
         return HttpResponseForbidden(_('You do not have permission to edit this job.'))
+    user_companies = Company.objects.filter(created_by=request.user)
+    has_verified_company = user_companies.filter(is_verified=True).exists()
+    has_companies = user_companies.exists()
     
     if request.method == 'POST':
         form = JobForm(request.POST, instance=job, user=request.user)
@@ -391,7 +451,20 @@ def edit_job(request, job_id):
     else:
         form = JobForm(instance=job, user=request.user)
     
-    return render(request, 'jobs/job_form.html', {'form': form, 'job': job, 'is_create': False})
+    return render(
+        request,
+        'jobs/job_form.html',
+        {
+            'form': form,
+            'job': job,
+            'is_create': False,
+            'has_verified_company': has_verified_company,
+            'has_companies': has_companies,
+            'verified_companies': user_companies.filter(is_verified=True),
+            'unverified_companies': user_companies.filter(is_verified=False),
+            'is_public': job.is_public,
+        },
+    )
 
 @login_required
 def delete_job(request, job_id):
@@ -410,8 +483,16 @@ def delete_job(request, job_id):
 
 @login_required
 def my_jobs(request):
-    jobs = Job.objects.filter(created_by=request.user).order_by('-posted_date')
-    return render(request, 'jobs/my_jobs.html', {'jobs': jobs})
+    jobs = Job.objects.filter(created_by=request.user).select_related('company').order_by('-posted_date')
+    user_companies = Company.objects.filter(created_by=request.user)
+    context = {
+        'jobs': jobs,
+        'has_verified_company': user_companies.filter(is_verified=True).exists(),
+        'has_companies': user_companies.exists(),
+        'verified_companies': user_companies.filter(is_verified=True),
+        'unverified_companies': user_companies.filter(is_verified=False),
+    }
+    return render(request, 'jobs/my_jobs.html', context)
 
 # Job applications management views
 @login_required

@@ -43,8 +43,8 @@ class SkillAdmin(admin.ModelAdmin):
 
 @admin.register(Job)
 class JobAdmin(admin.ModelAdmin):
-    list_display = ('title', 'company', 'location', 'job_type', 'salary_range', 'posted_date', 'is_active', 'source')
-    list_filter = ('is_active', 'is_featured', 'job_type', 'experience_level', 'is_remote', 'source')
+    list_display = ('title', 'company', 'location', 'job_type', 'posted_date', 'approval_status', 'is_active', 'source')
+    list_filter = ('is_approved', 'is_active', 'is_featured', 'job_type', 'experience_level', 'is_remote', 'source', 'posted_date')
     search_fields = ('title', 'description', 'requirements', 'company__name', 'location', 'external_id')
     readonly_fields = ('views_count', 'applications_count', 'posted_date', 'created_by')
     filter_horizontal = ('skills',)
@@ -63,23 +63,19 @@ class JobAdmin(admin.ModelAdmin):
             'fields': ('application_deadline', 'posted_date')
         }),
         (_('Status'), {
-            'fields': ('is_active', 'is_featured', 'views_count', 'applications_count', 'created_by')
+            'fields': ('is_active', 'is_approved', 'is_featured', 'views_count', 'applications_count', 'created_by')
         }),
         (_('API Information'), {
             'fields': ('source', 'external_id', 'external_url'),
         }),
     )
     
-    def salary_range(self, obj):
-        if obj.salary_min and obj.salary_max:
-            return f"{obj.salary_min:,} - {obj.salary_max:,} {obj.salary_currency}"
-        elif obj.salary_min:
-            return f"From {obj.salary_min:,} {obj.salary_currency}"
-        elif obj.salary_max:
-            return f"Up to {obj.salary_max:,} {obj.salary_currency}"
-        return _("Not specified")
+    def approval_status(self, obj):
+        if obj.is_approved:
+            return "✓ Approved"
+        return "⏳ Pending"
     
-    salary_range.short_description = _("Salary Range")
+    approval_status.short_description = _("Approval Status")
 
 
 @admin.register(JobApplication)

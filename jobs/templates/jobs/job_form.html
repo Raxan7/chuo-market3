@@ -1,0 +1,197 @@
+{% extends "jobs/base.html" %}
+{% load static %}
+
+{% block job_content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <p class="text-uppercase text-muted small mb-1">Job posting</p>
+        <h2 class="mb-0">{% if is_create %}Post a new role{% else %}Update job details{% endif %}</h2>
+        <p class="text-muted mb-0">Everyone can draft a job; only verified companies publish to the public feed.</p>
+    </div>
+    <div class="text-end">
+        <a href="{% url 'jobs:my_jobs' %}" class="btn btn-outline-secondary me-2">My jobs</a>
+        <a href="{% url 'jobs:create_company' %}" class="btn btn-outline-primary">Add company</a>
+    </div>
+</div>
+
+{% if has_verified_company %}
+<div class="alert alert-success d-flex align-items-center" role="alert">
+    <i class="bi bi-patch-check-fill me-2"></i>
+    <div>
+        You have a verified company. Jobs posted under it go live immediately.
+    </div>
+</div>
+{% elif has_companies %}
+<div class="alert alert-warning d-flex align-items-center" role="alert">
+    <i class="bi bi-shield-exclamation me-2"></i>
+    <div>
+        Jobs stay hidden until one of your companies is verified. Submit verification from your company dashboard.
+        {% if unverified_companies %}
+            <div class="mt-2 small">
+                {% for company in unverified_companies %}
+                    <a href="{% url 'jobs:request_verification' company.id %}" class="text-decoration-none">Request verification for {{ company.name }}</a>{% if not forloop.last %} • {% endif %}
+                {% endfor %}
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% else %}
+<div class="alert alert-info d-flex align-items-center" role="alert">
+    <i class="bi bi-building-add me-2"></i>
+    <div>
+        Create a company profile first so applicants know who is hiring. You can still explore the form now.
+    </div>
+</div>
+{% endif %}
+
+<div class="card shadow-sm mb-4">
+    <div class="card-body">
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            {{ form.posted_date.as_hidden }}
+            {% if form.non_field_errors %}
+            <div class="alert alert-danger">
+                {% for error in form.non_field_errors %}
+                <div>{{ error }}</div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <div class="row g-4">
+                <div class="col-lg-6">
+                    <div class="mb-3">
+                        <label class="form-label">Job title</label>
+                        {{ form.title }}
+                        {% for error in form.title.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="mb-3">
+                        <label class="form-label">Company</label>
+                        {{ form.company }}
+                        {% for error in form.company.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+                        {% if not has_companies %}
+                        <div class="text-muted small mt-1">No companies yet. Add one to publish.</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-4">
+                <div class="col-lg-4">
+                    <label class="form-label">Industry</label>
+                    {{ form.industry }}
+                    {% for error in form.industry.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+                </div>
+                <div class="col-lg-4">
+                    <label class="form-label">Job type</label>
+                    {{ form.job_type }}
+                    {% for error in form.job_type.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+                </div>
+                <div class="col-lg-4">
+                    <label class="form-label">Experience level</label>
+                    {{ form.experience_level }}
+                    {% for error in form.experience_level.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+                </div>
+            </div>
+
+            <div class="row g-4 mt-1">
+                <div class="col-lg-8">
+                    <label class="form-label">Location</label>
+                    {{ form.location }}
+                    {% for error in form.location.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+                </div>
+                <div class="col-lg-4 d-flex align-items-end">
+                    <div class="form-check">
+                        {{ form.is_remote }}
+                        <label class="form-check-label" for="{{ form.is_remote.id_for_label }}">Remote friendly</label>
+                        {% for error in form.is_remote.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <hr class="my-4">
+            <h5 class="mb-3">Role details</h5>
+            <div class="mb-3">
+                <label class="form-label">Description</label>
+                {{ form.description }}
+                {% for error in form.description.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Requirements</label>
+                {{ form.requirements }}
+                {% for error in form.requirements.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+            </div>
+            <div class="row g-4">
+                <div class="col-md-6">
+                    <label class="form-label">Responsibilities</label>
+                    {{ form.responsibilities }}
+                    {% for error in form.responsibilities.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Benefits</label>
+                    {{ form.benefits }}
+                    {% for error in form.benefits.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+                </div>
+            </div>
+
+            <div class="mb-3 mt-4">
+                <label class="form-label">Skills</label>
+                <div class="border rounded p-3" style="max-height: 200px; overflow-y: auto;">
+                    {{ form.skills }}
+                </div>
+                {% for error in form.skills.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+            </div>
+
+            <hr class="my-4">
+            <h5 class="mb-3">Compensation & timeline</h5>
+            <div class="row g-4">
+                <div class="col-md-4">
+                    <label class="form-label">Currency</label>
+                    {{ form.salary_currency }}
+                    {% for error in form.salary_currency.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Salary min</label>
+                    {{ form.salary_min }}
+                    {% for error in form.salary_min.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Salary max</label>
+                    {{ form.salary_max }}
+                    {% for error in form.salary_max.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+                </div>
+            </div>
+            <div class="row g-4 mt-1">
+                <div class="col-md-6">
+                    <label class="form-label">Application deadline</label>
+                    {{ form.application_deadline }}
+                    {% for error in form.application_deadline.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+                </div>
+                <div class="col-md-6">
+                    <div class="form-check mt-4">
+                        {{ form.is_active }}
+                        <label class="form-check-label" for="{{ form.is_active.id_for_label }}">Publish now</label>
+                        {% for error in form.is_active.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+                    </div>
+                    <div class="form-check mt-2">
+                        {{ form.is_featured }}
+                        <label class="form-check-label" for="{{ form.is_featured.id_for_label }}">Mark as featured</label>
+                        {% for error in form.is_featured.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-end gap-2 mt-4">
+                <a href="{% url 'jobs:job_list' %}" class="btn btn-outline-secondary">Cancel</a>
+                <button type="submit" class="btn btn-primary" {% if not has_companies %}disabled{% endif %}>
+                    {% if is_create %}Post job{% else %}Save changes{% endif %}
+                </button>
+            </div>
+            {% if not has_companies %}
+            <p class="text-muted small mt-2 mb-0">Add a company to enable publishing. Your draft will be saved once valid details are provided.</p>
+            {% endif %}
+        </form>
+    </div>
+</div>
+{% endblock %}

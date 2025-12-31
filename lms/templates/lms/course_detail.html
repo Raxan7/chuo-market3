@@ -39,7 +39,7 @@
                                     </a>
                                 </div>
                             {% endif %}
-                        {% endif %}ck title %}
+                        {% endif %}
 
 {% block extra_head %}
 <link rel="stylesheet" href="{% static 'lms/css/course_content.css' %}">
@@ -208,19 +208,18 @@
                 </div>
                 <div class="card-body">
                     {% if not is_enrolled and not is_course_instructor %}
-                    <!-- Course Summary for Non-enrolled Students -->
-                    <div class="alert alert-warning mb-4">
+                    <div class="alert alert-info mb-4">
                         <div class="d-flex">
                             <div class="me-3">
-                                <i class="fas fa-lock fa-2x"></i>
+                                <i class="fas fa-info-circle fa-2x"></i>
                             </div>
                             <div>
-                                <h5 class="alert-heading">Enrollment Required</h5>
-                                <p>You need to enroll in this course to access the full content.</p>
+                                <h5 class="alert-heading">Viewing Preview</h5>
+                                <p>You can view this course without enrolling. Your progress won't be saved unless you <strong>login and enroll</strong>.</p>
                                 {% if user.is_authenticated %}
                                 <div class="mt-3">
                                     <a href="{% url 'lms:enroll_course' slug=course.slug %}" class="btn btn-success">
-                                        <i class="fas fa-user-plus me-2"></i>Enroll Now
+                                        <i class="fas fa-user-plus me-2"></i>Enroll to Save Progress
                                     </a>
                                 </div>
                                 {% else %}
@@ -233,68 +232,8 @@
                             </div>
                         </div>
                     </div>
-                    
-                    <h4 class="mb-3">Course Summary</h4>
-                    <p class="lead">This course contains:</p>
-                    <ul class="list-group mb-4">
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            <div><i class="fas fa-folder me-2 text-primary"></i> Modules</div>
-                            <span class="badge bg-primary rounded-pill">{{ modules|length }}</span>
-                        </li>
-                        {% with total_content=0 %}
-                            {% for module in modules %}
-                                {% with module_content_count=module.contents.all|length %}
-                                    {% with total_content=total_content|add:module_content_count %}
-                                    {% endwith %}
-                                {% endwith %}
-                            {% endfor %}
-                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                <div><i class="fas fa-file-alt me-2 text-success"></i> Content Items</div>
-                                <span class="badge bg-success rounded-pill">{{ total_content }}</span>
-                            </li>
-                        {% endwith %}
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            <div><i class="fas fa-question-circle me-2 text-info"></i> Quizzes & Assessments</div>
-                            <span class="badge bg-info rounded-pill">{{ quizzes|length }}</span>
-                        </li>
-                    </ul>
-                    
-                    <!-- Preview of module titles for non-enrolled students -->
-                    <h5 class="mb-3">What You'll Learn</h5>
-                    <div class="list-group">
-                        {% for module in modules %}
-                        <div class="list-group-item">
-                            <div class="d-flex w-100 justify-content-between">
-                                <h6 class="mb-1"><i class="fas fa-lock-open me-2 text-muted"></i> {{ module.title }}</h6>
-                                <small>{{ module.contents.all|length }} items</small>
-                            </div>
-                            <p class="mb-1 text-muted">{{ module.description|striptags|truncatechars:100 }}</p>
-                        </div>
-                        {% endfor %}
-                    </div>
-                    
-                    {% else %}
-                    <!-- Check if user has access to this content -->
-                    {% if not has_access and is_enrolled and not course.is_free and not is_course_instructor %}
-                        <div class="alert alert-warning">
-                            <div class="text-center">
-                                <i class="fas fa-lock fa-3x mb-3"></i>
-                                <h4>Premium Content</h4>
-                                <p>This content is only available after payment approval.</p>
-                                
-                                {% if payment_status == 'pending' %}
-                                    <p>Your payment is being processed. This usually takes just a few minutes.</p>
-                                    <a href="{% url 'lms:payment_pending' slug=course.slug %}" class="btn btn-warning">
-                                        <i class="fas fa-clock"></i> View Payment Status
-                                    </a>
-                                {% else %}
-                                    <a href="{% url 'lms:payment_form' slug=course.slug %}" class="btn btn-primary">
-                                        <i class="fas fa-credit-card"></i> Make Payment
-                                    </a>
-                                {% endif %}
-                            </div>
-                        </div>
-                    {% elif modules %}
+
+                    {% if modules %}
                     <!-- Unauthenticated users can preview content; show preview notice -->
                     {% if not is_authenticated and can_view_content %}
                     <div class="alert alert-info mb-4">
@@ -376,6 +315,62 @@
                     {% else %}
                     <p class="text-muted">No modules have been created for this course yet.</p>
                     {% endif %}
+
+                    {% else %}
+                    <!-- Check if user has access to this content -->
+                    {% if not has_access and is_enrolled and not course.is_free and not is_course_instructor %}
+                        <div class="alert alert-warning">
+                            <div class="text-center">
+                                <i class="fas fa-lock fa-3x mb-3"></i>
+                                <h4>Premium Content</h4>
+                                <p>This content is only available after payment approval.</p>
+                                
+                                {% if payment_status == 'pending' %}
+                                    <p>Your payment is being processed. This usually takes just a few minutes.</p>
+                                    <a href="{% url 'lms:payment_pending' slug=course.slug %}" class="btn btn-warning">
+                                        <i class="fas fa-clock"></i> View Payment Status
+                                    </a>
+                                {% else %}
+                                    <a href="{% url 'lms:payment_form' slug=course.slug %}" class="btn btn-primary">
+                                        <i class="fas fa-credit-card"></i> Make Payment
+                                    </a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endif %}
+
+                    {% if modules %}
+                    <div class="list-group">
+                        {% for module in modules %}
+                        <div class="list-group-item">
+                            <h5>{{ module.title }}</h5>
+                            <p>{{ module.description|safe }}</p>
+                            
+                            {% if module.contents.all %}
+                            <h6>Content</h6>
+                            <ul class="list-group">
+                                {% for content in module.contents.all %}
+                                {% if has_access or is_course_instructor or can_view_content %}
+                                <li class="list-group-item">
+                                    <a href="{% url 'lms:content_detail' course_slug=course.slug content_id=content.id %}">
+                                        {{ content.title }}
+                                    </a>
+                                </li>
+                                {% else %}
+                                <li class="list-group-item text-muted">
+                                    {{ content.title }} <span class="badge bg-warning">Premium Content</span>
+                                </li>
+                                {% endif %}
+                                {% endfor %}
+                            </ul>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="text-muted">No modules have been created for this course yet.</p>
+                    {% endif %}
+
                     {% endif %}
                 </div>
             </div>

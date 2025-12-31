@@ -1,4 +1,5 @@
 from django.db import models
+from django.db.models import Q
 from django.contrib.auth.models import User
 from django.utils.translation import gettext_lazy as _
 from django.utils import timezone
@@ -108,6 +109,7 @@ class Job(models.Model):
     application_deadline = models.DateTimeField(_('Application Deadline'))
     posted_date = models.DateTimeField(_('Posted Date'), default=timezone.now)
     is_active = models.BooleanField(_('Active'), default=True)
+    is_approved = models.BooleanField(_('Approved by Admin'), default=False)
     is_featured = models.BooleanField(_('Featured'), default=False)
     views_count = models.PositiveIntegerField(_('Views'), default=0)
     applications_count = models.PositiveIntegerField(_('Applications'), default=0)
@@ -145,6 +147,44 @@ class Job(models.Model):
     
     def is_expired(self):
         return timezone.now() > self.application_deadline
+
+    @classmethod
+    def public_queryset(cls):
+        """Return jobs that can be displayed to end users.
+        
+        Requirements:
+        - Must be active
+        - Must be approved by admin
+        - Internal postings also require a verified company
+        """
+        internal_sources = Q(source__isnull=True) | Q(source="") | Q(source="internal")
+        return cls.objects.filter(is_active=True, is_approved=True).filter(~internal_sources | (internal_sources & Q(company__is_verified=True)))
+
+    @property
+    def is_internal_source(self):
+        return not self.source or self.source == "internal"
+
+    @property
+    def is_public(self):
+        if not self.is_active:
+            return False
+        if not self.is_approved:
+            return False
+        if self.is_internal_source:
+            return self.company.is_verified
+        return True
+
+    @property
+    def visibility_label(self):
+        if not self.is_active:
+            return _("Inactive")
+        if not self.is_approved:
+            return _("Pending Approval")
+        if not self.is_internal_source:
+            return _("Public (external source)")
+        if self.company.is_verified:
+            return _("Public")
+        return _("Hidden until company verification")
 
 
 class JobApplication(models.Model):

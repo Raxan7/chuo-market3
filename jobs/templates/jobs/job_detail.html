@@ -7,6 +7,22 @@
         <h5 class="mb-0">Job Details</h5>
     </div>
     <div class="card-body">
+        {% if is_owner_or_admin and not job.is_approved %}
+        <div class="alert alert-info d-flex align-items-center">
+            <i class="bi bi-info-circle me-2"></i>
+            <div>
+                This job is pending admin approval and is not visible to other users. Once approved, it will appear in the job listings.
+            </div>
+        </div>
+        {% endif %}
+        {% if is_owner_or_admin and not job.is_public %}
+        <div class="alert alert-warning d-flex align-items-center">
+            <i class="bi bi-shield-exclamation me-2"></i>
+            <div>
+                This job is hidden from the public until your company is verified. Once verification is complete it will appear automatically.
+            </div>
+        </div>
+        {% endif %}
         <div class="d-flex justify-content-between align-items-start mb-4">
             <div>
                 <h3 class="mb-2">{{ job.title }}</h3>
@@ -170,7 +186,7 @@
                 {% else %}{{ job.source|capfirst }}{% endif %}
             </a>
             {% elif job.source == 'internal' %}
-            <a href="{% url 'jobs:apply' job.id %}" class="btn btn-primary">Apply Now</a>
+            <a href="{% url 'jobs:apply_for_job' job.id %}" class="btn btn-primary">Apply Now</a>
             {% else %}
             <a href="{{ job.external_url }}" target="_blank" class="btn btn-primary">View Original Posting</a>
             {% endif %}

@@ -204,71 +204,80 @@ class AdminRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
         return is_admin(self.request.user)
 
 
-@login_required(login_url='login')
 def lms_home(request):
-    """LMS home page view"""
+    """LMS home page view - accessible without login"""
     
-    # Create profile if it doesn't exist
-    if not hasattr(request.user, 'lms_profile'):
-        LMSProfile.objects.create(
-            user=request.user,
-            role='student'  # Default role
-        )
-        messages.info(request, _("Welcome to the Learning Management System! Your student profile has been created."))
+    # Create profile if user is authenticated and doesn't have one
+    user_profile = None
+    if request.user.is_authenticated:
+        if not hasattr(request.user, 'lms_profile'):
+            LMSProfile.objects.create(
+                user=request.user,
+                role='student'  # Default role
+            )
+            messages.info(request, _("Welcome to the Learning Management System! Your student profile has been created."))
         
-    user_profile = request.user.lms_profile
+        user_profile = request.user.lms_profile
     
     # Get current semester
     current_semester = Semester.objects.filter(is_current_semester=True).first()
     
     context = {
         'user_profile': user_profile,
-        'current_semester': current_semester
+        'current_semester': current_semester,
+        'is_authenticated': request.user.is_authenticated,
     }
     
-    if is_student(request.user):
-        # Get student's enrolled courses
-        enrolled_courses = Course.objects.filter(courseenrollment__student=user_profile)
+    if request.user.is_authenticated:
+        if is_student(request.user):
+            # Get student's enrolled courses
+            enrolled_courses = Course.objects.filter(courseenrollment__student=user_profile)
+            
+            # Get upcoming quizzes
+            upcoming_quizzes = Quiz.objects.filter(
+                course__in=enrolled_courses,
+                draft=False,
+                due_date__gt=timezone.now()
+            ).order_by('due_date')[:5]
+            
+            context.update({
+                'enrolled_courses': enrolled_courses,
+                'upcoming_quizzes': upcoming_quizzes,
+            })
         
-        # Get upcoming quizzes
-        upcoming_quizzes = Quiz.objects.filter(
-            course__in=enrolled_courses,
-            draft=False,
-            due_date__gt=timezone.now()
-        ).order_by('due_date')[:5]
+        elif is_instructor(request.user):
+            # Get courses taught by instructor
+            teaching_courses = Course.objects.filter(instructors=user_profile)
+            
+            # Get recent quizzes created by instructor
+            recent_quizzes = Quiz.objects.filter(course__instructors=user_profile).order_by('-timestamp')[:5]
+            
+            context.update({
+                'teaching_courses': teaching_courses,
+                'recent_quizzes': recent_quizzes,
+            })
         
+        elif is_admin(request.user):
+            # Get system statistics
+            stats = {
+                'total_courses': Course.objects.count(),
+                'total_students': LMSProfile.objects.filter(role='student').count(),
+                'total_instructors': LMSProfile.objects.filter(role='instructor').count(),
+                'total_quizzes': Quiz.objects.count(),
+            }
+            
+            # Get recent activity logs
+            recent_activities = ActivityLog.objects.all()[:10]
+            
+            context.update({
+                'stats': stats,
+                'recent_activities': recent_activities,
+            })
+    else:
+        # For unauthenticated users, show featured courses
+        featured_courses = Course.objects.filter(is_pinned=True).order_by('-is_pinned', 'title')[:6]
         context.update({
-            'enrolled_courses': enrolled_courses,
-            'upcoming_quizzes': upcoming_quizzes,
-        })
-    
-    elif is_instructor(request.user):
-        # Get courses taught by instructor
-        teaching_courses = Course.objects.filter(instructors=user_profile)
-        
-        # Get recent quizzes created by instructor
-        recent_quizzes = Quiz.objects.filter(course__instructors=user_profile).order_by('-timestamp')[:5]
-        
-        context.update({
-            'teaching_courses': teaching_courses,
-            'recent_quizzes': recent_quizzes,
-        })
-    
-    elif is_admin(request.user):
-        # Get system statistics
-        stats = {
-            'total_courses': Course.objects.count(),
-            'total_students': LMSProfile.objects.filter(role='student').count(),
-            'total_instructors': LMSProfile.objects.filter(role='instructor').count(),
-            'total_quizzes': Quiz.objects.count(),
-        }
-        
-        # Get recent activity logs
-        recent_activities = ActivityLog.objects.all()[:10]
-        
-        context.update({
-            'stats': stats,
-            'recent_activities': recent_activities,
+            'featured_courses': featured_courses,
         })
     
     return render(request, 'lms/home.html', context)
@@ -295,7 +304,7 @@ class ProgramDetailView(DetailView):
 
 
 class CourseListView(ListView):
-    """List all courses"""
+    """List all courses - accessible without login"""
     model = Course
     template_name = 'lms/course_list.html'
     context_object_name = 'courses'
@@ -340,6 +349,7 @@ class CourseListView(ListView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['programs'] = Program.objects.all()
+        context['is_authenticated'] = self.request.user.is_authenticated
         context['current_filters'] = {
             'semester': self.request.GET.get('semester', ''),
             'program': self.request.GET.get('program', ''),
@@ -351,7 +361,7 @@ class CourseListView(ListView):
 
 
 class CourseDetailView(DetailView):
-    """Show details of a course"""
+    """Show details of a course - accessible without login"""
     model = Course
     template_name = 'lms/course_detail.html'
     context_object_name = 'course'
@@ -371,8 +381,9 @@ class CourseDetailView(DetailView):
         student_profile = None
         enrollment = None
         payment_status = None
-        has_access = False
-        can_view_content = False  # New flag for unauthenticated users
+        # Default: everyone can view course content (enrollment is optional)
+        has_access = True
+        can_view_content = True  # New flag for unauthenticated users
         
         if self.request.user.is_authenticated and hasattr(self.request.user, 'lms_profile'):
             student_profile = self.request.user.lms_profile
@@ -383,12 +394,11 @@ class CourseDetailView(DetailView):
                 )
                 is_enrolled = True
                 payment_status = enrollment.payment_status
+                # For enrolled users: access depends on course type and payment status
                 has_access = course.is_free or payment_status == 'approved'
             except CourseEnrollment.DoesNotExist:
-                pass
-        else:
-            # Unauthenticated users can view content for preview purposes
-            can_view_content = True
+                # Enrolled users without payment approval on paid courses can still view
+                has_access = True
         
         # Check if user is instructor for this course
         is_course_instructor = False
@@ -427,6 +437,7 @@ class CourseDetailView(DetailView):
             'students_progress': students_progress,
             'has_access': has_access,
             'can_view_content': can_view_content,  # Allow unauthenticated preview
+            'is_authenticated': self.request.user.is_authenticated,
             'payment_status': payment_status,
             'enrollment': enrollment,
             'payment_methods': payment_methods,
@@ -500,7 +511,7 @@ def unenroll_course(request, slug):
 
 
 class QuizDetailView(DetailView):
-    """Show details of a quiz"""
+    """Show details of a quiz - accessible without login"""
     model = Quiz
     template_name = 'lms/quiz_detail.html'
     context_object_name = 'quiz'
@@ -516,6 +527,8 @@ class QuizDetailView(DetailView):
         previous_attempts = None
         completed_attempt = None
         user_score = None
+        
+        context['is_authenticated'] = self.request.user.is_authenticated
         
         if self.request.user.is_authenticated and hasattr(self.request.user, 'lms_profile'):
             profile = self.request.user.lms_profile
@@ -808,11 +821,25 @@ def course_content_detail(request, course_slug, content_id):
     is_enrolled = False
     is_instructor = False
     profile = None
-    
+
     if request.user.is_authenticated and hasattr(request.user, 'lms_profile'):
         profile = request.user.lms_profile
         is_enrolled = CourseEnrollment.objects.filter(student=profile, course=course).exists()
         is_instructor = course.instructors.filter(id=profile.id).exists()
+
+    # If user attempts to mark content complete, require login and enrollment to save progress
+    mark_complete = request.GET.get('mark_complete') == 'true'
+    if mark_complete:
+        if not request.user.is_authenticated:
+            return redirect(f"{reverse('login')}?next={request.path}")
+        # Ensure user has a profile
+        if not profile:
+            messages.error(request, _("You need an LMS profile to save progress."))
+            return redirect('lms:lms_home')
+        # If user is not enrolled and not an instructor, ask them to enroll
+        if not is_enrolled and not is_instructor:
+            messages.info(request, _("You need to enroll in this course to save progress."))
+            return redirect('lms:enroll_course', slug=course.slug)
     
     # Allow access to all: unauthenticated users, students, and instructors
     # Track content access for authenticated students (not instructors or staff)
@@ -821,9 +848,9 @@ def course_content_detail(request, course_slug, content_id):
             student=profile,
             content=content
         )
-        
+
         # Mark as completed if it's a request from the "mark complete" button
-        if request.GET.get('mark_complete') == 'true':
+        if mark_complete:
             content_access.mark_complete()
             messages.success(request, _("Content marked as completed!"))
             return redirect('lms:content_detail', course_slug=course_slug, content_id=content_id)

@@ -68,15 +68,32 @@
                 </div>
             {% else %}
                 <div class="alert alert-warning">
-                    <h4 class="alert-heading">Quiz Unavailable</h4>
+                    <h4 class="alert-heading">Quiz Participation Required</h4>
                     <p>
-                        {% if not_enrolled %}
+                        {% if not is_authenticated %}
+                            <div class="d-flex">
+                                <div class="me-3">
+                                    <i class="fas fa-info-circle fa-2x"></i>
+                                </div>
+                                <div>
+                                    <p>You can view quiz information, but you need to login and enroll to take the quiz and save your score.</p>
+                                    <div class="mt-3">
+                                        <a href="{% url 'lms:course_detail' slug=quiz.course.slug %}" class="btn btn-outline-primary me-2">
+                                            <i class="fas fa-info-circle me-1"></i> View Course
+                                        </a>
+                                        <a href="{% url 'login' %}?next={% url 'lms:enroll_course' slug=quiz.course.slug %}" class="btn btn-success">
+                                            <i class="fas fa-sign-in-alt me-1"></i> Login to Enroll
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        {% elif not_enrolled %}
                             <div class="d-flex">
                                 <div class="me-3">
                                     <i class="fas fa-lock fa-2x"></i>
                                 </div>
                                 <div>
-                                    <p>You must be enrolled in this course to take the quiz.</p>
+                                    <p>You can view quiz information, but you must enroll in this course to take the quiz and save your score.</p>
                                     <div class="mt-3">
                                         <a href="{% url 'lms:course_detail' slug=quiz.course.slug %}" class="btn btn-outline-primary me-2">
                                             <i class="fas fa-info-circle me-1"></i> View Course
