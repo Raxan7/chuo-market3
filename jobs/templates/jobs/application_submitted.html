@@ -1,0 +1,40 @@
+{% extends "jobs/base.html" %}
+{% load static %}
+
+{% block job_content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-body text-center">
+                    <div class="mb-4">
+                        <i class="fas fa-check-circle text-success" style="font-size: 4rem;"></i>
+                    </div>
+                    <h2 class="card-title text-success mb-3">Application Submitted Successfully!</h2>
+                    <p class="card-text mb-4">
+                        Thank you for applying to <strong>{{ job.title }}</strong>.
+                        {% if job.company %}
+                            Your application has been sent to {{ job.company.name }}.
+                        {% endif %}
+                    </p>
+                    <div class="alert alert-info">
+                        <h6><i class="fas fa-info-circle"></i> What happens next?</h6>
+                        <p class="mb-0">
+                            The employer will review your application and may contact you for an interview.
+                            You can track the status of your application in your dashboard.
+                        </p>
+                    </div>
+                    <div class="mt-4">
+                        <a href="{% url 'jobs:my_applications' %}" class="btn btn-primary me-2">
+                            <i class="fas fa-list"></i> View My Applications
+                        </a>
+                        <a href="{% url 'jobs:job_list' %}" class="btn btn-outline-primary">
+                            <i class="fas fa-search"></i> Browse More Jobs
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

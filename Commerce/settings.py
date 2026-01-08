@@ -216,58 +216,18 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
-TINYMCE_JS_URL = os.path.join(STATIC_URL, "tinymce/tinymce.min.js")
-TINYMCE_JS_ROOT = os.path.join(STATIC_URL, "tinymce")
+TINYMCE_JS_URL = 'https://cdnjs.cloudflare.com/ajax/libs/tinymce/5.10.7/tinymce.min.js'
+TINYMCE_JS_ROOT = 'https://cdnjs.cloudflare.com/ajax/libs/tinymce/5.10.7/'
 
 TINYMCE_DEFAULT_CONFIG = {
     'height': 300,
-    'plugins': "image,imagetools,media,codesample,link,code,paste,lists,advlist,table,fullscreen,wordcount,searchreplace,visualblocks,visualchars",
-    'cleanup_on_startup': True,
-    'menubar': 'file edit view insert format tools table',
-    'toolbar': "styleselect | undo redo | bold italic underline strikethrough | forecolor backcolor | alignleft aligncenter alignright alignjustify | bullist numlist | table | link image media | codesample code visualblocks | searchreplace | fullscreen",
-    'image_caption': True,
-    'image_advtab': True,
-    'custom_undo_redo_levels': 10,
-    'file_browser_callback': "myFileBrowser",
-    'forced_root_block': 'p',
-    'forced_root_block_attrs': {
-        'style': 'margin-top: 0; margin-bottom: 0.5em;'
-    },
-    'paste_remove_styles': True,
-    'paste_remove_spans': True,
-    'paste_strip_class_attributes': 'all',
-    'valid_elements': '*[*]',
-    'valid_children': '+body[style],+div[p|h1|h2|h3|h4|h5|h6|blockquote|ul|ol|table|pre],+p[strong|em|span|br|code]',
-    'element_format': 'html',
+    'plugins': 'advlist autolink lists link image charmap print preview hr anchor pagebreak',
+    'toolbar_mode': 'floating',
+    'menubar': False,
+    'toolbar': 'undo redo | formatselect | bold italic underline | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | removeformat | link image',
+    'image_advtab': False,
+    'paste_data_images': True,
     'content_css': '/static/css/tinymce_custom.css',
-    'codesample_languages': [
-        { 'text': 'HTML/XML', 'value': 'markup' },
-        { 'text': 'JavaScript', 'value': 'javascript' },
-        { 'text': 'CSS', 'value': 'css' },
-        { 'text': 'PHP', 'value': 'php' },
-        { 'text': 'Ruby', 'value': 'ruby' },
-        { 'text': 'Python', 'value': 'python' },
-        { 'text': 'Java', 'value': 'java' },
-        { 'text': 'C', 'value': 'c' },
-        { 'text': 'C#', 'value': 'csharp' },
-        { 'text': 'C++', 'value': 'cpp' }
-    ],
-    'extended_valid_elements': 'pre[class|data-language],code[class]',
-    'table_default_attributes': {
-        'border': '1',
-        'class': 'table table-bordered'
-    },
-    'table_default_styles': {
-        'width': '100%',
-        'border-collapse': 'collapse'
-    },
-    'table_responsive_width': True,
-    'table_class_list': [
-        {'title': 'None', 'value': ''},
-        {'title': 'Standard', 'value': 'table table-bordered'},
-        {'title': 'Striped', 'value': 'table table-striped table-bordered'},
-        {'title': 'Hover', 'value': 'table table-hover table-bordered'},
-    ]
 }
 
 SESSION_ENGINE = 'django.contrib.sessions.backends.db'  # Use database-backed sessions

@@ -1,0 +1,3 @@
+Run - python manage.py makemigrations jobs
+Run - python manage.py populate_industries
+Run - python manage.py populate_skills

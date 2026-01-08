@@ -94,7 +94,7 @@ class Job(models.Model):
     """Model for job postings"""
     title = models.CharField(_('Job Title'), max_length=100)
     description = HTMLField(_('Job Description'))
-    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='jobs')
+    company = models.ForeignKey(Company, on_delete=models.SET_NULL, null=True, blank=True, related_name='jobs')
     industry = models.ForeignKey(Industry, on_delete=models.SET_NULL, null=True, blank=True, related_name='jobs')
     location = models.CharField(_('Location'), max_length=100)
     is_remote = models.BooleanField(_('Remote Job'), default=False)
@@ -109,12 +109,20 @@ class Job(models.Model):
     application_deadline = models.DateTimeField(_('Application Deadline'))
     posted_date = models.DateTimeField(_('Posted Date'), default=timezone.now)
     is_active = models.BooleanField(_('Active'), default=True)
-    is_approved = models.BooleanField(_('Approved by Admin'), default=False)
     is_featured = models.BooleanField(_('Featured'), default=False)
     views_count = models.PositiveIntegerField(_('Views'), default=0)
     applications_count = models.PositiveIntegerField(_('Applications'), default=0)
     created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='posted_jobs')
     skills = models.ManyToManyField(Skill, blank=True, related_name='jobs')
+    
+    # Job posting type
+    job_posting_type = models.CharField(
+        _('Job Posting Type'),
+        max_length=20,
+        choices=[('internal', _('Apply on Chuosmart')), ('external', _('External Link'))],
+        default='internal',
+        help_text=_('Whether users apply via Chuosmart or are directed to an external site')
+    )
     
     # API source fields
     source = models.CharField(_('Source'), max_length=50, blank=True, help_text=_('API source of the job (e.g., LinkedIn, Indeed)'))
@@ -134,7 +142,9 @@ class Job(models.Model):
         ]
     
     def __str__(self):
-        return f"{self.title} at {self.company.name}"
+        if self.company:
+            return f"{self.title} at {self.company.name}"
+        return f"{self.title}"
     
     def get_absolute_url(self):
         return reverse('jobs:job_detail', args=[str(self.id)])
@@ -154,11 +164,25 @@ class Job(models.Model):
         
         Requirements:
         - Must be active
-        - Must be approved by admin
-        - Internal postings also require a verified company
+        - Creator must be approved to post visible jobs
+        - If there's a company: internal postings require company verification, external always public
+        - If no company: always public (user approval is sufficient)
         """
         internal_sources = Q(source__isnull=True) | Q(source="") | Q(source="internal")
-        return cls.objects.filter(is_active=True, is_approved=True).filter(~internal_sources | (internal_sources & Q(company__is_verified=True)))
+        approved_users = User.objects.filter(job_approval__is_approved=True)
+        
+        # Public if:
+        # 1. External source (not internal), OR
+        # 2. Internal source with verified company, OR
+        # 3. No company (user approval is sufficient)
+        return cls.objects.filter(
+            is_active=True, 
+            created_by__in=approved_users
+        ).filter(
+            ~internal_sources | 
+            (internal_sources & Q(company__is_verified=True)) |
+            Q(company__isnull=True)
+        )
 
     @property
     def is_internal_source(self):
@@ -168,8 +192,16 @@ class Job(models.Model):
     def is_public(self):
         if not self.is_active:
             return False
-        if not self.is_approved:
+        # Check if user is approved
+        try:
+            if not self.created_by.job_approval.is_approved:
+                return False
+        except UserJobApproval.DoesNotExist:
             return False
+        # If no company, visibility depends only on user approval
+        if not self.company:
+            return True
+        # If company exists, check if it's verified for internal jobs
         if self.is_internal_source:
             return self.company.is_verified
         return True
@@ -178,10 +210,15 @@ class Job(models.Model):
     def visibility_label(self):
         if not self.is_active:
             return _("Inactive")
-        if not self.is_approved:
-            return _("Pending Approval")
+        try:
+            if not self.created_by.job_approval.is_approved:
+                return _("Pending user approval")
+        except UserJobApproval.DoesNotExist:
+            return _("Pending user approval")
         if not self.is_internal_source:
             return _("Public (external source)")
+        if not self.company:
+            return _("Public")
         if self.company.is_verified:
             return _("Public")
         return _("Hidden until company verification")
@@ -193,6 +230,11 @@ class JobApplication(models.Model):
     applicant = models.ForeignKey(User, on_delete=models.CASCADE, related_name='job_applications')
     cover_letter = models.TextField(_('Cover Letter'))
     resume = models.FileField(_('Resume'), upload_to='jobs/resumes/')
+    phone_number = models.CharField(_('Phone Number'), max_length=20, blank=True)
+    portfolio_url = models.URLField(_('Portfolio URL'), blank=True)
+    additional_documents = models.FileField(_('Additional Documents'), upload_to='jobs/documents/', blank=True, null=True)
+    availability = models.CharField(_('Availability'), max_length=100, blank=True)
+    salary_expectation = models.DecimalField(_('Salary Expectation (TZS)'), max_digits=12, decimal_places=2, blank=True, null=True)
     status = models.CharField(_('Status'), max_length=20, choices=APPLICATION_STATUS_CHOICES, default='pending')
     applied_date = models.DateTimeField(_('Applied Date'), auto_now_add=True)
     updated_date = models.DateTimeField(_('Updated Date'), auto_now=True)
@@ -209,6 +251,19 @@ class JobApplication(models.Model):
     
     def __str__(self):
         return f"Application for {self.job.title} by {self.applicant.username}"
+    
+    def get_status_color(self):
+        """Return Bootstrap color class for status badges"""
+        status_colors = {
+            'pending': 'secondary',
+            'reviewing': 'warning',
+            'shortlisted': 'info',
+            'interview': 'primary',
+            'offered': 'success',
+            'hired': 'success',
+            'rejected': 'danger'
+        }
+        return status_colors.get(self.status, 'secondary')
 
 
 class SavedJob(models.Model):
@@ -302,3 +357,20 @@ class ApiRequestLog(models.Model):
     
     def __str__(self):
         return f"{self.api_config.name} request to {self.endpoint} ({self.response_status})"
+
+
+class UserJobApproval(models.Model):
+    """Track which users are approved to have their job posts visible to the public"""
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='job_approval')
+    is_approved = models.BooleanField(_('Approved to post visible jobs'), default=False)
+    approved_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='approved_users')
+    approved_date = models.DateTimeField(_('Approval Date'), null=True, blank=True)
+    reason = models.TextField(_('Approval Reason'), blank=True)
+    
+    class Meta:
+        verbose_name = _('User Job Approval')
+        verbose_name_plural = _('User Job Approvals')
+    
+    def __str__(self):
+        status = "Approved" if self.is_approved else "Not Approved"
+        return f"{self.user.username} - {status}"

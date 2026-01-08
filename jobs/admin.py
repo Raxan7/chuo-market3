@@ -6,7 +6,7 @@ from django.urls import path, reverse
 from django.template.response import TemplateResponse
 from .models import (
     Company, Industry, Skill, Job, JobApplication, 
-    SavedJob, JobSearchPreference, ApiConfiguration, ApiRequestLog
+    SavedJob, JobSearchPreference, ApiConfiguration, ApiRequestLog, UserJobApproval
 )
 from .api_integration import fetch_jobs_from_api
 
@@ -41,10 +41,34 @@ class SkillAdmin(admin.ModelAdmin):
     search_fields = ('name',)
 
 
+@admin.register(UserJobApproval)
+class UserJobApprovalAdmin(admin.ModelAdmin):
+    list_display = ('user', 'is_approved', 'approved_by', 'approved_date')
+    list_filter = ('is_approved', 'approved_date')
+    search_fields = ('user__username', 'user__email', 'approved_by__username')
+    readonly_fields = ('approved_date',)
+    
+    fieldsets = (
+        (_('Approval Details'), {
+            'fields': ('user', 'is_approved', 'approved_by', 'reason')
+        }),
+        (_('Timestamps'), {
+            'fields': ('approved_date',),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    def save_model(self, request, obj, form, change):
+        if obj.is_approved and not obj.approved_by:
+            obj.approved_by = request.user
+            obj.approved_date = timezone.now()
+        super().save_model(request, obj, form, change)
+
+
 @admin.register(Job)
 class JobAdmin(admin.ModelAdmin):
-    list_display = ('title', 'company', 'location', 'job_type', 'posted_date', 'approval_status', 'is_active', 'source')
-    list_filter = ('is_approved', 'is_active', 'is_featured', 'job_type', 'experience_level', 'is_remote', 'source', 'posted_date')
+    list_display = ('title', 'company', 'location', 'job_type', 'posted_date', 'is_active', 'source')
+    list_filter = ('is_active', 'is_featured', 'job_type', 'experience_level', 'is_remote', 'source', 'posted_date')
     search_fields = ('title', 'description', 'requirements', 'company__name', 'location', 'external_id')
     readonly_fields = ('views_count', 'applications_count', 'posted_date', 'created_by')
     filter_horizontal = ('skills',)
@@ -63,22 +87,15 @@ class JobAdmin(admin.ModelAdmin):
             'fields': ('application_deadline', 'posted_date')
         }),
         (_('Status'), {
-            'fields': ('is_active', 'is_approved', 'is_featured', 'views_count', 'applications_count', 'created_by')
+            'fields': ('is_active', 'is_featured', 'views_count', 'applications_count', 'created_by')
         }),
         (_('API Information'), {
             'fields': ('source', 'external_id', 'external_url'),
         }),
     )
     
-    def approval_status(self, obj):
-        if obj.is_approved:
-            return "✓ Approved"
-        return "⏳ Pending"
-    
-    approval_status.short_description = _("Approval Status")
-
-
-@admin.register(JobApplication)
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('company', 'created_by')
 class JobApplicationAdmin(admin.ModelAdmin):
     list_display = ('job', 'applicant', 'status', 'applied_date')
     list_filter = ('status', 'applied_date')

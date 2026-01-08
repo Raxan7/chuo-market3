@@ -1,0 +1,87 @@
+{% extends "jobs/base.html" %}
+{% load static %}
+
+{% block job_content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <p class="text-uppercase text-muted small mb-1">Employer workspace</p>
+        <h2 class="mb-0">My companies</h2>
+        <p class="text-muted mb-0">Manage your company profiles and track verification status.</p>
+    </div>
+    <div class="text-end">
+        <a class="btn btn-primary" href="{% url 'jobs:create_company' %}"><i class="bi bi-plus-lg me-1"></i>Add company</a>
+    </div>
+</div>
+
+{% if companies %}
+<div class="list-group shadow-sm">
+    {% for company in companies %}
+    <div class="list-group-item py-3">
+        <div class="d-flex justify-content-between align-items-start">
+            <div class="d-flex align-items-start">
+                {% if company.logo %}
+                <img src="{{ company.logo.url }}" alt="{{ company.name }} logo" class="me-3 rounded" style="width: 60px; height: 60px; object-fit: cover;">
+                {% else %}
+                <div class="me-3 bg-light rounded d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
+                    <i class="bi bi-building fs-4 text-muted"></i>
+                </div>
+                {% endif %}
+                <div>
+                    <h5 class="mb-1">{{ company.name }}</h5>
+                    <div class="text-muted small mb-1">
+                        {% if company.city and company.country %}
+                            {{ company.city }}, {{ company.country }}
+                        {% elif company.city %}
+                            {{ company.city }}
+                        {% elif company.country %}
+                            {{ company.country }}
+                        {% endif %}
+                        {% if company.city or company.country %} • {% endif %}
+                        Created {{ company.created_at|date:"M j, Y" }}
+                    </div>
+                    <div class="d-flex flex-wrap gap-2 align-items-center">
+                        {% if company.is_verified %}
+                            <span class="badge bg-success-subtle text-success"><i class="bi bi-patch-check me-1"></i>Verified</span>
+                        {% else %}
+                            <span class="badge bg-warning-subtle text-warning"><i class="bi bi-shield-exclamation me-1"></i>Pending verification</span>
+                        {% endif %}
+                        <span class="badge bg-light text-dark">{{ company.jobs.count }} jobs</span>
+                    </div>
+                    {% if company.description %}
+                    <div class="mt-2 text-muted small" style="max-width: 400px;">
+                        {{ company.description|striptags|truncatechars:100 }}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="text-end">
+                <div class="btn-group-vertical" role="group">
+                    <a href="{% url 'jobs:edit_company' company.id %}" class="btn btn-outline-secondary btn-sm">Edit</a>
+                    <a href="{% url 'jobs:company_dashboard' company.id %}" class="btn btn-outline-primary btn-sm">Dashboard</a>
+                    {% if not company.is_verified %}
+                    <a href="{% url 'jobs:request_verification' company.id %}" class="btn btn-outline-success btn-sm">Request verification</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="text-center py-5 border rounded bg-light">
+    <i class="bi bi-building fs-1 text-muted"></i>
+    <h4 class="mt-3 mb-1">No companies yet</h4>
+    <p class="text-muted mb-4">Create your first company profile to start posting jobs.</p>
+    <a class="btn btn-primary" href="{% url 'jobs:create_company' %}">Add company</a>
+</div>
+{% endif %}
+
+{% if companies %}
+<div class="mt-4">
+    <div class="alert alert-info">
+        <h6 class="alert-heading"><i class="bi bi-info-circle me-2"></i>Company verification</h6>
+        <p class="mb-0">Only verified companies can publish jobs that are visible to the public. Submit verification requests from your company dashboard to get approved.</p>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

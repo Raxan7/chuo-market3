@@ -179,18 +179,18 @@ def job_detail(request, job_id):
 @login_required
 @csrf_protect
 def apply_for_job(request, job_id):
-    job = get_object_or_404(Job.objects.select_related('company'), id=job_id)
-    is_owner_or_admin = request.user.is_authenticated and (job.created_by_id == request.user.id or request.user.is_superuser)
-
-    if (not job.is_public or not job.is_active) and not is_owner_or_admin:
-        raise Http404(_('Job not available'))
+    job = get_object_or_404(Job.objects.select_related('company', 'industry'), id=job_id)
     
-    # Check if application deadline has passed
-    if job.is_expired():
-        messages.error(request, _('The application deadline for this job has passed.'))
+    # If it's an external job, redirect to the external URL
+    if job.job_posting_type == 'external' and job.external_url:
+        return redirect(job.external_url)
+    
+    # Only allow applying to internal jobs
+    if job.job_posting_type == 'external':
+        messages.error(request, _('This job is hosted on an external platform.'))
         return redirect('jobs:job_detail', job_id=job.id)
     
-    # Check if user already applied
+    # Check if user has already applied
     if JobApplication.objects.filter(job=job, applicant=request.user).exists():
         messages.warning(request, _('You have already applied for this job.'))
         return redirect('jobs:job_detail', job_id=job.id)
@@ -201,7 +201,7 @@ def apply_for_job(request, job_id):
             application = form.save()
             
             # Send email notification to employer
-            if job.company.email:
+            if job.company and job.company.email:
                 subject = _('New Application for: {0}').format(job.title)
                 message = _('''
                 Hello {0},
@@ -209,12 +209,13 @@ def apply_for_job(request, job_id):
                 A new application has been submitted for your job posting: {1}
                 
                 Applicant: {2}
+                Contact: {3}
                 
                 You can review this application in your employer dashboard.
                 
                 Best regards,
                 ChuoMarket Jobs Team
-                ''').format(job.company.name, job.title, request.user.get_full_name() or request.user.username)
+                ''').format(job.company.name, job.title, request.user.get_full_name() or request.user.username, application.phone_number)
                 
                 send_mail(
                     subject,
@@ -233,9 +234,7 @@ def apply_for_job(request, job_id):
         'form': form,
         'job': job,
     }
-    return render(request, 'jobs/apply_for_job.html', context)
-
-# Application submitted view
+    return render(request, 'jobs/job_apply.html', context)
 @login_required
 def application_submitted(request, job_id):
     job = get_object_or_404(Job, id=job_id)
@@ -397,23 +396,20 @@ def company_dashboard(request, company_id):
 # Job CRUD views
 @login_required
 def create_job(request):
-    user_companies = Company.objects.filter(created_by=request.user)
-    has_verified_company = user_companies.filter(is_verified=True).exists()
-    has_companies = user_companies.exists()
-
     if request.method == 'POST':
         form = JobForm(request.POST, user=request.user)
         if form.is_valid():
             job = form.save(commit=False)
             if not job.source:
                 job.source = 'internal'
+            job.created_by = request.user
             job.save()
             form.save_m2m()
 
             if job.is_public:
                 messages.success(request, _('Job posted successfully and is live.'))
             else:
-                messages.info(request, _('Job saved but will stay hidden until your company is verified.'))
+                messages.info(request, _('Job saved. It will be visible once your account is verified.'))
             return redirect('jobs:my_jobs')
     else:
         form = JobForm(user=request.user)
@@ -424,10 +420,6 @@ def create_job(request):
         {
             'form': form,
             'is_create': True,
-            'has_verified_company': has_verified_company,
-            'has_companies': has_companies,
-            'verified_companies': user_companies.filter(is_verified=True),
-            'unverified_companies': user_companies.filter(is_verified=False),
         },
     )
 
@@ -438,9 +430,6 @@ def edit_job(request, job_id):
     # Check if user is the owner
     if job.created_by != request.user and not request.user.is_superuser:
         return HttpResponseForbidden(_('You do not have permission to edit this job.'))
-    user_companies = Company.objects.filter(created_by=request.user)
-    has_verified_company = user_companies.filter(is_verified=True).exists()
-    has_companies = user_companies.exists()
     
     if request.method == 'POST':
         form = JobForm(request.POST, instance=job, user=request.user)
@@ -458,11 +447,6 @@ def edit_job(request, job_id):
             'form': form,
             'job': job,
             'is_create': False,
-            'has_verified_company': has_verified_company,
-            'has_companies': has_companies,
-            'verified_companies': user_companies.filter(is_verified=True),
-            'unverified_companies': user_companies.filter(is_verified=False),
-            'is_public': job.is_public,
         },
     )
 

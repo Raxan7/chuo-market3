@@ -3,6 +3,7 @@ from django.utils.translation import gettext_lazy as _
 from django.core.validators import MinValueValidator
 from django.utils import timezone
 from django.contrib.auth.models import User
+from tinymce.widgets import TinyMCE
 from .models import (
     Company, Job, JobApplication, JobSearchPreference,
     Industry, Skill, JOB_TYPE_CHOICES, EXPERIENCE_LEVEL_CHOICES
@@ -36,7 +37,7 @@ class JobForm(forms.ModelForm):
     
     class Meta:
         model = Job
-        exclude = ['views_count', 'applications_count', 'created_by', 'source', 'external_id', 'external_url']
+        exclude = ['views_count', 'applications_count', 'created_by', 'source', 'external_id']
         widgets = {
             'title': forms.TextInput(attrs={'placeholder': _('Job Title')}),
             'description': forms.Textarea(attrs={'rows': 5, 'placeholder': _('Detailed job description...')}),
@@ -53,7 +54,8 @@ class JobForm(forms.ModelForm):
         self.user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
         
-        # Filter company choices to those created by the current user
+        # Make company field optional and filter to those created by the current user
+        self.fields['company'].required = False
         if self.user and not self.user.is_superuser:
             self.fields['company'].queryset = Company.objects.filter(created_by=self.user)
     
@@ -87,11 +89,21 @@ class JobForm(forms.ModelForm):
 
 class JobApplicationForm(forms.ModelForm):
     """Form for job applications"""
+    agreement = forms.BooleanField(
+        required=True,
+        label=_('I confirm that all information provided is true and accurate'),
+        widget=forms.CheckboxInput()
+    )
+    
     class Meta:
         model = JobApplication
-        fields = ['cover_letter', 'resume']
+        fields = ['cover_letter', 'resume', 'phone_number', 'portfolio_url', 'availability', 'salary_expectation', 'additional_documents']
         widgets = {
-            'cover_letter': forms.Textarea(attrs={'rows': 5, 'placeholder': _('Your cover letter...')}),
+            'cover_letter': TinyMCE(attrs={'cols': 80, 'rows': 10, 'placeholder': _('Your cover letter...')}),
+            'phone_number': forms.TextInput(attrs={'placeholder': _('+255...')}),
+            'portfolio_url': forms.URLInput(attrs={'placeholder': _('https://github.com/yourprofile')}),
+            'availability': forms.TextInput(attrs={'placeholder': _('e.g., Available immediately')}),
+            'salary_expectation': forms.NumberInput(attrs={'placeholder': _('Expected salary in TZS')}),
         }
     
     def __init__(self, *args, **kwargs):
