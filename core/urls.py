@@ -12,8 +12,6 @@ from .help_views import help_center
 urlpatterns = [
     path('', views.home, name='home'),
     path('marketplace/', views.marketplace, name='marketplace'),
-    # Email verification
-    path('activate/<uidb64>/<token>/', views.activate, name='activate'),
     
     # Information pages
     path('about/', about_us, name='about'),
@@ -42,8 +40,6 @@ urlpatterns = [
     path('logout/', views.user_logout, name='logout'),
     path('login/', views.user_login, name='login'),
     path('registration/', views.customerregistration, name='customerregistration'),
-    path('activate/<uidb64>/<token>/', views.activate, name='activate'),
-    path('resend-verification/', views.resend_verification, name='resend_verification'),
     path('checkout/', views.checkout, name='checkout'),
     path('checkout/<int:product_id>/<int:quantity>/', views.checkout, name='checkout_with_product'),
     path('plus_cart/', views.plus_cart, name='plus_cart'),  
