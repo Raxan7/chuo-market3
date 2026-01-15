@@ -1068,7 +1068,7 @@
         }
       }
       
-      // Load ad in content div
+      // Load ad in content div - Direct iframe loading without fetch
       function loadAd(adUrl) {
         if (adBannerClosed) return;
         
@@ -1076,18 +1076,12 @@
         const loadingDiv = document.getElementById('ad-loading');
         
         if (adContent && loadingDiv) {
-          // Show loading
-          loadingDiv.style.display = 'block';
-          adContent.style.display = 'none';
-          
-          // Fetch the ad content
-          fetch(adUrl, {
-            mode: 'no-cors',
-            credentials: 'omit'
-          })
-          .then(response => {
-            // For no-cors requests, we can't read the body, so we'll use a different approach
-            // We'll create an iframe with the ad content
+          try {
+            // Show loading
+            loadingDiv.style.display = 'block';
+            adContent.style.display = 'none';
+            
+            // Create iframe directly without fetch wrapper
             const iframe = document.createElement('iframe');
             iframe.src = adUrl;
             iframe.style.width = '100%';
@@ -1095,33 +1089,43 @@
             iframe.style.border = 'none';
             iframe.style.borderRadius = '4px';
             iframe.style.display = 'block';
+            iframe.style.margin = '0';
+            iframe.style.padding = '0';
+            iframe.allowFullscreen = true;
+            iframe.allow = 'autoplay; fullscreen; picture-in-picture';
             
-            // Clear previous content
+            // Set onload to hide loading indicator
+            iframe.onload = function() {
+              setTimeout(function() {
+                loadingDiv.style.display = 'none';
+                adContent.style.display = 'block';
+              }, 300);
+            };
+            
+            // Set onerror to still show the iframe (ad may fail to render but iframe loads)
+            iframe.onerror = function() {
+              loadingDiv.style.display = 'none';
+              adContent.style.display = 'block';
+            };
+            
+            // Clear previous content and add new iframe
             adContent.innerHTML = '';
             adContent.appendChild(iframe);
             
-            // Show content, hide loading
+            // Hide loading after a short delay anyway (in case onload doesn't fire)
+            setTimeout(function() {
+              if (loadingDiv.style.display !== 'none') {
+                loadingDiv.style.display = 'none';
+                adContent.style.display = 'block';
+              }
+            }, 2000);
+            
+            console.log('Ad iframe created for:', adUrl);
+          } catch(e) {
+            console.log('Error creating ad iframe:', e);
             loadingDiv.style.display = 'none';
             adContent.style.display = 'block';
-            
-            console.log('Ad loaded successfully:', adUrl);
-          })
-          .catch(error => {
-            console.log('Ad failed to load:', adUrl, error);
-            // Fallback: still show the iframe even if fetch fails
-            const iframe = document.createElement('iframe');
-            iframe.src = adUrl;
-            iframe.style.width = '100%';
-            iframe.style.height = '60px';
-            iframe.style.border = 'none';
-            iframe.style.borderRadius = '4px';
-            iframe.style.display = 'block';
-            
-            adContent.innerHTML = '';
-            adContent.appendChild(iframe);
-            loadingDiv.style.display = 'none';
-            adContent.style.display = 'block';
-          });
+          }
         }
       }
       
