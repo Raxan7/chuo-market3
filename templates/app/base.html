@@ -321,6 +321,96 @@
         }
       }
       
+      /* Rotating Ad Banner Styles */
+      #rotating-ad-banner {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 8px 0;
+        text-align: center;
+        font-size: 14px;
+        position: relative;
+        overflow: visible;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      }
+      
+      #rotating-ad-banner:hover {
+        background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+      }
+      
+      #ad-content {
+        width: 100%;
+        min-height: 60px;
+        transition: opacity 0.5s ease;
+      }
+      
+      #ad-content iframe {
+        width: 100% !important;
+        height: 60px !important;
+        border: none !important;
+        border-radius: 4px !important;
+        display: block !important;
+        background: transparent !important;
+      }
+      
+      .ad-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 15px;
+        position: relative;
+        min-height: 60px;
+      }
+      
+      .ad-close-btn {
+        position: absolute;
+        top: 5px;
+        right: 10px;
+        background: rgba(255,255,255,0.2);
+        border: none;
+        color: white;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        font-size: 12px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background 0.3s ease;
+        z-index: 10;
+      }
+      
+      .ad-close-btn:hover {
+        background: rgba(255,255,255,0.3);
+      }
+      
+      #rotating-ad-banner.hidden {
+        display: none !important;
+      }
+      
+      /* Mobile responsiveness for ads */
+      @media (max-width: 768px) {
+        #rotating-ad-banner {
+          font-size: 12px;
+          padding: 6px 0;
+        }
+        
+        #ad-content {
+          min-height: 50px;
+        }
+        
+        #ad-content iframe {
+          height: 50px !important;
+        }
+        
+        .ad-container {
+          padding: 0 10px;
+          min-height: 50px;
+        }
+      }
+      
       /* Chatbot styles */
       #chatbot {
         position: fixed;
@@ -538,105 +628,6 @@
         </div>
       </div>
     </nav>
-    
-        <!-- Rotating Ad Banner (Non-Invasive) -->
-        <div class="ad-banner-container">
-          <iframe id="rotating-ad" 
-                  src="https://www.effectivegatecpm.com/jp604fzw?key=0ac38e5ac8cfdc4296fa7f9060dcb6aa" 
-                  frameborder="0" 
-                  scrolling="no"
-                  style="width:100%; height:90px; border:none; display:block;">
-          </iframe>
-        </div>
-
-        <style>
-          /* Ad Banner Styling - Non-Invasive */
-          .ad-banner-container {
-            width: 100%;
-            background-color: #f8f9fa;
-            padding: 10px 0;
-            text-align: center;
-            border-bottom: 1px solid #dee2e6;
-            position: relative;
-            overflow: hidden;
-          }
-      
-          .ad-banner-container iframe {
-            margin: 0 auto;
-            max-width: 728px;
-            transition: opacity 0.3s ease-in-out;
-          }
-      
-          /* Responsive Ad Adjustments */
-          @media (max-width: 768px) {
-            .ad-banner-container iframe {
-              max-width: 320px;
-              height: 50px;
-            }
-          }
-      
-          @media (min-width: 769px) and (max-width: 1024px) {
-            .ad-banner-container iframe {
-              max-width: 468px;
-              height: 60px;
-            }
-          }
-      
-          /* Fade animation for smooth transitions */
-          .ad-fade-out {
-            opacity: 0;
-          }
-      
-          .ad-fade-in {
-            opacity: 1;
-          }
-        </style>
-
-        <script>
-          // Rotating Ad System - Automatically changes ads every 10 seconds
-          (function() {
-            const adLinks = [
-              'https://www.effectivegatecpm.com/jp604fzw?key=0ac38e5ac8cfdc4296fa7f9060dcb6aa',
-              'https://www.effectivegatecpm.com/sqf24i6k9?key=69bd5c9b5bc46a7bf95c51f8a22d72be',
-              'https://www.effectivegatecpm.com/ghvacaxk?key=152c6ad3137dfd992107cafb20ba5475',
-              'https://www.effectivegatecpm.com/y56j06mc56?key=8a8851afe3dc03e0d7ad3a66474de43d',
-              'https://www.effectivegatecpm.com/cdrnmt82a0?key=f324af40210b539b89a9b3648da6d1a6',
-              'https://www.effectivegatecpm.com/x127x1tt?key=057c2839b78ce9b3e3d4222043664ed1',
-              'https://www.effectivegatecpm.com/t8969tvrft?key=a7ad665ecba681e29abdc931553dded0',
-              'https://www.effectivegatecpm.com/ue2x9peh?key=edf04c7d5e5bf35cb005016b6dc7e7c7',
-              'https://www.effectivegatecpm.com/bh2zyhrc?key=1e19b0229c99212775e63f84220c3f4d',
-              'https://www.effectivegatecpm.com/jfpyfpi2f?key=495705b0c167fee0da445856466fa6fd'
-            ];
-        
-            let currentAdIndex = 0;
-            const adIframe = document.getElementById('rotating-ad');
-        
-            function rotateAd() {
-              // Fade out
-              adIframe.classList.add('ad-fade-out');
-          
-              setTimeout(function() {
-                // Change to next ad
-                currentAdIndex = (currentAdIndex + 1) % adLinks.length;
-                adIframe.src = adLinks[currentAdIndex];
-            
-                // Fade in
-                setTimeout(function() {
-                  adIframe.classList.remove('ad-fade-out');
-                  adIframe.classList.add('ad-fade-in');
-                }, 100);
-              }, 300);
-            }
-        
-            // Rotate ad every 10 seconds
-            setInterval(rotateAd, 10000);
-        
-            // Initial fade-in
-            adIframe.classList.add('ad-fade-in');
-          })();
-        </script>
-
-        <style>
     <style>
       /* Navbar Styling */
       .navbar {
@@ -766,6 +757,17 @@
       });
     </script>
     {% endif %}
+    
+    <!-- Rotating Ad Banner -->
+    <div id="rotating-ad-banner">
+      <div class="ad-container">
+        <button class="ad-close-btn" onclick="closeAdBanner()" title="Close ads">×</button>
+        <div id="ad-loading" style="padding: 20px; color: white; font-size: 14px; text-align: center;">
+          <i class="fas fa-spinner fa-spin"></i> Loading personalized content...
+        </div>
+        <div id="ad-content" style="display: none; padding: 10px;"></div>
+      </div>
+    </div>
     
     <div class="content flex-grow-1">
       {% block banner_slider %} {% endblock banner_slider %}
@@ -1024,6 +1026,141 @@
       });
     </script>
     {% block extra_scripts %}{% endblock extra_scripts %}
+    
+    <!-- Rotating Ads JavaScript -->
+    <script>
+      // Ad configuration
+      const adLinks = [
+        'https://www.effectivegatecpm.com/jp604fzw?key=0ac38e5ac8cfdc4296fa7f9060dcb6aa',
+        'https://www.effectivegatecpm.com/sqf24i6k9?key=69bd5c9b5bc46a7bf95c51f8a22d72be',
+        'https://www.effectivegatecpm.com/ghvacaxk?key=152c6ad3137dfd992107cafb20ba5475',
+        'https://www.effectivegatecpm.com/y56j06mc56?key=8a8851afe3dc03e0d7ad3a66474de43d',
+        'https://www.effectivegatecpm.com/cdrnmt82a0?key=f324af40210b539b89a9b3648da6d1a6',
+        'https://www.effectivegatecpm.com/x127x1tt?key=057c2839b78ce9b3e3d4222043664ed1',
+        'https://www.effectivegatecpm.com/t8969tvrft?key=a7ad665ecba681e29abdc931553dded0',
+        'https://www.effectivegatecpm.com/ue2x9peh?key=edf04c7d5e5bf35cb005016b6dc7e7c7',
+        'https://www.effectivegatecpm.com/bh2zyhrc?key=1e19b0229c99212775e63f84220c3f4d',
+        'https://www.effectivegatecpm.com/jfpyfpi2f?key=495705b0c167fee0da445856466fa6fd'
+      ];
+      
+      let currentAdIndex = 0;
+      let adRotationInterval;
+      let adBannerClosed = false;
+      
+      // Check if user previously closed the ad banner
+      function checkAdBannerStatus() {
+        const adClosed = localStorage.getItem('adBannerClosed');
+        if (adClosed === 'true') {
+          document.getElementById('rotating-ad-banner').classList.add('hidden');
+          adBannerClosed = true;
+          return false;
+        }
+        return true;
+      }
+      
+      // Close ad banner function
+      function closeAdBanner() {
+        document.getElementById('rotating-ad-banner').classList.add('hidden');
+        localStorage.setItem('adBannerClosed', 'true');
+        adBannerClosed = true;
+        if (adRotationInterval) {
+          clearInterval(adRotationInterval);
+        }
+      }
+      
+      // Load ad in content div
+      function loadAd(adUrl) {
+        if (adBannerClosed) return;
+        
+        const adContent = document.getElementById('ad-content');
+        const loadingDiv = document.getElementById('ad-loading');
+        
+        if (adContent && loadingDiv) {
+          // Show loading
+          loadingDiv.style.display = 'block';
+          adContent.style.display = 'none';
+          
+          // Fetch the ad content
+          fetch(adUrl, {
+            mode: 'no-cors',
+            credentials: 'omit'
+          })
+          .then(response => {
+            // For no-cors requests, we can't read the body, so we'll use a different approach
+            // We'll create an iframe with the ad content
+            const iframe = document.createElement('iframe');
+            iframe.src = adUrl;
+            iframe.style.width = '100%';
+            iframe.style.height = '60px';
+            iframe.style.border = 'none';
+            iframe.style.borderRadius = '4px';
+            iframe.style.display = 'block';
+            
+            // Clear previous content
+            adContent.innerHTML = '';
+            adContent.appendChild(iframe);
+            
+            // Show content, hide loading
+            loadingDiv.style.display = 'none';
+            adContent.style.display = 'block';
+            
+            console.log('Ad loaded successfully:', adUrl);
+          })
+          .catch(error => {
+            console.log('Ad failed to load:', adUrl, error);
+            // Fallback: still show the iframe even if fetch fails
+            const iframe = document.createElement('iframe');
+            iframe.src = adUrl;
+            iframe.style.width = '100%';
+            iframe.style.height = '60px';
+            iframe.style.border = 'none';
+            iframe.style.borderRadius = '4px';
+            iframe.style.display = 'block';
+            
+            adContent.innerHTML = '';
+            adContent.appendChild(iframe);
+            loadingDiv.style.display = 'none';
+            adContent.style.display = 'block';
+          });
+        }
+      }
+      
+      // Rotate to next ad
+      function rotateAd() {
+        if (adBannerClosed) return;
+        
+        currentAdIndex = (currentAdIndex + 1) % adLinks.length;
+        loadAd(adLinks[currentAdIndex]);
+        
+        console.log('Rotated to ad', currentAdIndex + 1, 'of', adLinks.length);
+      }
+      
+      // Start ad rotation
+      function startAdRotation() {
+        if (!checkAdBannerStatus()) {
+          return;
+        }
+        
+        // Load first ad
+        loadAd(adLinks[currentAdIndex]);
+        
+        // Set up rotation interval (10 seconds)
+        adRotationInterval = setInterval(rotateAd, 10000);
+        
+        console.log('Ad rotation started - rotating every 10 seconds');
+      }
+      
+      // Initialize ads when page loads
+      document.addEventListener('DOMContentLoaded', function() {
+        console.log('Initializing rotating ads system...');
+        // Small delay to ensure page is fully loaded
+        setTimeout(startAdRotation, 1000);
+      });
+      
+      // Reset ad banner visibility on new session (optional)
+      // Uncomment the line below if you want ads to show again in new browser sessions
+      // localStorage.removeItem('adBannerClosed');
+    </script>
     
     {% if user.is_authenticated %}
     <!-- Session keep-alive script for logged-in users -->
