@@ -538,6 +538,105 @@
         </div>
       </div>
     </nav>
+    
+        <!-- Rotating Ad Banner (Non-Invasive) -->
+        <div class="ad-banner-container">
+          <iframe id="rotating-ad" 
+                  src="https://www.effectivegatecpm.com/jp604fzw?key=0ac38e5ac8cfdc4296fa7f9060dcb6aa" 
+                  frameborder="0" 
+                  scrolling="no"
+                  style="width:100%; height:90px; border:none; display:block;">
+          </iframe>
+        </div>
+
+        <style>
+          /* Ad Banner Styling - Non-Invasive */
+          .ad-banner-container {
+            width: 100%;
+            background-color: #f8f9fa;
+            padding: 10px 0;
+            text-align: center;
+            border-bottom: 1px solid #dee2e6;
+            position: relative;
+            overflow: hidden;
+          }
+      
+          .ad-banner-container iframe {
+            margin: 0 auto;
+            max-width: 728px;
+            transition: opacity 0.3s ease-in-out;
+          }
+      
+          /* Responsive Ad Adjustments */
+          @media (max-width: 768px) {
+            .ad-banner-container iframe {
+              max-width: 320px;
+              height: 50px;
+            }
+          }
+      
+          @media (min-width: 769px) and (max-width: 1024px) {
+            .ad-banner-container iframe {
+              max-width: 468px;
+              height: 60px;
+            }
+          }
+      
+          /* Fade animation for smooth transitions */
+          .ad-fade-out {
+            opacity: 0;
+          }
+      
+          .ad-fade-in {
+            opacity: 1;
+          }
+        </style>
+
+        <script>
+          // Rotating Ad System - Automatically changes ads every 10 seconds
+          (function() {
+            const adLinks = [
+              'https://www.effectivegatecpm.com/jp604fzw?key=0ac38e5ac8cfdc4296fa7f9060dcb6aa',
+              'https://www.effectivegatecpm.com/sqf24i6k9?key=69bd5c9b5bc46a7bf95c51f8a22d72be',
+              'https://www.effectivegatecpm.com/ghvacaxk?key=152c6ad3137dfd992107cafb20ba5475',
+              'https://www.effectivegatecpm.com/y56j06mc56?key=8a8851afe3dc03e0d7ad3a66474de43d',
+              'https://www.effectivegatecpm.com/cdrnmt82a0?key=f324af40210b539b89a9b3648da6d1a6',
+              'https://www.effectivegatecpm.com/x127x1tt?key=057c2839b78ce9b3e3d4222043664ed1',
+              'https://www.effectivegatecpm.com/t8969tvrft?key=a7ad665ecba681e29abdc931553dded0',
+              'https://www.effectivegatecpm.com/ue2x9peh?key=edf04c7d5e5bf35cb005016b6dc7e7c7',
+              'https://www.effectivegatecpm.com/bh2zyhrc?key=1e19b0229c99212775e63f84220c3f4d',
+              'https://www.effectivegatecpm.com/jfpyfpi2f?key=495705b0c167fee0da445856466fa6fd'
+            ];
+        
+            let currentAdIndex = 0;
+            const adIframe = document.getElementById('rotating-ad');
+        
+            function rotateAd() {
+              // Fade out
+              adIframe.classList.add('ad-fade-out');
+          
+              setTimeout(function() {
+                // Change to next ad
+                currentAdIndex = (currentAdIndex + 1) % adLinks.length;
+                adIframe.src = adLinks[currentAdIndex];
+            
+                // Fade in
+                setTimeout(function() {
+                  adIframe.classList.remove('ad-fade-out');
+                  adIframe.classList.add('ad-fade-in');
+                }, 100);
+              }, 300);
+            }
+        
+            // Rotate ad every 10 seconds
+            setInterval(rotateAd, 10000);
+        
+            // Initial fade-in
+            adIframe.classList.add('ad-fade-in');
+          })();
+        </script>
+
+        <style>
     <style>
       /* Navbar Styling */
       .navbar {
@@ -669,16 +768,6 @@
     {% endif %}
     
     <div class="content flex-grow-1">
-      <!-- Rotating Ads Section -->
-      <div id="ads-container" style="background-color: #f8f9fa; padding: 15px 0; margin: 15px 0; border-top: 1px solid #dee2e6; border-bottom: 1px solid #dee2e6;">
-        <div class="container">
-          <div id="ad-frame" style="text-align: center; min-height: 60px; display: flex; align-items: center; justify-content: center;">
-            <a id="ad-link" href="#" target="_blank" rel="noopener noreferrer" style="display: inline-block; text-decoration: none;">
-              <img src="https://via.placeholder.com/728x90?text=Advertisement" alt="Advertisement" style="max-width: 100%; height: auto; max-height: 90px;">
-            </a>
-          </div>
-        </div>
-      </div>
       {% block banner_slider %} {% endblock banner_slider %}
       {% block chatbox %} {% endblock chatbox %}
       {% block livesale %} {% endblock livesale %}
@@ -1141,59 +1230,6 @@
           var dashboardModal = new bootstrap.Modal(document.getElementById('dashboardNotificationModal'));
           dashboardModal.show();
         {% endif %}
-
-        // Ad rotation system - refreshes every 10 seconds
-        const adUrls = [
-          "https://www.effectivegatecpm.com/jp604fzw?key=0ac38e5ac8cfdc4296fa7f9060dcb6aa",
-          "https://www.effectivegatecpm.com/sqf24i6k9?key=69bd5c9b5bc46a7bf95c51f8a22d72be",
-          "https://www.effectivegatecpm.com/ghvacaxk?key=152c6ad3137dfd992107cafb20ba5475",
-          "https://www.effectivegatecpm.com/y56j06mc56?key=8a8851afe3dc03e0d7ad3a66474de43d",
-          "https://www.effectivegatecpm.com/cdrnmt82a0?key=f324af40210b539b89a9b3648da6d1a6",
-          "https://www.effectivegatecpm.com/x127x1tt?key=057c2839b78ce9b3e3d4222043664ed1",
-          "https://www.effectivegatecpm.com/t8969tvrft?key=a7ad665ecba681e29abdc931553dded0",
-          "https://www.effectivegatecpm.com/ue2x9peh?key=edf04c7d5e5bf35cb005016b6dc7e7c7",
-          "https://www.effectivegatecpm.com/bh2zyhrc?key=1e19b0229c99212775e63f84220c3f4d",
-          "https://www.effectivegatecpm.com/jfpyfpi2f?key=495705b0c167fee0da445856466fa6fd"
-        ];
-
-        let currentAdIndex = 0;
-
-        function rotateAd() {
-          const adLink = document.getElementById('ad-link');
-          if (adLink && adUrls.length > 0) {
-            // Pick a random ad
-            currentAdIndex = Math.floor(Math.random() * adUrls.length);
-            const randomAdUrl = adUrls[currentAdIndex];
-            
-            // Update the link
-            adLink.href = randomAdUrl;
-            
-            // Add a fade effect for smooth transition
-            const adFrame = document.getElementById('ad-frame');
-            adFrame.style.opacity = '0.5';
-            
-            setTimeout(() => {
-              adFrame.style.opacity = '1';
-            }, 300);
-          }
-        }
-
-        // Initialize ad on page load with smooth transition
-        document.addEventListener('DOMContentLoaded', function() {
-          rotateAd();
-        });
-
-        // Rotate ads every 10 seconds
-        setInterval(rotateAd, 10000);
-
-        // Add smooth CSS transition
-        const style = document.createElement('style');
-        style.textContent = `
-          #ad-frame {
-            transition: opacity 0.3s ease-in-out;
-          }
-        `;
-        document.head.appendChild(style);
       });
     </script>
     
