@@ -50,6 +50,13 @@ urlpatterns = [
     path('get_cart_count/', views.get_cart_count, name='get_cart_count'),
     path('changepassword/', views.change_password, name='changepassword'),
     path('buynow/', views.buy_now, name='buy_now'),
+    
+    # Password reset URLs
+    path('password_reset/', auth_views.PasswordResetView.as_view(template_name='app/password_reset.html'), name='password_reset'),
+    path('password_reset/done/', auth_views.PasswordResetDoneView.as_view(template_name='app/password_reset_done.html'), name='password_reset_done'),
+    path('reset/<uidb64>/<token>/', auth_views.PasswordResetConfirmView.as_view(template_name='app/password_reset_confirm.html'), name='password_reset_confirm'),
+    path('reset/done/', auth_views.PasswordResetCompleteView.as_view(template_name='app/password_reset_complete.html'), name='password_reset_complete'),
+    
     path('add-product/', add_product, name='add_product'),
     path('add-blog/', add_blog, name='add_blog'),
     path('create-blog/', create_blog, name='create_blog'),
