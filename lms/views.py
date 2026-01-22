@@ -367,7 +367,6 @@ class CourseListView(ListView):
             'https://www.effectivegatecpm.com/t8969tvrft?key=a7ad665ecba681e29abdc931553dded0',
             'https://www.effectivegatecpm.com/ue2x9peh?key=edf04c7d5e5bf35cb005016b6dc7e7c7',
             'https://www.effectivegatecpm.com/bh2zyhrc?key=1e19b0229c99212775e63f84220c3f4d',
-            'https://www.effectivegatecpm.com/wz236iiy?key=ea56dcc4df8cdce94fbd30f67f6e6b0d',
         ]
         return context
 
