@@ -5,6 +5,16 @@
 {% if talents %}
   <div style="display: flex; flex-wrap: wrap; gap: 20px; justify-content: center;">
     {% for talent in talents %}
+      {% if forloop.counter0 > 0 and forloop.counter0|divisibleby:5 %}
+      <!-- Ad Card -->
+      <div style="border: 2px solid #667eea; border-radius: 8px; padding: 20px; width: 300px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.3)); margin: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;">
+        <i class="fas fa-ad" style="font-size: 3rem; color: #667eea; margin-bottom: 15px; opacity: 0.8;"></i>
+        <h3 style="color: #667eea; margin-bottom: 15px;">Sponsored Content</h3>
+        <div style="width: 100%; min-height: 200px; background: rgba(255,255,255,0.5); border-radius: 8px; overflow: hidden;">
+          <iframe src="{{ ad_links|random }}" style="width: 100%; height: 200px; border: none;" allowfullscreen></iframe>
+        </div>
+      </div>
+      {% endif %}
       <a href="{% url 'talent_detail' talent.pk %}" style="text-decoration: none; color: inherit;">
         <div style="border: 1px solid gold; border-radius: 8px; padding: 20px; width: 300px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(255, 215, 0, 0.3)); margin: 10px;">
           <h2>{{ talent.title }}</h2>
