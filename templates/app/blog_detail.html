@@ -345,8 +345,57 @@
     }
 </style>
 
+<style>
+    /* Ad card styling - no margins, padding, or borders */
+    .sidebar-ad-card {
+        margin: 0 !important;
+        padding: 0 !important;
+        border: none !important;
+        background: transparent !important;
+        overflow: hidden;
+    }
+    
+    .sidebar-ad-card iframe {
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        border: none !important;
+        display: block !important;
+    }
+    
+    /* Responsive ads on desktop */
+    @media (min-width: 992px) {
+        .sidebar-ads {
+            padding: 0 15px;
+        }
+        
+        .ad-space {
+            margin-bottom: 20px;
+            min-height: 250px;
+        }
+    }
+    
+    @media (max-width: 991px) {
+        .sidebar-ads {
+            display: none;
+        }
+    }
+</style>
+
 <div class="container py-5">
     <div class="row">
+        <!-- Left Sidebar Ads -->
+        <div class="col-lg-2 d-none d-lg-block">
+            <div class="sidebar-ads sticky-top" style="top: 20px;">
+                <div class="ad-space sidebar-ad-card">
+                    <iframe src="{{ ad_links|random }}" style="width:100%; height:250px; border:none;" allowfullscreen></iframe>
+                </div>
+                <div class="ad-space sidebar-ad-card">
+                    <iframe src="{{ ad_links|random }}" style="width:100%; height:250px; border:none;" allowfullscreen></iframe>
+                </div>
+            </div>
+        </div>
+        
         <div class="col-lg-8 col-md-10 mx-auto">
             <div class="blog-container">
                 <!-- Back to blogs link -->
@@ -443,6 +492,18 @@
                             <i class="fab fa-whatsapp me-1"></i> WhatsApp
                         </a>
                     </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Right Sidebar Ads -->
+        <div class="col-lg-2 d-none d-lg-block">
+            <div class="sidebar-ads sticky-top" style="top: 20px;">
+                <div class="ad-space sidebar-ad-card">
+                    <iframe src="{{ ad_links|random }}" style="width:100%; height:250px; border:none;" allowfullscreen></iframe>
+                </div>
+                <div class="ad-space sidebar-ad-card">
+                    <iframe src="{{ ad_links|random }}" style="width:100%; height:250px; border:none;" allowfullscreen></iframe>
                 </div>
             </div>
         </div>

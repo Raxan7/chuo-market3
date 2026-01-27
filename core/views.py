@@ -733,12 +733,24 @@ def blog_detail(request, slug):
                 has_emergency_redirect = True
     
     # Add debug flag to context to enable browser console debugging
+    ad_links = [
+        'https://www.effectivegatecpm.com/jp604fzw?key=0ac38e5ac8cfdc4296fa7f9060dcb6aa',
+        'https://www.effectivegatecpm.com/sqf24i6k9?key=69bd5c9b5bc46a7bf95c51f8a22d72be',
+        'https://www.effectivegatecpm.com/ghvacaxk?key=152c6ad3137dfd992107cafb20ba5475',
+        'https://www.effectivegatecpm.com/y56j06mc56?key=8a8851afe3dc03e0d7ad3a66474de43d',
+        'https://www.effectivegatecpm.com/cdrnmt82a0?key=f324af40210b539b89a9b3648da6d1a6',
+        'https://www.effectivegatecpm.com/x127x1tt?key=057c2839b78ce9b3e3d4222043664ed1',
+        'https://www.effectivegatecpm.com/t8969tvrft?key=a7ad665ecba681e29abdc931553dded0',
+        'https://www.effectivegatecpm.com/ue2x9peh?key=edf04c7d5e5bf35cb005016b6dc7e7c7',
+        'https://www.effectivegatecpm.com/bh2zyhrc?key=1e19b0229c99212775e63f84220c3f4d',
+    ]
     context = {
         'blog': blog,
         'debug_mode': True,
         'has_severe_issues': has_severe_issues,
         'has_emergency_redirect': has_emergency_redirect,
-        'original_content_preview': original_content_preview if 'original_content_preview' in locals() else ""
+        'original_content_preview': original_content_preview if 'original_content_preview' in locals() else "",
+        'ad_links': ad_links,
     }
     
     return render(request, template_name, context)

@@ -85,20 +85,74 @@
     .module-heading {
         margin-bottom: 0.5rem;
     }
+    
+    /* Ad card styling - no margins, padding, or borders */
+    .sidebar-ad-card {
+        margin: 0 !important;
+        padding: 0 !important;
+        border: none !important;
+        background: transparent !important;
+        overflow: hidden;
+    }
+    
+    .sidebar-ad-card iframe {
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        border: none !important;
+        display: block !important;
+    }
+    
+    /* Responsive ads on desktop */
+    @media (min-width: 992px) {
+        .sidebar-ads {
+            padding: 0 15px;
+        }
+        
+        .ad-space {
+            margin-bottom: 20px;
+            min-height: 250px;
+        }
+    }
+    
+    @media (max-width: 991px) {
+        .sidebar-ads {
+            display: none;
+        }
+    }
 </style>
 {% endblock extra_head %}
 
 {% block main-content %}
 <div class="container my-5">
     <div class="row">
-        <div class="col-md-8">
+        <!-- Left Sidebar Ads -->
+        <div class="col-lg-2 d-none d-lg-block">
+            <div class="sidebar-ads sticky-top" style="top: 20px;">
+                <div class="ad-space sidebar-ad-card">
+                    <iframe src="{{ ad_links|random }}" style="width:100%; height:250px; border:none;" allowfullscreen></iframe>
+                </div>
+                <div class="ad-space sidebar-ad-card">
+                    <iframe src="{{ ad_links|random }}" style="width:100%; height:250px; border:none;" allowfullscreen></iframe>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-8">
             <!-- Course Header -->
             <div class="card shadow-sm mb-4">
                 {% if course.image %}
                 <img src="{{ course.image.url }}" class="card-img-top" alt="{{ course.title }}">
                 {% endif %}
                 <div class="card-body">
-                    <h1 class="card-title">{{ course.title }}</h1>
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <h1 class="card-title mb-0">{{ course.title }}</h1>
+                        {% if is_course_instructor %}
+                        <a href="{% url 'lms:course_update' slug=course.slug %}" class="btn btn-outline-primary btn-sm">
+                            <i class="fas fa-edit"></i> Edit Course
+                        </a>
+                        {% endif %}
+                    </div>
                     <div class="mb-3">
                         {% if course.is_free %}
                         <span class="badge bg-success fs-6 px-3 py-2"><i class="fas fa-gift me-1"></i> Free Course</span>
@@ -661,6 +715,18 @@
                         </li>
                         {% endif %}
                     </ul>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Right Sidebar Ads -->
+        <div class="col-lg-2 d-none d-lg-block">
+            <div class="sidebar-ads sticky-top" style="top: 20px;">
+                <div class="ad-space sidebar-ad-card">
+                    <iframe src="{{ ad_links|random }}" style="width:100%; height:250px; border:none;" allowfullscreen></iframe>
+                </div>
+                <div class="ad-space sidebar-ad-card">
+                    <iframe src="{{ ad_links|random }}" style="width:100%; height:250px; border:none;" allowfullscreen></iframe>
                 </div>
             </div>
         </div>
