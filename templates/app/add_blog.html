@@ -32,27 +32,65 @@
                         
                         <!-- Thumbnail Image Upload with Cloudinary -->
                         <div class="form-group mb-3">
-                            <label for="id_thumbnail" class="form-label">Blog Thumbnail Image</label>
+                            <label class="form-label">Blog Thumbnail Image *</label>
+                            
+                            <!-- Upload Method Selection -->
+                            <div class="card border-light mb-3">
+                                <div class="card-body">
+                                    <label class="form-label">Choose Upload Method:</label>
+                                    {{ blog_form.upload_method }}
+                                    <small class="form-text text-muted d-block mt-2">
+                                        {{ blog_form.upload_method.help_text }}
+                                    </small>
+                                </div>
+                            </div>
+                            
                             <div class="card border-light-2">
                                 <div class="card-body">
-                                    <div class="text-center" id="thumbnail-preview-container" style="display: none;">
-                                        <img id="thumbnail-preview" src="" alt="Preview" class="img-fluid mb-3" style="max-width: 100%; max-height: 300px; border-radius: 5px;">
-                                        <div>
-                                            <button type="button" class="btn btn-sm btn-danger" id="clear-thumbnail">Remove Image</button>
+                                    <!-- Local Upload Section -->
+                                    <div id="local-upload-section">
+                                        <div class="text-center" id="thumbnail-preview-container" style="display: none;">
+                                            <img id="thumbnail-preview" src="" alt="Preview" class="img-fluid mb-3" style="max-width: 100%; max-height: 300px; border-radius: 5px;">
+                                            <div>
+                                                <button type="button" class="btn btn-sm btn-danger" id="clear-thumbnail">Remove Image</button>
+                                            </div>
+                                        </div>
+                                        <div id="thumbnail-upload-container">
+                                            <label for="{{ blog_form.thumbnail.id_for_label }}" class="form-label">Upload from Device (Local Storage)</label>
+                                            {{ blog_form.thumbnail }}
+                                            <small class="form-text text-muted d-block mt-2">
+                                                📸 Upload JPG, PNG, or WebP (Max 5MB)<br>
+                                                💡 Recommended size: 1200x630px
+                                            </small>
                                         </div>
                                     </div>
-                                    <div id="thumbnail-upload-container">
-                                        {{ blog_form.thumbnail }}
-                                        <small class="form-text text-muted d-block mt-2">
-                                            📸 Upload JPG, PNG, or WebP (Max 5MB)<br>
-                                            💡 Recommended size: 1200x630px<br>
-                                            ☁️ Powered by Cloudinary for automatic optimization
-                                        </small>
+                                    
+                                    <!-- Cloudinary Upload Section -->
+                                    <div id="cloudinary-upload-section" style="display: none;">
+                                        <div class="text-center" id="cloudinary-preview-container" style="display: none;">
+                                            <img id="cloudinary-preview" src="" alt="Preview" class="img-fluid mb-3" style="max-width: 100%; max-height: 300px; border-radius: 5px;">
+                                            <div>
+                                                <button type="button" class="btn btn-sm btn-danger" id="clear-cloudinary">Remove Image</button>
+                                            </div>
+                                        </div>
+                                        <div id="cloudinary-upload-container">
+                                            <label for="{{ blog_form.thumbnail_cloudinary.id_for_label }}" class="form-label">Upload to Cloudinary (Cloud Storage)</label>
+                                            {{ blog_form.thumbnail_cloudinary }}
+                                            <small class="form-text text-muted d-block mt-2">
+                                                ☁️ Upload JPG, PNG, or WebP (Max 10MB)<br>
+                                                💡 Recommended size: 1200x630px<br>
+                                                ⚡ Automatic optimization and WebP conversion<br>
+                                                🌍 Global CDN delivery for faster loading
+                                            </small>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                             {% if blog_form.thumbnail.errors %}
                                 <div class="text-danger mt-2">{{ blog_form.thumbnail.errors }}</div>
+                            {% endif %}
+                            {% if blog_form.thumbnail_cloudinary.errors %}
+                                <div class="text-danger mt-2">{{ blog_form.thumbnail_cloudinary.errors }}</div>
                             {% endif %}
                         </div>
                         
@@ -86,31 +124,81 @@
         min_height: 400,
     });
     
-    // Handle thumbnail preview
-    document.getElementById('id_thumbnail').addEventListener('change', function(e) {
-        const file = e.target.files[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = function(event) {
-                document.getElementById('thumbnail-preview').src = event.target.result;
-                document.getElementById('thumbnail-preview-container').style.display = 'block';
-                document.getElementById('thumbnail-upload-container').style.display = 'none';
-            };
-            reader.readAsDataURL(file);
+    // Initialize upload method sections based on selection
+    function updateUploadSections() {
+        const uploadMethod = document.querySelector('input[name="upload_method"]:checked').value;
+        const localSection = document.getElementById('local-upload-section');
+        const cloudinarySection = document.getElementById('cloudinary-upload-section');
+        
+        if (uploadMethod === 'local') {
+            localSection.style.display = 'block';
+            cloudinarySection.style.display = 'none';
+        } else {
+            localSection.style.display = 'none';
+            cloudinarySection.style.display = 'block';
         }
+    }
+    
+    // Handle upload method change
+    document.querySelectorAll('input[name="upload_method"]').forEach(radio => {
+        radio.addEventListener('change', updateUploadSections);
     });
     
-    // Handle clear thumbnail
-    document.getElementById('clear-thumbnail').addEventListener('click', function() {
-        document.getElementById('id_thumbnail').value = '';
-        document.getElementById('thumbnail-preview-container').style.display = 'none';
-        document.getElementById('thumbnail-upload-container').style.display = 'block';
-    });
+    // Initialize on page load
+    updateUploadSections();
     
-    // Show preview if image already exists
-    if (document.getElementById('id_thumbnail').value) {
-        document.getElementById('thumbnail-preview-container').style.display = 'block';
-        document.getElementById('thumbnail-upload-container').style.display = 'none';
+    // Handle local thumbnail preview
+    const localInput = document.getElementById('id_thumbnail');
+    if (localInput) {
+        localInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    document.getElementById('thumbnail-preview').src = event.target.result;
+                    document.getElementById('thumbnail-preview-container').style.display = 'block';
+                    document.getElementById('thumbnail-upload-container').style.display = 'none';
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    }
+    
+    // Handle Cloudinary thumbnail preview
+    const cloudinaryInput = document.getElementById('id_thumbnail_cloudinary');
+    if (cloudinaryInput) {
+        cloudinaryInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    document.getElementById('cloudinary-preview').src = event.target.result;
+                    document.getElementById('cloudinary-preview-container').style.display = 'block';
+                    document.getElementById('cloudinary-upload-container').style.display = 'none';
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    }
+    
+    // Handle clear local thumbnail
+    const clearThumbnailBtn = document.getElementById('clear-thumbnail');
+    if (clearThumbnailBtn) {
+        clearThumbnailBtn.addEventListener('click', function() {
+            if (localInput) localInput.value = '';
+            document.getElementById('thumbnail-preview-container').style.display = 'none';
+            document.getElementById('thumbnail-upload-container').style.display = 'block';
+        });
+    }
+    
+    // Handle clear Cloudinary thumbnail
+    const clearCloudinaryBtn = document.getElementById('clear-cloudinary');
+    if (clearCloudinaryBtn) {
+        clearCloudinaryBtn.addEventListener('click', function() {
+            if (cloudinaryInput) cloudinaryInput.value = '';
+            document.getElementById('cloudinary-preview-container').style.display = 'none';
+            document.getElementById('cloudinary-upload-container').style.display = 'block';
+        });
     }
 </script>
 

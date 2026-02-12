@@ -49,16 +49,16 @@ INSTALLED_APPS = [
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
-    'cloudinary_storage',  # Cloudinary storage backend
     'django.contrib.staticfiles',
     'django.contrib.sitemaps',  # Add sitemap functionality
     'django.contrib.sites',     # Required for sitemaps
-    'cloudinary',  # Cloudinary integration
     'tinymce',
     'markdown_deux',
     'widget_tweaks',
     'webpush',  # For push notifications
     'rest_framework',  # For the API
+    'cloudinary',  # Cloudinary for image uploads
+    'cloudinary_storage',  # Cloudinary storage backend
     
     'core',
     'talents',
@@ -210,6 +210,18 @@ STATICFILES_DIRS = [
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
+# Cloudinary Configuration
+import cloudinary
+import cloudinary.uploader
+import cloudinary.api
+
+cloudinary.config(
+    cloud_name=os.getenv('CLOUDINARY_CLOUD_NAME', ''),
+    api_key=os.getenv('CLOUDINARY_API_KEY', ''),
+    api_secret=os.getenv('CLOUDINARY_API_SECRET', ''),
+    secure=True
+)
+
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
@@ -265,23 +277,5 @@ DEFAULT_FROM_EMAIL = 'ChuoSmart <support@chuosmart.com>'
 
 # Password reset settings
 PASSWORD_RESET_TIMEOUT = 86400  # 24 hours in seconds
-
-# Cloudinary Configuration
-import cloudinary
-
-cloudinary.config(
-    cloud_name=os.getenv('CLOUDINARY_CLOUD_NAME'),
-    api_key=os.getenv('CLOUDINARY_API_KEY'),
-    api_secret=os.getenv('CLOUDINARY_API_SECRET'),
-    secure=True
-)
-
-# Use Cloudinary for media storage
-if os.getenv('CLOUDINARY_CLOUD_NAME'):
-    DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
-    MEDIA_URL = '/media/'
-else:
-    # Fallback to local storage if Cloudinary not configured
-    DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
 
 JOBS_MAINTENANCE_TOKEN = os.getenv('JOBS_MAINTENANCE_TOKEN', 'default_token_for_dev')

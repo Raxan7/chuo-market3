@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import User
 from .universities_colleges_tanzania import universities_data
+from cloudinary.models import CloudinaryField
 
 class Subscription(models.Model):
     LEVEL_CHOICES = [
@@ -183,11 +184,28 @@ class Blog(models.Model):
     author = models.ForeignKey(User, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    
+    # Local file storage (existing - for backward compatibility)
     thumbnail = models.ImageField(upload_to='blog_thumbnails', blank=True, null=True)
-    # New field for optimized WebP thumbnail
     thumbnail_webp = models.ImageField(upload_to='blog_thumbnails/webp', blank=True, null=True)
+    
+    # Cloudinary storage (new option)
+    thumbnail_cloudinary = CloudinaryField('image', blank=True, null=True, 
+                                          folder='blog_thumbnails',
+                                          transformation={'quality': 'auto', 'fetch_format': 'auto'})
+    
     is_markdown = models.BooleanField(default=False, help_text="Whether content is written in Markdown format")
     category = models.CharField(max_length=100, blank=True, null=True)
+    
+    def get_thumbnail_url(self):
+        """Get the thumbnail URL, preferring Cloudinary if available, otherwise local"""
+        if self.thumbnail_cloudinary:
+            return self.thumbnail_cloudinary.url
+        elif self.thumbnail_webp:
+            return self.thumbnail_webp.url
+        elif self.thumbnail:
+            return self.thumbnail.url
+        return None
     
     def clean_html_content(self):
         """Clean HTML content from TinyMCE to prevent data attributes from being stored"""

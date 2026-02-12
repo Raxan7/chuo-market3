@@ -173,8 +173,12 @@
                                 {% for blog in user_blogs %}
                                     <div class="col">
                                         <div class="card h-100 content-card">
-                                            {% if blog.thumbnail %}
-                                                <img src="{{ blog.thumbnail.url }}" class="card-img-top" alt="{{ blog.title }}" style="height: 180px; object-fit: cover;">
+                                            {% if blog.thumbnail_cloudinary or blog.thumbnail %}
+                                                {% if blog.thumbnail_cloudinary %}
+                                                    <img src="{{ blog.thumbnail_cloudinary.url }}" class="card-img-top" alt="{{ blog.title }}" style="height: 180px; object-fit: cover;">
+                                                {% else %}
+                                                    <img src="{{ blog.thumbnail.url }}" class="card-img-top" alt="{{ blog.title }}" style="height: 180px; object-fit: cover;">
+                                                {% endif %}
                                             {% else %}
                                                 <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 180px;">
                                                     <i class="fas fa-blog fa-3x text-secondary"></i>
