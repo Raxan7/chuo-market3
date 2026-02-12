@@ -3,29 +3,124 @@
 
 {% block main-content %}
 <div class="container mt-5">
-    <h2>Create Blog</h2>
-    <form method="post">
-        {% csrf_token %}
-        <div class="form-group">
-            <label for="id_title">Title</label>
-            {{ form.title|add_class:"form-control" }}
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <h2 class="mb-4">Create Blog Post</h2>
+            <div class="card">
+                <div class="card-body">
+                    <form method="post" enctype="multipart/form-data" id="blog-form">
+                        {% csrf_token %}
+                        
+                        <!-- Title -->
+                        <div class="form-group mb-3">
+                            <label for="id_title" class="form-label">Blog Title *</label>
+                            {{ form.title|add_class:"form-control" }}
+                            {% if form.title.errors %}
+                                <div class="text-danger mt-1">{{ form.title.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Category -->
+                        <div class="form-group mb-3">
+                            <label for="id_category" class="form-label">Category</label>
+                            {{ form.category|add_class:"form-control" }}
+                            <small class="form-text text-muted">e.g., Education, Technology, Careers, etc.</small>
+                            {% if form.category.errors %}
+                                <div class="text-danger mt-1">{{ form.category.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Thumbnail Image Upload with Cloudinary -->
+                        <div class="form-group mb-3">
+                            <label for="id_thumbnail" class="form-label">Blog Thumbnail Image</label>
+                            <div class="card border-light-2">
+                                <div class="card-body">
+                                    <div class="text-center" id="thumbnail-preview-container" style="display: none;">
+                                        <img id="thumbnail-preview" src="" alt="Preview" class="img-fluid mb-3" style="max-width: 100%; max-height: 300px; border-radius: 5px;">
+                                        <div>
+                                            <button type="button" class="btn btn-sm btn-danger" id="clear-thumbnail">Remove Image</button>
+                                        </div>
+                                    </div>
+                                    <div id="thumbnail-upload-container">
+                                        {{ form.thumbnail }}
+                                        <small class="form-text text-muted d-block mt-2">
+                                            📸 Upload JPG, PNG, or WebP (Max 5MB)<br>
+                                            💡 Recommended size: 1200x630px<br>
+                                            ☁️ Powered by Cloudinary for automatic optimization
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                            {% if form.thumbnail.errors %}
+                                <div class="text-danger mt-2">{{ form.thumbnail.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Content -->
+                        <div class="form-group mb-3">
+                            <label for="id_content" class="form-label">Content *</label>
+                            {{ form.content|add_class:"form-control" }}
+                            {% if form.content.errors %}
+                                <div class="text-danger mt-1">{{ form.content.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Submit Button -->
+                        <div class="form-group">
+                            <button type="submit" class="btn btn-primary btn-lg w-100">📤 Publish Blog Post</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
         </div>
-        <div class="form-group">
-            <label for="id_content">Content</label>
-            {{ form.content|add_class:"form-control" }}
-            <textarea id="id_content" name="content" class="form-control">{{ form.content.value }}</textarea>
-        </div>
-        <button type="submit" class="btn btn-primary mt-3">Submit</button>
-    </form>
+    </div>
 </div>
 
 <!-- Include the TinyMCE library -->
-<script src="https://cdn.tiny.cloud/1/no-api-key/tinymce/5/tinymce.min.js" referrerpolicy="origin"></script>
+<script src="https://cdn.tiny.cloud/1/79mav6qxv90aa5ok0e06rrdtfsld589tfny17p83j3p5qxwk/tinymce/5/tinymce.min.js" referrerpolicy="origin"></script>
 <script>
     tinymce.init({
         selector: '#id_content',
         plugins: 'advlist autolink lists link image charmap print preview hr anchor pagebreak',
         toolbar_mode: 'floating',
+        min_height: 400,
     });
+    
+    // Handle thumbnail preview
+    document.getElementById('id_thumbnail').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                document.getElementById('thumbnail-preview').src = event.target.result;
+                document.getElementById('thumbnail-preview-container').style.display = 'block';
+                document.getElementById('thumbnail-upload-container').style.display = 'none';
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+    
+    // Handle clear thumbnail
+    document.getElementById('clear-thumbnail').addEventListener('click', function() {
+        document.getElementById('id_thumbnail').value = '';
+        document.getElementById('thumbnail-preview-container').style.display = 'none';
+        document.getElementById('thumbnail-upload-container').style.display = 'block';
+    });
+    
+    // Show preview if image already exists
+    if (document.getElementById('id_thumbnail').value) {
+        document.getElementById('thumbnail-preview-container').style.display = 'block';
+        document.getElementById('thumbnail-upload-container').style.display = 'none';
+    }
 </script>
+
+<style>
+    .card border-light-2 {
+        border-color: #e9ecef !important;
+    }
+    #id_thumbnail {
+        display: block;
+        margin-bottom: 10px;
+    }
+</style>
 {% endblock main-content %}

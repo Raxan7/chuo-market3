@@ -59,16 +59,43 @@ class ProductForm(forms.ModelForm):
 
 class BlogForm(forms.ModelForm):
     content = forms.CharField(widget=TinyMCE(attrs={'cols': 80, 'rows':50,'class': 'form-control'}))
+    thumbnail = forms.ImageField(
+        required=False,
+        help_text="Upload a blog thumbnail image (JPG, PNG). Recommended size: 1200x630px",
+        widget=forms.FileInput(attrs={
+            'class': 'form-control',
+            'accept': 'image/*',
+            'id': 'blog_thumbnail'
+        })
+    )
     
     class Meta:
         model = Blog
-        fields = ['title', 'content', 'thumbnail']
+        fields = ['title', 'content', 'thumbnail', 'category']
+        widgets = {
+            'title': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Enter blog title'
+            }),
+            'category': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Enter category (e.g., Education, Technology, etc.)'
+            })
+        }
         
     def clean_thumbnail(self):
         thumbnail = self.cleaned_data.get('thumbnail')
         if thumbnail:
-            # Convert to WebP for better performance
-            return convert_to_webp(thumbnail)
+            # Validate file size (max 5MB)
+            if thumbnail.size > 5 * 1024 * 1024:
+                raise forms.ValidationError("Image file size must not exceed 5MB. Cloudinary will optimize it for you.")
+            
+            # Validate file type
+            allowed_types = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+            if thumbnail.content_type not in allowed_types:
+                raise forms.ValidationError("Please upload a valid image file (JPG, PNG, WebP, or GIF).")
+            
+            return thumbnail
         return thumbnail
 
 

@@ -9,8 +9,10 @@ cachetools==5.5.2
 certifi==2025.1.31
 cffi
 charset-normalizer==3.4.1
+cloudinary==1.41.0
 cryptography==45.0.5
 dj-database-url==2.3.0
+django-cloudinary-storage==0.3.0
 Django==4.2.20
 django-crispy-forms==2.1
 django-markdown-deux==1.0.6
@@ -61,3 +63,4 @@ uritemplate==4.1.1
 urllib3==2.3.0
 whitenoise==6.9.0
 yarl==1.20.1
+

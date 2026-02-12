@@ -18,9 +18,14 @@
     }
     
     .preview-image {
-        max-width: 200px;
+        max-width: 100%;
+        max-height: 300px;
         margin-bottom: 1rem;
         border-radius: 8px;
+    }
+    
+    .card border-light-2 {
+        border-color: #e9ecef !important;
     }
 </style>
 {% endblock extra_head %}
@@ -39,7 +44,7 @@
             </nav>
             
             <div class="edit-blog-form">
-                <h2 class="mb-4">Edit Blog</h2>
+                <h2 class="mb-4">✏️ Edit Blog Post</h2>
                 
                 {% if messages %}
                     {% for message in messages %}
@@ -49,58 +54,120 @@
                     {% endfor %}
                 {% endif %}
                 
-                <form method="post" enctype="multipart/form-data">
+                <form method="post" enctype="multipart/form-data" id="edit-blog-form">
                     {% csrf_token %}
                     
+                    <!-- Title -->
                     <div class="form-group">
-                        <label for="{{ form.title.id_for_label }}" class="form-label">Title</label>
-                        {{ form.title }}
+                        <label for="{{ form.title.id_for_label }}" class="form-label">Title *</label>
+                        {{ form.title|add_class:"form-control" }}
                         {% if form.title.errors %}
-                            <div class="text-danger">{{ form.title.errors }}</div>
+                            <div class="text-danger mt-1">{{ form.title.errors }}</div>
                         {% endif %}
                     </div>
                     
+                    <!-- Category -->
                     <div class="form-group">
                         <label for="{{ form.category.id_for_label }}" class="form-label">Category</label>
-                        {{ form.category }}
+                        {{ form.category|add_class:"form-control" }}
+                        <small class="form-text text-muted">e.g., Education, Technology, Careers, etc.</small>
                         {% if form.category.errors %}
-                            <div class="text-danger">{{ form.category.errors }}</div>
+                            <div class="text-danger mt-1">{{ form.category.errors }}</div>
                         {% endif %}
                     </div>
                     
+                    <!-- Thumbnail Image Upload with Cloudinary -->
                     <div class="form-group">
-                        <label for="{{ form.content.id_for_label }}" class="form-label">Content</label>
-                        {{ form.content }}
-                        {% if form.content.errors %}
-                            <div class="text-danger">{{ form.content.errors }}</div>
-                        {% endif %}
-                    </div>
-                    
-                    {% if blog.thumbnail %}
-                        <div class="form-group">
-                            <label>Current Thumbnail</label>
-                            <div>
-                                <img src="{{ blog.thumbnail.url }}" alt="{{ blog.title }}" class="preview-image">
+                        <label for="{{ form.thumbnail.id_for_label }}" class="form-label">Blog Thumbnail Image</label>
+                        <div class="card border-light-2">
+                            <div class="card-body">
+                                {% if blog.thumbnail %}
+                                    <div class="text-center" id="current-thumbnail-container">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <h6>Current Thumbnail</h6>
+                                                <img src="{{ blog.thumbnail.url }}" alt="{{ blog.title }}" class="preview-image">
+                                            </div>
+                                            <div>
+                                                <button type="button" class="btn btn-sm btn-warning" id="replace-thumbnail">Replace Thumbnail</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endif %}
+                                
+                                <div id="new-thumbnail-container" style="display: {% if blog.thumbnail %}none{% else %}block{% endif %};">
+                                    <div class="text-center" id="thumbnail-preview-container" style="display: none;">
+                                        <img id="thumbnail-preview" src="" alt="Preview" class="img-fluid mb-3" style="max-width: 100%; max-height: 300px; border-radius: 5px;">
+                                        <div>
+                                            <button type="button" class="btn btn-sm btn-danger" id="clear-thumbnail">Remove New Image</button>
+                                        </div>
+                                    </div>
+                                    <div id="thumbnail-upload-container">
+                                        {{ form.thumbnail }}
+                                        <small class="form-text text-muted d-block mt-2">
+                                            📸 Upload JPG, PNG, or WebP (Max 5MB)<br>
+                                            💡 Recommended size: 1200x630px<br>
+                                            ☁️ Powered by Cloudinary for automatic optimization
+                                        </small>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                    {% endif %}
-                    
-                    <div class="form-group">
-                        <label for="{{ form.thumbnail.id_for_label }}" class="form-label">Thumbnail Image (Optional)</label>
-                        {{ form.thumbnail }}
-                        <small class="form-text text-muted">Leave empty to keep the current image</small>
                         {% if form.thumbnail.errors %}
-                            <div class="text-danger">{{ form.thumbnail.errors }}</div>
+                            <div class="text-danger mt-2">{{ form.thumbnail.errors }}</div>
                         {% endif %}
                     </div>
                     
-                    <div class="d-flex justify-content-between">
-                        <button type="submit" class="btn btn-primary">Update Blog</button>
-                        <a href="{% url 'blog_detail' slug=blog.slug %}" class="btn btn-outline-secondary">Cancel</a>
+                    <!-- Content -->
+                    <div class="form-group">
+                        <label for="{{ form.content.id_for_label }}" class="form-label">Content *</label>
+                        {{ form.content }}
+                        {% if form.content.errors %}
+                            <div class="text-danger mt-1">{{ form.content.errors }}</div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Action Buttons -->
+                    <div class="d-flex justify-content-between gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg">💾 Update Blog</button>
+                        <a href="{% url 'blog_detail' slug=blog.slug %}" class="btn btn-outline-secondary btn-lg">Cancel</a>
                     </div>
                 </form>
             </div>
         </div>
     </div>
 </div>
+
+<script>
+    // Handle replace thumbnail button
+    document.getElementById('replace-thumbnail').addEventListener('click', function(e) {
+        e.preventDefault();
+        document.getElementById('current-thumbnail-container').style.display = 'none';
+        document.getElementById('new-thumbnail-container').style.display = 'block';
+    });
+    
+    // Handle thumbnail preview
+    document.getElementById('id_thumbnail').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                document.getElementById('thumbnail-preview').src = event.target.result;
+                document.getElementById('thumbnail-preview-container').style.display = 'block';
+                document.getElementById('thumbnail-upload-container').style.display = 'none';
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+    
+    // Handle clear thumbnail
+    if (document.getElementById('clear-thumbnail')) {
+        document.getElementById('clear-thumbnail').addEventListener('click', function(e) {
+            e.preventDefault();
+            document.getElementById('id_thumbnail').value = '';
+            document.getElementById('thumbnail-preview-container').style.display = 'none';
+            document.getElementById('thumbnail-upload-container').style.display = 'block';
+        });
+    }
+</script>
 {% endblock main-content %}
