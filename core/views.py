@@ -537,8 +537,21 @@ def add_blog(request):
         if blog_form.is_valid():
             blog = blog_form.save(commit=False)
             blog.author = request.user
+            
+            # Determine which upload method was used and store accordingly
+            upload_method = blog_form.cleaned_data.get('upload_method', 'local')
+            blog.upload_method = upload_method
+            
+            # Only save the relevant image field based on upload method
+            if upload_method == 'cloudinary':
+                # Clear the local thumbnail if Cloudinary was used
+                blog.thumbnail = None
+                blog.thumbnail_webp = None
+            # If local upload, thumbnail and thumbnail_webp are already set by form
+            
             blog_form.save()
-            return redirect('blog_list')  # Replace with your success URL
+            messages.success(request, "Your blog has been created successfully!")
+            return redirect('blog_list')
     else:
         blog_form = BlogForm()
     return render(request, 'app/add_blog.html', {'blog_form': blog_form})
@@ -551,7 +564,20 @@ def create_blog(request):
         if form.is_valid():
             blog = form.save(commit=False)
             blog.author = request.user
+            
+            # Determine which upload method was used and store accordingly
+            upload_method = form.cleaned_data.get('upload_method', 'local')
+            blog.upload_method = upload_method
+            
+            # Only save the relevant image field based on upload method
+            if upload_method == 'cloudinary':
+                # Clear the local thumbnail if Cloudinary was used
+                blog.thumbnail = None
+                blog.thumbnail_webp = None
+            # If local upload, thumbnail and thumbnail_webp are already set by form
+            
             blog.save()
+            messages.success(request, "Your blog has been created successfully!")
             return redirect('blog_list')
     else:
         form = BlogForm()
@@ -1218,7 +1244,18 @@ def edit_blog(request, slug):
     if request.method == 'POST':
         form = BlogForm(request.POST, request.FILES, instance=blog)
         if form.is_valid():
-            form.save()
+            blog = form.save(commit=False)
+            
+            # Determine which upload method was used and store accordingly
+            upload_method = form.cleaned_data.get('upload_method', 'local')
+            blog.upload_method = upload_method
+            
+            # If switching from local to Cloudinary, clear the local files
+            if upload_method == 'cloudinary':
+                blog.thumbnail = None
+                blog.thumbnail_webp = None
+            
+            blog.save()
             messages.success(request, "Your blog has been updated successfully.")
             return redirect('blog_detail', slug=blog.slug)
     else:

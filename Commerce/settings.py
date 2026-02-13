@@ -57,8 +57,6 @@ INSTALLED_APPS = [
     'widget_tweaks',
     'webpush',  # For push notifications
     'rest_framework',  # For the API
-    'cloudinary',  # Cloudinary for image uploads
-    'cloudinary_storage',  # Cloudinary storage backend
     
     'core',
     'talents',
@@ -210,18 +208,6 @@ STATICFILES_DIRS = [
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
-# Cloudinary Configuration
-import cloudinary
-import cloudinary.uploader
-import cloudinary.api
-
-cloudinary.config(
-    cloud_name=os.getenv('CLOUDINARY_CLOUD_NAME', ''),
-    api_key=os.getenv('CLOUDINARY_API_KEY', ''),
-    api_secret=os.getenv('CLOUDINARY_API_SECRET', ''),
-    secure=True
-)
-
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
@@ -261,6 +247,13 @@ CEREBRAS_API_KEY = os.getenv('CEREBRAS_API_KEY')
 import sys
 if not CEREBRAS_API_KEY and 'test' not in sys.argv and 'check' not in sys.argv:
     raise ValueError('CEREBRAS_API_KEY environment variable not set')
+
+# Cloudinary Configuration for image storage and optimization
+CLOUDINARY_STORAGE = {
+    'CLOUD_NAME': os.getenv('CLOUDINARY_CLOUD_NAME'),
+    'API_KEY': os.getenv('CLOUDINARY_API_KEY'),
+    'API_SECRET': os.getenv('CLOUDINARY_API_SECRET'),
+}
 
 # Authentication
 LOGIN_URL = 'login'  # Use the name of the login URL pattern, not the URL path

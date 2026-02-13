@@ -1,7 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import User
 from .universities_colleges_tanzania import universities_data
-from cloudinary.models import CloudinaryField
 
 class Subscription(models.Model):
     LEVEL_CHOICES = [
@@ -178,6 +177,11 @@ class Banners(models.Model):
 
 
 class Blog(models.Model):
+    UPLOAD_METHOD_CHOICES = [
+        ('local', 'Local Storage (Device)'),
+        ('cloudinary', 'Cloudinary (Cloud Storage)'),
+    ]
+    
     title = models.CharField(max_length=200)
     slug = models.SlugField(max_length=250, unique=True, blank=True, null=True)
     content = models.TextField()
@@ -185,27 +189,23 @@ class Blog(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
-    # Local file storage (existing - for backward compatibility)
-    thumbnail = models.ImageField(upload_to='blog_thumbnails', blank=True, null=True)
+    # Image storage options - support both local and Cloudinary
+    thumbnail = models.ImageField(upload_to='blog_thumbnails', blank=True, null=True, help_text="Local image storage")
+    # New field for Cloudinary-hosted images
+    thumbnail_cloudinary = models.CharField(max_length=500, blank=True, null=True, help_text="Cloudinary image URL")
+    # New field for optimized WebP thumbnail
     thumbnail_webp = models.ImageField(upload_to='blog_thumbnails/webp', blank=True, null=True)
     
-    # Cloudinary storage (new option)
-    thumbnail_cloudinary = CloudinaryField('image', blank=True, null=True, 
-                                          folder='blog_thumbnails',
-                                          transformation={'quality': 'auto', 'fetch_format': 'auto'})
+    # Track which upload method was used (local or cloudinary)
+    upload_method = models.CharField(
+        max_length=20, 
+        choices=UPLOAD_METHOD_CHOICES, 
+        default='local',
+        help_text="Method used to upload the thumbnail image"
+    )
     
     is_markdown = models.BooleanField(default=False, help_text="Whether content is written in Markdown format")
     category = models.CharField(max_length=100, blank=True, null=True)
-    
-    def get_thumbnail_url(self):
-        """Get the thumbnail URL, preferring Cloudinary if available, otherwise local"""
-        if self.thumbnail_cloudinary:
-            return self.thumbnail_cloudinary.url
-        elif self.thumbnail_webp:
-            return self.thumbnail_webp.url
-        elif self.thumbnail:
-            return self.thumbnail.url
-        return None
     
     def clean_html_content(self):
         """Clean HTML content from TinyMCE to prevent data attributes from being stored"""

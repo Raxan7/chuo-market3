@@ -431,15 +431,10 @@
                         </div>
                     </div>
                     
-                    {% if blog.thumbnail_cloudinary or blog.thumbnail %}
+                    {% if blog.thumbnail %}
                         {% load image_tags %}
-                        {% if blog.thumbnail_cloudinary %}
-                            {# Cloudinary image - automatically optimized and serves WebP when supported #}
-                            <img src=\"{{ blog.thumbnail_cloudinary.url }}\" alt=\"{{ blog.title }}\" class=\"blog-thumbnail\" loading=\"eager\" fetchpriority=\"high\" style=\"max-width: 100%; height: auto;\">
-                        {% else %}
-                            {# Local storage with WebP optimization - Don't lazy load the main blog image as it's above the fold #}
-                            {% picture webp_src=blog.thumbnail_webp|safe_url fallback_src=blog.thumbnail.url alt=blog.title css_class=\"blog-thumbnail\" lazy=False %}
-                        {% endif %}
+                        <!-- Don't lazy load the main blog image as it's above the fold -->
+                        {% picture webp_src=blog.thumbnail_webp|safe_url fallback_src=blog.thumbnail.url alt=blog.title css_class="blog-thumbnail" lazy=False %}
                     {% endif %}
                 </div>
                 

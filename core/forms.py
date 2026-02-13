@@ -60,82 +60,61 @@ class ProductForm(forms.ModelForm):
 class BlogForm(forms.ModelForm):
     content = forms.CharField(widget=TinyMCE(attrs={'cols': 80, 'rows':50,'class': 'form-control'}))
     
-    # Upload method selection
+    # Upload method selection field
     upload_method = forms.ChoiceField(
-        choices=[('local', 'Upload from Device (Local Storage)'), 
-                 ('cloudinary', 'Upload to Cloudinary (Cloud Storage)')],
+        choices=[
+            ('local', '📱 Upload from Device (Local Storage)'),
+            ('cloudinary', '☁️ Upload to Cloud Storage (Cloudinary)'),
+        ],
         initial='local',
-        required=False,
         widget=forms.RadioSelect(attrs={'class': 'form-check-input'}),
-        help_text="Choose where to store your image. Local is traditional file upload, Cloudinary is cloud-based with automatic optimization."
+        help_text='Choose where to store your blog thumbnail image'
     )
     
-    # Cloudinary direct upload field
-    thumbnail_cloudinary = forms.ImageField(
+    # Cloudinary URL field for storing the cloud-hosted image
+    thumbnail_cloudinary = forms.CharField(
+        max_length=500,
         required=False,
-        help_text="Upload image to Cloudinary (cloud storage with automatic optimization)",
-        widget=forms.FileInput(attrs={'class': 'form-control', 'accept': 'image/*'})
+        widget=forms.HiddenInput(),
+        help_text='Automatically populated by Cloudinary upload widget'
     )
     
     class Meta:
         model = Blog
-        fields = ['title', 'content', 'thumbnail', 'category']
-        widgets = {
-            'thumbnail': forms.FileInput(attrs={'class': 'form-control', 'accept': 'image/*'}),
-            'category': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g., Technology, Education, Business'}),
-        }
+        fields = ['title', 'content', 'thumbnail', 'thumbnail_cloudinary', 'upload_method']
         
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        # If editing and Cloudinary image exists, set method to cloudinary
-        if self.instance and self.instance.pk and self.instance.thumbnail_cloudinary:
-            self.fields['upload_method'].initial = 'cloudinary'
-    
     def clean(self):
+        """Validate that at least one image upload method is used"""
         cleaned_data = super().clean()
-        upload_method = cleaned_data.get('upload_method')
         thumbnail = cleaned_data.get('thumbnail')
         thumbnail_cloudinary = cleaned_data.get('thumbnail_cloudinary')
+        upload_method = cleaned_data.get('upload_method')
         
-        # Validate that at least one image is provided for new posts
-        if not self.instance.pk:  # New blog post
-            if upload_method == 'local' and not thumbnail:
-                if not thumbnail_cloudinary:
-                    raise forms.ValidationError("Please upload a thumbnail image.")
-            elif upload_method == 'cloudinary' and not thumbnail_cloudinary:
-                if not thumbnail:
-                    raise forms.ValidationError("Please upload a thumbnail image to Cloudinary.")
+        # Ensure at least one image is provided
+        if not thumbnail and not thumbnail_cloudinary:
+            raise forms.ValidationError(
+                'Please upload a blog thumbnail image using either local storage or Cloudinary.'
+            )
+        
+        # Ensure the selected method has an image
+        if upload_method == 'local' and not thumbnail:
+            raise forms.ValidationError(
+                'You selected local storage but did not upload an image. Either select an image or switch to Cloudinary.'
+            )
+        
+        if upload_method == 'cloudinary' and not thumbnail_cloudinary:
+            raise forms.ValidationError(
+                'You selected cloud storage but did not upload an image. Please upload using the Cloudinary widget.'
+            )
         
         return cleaned_data
         
-    def save(self, commit=True):
-        instance = super().save(commit=False)
-        upload_method = self.cleaned_data.get('upload_method')
-        thumbnail_cloudinary = self.cleaned_data.get('thumbnail_cloudinary')
-        
-        # Handle Cloudinary upload
-        if upload_method == 'cloudinary' and thumbnail_cloudinary:
-            import cloudinary.uploader
-            # Upload to Cloudinary
-            upload_result = cloudinary.uploader.upload(
-                thumbnail_cloudinary,
-                folder='blog_thumbnails',
-                transformation=[
-                    {'quality': 'auto', 'fetch_format': 'auto'},
-                    {'width': 1200, 'height': 630, 'crop': 'limit'}
-                ]
-            )
-            # Store the Cloudinary public_id
-            instance.thumbnail_cloudinary = upload_result['public_id']
-        
-        # Handle local upload (existing behavior)
-        elif upload_method == 'local' and self.cleaned_data.get('thumbnail'):
-            # Convert to WebP for better performance (existing functionality)
-            instance.thumbnail = convert_to_webp(self.cleaned_data.get('thumbnail'))
-        
-        if commit:
-            instance.save()
-        return instance
+    def clean_thumbnail(self):
+        thumbnail = self.cleaned_data.get('thumbnail')
+        if thumbnail:
+            # Convert to WebP for better performance
+            return convert_to_webp(thumbnail)
+        return thumbnail
 
 
 class SubscriptionForm(forms.Form):
