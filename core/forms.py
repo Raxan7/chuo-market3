@@ -81,7 +81,7 @@ class BlogForm(forms.ModelForm):
     
     class Meta:
         model = Blog
-        fields = ['title', 'content', 'thumbnail', 'thumbnail_cloudinary', 'upload_method']
+        fields = ['title', 'content', 'category', 'thumbnail', 'thumbnail_cloudinary', 'upload_method']
         
     def clean(self):
         """Validate that at least one image upload method is used"""
