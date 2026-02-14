@@ -8,6 +8,7 @@ from django.contrib.auth.hashers import check_password
 from django.contrib.auth.models import AnonymousUser
 from django.core.mail import send_mail
 from django.conf import settings
+from django.views.decorators.csrf import csrf_exempt
 from django.core.exceptions import ObjectDoesNotExist
 from django.utils import timezone
 from django.utils.decorators import method_decorator
@@ -1360,6 +1361,7 @@ def subscription_view(request):
     return render(request, 'app/subscription.html', context)
 
 
+@csrf_exempt
 @login_required(login_url='login')
 @customer_required
 def upload_tinymce_image(request):
