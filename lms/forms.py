@@ -104,7 +104,7 @@ class CourseForm(forms.ModelForm):
             
     class Meta:
         model = Course
-        fields = ['title', 'course_type', 'code', 'credit', 'summary', 'program', 
+        fields = ['title', 'course_type', 'code', 'credit', 'summary', 'content', 'program', 
                   'level', 'year', 'semester', 'is_elective', 'is_free', 'price', 'instructors', 'image']
         widgets = {
             'title': forms.TextInput(attrs={
@@ -127,6 +127,11 @@ class CourseForm(forms.ModelForm):
             'summary': TinyMCE(attrs={
                 'class': 'form-control tinymce',
                 'placeholder': 'Describe what students will learn in this course',
+                'data-custom-formatting': 'true'
+            }),
+            'content': TinyMCE(attrs={
+                'class': 'form-control tinymce',
+                'placeholder': 'Enter detailed course description, syllabus, learning objectives, and course content',
                 'data-custom-formatting': 'true'
             }),
             'program': forms.Select(attrs={'class': 'form-select'}),
