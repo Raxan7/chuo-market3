@@ -299,6 +299,59 @@
                             {% endif %}
                         </div>
                         
+                        <!-- Course Modules Section -->
+                        {% if form.instance.id %}
+                        <div class="mb-5 p-4 bg-light rounded-3 border border-secondary">
+                            <div class="d-flex justify-content-between align-items-center mb-4">
+                                <h5 class="mb-0">
+                                    <i class="fas fa-layer-group me-2 text-primary"></i>Course Modules
+                                </h5>
+                                <a href="{% url 'lms:module_create' course_slug=form.instance.slug %}" class="btn btn-sm btn-primary">
+                                    <i class="fas fa-plus-circle me-1"></i>Add Module
+                                </a>
+                            </div>
+                            
+                            {% if form.instance.modules.all %}
+                                <div class="list-group">
+                                    {% for module in form.instance.modules.all|dictsort:"order" %}
+                                    <div class="list-group-item border-start border-4 border-primary">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div class="flex-grow-1">
+                                                <h6 class="mb-1">
+                                                    <i class="fas fa-book me-2"></i>{{ module.title }}
+                                                </h6>
+                                                {% if module.description %}
+                                                <p class="text-muted small mb-0">
+                                                    {{ module.description|striptags|truncatewords:20 }}
+                                                </p>
+                                                {% endif %}
+                                                <small class="text-secondary">Order: {{ module.order }}</small>
+                                            </div>
+                                            <div class="btn-group btn-group-sm" role="group">
+                                                <a href="{% url 'lms:module_update' course_slug=form.instance.slug module_id=module.id %}" 
+                                                   class="btn btn-outline-primary" title="Edit module">
+                                                    <i class="fas fa-edit"></i> Edit
+                                                </a>
+                                                <a href="{% url 'lms:module_delete' course_slug=form.instance.slug module_id=module.id %}" 
+                                                   class="btn btn-outline-danger" 
+                                                   onclick="return confirm('Are you sure you want to delete this module?');" 
+                                                   title="Delete module">
+                                                    <i class="fas fa-trash"></i> Delete
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                <div class="alert alert-info mb-0">
+                                    <i class="fas fa-info-circle me-2"></i>No modules yet. 
+                                    <a href="{% url 'lms:module_create' course_slug=form.instance.slug %}" class="alert-link">Create your first module</a>
+                                </div>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                        
                         <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-5">
                             <a href="{% url 'lms:course_list' %}" class="btn btn-outline-secondary me-md-2 px-4 py-2">
                                 <i class="fas fa-times me-2"></i>Cancel
