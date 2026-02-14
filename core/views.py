@@ -1389,15 +1389,38 @@ def upload_tinymce_image(request):
     if 'file' not in request.FILES:
         return JsonResponse({'error': 'No image file provided'}, status=400)
     
+    # Check if Cloudinary credentials are configured
+    cloud_name = settings.CLOUDINARY_STORAGE.get('CLOUD_NAME')
+    api_key = settings.CLOUDINARY_STORAGE.get('API_KEY')
+    api_secret = settings.CLOUDINARY_STORAGE.get('API_SECRET')
+    
+    if not cloud_name or cloud_name == 'your_cloud_name':
+        logger.error("Cloudinary CLOUD_NAME not configured. Please set CLOUDINARY_CLOUD_NAME in .env")
+        return JsonResponse({
+            'error': 'Image upload service not configured. Please contact the administrator.'
+        }, status=500)
+    
+    if not api_key or api_key == 'your_api_key':
+        logger.error("Cloudinary API_KEY not configured. Please set CLOUDINARY_API_KEY in .env")
+        return JsonResponse({
+            'error': 'Image upload service not configured. Please contact the administrator.'
+        }, status=500)
+    
+    if not api_secret or api_secret == 'your_api_secret':
+        logger.error("Cloudinary API_SECRET not configured. Please set CLOUDINARY_API_SECRET in .env")
+        return JsonResponse({
+            'error': 'Image upload service not configured. Please contact the administrator.'
+        }, status=500)
+    
     try:
         import cloudinary
         import cloudinary.uploader
         
-        # Get Cloudinary credentials from settings
+        # Configure Cloudinary with credentials
         cloudinary.config(
-            cloud_name=settings.CLOUDINARY_STORAGE.get('CLOUD_NAME'),
-            api_key=settings.CLOUDINARY_STORAGE.get('API_KEY'),
-            api_secret=settings.CLOUDINARY_STORAGE.get('API_SECRET'),
+            cloud_name=cloud_name,
+            api_key=api_key,
+            api_secret=api_secret,
         )
         
         image_file = request.FILES['file']
