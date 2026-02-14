@@ -201,7 +201,7 @@ class CourseModule(models.Model):
     A module within a course (chapter or section)
     """
     title = models.CharField(max_length=200)
-    description = models.TextField(blank=True)
+    description = models.TextField(blank=True, null=True)
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='modules')
     order = models.PositiveIntegerField(default=0)
     

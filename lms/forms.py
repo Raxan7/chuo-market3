@@ -147,7 +147,20 @@ class CourseModuleForm(forms.ModelForm):
         model = CourseModule
         fields = ['title', 'description', 'order']
         widgets = {
-            'description': TinyMCE(attrs={'class': 'form-control tinymce', 'data-custom-formatting': 'true'}),
+            'title': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Enter module title (e.g., Chapter 1: Introduction)'
+            }),
+            'description': TinyMCE(attrs={
+                'class': 'form-control tinymce',
+                'placeholder': 'Enter module description (optional)',
+                'data-custom-formatting': 'true'
+            }),
+            'order': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'min': '0',
+                'placeholder': 'Display order (0, 1, 2, ...)'
+            }),
         }
 
 
