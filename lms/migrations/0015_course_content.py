@@ -10,14 +10,16 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AlterField(
-            model_name='course',
-            name='summary',
-            field=models.TextField(blank=True, null=True, help_text='Brief summary of the course'),
-        ),
         migrations.AddField(
             model_name='course',
             name='content',
-            field=models.TextField(blank=True, null=True, help_text='Detailed course description and content'),
+            field=models.TextField(blank=True, default='', help_text='Detailed course description and content'),
+            preserve_default=False,
+        ),
+        migrations.AlterField(
+            model_name='course',
+            name='summary',
+            field=models.TextField(blank=True, default='', help_text='Brief summary of the course'),
+            preserve_default=False,
         ),
     ]

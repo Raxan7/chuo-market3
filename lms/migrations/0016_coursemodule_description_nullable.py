@@ -13,6 +13,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='coursemodule',
             name='description',
-            field=models.TextField(blank=True, null=True),
+            field=models.TextField(blank=True, default=''),
+            preserve_default=False,
         ),
     ]
