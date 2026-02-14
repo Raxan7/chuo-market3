@@ -86,6 +86,9 @@ urlpatterns = [
     path('debug/blog/<int:blog_id>/', views.debug_blog_content, name='debug_blog_content'),
     path('admin/clean-blogs/', clean_all_blog_content, name='clean_all_blog_content'),
     
+    # TinyMCE image upload endpoint
+    path('api/upload-tinymce-image/', views.upload_tinymce_image, name='upload_tinymce_image'),
+    
     # Emergency URL for problematic blog posts
     path('emergency/blog/<slug:slug>/', views.blog_detail_emergency, name='emergency_blog_view'),
 ]

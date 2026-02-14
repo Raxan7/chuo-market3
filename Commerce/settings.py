@@ -121,12 +121,12 @@ WSGI_APPLICATION = 'Commerce.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.sqlite3',
-#         'NAME': BASE_DIR / 'db.sqlite3',
-#     }
-# }
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
+    }
+}
 
 # DATABASES = {
 #     'default': dj_database_url.parse("postgresql://manyerere201:exHjyP9UQFX0@ep-shy-mud-a5gs0r74.us-east-2.aws.neon."
@@ -228,6 +228,10 @@ TINYMCE_DEFAULT_CONFIG = {
     'image_advtab': False,
     'paste_data_images': True,
     'content_css': '/static/css/tinymce_custom.css',
+    'images_upload_url': '/api/upload-tinymce-image/',  # Cloudinary upload endpoint
+    'images_upload_credentials': True,  # Send credentials (authenticated users only)
+    'file_picker_types': 'image',
+    'automatic_uploads': True,  # Auto-upload on image paste/drop
 }
 
 SESSION_ENGINE = 'django.contrib.sessions.backends.db'  # Use database-backed sessions

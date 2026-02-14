@@ -1358,3 +1358,74 @@ def subscription_view(request):
     }
     
     return render(request, 'app/subscription.html', context)
+
+
+@login_required(login_url='login')
+@customer_required
+def upload_tinymce_image(request):
+    """
+    API endpoint for TinyMCE image uploads to Cloudinary
+    
+    Handles image file uploads from the TinyMCE editor and stores them in Cloudinary.
+    Returns JSON response with the image URL.
+    
+    Expected POST parameters:
+    - file: Image file from TinyMCE
+    
+    Returns JSON:
+    {
+        'location': 'https://cloudinary-image-url.jpg'  # For TinyMCE success
+    }
+    or
+    {
+        'error': 'Error message'  # For TinyMCE error handling
+    }
+    """
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    
+    if 'file' not in request.FILES:
+        return JsonResponse({'error': 'No image file provided'}, status=400)
+    
+    try:
+        import cloudinary
+        import cloudinary.uploader
+        
+        # Get Cloudinary credentials from settings
+        cloudinary.config(
+            cloud_name=settings.CLOUDINARY_STORAGE.get('CLOUD_NAME'),
+            api_key=settings.CLOUDINARY_STORAGE.get('API_KEY'),
+            api_secret=settings.CLOUDINARY_STORAGE.get('API_SECRET'),
+        )
+        
+        image_file = request.FILES['file']
+        
+        # Validate file size (max 10MB)
+        if image_file.size > 10 * 1024 * 1024:
+            return JsonResponse({'error': 'Image file too large (max 10MB)'}, status=400)
+        
+        # Validate file type
+        allowed_formats = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+        if image_file.content_type not in allowed_formats:
+            return JsonResponse({'error': 'Invalid image format. Allowed: JPG, PNG, WebP, GIF'}, status=400)
+        
+        # Upload to Cloudinary
+        upload_result = cloudinary.uploader.upload(
+            image_file,
+            folder='blog_content_images',
+            resource_type='image',
+            use_filename=True,
+            unique_filename=True,
+        )
+        
+        image_url = upload_result.get('secure_url')
+        
+        if not image_url:
+            return JsonResponse({'error': 'Failed to upload image to Cloudinary'}, status=500)
+        
+        # Return in TinyMCE's expected format
+        return JsonResponse({'location': image_url}, status=200)
+        
+    except Exception as e:
+        logger.error(f"TinyMCE image upload error: {str(e)}")
+        return JsonResponse({'error': f'Upload failed: {str(e)}'}, status=500)
