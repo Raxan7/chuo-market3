@@ -13,11 +13,11 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='course',
             name='summary',
-            field=models.TextField(blank=True, help_text='Brief summary of the course'),
+            field=models.TextField(blank=True, null=True, help_text='Brief summary of the course'),
         ),
         migrations.AddField(
             model_name='course',
             name='content',
-            field=models.TextField(blank=True, help_text='Detailed course description and content'),
+            field=models.TextField(blank=True, null=True, help_text='Detailed course description and content'),
         ),
     ]

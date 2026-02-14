@@ -139,8 +139,8 @@ class Course(models.Model):
     )
     title = models.CharField(max_length=200)
     slug = models.SlugField(unique=True, blank=True, max_length=100)
-    summary = models.TextField(blank=True, help_text=_("Brief summary of the course"))
-    content = models.TextField(blank=True, help_text=_("Detailed course description and content"))
+    summary = models.TextField(blank=True, null=True, help_text=_("Brief summary of the course"))
+    content = models.TextField(blank=True, null=True, help_text=_("Detailed course description and content"))
     is_free = models.BooleanField(default=True, help_text=_("Whether this course is free or paid"))
     image = models.ImageField(upload_to='lms/course_images/', blank=True, null=True)
     instructors = models.ManyToManyField(LMSProfile, related_name='courses_teaching',
