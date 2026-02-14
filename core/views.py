@@ -1361,9 +1361,9 @@ def subscription_view(request):
     return render(request, 'app/subscription.html', context)
 
 
+@csrf_exempt
 @login_required(login_url='login')
 @customer_required
-@csrf_exempt
 def upload_tinymce_image(request):
     """
     API endpoint for TinyMCE image uploads to Cloudinary
