@@ -35,6 +35,8 @@ urlpatterns = [
          views.CourseModuleCreateView.as_view(), name='module_create'),
     path('courses/<slug:course_slug>/modules/<int:module_id>/update/', 
          views.CourseModuleUpdateView.as_view(), name='module_update'),
+    path('courses/<slug:course_slug>/modules/<int:module_id>/delete/', 
+         views.CourseModuleDeleteView.as_view(), name='module_delete'),
     
     # Course content
     path('courses/<slug:course_slug>/modules/<int:module_id>/content/create/', 
