@@ -31,7 +31,7 @@ def send_message(request):
         # Generate the bot's response using Cerebras API
         try:
             response = client.chat.completions.create(
-                model="llama-3.3-70b",
+                model="llama3.1-8b",
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_message}
@@ -93,7 +93,7 @@ def chatbot_api(request):
         Your tagline is: "Ready to assist you."""
         
         response = client.chat.completions.create(
-            model="llama-3.3-70b",
+            model="llama3.1-8b",
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_message}
