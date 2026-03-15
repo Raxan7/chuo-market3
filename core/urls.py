@@ -49,6 +49,18 @@ urlpatterns = [
     path('search/', views.search_bar, name='search'),
     path('get_cart_count/', views.get_cart_count, name='get_cart_count'),
     path('changepassword/', views.change_password, name='changepassword'),
+    path(
+        'account-deletion-request/chuosmart/',
+        views.account_deletion_request,
+        {'product': 'chuosmart'},
+        name='account_deletion_request_chuosmart'
+    ),
+    path(
+        'account-deletion-request/potea-pata/',
+        views.account_deletion_request,
+        {'product': 'potea_pata'},
+        name='account_deletion_request_potea_pata'
+    ),
     path('buynow/', views.buy_now, name='buy_now'),
     
     # Password reset URLs

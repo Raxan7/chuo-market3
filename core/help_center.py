@@ -178,5 +178,11 @@ CONTACT_CHANNELS = [
         'description': 'Create a support ticket for complex issues',
         'icon': 'fas fa-ticket-alt',
         'action': '/contact/'
+    },
+    {
+        'title': 'Request Account Deletion',
+        'description': 'Submit account data deletion requests for ChuoSmart or Potea Pata',
+        'icon': 'fas fa-user-shield',
+        'action': '/account-deletion-request/chuosmart/'
     }
 ]

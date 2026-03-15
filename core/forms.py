@@ -1,7 +1,7 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
-from .models import Product, Blog, Subscription, SubscriptionPayment, Customer
+from .models import Product, Blog, Subscription, SubscriptionPayment, Customer, AccountDeletionRequest
 from tinymce.widgets import TinyMCE
 from core.utils import clean_phone_number
 from .image_utils import convert_to_webp, optimize_image
@@ -162,3 +162,61 @@ class CustomerProfileForm(forms.ModelForm):
             raise forms.ValidationError("Please enter a valid phone number with country code (e.g., +255123456789)")
             
         return cleaned_phone
+
+
+class AccountDeletionRequestForm(forms.ModelForm):
+    class Meta:
+        model = AccountDeletionRequest
+        fields = ['full_name', 'email', 'phone_number', 'product', 'reason', 'consent_confirmed']
+        widgets = {
+            'reason': forms.Textarea(attrs={'rows': 4, 'placeholder': 'Optional: Tell us why you want your account data deleted.'}),
+            'product': forms.HiddenInput(),
+        }
+
+    def __init__(self, *args, user=None, fixed_product=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.user = user
+        self.fixed_product = fixed_product
+
+        self.fields['full_name'].widget.attrs.update({
+            'class': 'form-control',
+            'placeholder': 'Your full name',
+        })
+        self.fields['email'].widget.attrs.update({
+            'class': 'form-control',
+            'placeholder': 'you@example.com',
+        })
+        self.fields['phone_number'].widget.attrs.update({
+            'class': 'form-control',
+            'placeholder': '+255XXXXXXXXX',
+        })
+        self.fields['reason'].widget.attrs.update({'class': 'form-control'})
+        self.fields['consent_confirmed'].widget.attrs.update({'class': 'form-check-input'})
+
+        if user and user.is_authenticated:
+            self.fields['full_name'].initial = user.get_full_name() or user.username
+            self.fields['email'].initial = user.email
+            self.fields['email'].required = False
+        else:
+            self.fields['email'].required = True
+
+        if fixed_product:
+            self.fields['product'].initial = fixed_product
+
+        self.fields['consent_confirmed'].label = (
+            'I confirm this is my request and I understand ChuoSmart will process it manually.'
+        )
+
+    def clean_product(self):
+        if self.fixed_product:
+            return self.fixed_product
+        return self.cleaned_data.get('product')
+
+    def clean(self):
+        cleaned_data = super().clean()
+        email = cleaned_data.get('email')
+
+        if (not self.user or not self.user.is_authenticated) and not email:
+            raise forms.ValidationError('Email is required when you are not logged in.')
+
+        return cleaned_data

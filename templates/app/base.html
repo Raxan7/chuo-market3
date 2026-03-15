@@ -612,6 +612,8 @@
                   <li><a class="dropdown-item" href="{% url 'user_dashboard' %}"><i class="fas fa-th-large fa-fw me-2"></i> Dashboard</a></li>
                   <li><a class="dropdown-item" href="{% url 'profile' %}"><i class="fas fa-user fa-fw me-2"></i> Profile</a></li>
                   <li><a class="dropdown-item" href="{% url 'orders' %}"><i class="fas fa-shopping-bag fa-fw me-2"></i> Orders</a></li>
+                  <li><a class="dropdown-item" href="{% url 'account_deletion_request_chuosmart' %}"><i class="fas fa-user-shield fa-fw me-2"></i> Delete ChuoSmart Data</a></li>
+                  <li><a class="dropdown-item" href="{% url 'account_deletion_request_potea_pata' %}"><i class="fas fa-user-lock fa-fw me-2"></i> Delete Potea Pata Data</a></li>
                   <li><hr class="dropdown-divider"></li>
                   <li><a class="dropdown-item" href="{% url 'logout' %}"><i class="fas fa-sign-out-alt fa-fw me-2"></i> Logout</a></li>
                 </ul>
@@ -623,6 +625,9 @@
               </li>
               <li class="nav-item ms-1">
                 <a href="{% url 'customerregistration' %}" class="btn btn-outline-light">Register</a>
+              </li>
+              <li class="nav-item ms-2">
+                <a href="{% url 'account_deletion_request_chuosmart' %}" class="nav-link">Delete Data</a>
               </li>
             {% endif %}
           </ul>

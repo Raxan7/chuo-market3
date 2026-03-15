@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
-from django.http import HttpResponseRedirect, JsonResponse, HttpResponseForbidden
+from django.http import HttpResponseRedirect, JsonResponse, HttpResponseForbidden, Http404
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash, get_user_model
 from django.contrib.auth.decorators import login_required
@@ -14,7 +14,7 @@ from django.utils import timezone
 from django.utils.decorators import method_decorator
 
 from .models import *
-from .forms import RegistrationForm, LoginForm, ProductForm, BlogForm, SubscriptionForm, SubscriptionPaymentForm, CustomerProfileForm
+from .forms import RegistrationForm, LoginForm, ProductForm, BlogForm, SubscriptionForm, SubscriptionPaymentForm, CustomerProfileForm, AccountDeletionRequestForm
 from .universities_colleges_tanzania import universities_data
 from chatbotapp.models import ChatMessage, UnauthenticatedChatMessage
 from asgiref.sync import sync_to_async
@@ -934,6 +934,102 @@ def contact_us(request):
 def privacy_policy(request):
     """Render the Privacy Policy page"""
     return render(request, 'app/privacy.html')
+
+
+def account_deletion_request(request, product):
+    product_labels = {
+        'chuosmart': 'ChuoSmart',
+        'potea_pata': 'Potea Pata',
+    }
+
+    if product not in product_labels:
+        raise Http404('Unknown product for deletion request.')
+
+    pending_statuses = ['pending', 'in_review']
+
+    if request.method == 'POST':
+        form = AccountDeletionRequestForm(
+            request.POST,
+            user=request.user,
+            fixed_product=product,
+        )
+        if form.is_valid():
+            email = form.cleaned_data.get('email')
+            duplicate_exists = False
+
+            if request.user.is_authenticated:
+                duplicate_exists = AccountDeletionRequest.objects.filter(
+                    user=request.user,
+                    product=product,
+                    status__in=pending_statuses,
+                ).exists()
+
+            if not duplicate_exists and email:
+                duplicate_exists = AccountDeletionRequest.objects.filter(
+                    email__iexact=email,
+                    product=product,
+                    status__in=pending_statuses,
+                ).exists()
+
+            if duplicate_exists:
+                messages.warning(
+                    request,
+                    'You already have a pending deletion request for this product. We will contact you soon.',
+                )
+                return redirect(
+                    'account_deletion_request_chuosmart'
+                    if product == 'chuosmart'
+                    else 'account_deletion_request_potea_pata'
+                )
+
+            deletion_request = form.save(commit=False)
+            if request.user.is_authenticated:
+                deletion_request.user = request.user
+                if not deletion_request.email:
+                    deletion_request.email = request.user.email
+            deletion_request.product = product
+            deletion_request.save()
+
+            try:
+                send_mail(
+                    f"Account deletion request ({product_labels[product]})",
+                    (
+                        f"New account deletion request submitted.\n\n"
+                        f"Product: {product_labels[product]}\n"
+                        f"User: {request.user.username if request.user.is_authenticated else 'Anonymous'}\n"
+                        f"Full name: {deletion_request.full_name}\n"
+                        f"Email: {deletion_request.email}\n"
+                        f"Phone: {deletion_request.phone_number}\n"
+                        f"Reason: {deletion_request.reason or 'N/A'}\n"
+                    ),
+                    settings.DEFAULT_FROM_EMAIL,
+                    ['privacy@chuosmart.com'],
+                    fail_silently=True,
+                )
+            except Exception:
+                logger.exception('Failed to send account deletion request email notification.')
+
+            messages.success(
+                request,
+                'Your request has been submitted. Our team will review it and contact you.',
+            )
+            return redirect(
+                'account_deletion_request_chuosmart'
+                if product == 'chuosmart'
+                else 'account_deletion_request_potea_pata'
+            )
+    else:
+        form = AccountDeletionRequestForm(user=request.user, fixed_product=product)
+
+    return render(
+        request,
+        'app/account_deletion_request.html',
+        {
+            'form': form,
+            'product_key': product,
+            'product_label': product_labels[product],
+        },
+    )
 
 def terms_of_service(request):
     """Render the Terms of Service page"""

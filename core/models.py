@@ -1,5 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import User
+from django.core.exceptions import ValidationError
+from django.utils import timezone
 from .universities_colleges_tanzania import universities_data
 
 class Subscription(models.Model):
@@ -331,5 +333,57 @@ class NewsletterSubscriber(models.Model):
     
     def __str__(self):
         return self.email
+
+
+class AccountDeletionRequest(models.Model):
+    PRODUCT_CHOICES = [
+        ('chuosmart', 'ChuoSmart'),
+        ('potea_pata', 'Potea Pata'),
+    ]
+
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('in_review', 'In Review'),
+        ('completed', 'Completed'),
+        ('rejected', 'Rejected'),
+    ]
+
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    full_name = models.CharField(max_length=200, blank=True)
+    email = models.EmailField(blank=True)
+    phone_number = models.CharField(max_length=20, blank=True)
+    product = models.CharField(max_length=20, choices=PRODUCT_CHOICES)
+    reason = models.TextField(blank=True)
+    consent_confirmed = models.BooleanField(default=False)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    admin_notes = models.TextField(blank=True)
+    reviewed_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='reviewed_account_deletion_requests'
+    )
+    requested_at = models.DateTimeField(auto_now_add=True)
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-requested_at']
+
+    def clean(self):
+        if not self.user and not self.email:
+            raise ValidationError('Provide at least an account login or an email address.')
+        if not self.consent_confirmed:
+            raise ValidationError('You must confirm consent before submitting this request.')
+
+    def mark_reviewed(self, reviewer, status):
+        self.reviewed_by = reviewer
+        self.status = status
+        self.reviewed_at = timezone.now()
+        self.save(update_fields=['reviewed_by', 'status', 'reviewed_at'])
+
+    def __str__(self):
+        requester = self.user.username if self.user else (self.email or 'Unknown requester')
+        return f"{requester} - {self.get_product_display()} ({self.status})"
 
 

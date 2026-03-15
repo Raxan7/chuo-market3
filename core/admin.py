@@ -1,5 +1,6 @@
 from django.contrib import admin
-from .models import Customer, Product, OrderPlaced, Cart, Banners, Blog, Subscription, SubscriptionPayment
+from django.utils import timezone
+from .models import Customer, Product, OrderPlaced, Cart, Banners, Blog, Subscription, SubscriptionPayment, AccountDeletionRequest
 
 class OrderPlacedAdmin(admin.ModelAdmin):
     list_display = ('user', 'customer', 'product', 'quantity', 'ordered_date', 'status')
@@ -25,4 +26,37 @@ class SubscriptionPaymentAdmin(admin.ModelAdmin):
     def mark_as_rejected(self, request, queryset):
         queryset.update(status='Rejected')
     mark_as_rejected.short_description = "Mark selected payments as Rejected"
+
+
+@admin.register(AccountDeletionRequest)
+class AccountDeletionRequestAdmin(admin.ModelAdmin):
+    list_display = (
+        'id',
+        'product',
+        'status',
+        'user',
+        'email',
+        'requested_at',
+        'reviewed_at',
+        'reviewed_by',
+    )
+    list_filter = ('product', 'status', 'requested_at')
+    search_fields = ('email', 'full_name', 'phone_number', 'user__username', 'user__email')
+    readonly_fields = ('requested_at',)
+    actions = ['mark_in_review', 'mark_completed', 'mark_rejected']
+
+    def _mark_status(self, request, queryset, status):
+        queryset.update(status=status, reviewed_by=request.user, reviewed_at=timezone.now())
+
+    def mark_in_review(self, request, queryset):
+        self._mark_status(request, queryset, 'in_review')
+    mark_in_review.short_description = 'Mark selected requests as In Review'
+
+    def mark_completed(self, request, queryset):
+        self._mark_status(request, queryset, 'completed')
+    mark_completed.short_description = 'Mark selected requests as Completed'
+
+    def mark_rejected(self, request, queryset):
+        self._mark_status(request, queryset, 'rejected')
+    mark_rejected.short_description = 'Mark selected requests as Rejected'
 
