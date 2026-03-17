@@ -12,7 +12,7 @@
     }
     
     .blog-image {
-        max-width: 200px;
+        max-width: min(200px, 100%);
         margin-bottom: 1rem;
         border-radius: 8px;
     }
@@ -28,7 +28,7 @@
 {% block main-content %}
 <div class="container my-5">
     <div class="row justify-content-center">
-        <div class="col-md-8">
+        <div class="col-12 col-lg-8">
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb">
                     <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
@@ -70,7 +70,7 @@
                 
                 <form method="post">
                     {% csrf_token %}
-                    <div class="d-flex justify-content-between">
+                    <div class="d-grid gap-2 d-sm-flex justify-content-sm-between">
                         <button type="submit" class="btn btn-danger">Confirm Delete</button>
                         <a href="{% url 'blog_detail' slug=blog.slug %}" class="btn btn-outline-secondary">Cancel</a>
                     </div>

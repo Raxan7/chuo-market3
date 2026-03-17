@@ -4,6 +4,21 @@
 
 {% block title %}Student Dashboard{% endblock title %}
 
+{% block extra_head %}
+<style>
+    .course-progress-wrap {
+        min-width: 140px;
+    }
+
+    @media (max-width: 767.98px) {
+        .course-progress-wrap {
+            min-width: 0;
+            width: 100%;
+        }
+    }
+</style>
+{% endblock extra_head %}
+
 {% block main-content %}
 <div class="container my-5">
     <div class="row mb-4">
@@ -20,7 +35,7 @@
 
     <!-- Profile and Current Semester -->
     <div class="row mb-4">
-        <div class="col-md-4">
+        <div class="col-12 col-lg-4">
             <div class="card shadow-sm mb-4">
                 <div class="card-body text-center">
                     {% if profile.profile_picture %}
@@ -33,9 +48,11 @@
                     <h4>{{ profile.user.get_full_name|default:profile.user.username }}</h4>
                     <p class="text-muted mb-2">Student</p>
                     <p>
-                        <a href="{% url 'lms:request_instructor_role' %}" class="btn btn-sm btn-outline-primary">
+                        <span class="d-grid d-sm-inline-block">
+                        <a href="{% url 'lms:request_instructor_role' %}" class="btn btn-sm btn-outline-primary w-100">
                             <i class="fas fa-chalkboard-teacher me-1"></i> Become an Instructor
                         </a>
+                        </span>
                     </p>
                     {% if profile.phone_number %}
                     <p><i class="fas fa-phone me-2"></i> {{ profile.phone_number }}</p>
@@ -46,7 +63,7 @@
             </div>
         </div>
         
-        <div class="col-md-8">
+        <div class="col-12 col-lg-8">
             <div class="card shadow-sm mb-4">
                 <div class="card-header bg-light">
                     <h4 class="mb-0">Current Semester</h4>
@@ -118,11 +135,11 @@
                                         {% endfor %}
                                     </td>
                                     <td>
-                                        <div class="d-flex align-items-center">
-                                            <div class="me-2">
+                                        <div class="d-flex flex-column flex-md-row align-items-start align-items-md-center gap-2">
+                                            <div>
                                                 <a href="{% url 'lms:course_detail' slug=course.slug %}" class="btn btn-sm btn-outline-primary">View</a>
                                             </div>
-                                            <div style="width: 100px;">
+                                            <div class="course-progress-wrap">
                                                 {% with progress=course_progress|get_item:course.id %}
                                                 <div class="progress" style="height: 15px;">
                                                     <div class="progress-bar bg-success" role="progressbar" 
@@ -157,7 +174,7 @@
 
     <!-- Upcoming Quizzes and Recent Activities -->
     <div class="row">
-        <div class="col-md-6">
+        <div class="col-12 col-xl-6">
             <div class="card shadow-sm mb-4 mb-md-0">
                 <div class="card-header bg-light">
                     <h4 class="mb-0">Upcoming Quizzes & Assignments</h4>
@@ -192,7 +209,7 @@
             </div>
         </div>
         
-        <div class="col-md-6">
+        <div class="col-12 col-xl-6">
             <div class="card shadow-sm">
                 <div class="card-header bg-light">
                     <h4 class="mb-0">Recent Course Activities</h4>

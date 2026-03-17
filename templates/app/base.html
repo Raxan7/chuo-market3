@@ -140,6 +140,7 @@
         flex-direction: column;
         min-height: 100vh; /* Minimum height of 100% of the viewport height */
         padding-bottom: 0; /* Remove any bottom padding */
+        overflow-x: hidden;
       }
       .content {
         flex: 1 0 auto; /* Flex-grow, flex-shrink, flex-basis */
@@ -157,6 +158,37 @@
         width: 100%;
         z-index: 900; /* Below mobile nav but above regular content */
         clear: both; /* Clear any floats */
+      }
+      img,
+      video,
+      canvas,
+      svg,
+      iframe {
+        max-width: 100%;
+      }
+      iframe {
+        width: 100%;
+      }
+      pre,
+      code {
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+      .table-responsive {
+        -webkit-overflow-scrolling: touch;
+      }
+      .navbar-search-form {
+        width: 100%;
+        max-width: 320px;
+      }
+      .navbar-search-form .input-group,
+      .navbar-search-input {
+        min-width: 0;
+      }
+      .mobile-search-form {
+        display: flex;
+        gap: 0.75rem;
+        margin-top: 70px;
       }
       
       /* Mobile Bottom Navigation */
@@ -209,6 +241,9 @@
       @media (max-width: 768px) {
         .mobile-bottom-nav {
           display: flex;
+        }
+        .navbar-search-form {
+          max-width: none;
         }
         
         .navbar {
@@ -300,6 +335,12 @@
         .content {
           padding-bottom: 120px !important;
         }
+        .mobile-search-form {
+          flex-direction: column;
+        }
+        .mobile-search-form .btn {
+          width: 100%;
+        }
       }
       
       /* Chatbot styles */
@@ -307,14 +348,24 @@
         position: fixed;
         bottom: 20px;
         right: 20px;
-        width: 300px;
-        height: 400px;
+        width: min(320px, calc(100vw - 30px));
+        max-width: calc(100vw - 30px);
+        height: min(400px, calc(100vh - 180px));
+        max-height: calc(100vh - 180px);
         border: 1px solid #ccc;
         border-radius: 10px;
         display: none;
         flex-direction: column;
         background-color: white;
         box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+      }
+      @media (max-width: 768px) {
+        #chatbot {
+          left: 15px;
+          right: 15px;
+          width: auto;
+          max-width: none;
+        }
       }
       #chatbot-header {
         background-color: #007bff;
@@ -456,10 +507,10 @@
             </li>
           </ul>
           <!-- Search Form - Enhanced Design -->
-          <form class="d-flex me-2 mb-2 mb-lg-0" method="post" action="{% url 'search' %}">
+          <form class="d-flex me-2 mb-2 mb-lg-0 navbar-search-form" method="post" action="{% url 'search' %}">
             {% csrf_token %}
             <div class="input-group">
-              <input class="form-control border-end-0" name="search" type="search" placeholder="Search..." aria-label="Search" style="min-width: 200px;">
+              <input class="form-control border-end-0 navbar-search-input" name="search" type="search" placeholder="Search..." aria-label="Search">
               <button class="btn btn-light border-start-0" type="submit">
                 <i class="fas fa-search"></i>
               </button>
@@ -754,7 +805,7 @@
     <!-- Mobile Search Overlay -->
     <div id="mobile-search-overlay" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0,0,0,0.9); z-index: 1001; padding: 20px;">
       <button id="close-search" style="position: absolute; top: 20px; right: 20px; background: transparent; border: none; color: white; font-size: 20px;"><i class="fas fa-times"></i></button>
-      <form class="d-flex" method="post" action="{% url 'search' %}" style="margin-top: 70px;">
+      <form class="mobile-search-form" method="post" action="{% url 'search' %}">
         {% csrf_token %}
         <input class="form-control me-2" name="search" type="search" placeholder="Search" aria-label="Search">
         <button class="btn btn-warning" type="submit">Search</button>
@@ -891,12 +942,14 @@
       
       if (path === '/') {
         $('.mobile-nav-item').eq(0).addClass('active');
-      } else if (path.includes('/blogs/')) {
+      } else if (path.includes('/marketplace') || path.includes('/product')) {
         $('.mobile-nav-item').eq(1).addClass('active');
-      } else if (path.includes('/talent/')) {
+      } else if (path.includes('/blog')) {
         $('.mobile-nav-item').eq(2).addClass('active');
-      } else if (path.includes('/cart/')) {
+      } else if (path.includes('/jobs')) {
         $('.mobile-nav-item').eq(3).addClass('active');
+      } else if (path.includes('/cart')) {
+        $('.mobile-nav-item').eq(4).addClass('active');
       }
     });
   });

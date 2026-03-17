@@ -5,8 +5,8 @@
 
 {% block main-content %}
 <div class="container py-5">
-    <div class="row">
-        <div class="col-md-8 mx-auto">
+    <div class="row justify-content-center">
+        <div class="col-12 col-xl-8">
             <div class="card shadow border-0 rounded-3">
                 <div class="card-header bg-primary bg-gradient text-white py-3">
                     <h3 class="mb-0"><i class="fas fa-plus-circle me-2"></i>Add New Product</h3>
@@ -63,8 +63,8 @@
                             <div class="form-text">Provide a detailed description of your product</div>
                         </div>
                         
-                        <div class="row mb-4">
-                            <div class="col-md-6">
+                        <div class="row g-3 mb-4">
+                            <div class="col-12 col-md-6">
                                 <label for="id_price" class="form-label fw-bold">
                                     <i class="fas fa-tag me-2 text-primary"></i>Price (TZS)
                                 </label>
@@ -76,7 +76,7 @@
                                     <div class="text-danger mt-1 small">{{ product_form.price.errors }}</div>
                                 {% endif %}
                             </div>
-                            <div class="col-md-6">
+                            <div class="col-12 col-md-6">
                                 <label for="id_discount_price" class="form-label fw-bold">
                                     <i class="fas fa-percent me-2 text-primary"></i>Discount Price (Optional)
                                 </label>
@@ -110,7 +110,7 @@
                             <a href="{% url 'home' %}" class="btn btn-outline-secondary me-md-2 px-4">
                                 <i class="fas fa-times me-2"></i>Cancel
                             </a>
-                            <button type="submit" name="product_form" class="btn btn-primary px-5">
+                            <button type="submit" name="product_form" class="btn btn-primary px-4 px-md-5">
                                 <i class="fas fa-save me-2"></i>Add Product
                             </button>
                         </div>

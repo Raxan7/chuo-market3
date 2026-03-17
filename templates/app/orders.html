@@ -3,27 +3,31 @@
 {% block title %}Buy Now{% endblock title %}
 {% block main-content %}
 <div class="container my-5">
- <div class="row">
-   <h3>Welcome {{ request.user.username }}</h3>
-   <div class="col-sm-2 border-end">
+ <div class="row g-4">
+   <div class="col-12">
+     <h3 class="mb-0">Welcome {{ request.user.username }}</h3>
+   </div>
+   <div class="col-12 col-lg-2">
      <ul class="list-unstyled">
        <li class="d-grid"><a href="{% url 'orders' %}" class="btn btn-primary">Orders</a></li>
      </ul>
    </div>
-   <div class="col-sm-9 offset-sm-1">
-     <div class="row">
+   <div class="col-12 col-lg-9 offset-lg-1">
+     <div class="row g-3">
        {% if orders %}
          {% for order in orders %}
-           <div class="col-sm-12 mb-4">
-             <div class="card position-relative"> <!-- Add position-relative class to make the container relatively positioned -->
+           <div class="col-12">
+             <div class="card shadow-sm h-100">
                <div class="row g-0">
-                 <div class="col-md-3">
-                   <img src="{{ order.product.image.url }}" class="img-fluid rounded-start" alt="Product Image" style="max-width: 132px; max-height: 193px;">
+                 <div class="col-12 col-sm-4 col-md-3 d-flex align-items-center justify-content-center p-3 p-sm-2">
+                   <img src="{{ order.product.image.url }}" class="img-fluid rounded" alt="Product Image" style="max-width: 132px; max-height: 193px; object-fit: contain;">
                  </div>
-                 <div class="col-md-8">
+                 <div class="col-12 col-sm-8 col-md-9">
                    <div class="card-body">
-                     <h5 class="card-title">{{ order.product.title }}</h5>
-                     <span class="badge bg-primary position-absolute top-0 end-0 p-2 m-2">{{ order.status }}</span> 
+                     <div class="d-flex flex-column flex-sm-row justify-content-between align-items-start gap-2 mb-2">
+                       <h5 class="card-title mb-0">{{ order.product.title }}</h5>
+                       <span class="badge bg-primary">{{ order.status }}</span>
+                     </div>
                      <p class="card-text">Quantity: {{ order.quantity }}</p>
                      <p class="card-text">Price: {{ order.price }}</p>
                      <p class="card-text">Order Date: {{ order.ordered_date }}</p>
@@ -34,7 +38,7 @@
            </div>
          {% endfor %}
        {% else %}
-         <div class="col-sm-12">
+         <div class="col-12">
            <p>No orders placed yet.</p>
          </div>
        {% endif %}

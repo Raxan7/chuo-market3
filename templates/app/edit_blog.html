@@ -24,7 +24,7 @@
         border-radius: 8px;
     }
     
-    .card border-light-2 {
+    .card.border-light-2 {
         border-color: #e9ecef !important;
     }
 </style>
@@ -33,7 +33,7 @@
 {% block main-content %}
 <div class="container my-5">
     <div class="row justify-content-center">
-        <div class="col-md-10">
+        <div class="col-12 col-xl-10">
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb">
                     <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
@@ -84,14 +84,14 @@
                                 <!-- Show current image (local or Cloudinary) -->
                                 {% if blog.thumbnail_cloudinary or blog.thumbnail %}
                                     <div class="text-center mb-3" id="current-thumbnail-container">
-                                        <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-3">
                                             <div>
                                                 <h6>Current Thumbnail</h6>
                                                 {% if blog.thumbnail_cloudinary %}
-                                                    <img src="{{ blog.thumbnail_cloudinary }}" alt="{{ blog.title }}" class="preview-image" style="max-width: 200px; max-height: 200px;">
+                                                    <img src="{{ blog.thumbnail_cloudinary }}" alt="{{ blog.title }}" class="preview-image" style="max-width: min(200px, 100%); max-height: 200px;">
                                                     <small class="d-block text-muted mt-1">Stored in Cloud (Cloudinary)</small>
                                                 {% elif blog.thumbnail %}
-                                                    <img src="{{ blog.thumbnail.url }}" alt="{{ blog.title }}" class="preview-image" style="max-width: 200px; max-height: 200px;">
+                                                    <img src="{{ blog.thumbnail.url }}" alt="{{ blog.title }}" class="preview-image" style="max-width: min(200px, 100%); max-height: 200px;">
                                                     <small class="d-block text-muted mt-1">Stored Locally</small>
                                                 {% endif %}
                                             </div>
@@ -175,7 +175,7 @@
                     </div>
                     
                     <!-- Action Buttons -->
-                    <div class="d-flex justify-content-between gap-2">
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-between">
                         <button type="submit" class="btn btn-primary btn-lg">💾 Update Blog</button>
                         <a href="{% url 'blog_detail' slug=blog.slug %}" class="btn btn-outline-secondary btn-lg">Cancel</a>
                     </div>

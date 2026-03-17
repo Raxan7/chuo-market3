@@ -2,14 +2,14 @@
 {% load static %}
 {% block title %}Buy Now{% endblock title %}
 {% block main-content %}
-<div class="container">
- <div class="row mt-5">
-  <div class="col-sm-6">
+<div class="container my-4 my-lg-5">
+ <div class="row g-4 align-items-start">
+  <div class="col-12 col-lg-6">
     <h4>Order Summary</h4>
     <hr>
     <!-- Displaying order summary dynamically -->
     {% for order_item in order_summary %}
-    <div class="card mb-2">
+    <div class="card mb-3 shadow-sm">
       <div class="card-body">
         <h5>Product: {{ order_item.product.title }}</h5>
         <p>Quantity: {{ order_item.quantity }}</p> <!-- Displaying the correct quantity -->
@@ -20,14 +20,14 @@
     {% endfor %}
     <small>Term and Condition: Lorem ipsum dolor sit amet consectetur adipisicing elit. Mollitia, ullam saepe! Iure optio repellat dolor velit, minus rem. Facilis cumque neque numquam laboriosam, accusantium adipisci nisi nihil in et quis?</small>
   </div>
-  <div class="col-sm-4 offset-sm-1">
+  <div class="col-12 col-lg-5 offset-lg-1">
     <h4>Select Shipping Address</h4>
     <hr>
     <form method="POST" action="">
       {% csrf_token %}
       <!-- Displaying shipping addresses dynamically -->
       {% for address in addresses %}
-      <div class="card mb-3">
+      <div class="card mb-3 shadow-sm">
         <div class="card-body">
           <h5>{{ address.name }}</h5>
           <p>{{ address.address }}</p>
@@ -45,7 +45,9 @@
         <input type="hidden" name="quantity" value="{{ quantity }}">
       {% endif %}
       <div class="text-end">
-        <button type="submit" class="btn btn-warning mt-3 px-5 fw-bold">Continue</button>
+        <div class="d-grid d-sm-inline-block">
+          <button type="submit" class="btn btn-warning mt-3 px-4 px-sm-5 fw-bold w-100">Continue</button>
+        </div>
       </div>
     </form>
   </div>

@@ -2,13 +2,13 @@
 {% load static %}
 {% block title %}Customer Registration{% endblock title %}
 {% block main-content %}
-<div class="container">
- <div class="row my-3">
-  <div class="col-sm-6 offset-sm-3">
+<div class="container py-4 py-md-5">
+ <div class="row justify-content-center my-3">
+  <div class="col-12 col-md-8 col-lg-6">
    <h3>Customer Registration</h3>
    <hr>
 
-   <form action="" method="post" novalidate class="shadow p-5">
+  <form action="" method="post" novalidate class="shadow p-4 p-md-5 rounded-3 bg-white">
       {% csrf_token %}
     <div class="mb-3">
       <label for="username" class="form-label">Username</label>
@@ -53,7 +53,7 @@
       </ul>
     </div>
     {% endif %}
-    <div class="text-end">
+    <div class="d-grid">
      <button type="Submit" class="btn btn-danger">Submit</button>
     </div>
     <br>

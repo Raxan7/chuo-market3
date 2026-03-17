@@ -4,6 +4,18 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'lms/css/course-list.css' %}">
+<style>
+    @media (min-width: 992px) {
+        .course-filter-panel {
+            position: sticky;
+            top: 20px;
+        }
+
+        .course-list-title {
+            font-size: 3rem;
+        }
+    }
+</style>
 {% endblock extra_css %}
 
 {% block title %}Course List{% endblock title %}
@@ -13,12 +25,12 @@
     <div class="container">
         <div class="row align-items-center g-3">
             <div class="col-12 col-md-8">
-                <h1 class="display-5 display-md-4 fw-bold text-primary">Available Courses</h1>
+                <h1 class="display-5 fw-bold text-primary course-list-title">Available Courses</h1>
                 <p class="text-muted lead d-none d-md-block">Browse our catalog of professional and university courses</p>
             </div>
             <div class="col-12 col-md-4 text-start text-md-end">
                 {% if user.is_authenticated and user|is_instructor %}
-                <a href="{% url 'lms:course_create' %}" class="btn btn-primary btn-sm btn-md-lg w-100 w-md-auto">
+                <a href="{% url 'lms:course_create' %}" class="btn btn-primary btn-sm w-100 d-inline-block d-md-inline-flex justify-content-center">
                     <i class="fas fa-plus-circle me-2"></i> <span class="d-md-inline">Create New Course</span><span class="d-md-none">New</span>
                 </a>
                 {% endif %}
@@ -31,7 +43,7 @@
 
     <div class="row g-3 g-md-4">
         <div class="col-12 col-lg-3 col-xl-2">
-            <div class="card shadow mb-3 mb-lg-0 rounded-3 border-0 sticky-top sticky-lg-top" style="top: 20px;">
+            <div class="card shadow mb-3 mb-lg-0 rounded-3 border-0 course-filter-panel">
                 <div class="card-header bg-primary text-white">
                     <h5 class="mb-0"><i class="fas fa-filter me-2"></i>Find Your Course</h5>
                 </div>

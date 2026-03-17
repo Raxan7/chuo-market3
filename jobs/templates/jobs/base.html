@@ -34,13 +34,13 @@
 {# Main content area, mapped to app/base.html's main-content block #}
 {% block main-content %}
 <div class="container mt-2">
-    <div class="row">
-        <div class="col-lg-3">
+    <div class="row g-4">
+        <div class="col-12 col-xl-3">
             {% block job_sidebar %}
             <!-- Place your sidebar content here (search form, filters, etc.) -->
             {% endblock %}
         </div>
-        <div class="col-lg-9">
+        <div class="col-12 col-xl-9">
             <!-- Main Content Area -->
             {% block job_content %}
             <div class="alert alert-info">
