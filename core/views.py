@@ -98,18 +98,6 @@ def home(request):
         'messages': messages,
         'is_authenticated': is_authenticated,
         'category_counts': category_counts,
-        'ad_links': [
-            'https://otieu.com/4/10558195',
-            'https://otieu.com/4/10558194',
-            'https://otieu.com/4/10558193',
-            'https://otieu.com/4/10558192',
-            'https://otieu.com/4/10558191',
-            'https://otieu.com/4/10558189',
-            'https://otieu.com/4/10558188',
-            'https://otieu.com/4/10558187',
-            'https://otieu.com/4/10558184',
-            'https://otieu.com/4/10558186',
-        ],
     }
     return render(request, 'app/home.html', context)
 
@@ -153,18 +141,6 @@ def marketplace(request):
         'banners': banners,
         'is_authenticated': is_authenticated,
         'category_counts': category_counts,
-        'ad_links': [
-            'https://otieu.com/4/10558195',
-            'https://otieu.com/4/10558194',
-            'https://otieu.com/4/10558193',
-            'https://otieu.com/4/10558192',
-            'https://otieu.com/4/10558191',
-            'https://otieu.com/4/10558189',
-            'https://otieu.com/4/10558188',
-            'https://otieu.com/4/10558187',
-            'https://otieu.com/4/10558184',
-            'https://otieu.com/4/10558186',
-        ],
     }
     return render(request, 'app/marketplace.html', context)
 
@@ -587,19 +563,7 @@ def create_blog(request):
 def blog_list(request):
     # Order by most recent first rather than random order for consistency
     blogs = Blog.objects.all().order_by('-created_at')
-    ad_links = [
-        'https://otieu.com/4/10558195',
-        'https://otieu.com/4/10558194',
-        'https://otieu.com/4/10558193',
-        'https://otieu.com/4/10558192',
-        'https://otieu.com/4/10558191',
-        'https://otieu.com/4/10558189',
-        'https://otieu.com/4/10558188',
-        'https://otieu.com/4/10558187',
-        'https://otieu.com/4/10558184',
-        'https://otieu.com/4/10558186',
-    ]
-    return render(request, 'app/blog_list.html', {'blogs': blogs, 'ad_links': ad_links})
+    return render(request, 'app/blog_list.html', {'blogs': blogs})
 
 def deep_clean_html_content(content):
     """
@@ -763,25 +727,12 @@ def blog_detail(request, slug):
                 has_emergency_redirect = True
     
     # Add debug flag to context to enable browser console debugging
-    ad_links = [
-        'https://otieu.com/4/10558195',
-        'https://otieu.com/4/10558194',
-        'https://otieu.com/4/10558193',
-        'https://otieu.com/4/10558192',
-        'https://otieu.com/4/10558191',
-        'https://otieu.com/4/10558189',
-        'https://otieu.com/4/10558188',
-        'https://otieu.com/4/10558187',
-        'https://otieu.com/4/10558184',
-        'https://otieu.com/4/10558186',
-    ]
     context = {
         'blog': blog,
         'debug_mode': True,
         'has_severe_issues': has_severe_issues,
         'has_emergency_redirect': has_emergency_redirect,
         'original_content_preview': original_content_preview if 'original_content_preview' in locals() else "",
-        'ad_links': ad_links,
     }
     
     return render(request, template_name, context)

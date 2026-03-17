@@ -12,35 +12,15 @@
 
       gtag('config', 'G-T4BGRN2N9W');
     </script>
+
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1815335112679958"
+      crossorigin="anonymous"></script>
     
     <!-- Performance optimizations -->
     <link rel="dns-prefetch" href="//pagead2.googlesyndication.com">
     <link rel="dns-prefetch" href="//www.googletagmanager.com">
     <link rel="preconnect" href="https://pagead2.googlesyndication.com" crossorigin>
     <link rel="preconnect" href="https://www.googletagmanager.com" crossorigin>
-    
-    <!-- Ads script - only loaded for blog detail pages and course detail pages -->
-    <script>
-      // Blog detail pages: path should match /blogs/<slug>/ (not /blogs/ or /blog_list/)
-      var blogDetailRegex = /^\/blogs\/[a-zA-Z0-9\-]+\/?$/;
-      // Course detail pages: path should match /lms/courses/<id>/ or similar course detail patterns
-      var courseDetailRegex = /^\/lms\/courses\/\d+\/?$|^\/lms\/course\/[a-zA-Z0-9\-]+\/?$/;
-      // Jobs list and detail pages: /jobs/, /jobs/<id>/, /jobs/job/<id>/
-      var jobsListRegex = /^\/jobs\/?$/;
-      var jobsDetailRegex = /^\/jobs\/(job\/)?\d+\/?$/;
-
-      if (
-        blogDetailRegex.test(window.location.pathname) ||
-        courseDetailRegex.test(window.location.pathname) ||
-        jobsListRegex.test(window.location.pathname) ||
-        jobsDetailRegex.test(window.location.pathname)
-      ) {
-        // gizokraijaw.net script
-        (function(d,z,s){s.src='https://'+d+'/401/'+z;try{(document.body||document.documentElement).appendChild(s)}catch(e){}})('gizokraijaw.net',9685564,document.createElement('script'));
-        // vemtoutcheeg.com script
-        (function(d,z,s){s.src='https://'+d+'/400/'+z;try{(document.body||document.documentElement).appendChild(s)}catch(e){}})('vemtoutcheeg.com',9685219,document.createElement('script'));
-      }
-    </script>
     
     <!-- Required meta tags -->
     <meta charset="utf-8">
@@ -319,96 +299,6 @@
         /* Ensure content has enough padding to prevent overlap with mobile nav */
         .content {
           padding-bottom: 120px !important;
-        }
-      }
-      
-      /* Rotating Ad Banner Styles */
-      #rotating-ad-banner {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        padding: 8px 0;
-        text-align: center;
-        font-size: 14px;
-        position: relative;
-        overflow: visible;
-        transition: all 0.3s ease;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-      }
-      
-      #rotating-ad-banner:hover {
-        background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
-        transform: translateY(-1px);
-        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-      }
-      
-      #ad-content {
-        width: 100%;
-        min-height: 60px;
-        transition: opacity 0.5s ease;
-      }
-      
-      #ad-content iframe {
-        width: 100% !important;
-        height: 60px !important;
-        border: none !important;
-        border-radius: 4px !important;
-        display: block !important;
-        background: transparent !important;
-      }
-      
-      .ad-container {
-        max-width: 1200px;
-        margin: 0 auto;
-        padding: 0 15px;
-        position: relative;
-        min-height: 60px;
-      }
-      
-      .ad-close-btn {
-        position: absolute;
-        top: 5px;
-        right: 10px;
-        background: rgba(255,255,255,0.2);
-        border: none;
-        color: white;
-        width: 20px;
-        height: 20px;
-        border-radius: 50%;
-        font-size: 12px;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: background 0.3s ease;
-        z-index: 10;
-      }
-      
-      .ad-close-btn:hover {
-        background: rgba(255,255,255,0.3);
-      }
-      
-      #rotating-ad-banner.hidden {
-        display: none !important;
-      }
-      
-      /* Mobile responsiveness for ads */
-      @media (max-width: 768px) {
-        #rotating-ad-banner {
-          font-size: 12px;
-          padding: 6px 0;
-        }
-        
-        #ad-content {
-          min-height: 50px;
-        }
-        
-        #ad-content iframe {
-          height: 50px !important;
-        }
-        
-        .ad-container {
-          padding: 0 10px;
-          min-height: 50px;
         }
       }
       
@@ -764,17 +654,6 @@
     </script>
     {% endif %}
     
-    <!-- Rotating Ad Banner -->
-    <div id="rotating-ad-banner">
-      <div class="ad-container">
-        <button class="ad-close-btn" onclick="closeAdBanner()" title="Close ads">×</button>
-        <div id="ad-loading" style="padding: 20px; color: white; font-size: 14px; text-align: center;">
-          <i class="fas fa-spinner fa-spin"></i> Loading personalized content...
-        </div>
-        <div id="ad-content" style="display: none; padding: 10px;"></div>
-      </div>
-    </div>
-    
     <div class="content flex-grow-1">
       {% block banner_slider %} {% endblock banner_slider %}
       {% block chatbox %} {% endblock chatbox %}
@@ -1032,145 +911,6 @@
       });
     </script>
     {% block extra_scripts %}{% endblock extra_scripts %}
-    
-    <!-- Rotating Ads JavaScript -->
-    <script>
-      // Ad configuration (updated 2/12/2026 - replaced with otieu links)
-      const adLinks = [
-        'https://otieu.com/4/10558195',
-        'https://otieu.com/4/10558194',
-        'https://otieu.com/4/10558193',
-        'https://otieu.com/4/10558192',
-        'https://otieu.com/4/10558191',
-        'https://otieu.com/4/10558189',
-        'https://otieu.com/4/10558188',
-        'https://otieu.com/4/10558187',
-        'https://otieu.com/4/10558184',
-        'https://otieu.com/4/10558186',
-      ];
-      
-      let currentAdIndex = 0;
-      let adRotationInterval;
-      let adBannerClosed = false;
-      
-      // Check if user previously closed the ad banner
-      function checkAdBannerStatus() {
-        const adClosed = localStorage.getItem('adBannerClosed');
-        if (adClosed === 'true') {
-          document.getElementById('rotating-ad-banner').classList.add('hidden');
-          adBannerClosed = true;
-          return false;
-        }
-        return true;
-      }
-      
-      // Close ad banner function
-      function closeAdBanner() {
-        document.getElementById('rotating-ad-banner').classList.add('hidden');
-        localStorage.setItem('adBannerClosed', 'true');
-        adBannerClosed = true;
-        if (adRotationInterval) {
-          clearInterval(adRotationInterval);
-        }
-      }
-      
-      // Load ad in content div - Direct iframe loading without fetch
-      function loadAd(adUrl) {
-        if (adBannerClosed) return;
-        
-        const adContent = document.getElementById('ad-content');
-        const loadingDiv = document.getElementById('ad-loading');
-        
-        if (adContent && loadingDiv) {
-          try {
-            // Show loading
-            loadingDiv.style.display = 'block';
-            adContent.style.display = 'none';
-            
-            // Create iframe directly without fetch wrapper
-            const iframe = document.createElement('iframe');
-            iframe.src = adUrl;
-            iframe.style.width = '100%';
-            iframe.style.height = '60px';
-            iframe.style.border = 'none';
-            iframe.style.borderRadius = '4px';
-            iframe.style.display = 'block';
-            iframe.style.margin = '0';
-            iframe.style.padding = '0';
-            iframe.allowFullscreen = true;
-            iframe.allow = 'autoplay; fullscreen; picture-in-picture';
-            
-            // Set onload to hide loading indicator
-            iframe.onload = function() {
-              setTimeout(function() {
-                loadingDiv.style.display = 'none';
-                adContent.style.display = 'block';
-              }, 300);
-            };
-            
-            // Set onerror to still show the iframe (ad may fail to render but iframe loads)
-            iframe.onerror = function() {
-              loadingDiv.style.display = 'none';
-              adContent.style.display = 'block';
-            };
-            
-            // Clear previous content and add new iframe
-            adContent.innerHTML = '';
-            adContent.appendChild(iframe);
-            
-            // Hide loading after a short delay anyway (in case onload doesn't fire)
-            setTimeout(function() {
-              if (loadingDiv.style.display !== 'none') {
-                loadingDiv.style.display = 'none';
-                adContent.style.display = 'block';
-              }
-            }, 2000);
-            
-            console.log('Ad iframe created for:', adUrl);
-          } catch(e) {
-            console.log('Error creating ad iframe:', e);
-            loadingDiv.style.display = 'none';
-            adContent.style.display = 'block';
-          }
-        }
-      }
-      
-      // Rotate to next ad
-      function rotateAd() {
-        if (adBannerClosed) return;
-        
-        currentAdIndex = (currentAdIndex + 1) % adLinks.length;
-        loadAd(adLinks[currentAdIndex]);
-        
-        console.log('Rotated to ad', currentAdIndex + 1, 'of', adLinks.length);
-      }
-      
-      // Start ad rotation
-      function startAdRotation() {
-        if (!checkAdBannerStatus()) {
-          return;
-        }
-        
-        // Load first ad
-        loadAd(adLinks[currentAdIndex]);
-        
-        // Set up rotation interval (10 seconds)
-        adRotationInterval = setInterval(rotateAd, 10000);
-        
-        console.log('Ad rotation started - rotating every 10 seconds');
-      }
-      
-      // Initialize ads when page loads
-      document.addEventListener('DOMContentLoaded', function() {
-        console.log('Initializing rotating ads system...');
-        // Small delay to ensure page is fully loaded
-        setTimeout(startAdRotation, 1000);
-      });
-      
-      // Reset ad banner visibility on new session (optional)
-      // Uncomment the line below if you want ads to show again in new browser sessions
-      // localStorage.removeItem('adBannerClosed');
-    </script>
     
     {% if user.is_authenticated %}
     <!-- Session keep-alive script for logged-in users -->

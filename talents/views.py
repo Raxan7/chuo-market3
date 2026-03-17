@@ -7,37 +7,13 @@ from core.decorators.customer_required import customer_required
 
 def talent_list(request):
     talents = Talent.objects.all().order_by('-created_at')
-    ad_links = [
-        'https://otieu.com/4/10558195',
-        'https://otieu.com/4/10558194',
-        'https://otieu.com/4/10558193',
-        'https://otieu.com/4/10558192',
-        'https://otieu.com/4/10558191',
-        'https://otieu.com/4/10558189',
-        'https://otieu.com/4/10558188',
-        'https://otieu.com/4/10558187',
-        'https://otieu.com/4/10558184',
-        'https://otieu.com/4/10558186',
-    ]
-    return render(request, 'talents/talent_list.html', {'talents': talents, 'ad_links': ad_links})
+    return render(request, 'talents/talent_list.html', {'talents': talents})
 
 
 def talent_detail(request, pk):
     talent = get_object_or_404(Talent, pk=pk)
     comments = talent.comments.all()
-    ad_links = [
-        'https://otieu.com/4/10558195',
-        'https://otieu.com/4/10558194',
-        'https://otieu.com/4/10558193',
-        'https://otieu.com/4/10558192',
-        'https://otieu.com/4/10558191',
-        'https://otieu.com/4/10558189',
-        'https://otieu.com/4/10558188',
-        'https://otieu.com/4/10558187',
-        'https://otieu.com/4/10558184',
-        'https://otieu.com/4/10558186',
-    ]
-    return render(request, 'talents/talent_detail.html', {'talent': talent, 'comments': comments, 'ad_links': ad_links})
+    return render(request, 'talents/talent_detail.html', {'talent': talent, 'comments': comments})
 
 
 @login_required

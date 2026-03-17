@@ -11,14 +11,14 @@
       gtag('config', 'AW-17040727960');
     </script>
     
-    <!-- Ad Container with specific URL -->
+    <!-- Ad container reserved for AdSense placement -->
     <div class="ad-content-container" style="min-height: 250px; display: flex; flex-direction: column; justify-content: center; align-items: center;">
-        <!-- The ad iframe with specific URL -->
         <div id="ad-display-area" style="width: 100%; min-height: 250px; position: relative;">
-            <iframe src="https://www.profitableratecpm.com/urg7fdktnp?key=095037bbc3c7987e9ca214be2c989a5a" 
-                    style="width:100%; height:300px; border:none; overflow:hidden;" 
-                    scrolling="no" frameborder="0" allowtransparency="true">
-            </iframe>
+            <div class="text-center p-4 text-muted" style="min-height: 250px; display: flex; flex-direction: column; justify-content: center; align-items: center;">
+                <p><i class="fas fa-ad fa-3x mb-3"></i></p>
+                <h5>Ad Space</h5>
+                <p class="small mb-0">Reserved for your Google AdSense unit.</p>
+            </div>
         </div>
     </div>
     
@@ -38,11 +38,6 @@
     document.addEventListener('DOMContentLoaded', function() {
         // Attempt to detect if ad iframe loaded
         setTimeout(function() {
-            var adFrame = document.querySelector('#ad-display-area iframe');
-            if (adFrame && adFrame.contentDocument && adFrame.contentDocument.readyState === 'complete') {
-                document.getElementById('ad-placeholder').style.display = 'none';
-            }
-            
             // Set a timeout to hide the placeholder anyway after 3 seconds
             setTimeout(function() {
                 document.getElementById('ad-placeholder').style.opacity = '0.5';

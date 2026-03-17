@@ -357,18 +357,6 @@ class CourseListView(ListView):
             'course_type': self.request.GET.get('course_type', ''),
             'q': self.request.GET.get('q', ''),
         }
-        context['ad_links'] = [
-            'https://otieu.com/4/10558195',
-            'https://otieu.com/4/10558194',
-            'https://otieu.com/4/10558193',
-            'https://otieu.com/4/10558192',
-            'https://otieu.com/4/10558191',
-            'https://otieu.com/4/10558189',
-            'https://otieu.com/4/10558188',
-            'https://otieu.com/4/10558187',
-            'https://otieu.com/4/10558184',
-            'https://otieu.com/4/10558186',
-        ]
         return context
 
 
@@ -440,20 +428,6 @@ class CourseDetailView(DetailView):
         if not course.is_free:
             payment_methods = PaymentMethod.objects.filter(is_active=True)
         
-        # Ad links for sidebar display
-        ad_links = [
-            'https://otieu.com/4/10558195',
-            'https://otieu.com/4/10558194',
-            'https://otieu.com/4/10558193',
-            'https://otieu.com/4/10558192',
-            'https://otieu.com/4/10558191',
-            'https://otieu.com/4/10558189',
-            'https://otieu.com/4/10558188',
-            'https://otieu.com/4/10558187',
-            'https://otieu.com/4/10558184',
-            'https://otieu.com/4/10558186',
-        ]
-        
         context.update({
             'modules': modules,
             'quizzes': quizzes,
@@ -467,7 +441,6 @@ class CourseDetailView(DetailView):
             'payment_status': payment_status,
             'enrollment': enrollment,
             'payment_methods': payment_methods,
-            'ad_links': ad_links,
         })
         
         return context
