@@ -2,7 +2,20 @@
 {% load static %}
 {% load lms_extras %}
 
-{% block title %}{{ course.title }}{% endblock %}
+{% block title %}{{ course.title|truncatechars:32 }} | Course Tanzania{% endblock %}
+
+{% block meta_description %}
+{{ course.summary|default:course.content|striptags|truncatechars:95 }} {% if course.is_free %}Free{% else %}Premium{% endif %} course for students in Tanzania.
+{% endblock meta_description %}
+
+{% block meta_keywords %}
+{{ course.title|lower }}, view course, students free view, free view course, view course weeks, online course tanzania
+{% endblock meta_keywords %}
+
+{% block og_title %}{{ course.title }} | Online Course in Tanzania{% endblock og_title %}
+{% block og_description %}{{ course.summary|default:course.content|striptags|truncatechars:150 }}{% endblock og_description %}
+{% block twitter_title %}{{ course.title }} | Online Course in Tanzania{% endblock twitter_title %}
+{% block twitter_description %}{{ course.summary|default:course.content|striptags|truncatechars:150 }}{% endblock twitter_description %}
                             <span>
                                 {% if has_access %}
                                     <i class="fas fa-check-circle"></i> You are enrolled in this course
@@ -745,3 +758,48 @@
     </div>
 </div>
 {% endblock main-content %}
+
+{% block structured_data %}
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "Course",
+    "name": "{{ course.title|escapejs }}",
+    "description": "{{ course.summary|default:course.content|striptags|truncatechars:200|escapejs }}",
+    "provider": {
+        "@type": "Organization",
+        "name": "ChuoSmart",
+        "sameAs": "{{ base_url }}"
+    },
+    "url": "{{ canonical_url }}",
+    "inLanguage": "en",
+    "educationalCredentialAwarded": "Certificate"
+}
+</script>
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+        {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Home",
+            "item": "{{ base_url }}/"
+        },
+        {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "Courses",
+            "item": "{{ base_url }}{% url 'lms:course_list' %}"
+        },
+        {
+            "@type": "ListItem",
+            "position": 3,
+            "name": "{{ course.title|escapejs }}",
+            "item": "{{ canonical_url }}"
+        }
+    ]
+}
+</script>
+{% endblock structured_data %}

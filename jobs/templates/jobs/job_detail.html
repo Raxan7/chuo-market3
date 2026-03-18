@@ -1,6 +1,69 @@
 {% extends "jobs/base.html" %}
 {% load static %}
 
+{% block title %}{{ job.title|truncatechars:45 }} | Jobs in Tanzania{% endblock %}
+
+{% block meta_description %}
+{{ job.description|striptags|truncatechars:95 }} Apply for this {{ job.get_job_type_display|lower }} role in {{ job.location|truncatechars:20 }}.
+{% endblock %}
+
+{% block meta_keywords %}
+{{ job.title|lower }}, jobs tanzania, {{ job.location|lower }}, {{ job.get_job_type_display|lower }}, student jobs, graduate jobs
+{% endblock %}
+
+{% block structured_data %}
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "JobPosting",
+    "title": "{{ job.title|escapejs }}",
+    "description": "{{ job.description|striptags|truncatechars:400|escapejs }}",
+    "datePosted": "{{ job.posted_date|date:'c' }}",
+    "employmentType": "{{ job.get_job_type_display|escapejs }}",
+    "hiringOrganization": {
+        "@type": "Organization",
+        "name": "{{ job.company.name|escapejs }}",
+        "sameAs": "{{ job.company.website|default:base_url }}"
+    },
+    "jobLocation": {
+        "@type": "Place",
+        "address": {
+            "@type": "PostalAddress",
+            "addressLocality": "{{ job.location|escapejs }}",
+            "addressCountry": "TZ"
+        }
+    },
+    "url": "{{ canonical_url }}"
+}
+</script>
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+        {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Home",
+            "item": "{{ base_url }}/"
+        },
+        {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "Jobs",
+            "item": "{{ base_url }}{% url 'jobs:job_list' %}"
+        },
+        {
+            "@type": "ListItem",
+            "position": 3,
+            "name": "{{ job.title|escapejs }}",
+            "item": "{{ canonical_url }}"
+        }
+    ]
+}
+</script>
+{% endblock structured_data %}
+
 {% block job_content %}
 <div class="card mb-4">
     <div class="card-header bg-primary text-white">
@@ -25,7 +88,7 @@
         {% endif %}
         <div class="d-flex justify-content-between align-items-start mb-4">
             <div>
-                <h3 class="mb-2">{{ job.title }}</h3>
+                <h1 class="h3 mb-2">{{ job.title }}</h1>
                 <div>
                     <span class="text-muted">{{ job.company.name }}</span> • 
                     <span class="text-muted">{{ job.location }}</span> •

@@ -1,7 +1,24 @@
 {% extends 'app/base.html' %}
 {% load static %}
 {% load product_filters %}
-{% block title %}{{ product.title }}{% endblock title %}
+{% block title %}{{ product.title|truncatechars:34 }} | Buy in Tanzania{% endblock title %}
+
+{% block meta_description %}
+{{ product.description|process_product_description|striptags|truncatechars:110 }} Buy from student sellers in Tanzania.
+{% endblock meta_description %}
+
+{% block meta_keywords %}
+{{ product.title|lower }}, buy online tanzania, student marketplace, {{ product.get_category_display|lower }}, chuosmart
+{% endblock meta_keywords %}
+
+{% block og_title %}{{ product.title }} | ChuoSmart Marketplace{% endblock og_title %}
+{% block og_description %}{{ product.description|process_product_description|striptags|truncatechars:150 }}{% endblock og_description %}
+{% block og_image %}{{ request.scheme }}://{{ request.get_host }}{{ product.image.url }}{% endblock og_image %}
+{% block og_type %}product{% endblock og_type %}
+
+{% block twitter_title %}{{ product.title }} | ChuoSmart Marketplace{% endblock twitter_title %}
+{% block twitter_description %}{{ product.description|process_product_description|striptags|truncatechars:150 }}{% endblock twitter_description %}
+{% block twitter_image %}{{ request.scheme }}://{{ request.get_host }}{{ product.image.url }}{% endblock twitter_image %}
 
 {% block extra_head %}
 <!-- Product Description Styling -->
@@ -34,23 +51,6 @@
     gap: 0.5rem;
   }
 </style>
-<!-- SEO Meta Tags -->
-<meta name="description" content="{{ product.description|process_product_description|striptags|truncatechars:160 }}">
-<meta name="keywords" content="{{ product.title }}, ChuoSmart, product, {{ customer.university }}, {{ customer.college }}">
-
-<!-- Open Graph Meta Tags for better social media sharing -->
-<meta property="og:title" content="{{ product.title }} | ChuoSmart">
-<meta property="og:description" content="{{ product.description|process_product_description|striptags|truncatechars:200 }}">
-<meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{{ product.image.url }}">
-<meta property="og:url" content="{{ request.scheme }}://{{ request.get_host }}{% url 'product-detail' slug=product.slug %}">
-<meta property="og:type" content="product">
-<meta property="og:site_name" content="ChuoSmart">
-
-<!-- Twitter Card data -->
-<meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="{{ product.title }}">
-<meta property="twitter:description" content="{{ product.description|process_product_description|striptags|truncatechars:200 }}">
-<meta name="twitter:image" content="{{ request.scheme }}://{{ request.get_host }}{{ product.image.url }}">
 {% endblock extra_head %}
 
 {% block main-content %}
@@ -213,3 +213,49 @@
   }
 </style>
 {% endblock main-content %}
+
+{% block structured_data %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Product",
+  "name": "{{ product.title|escapejs }}",
+  "description": "{{ product.description|process_product_description|striptags|truncatechars:200|escapejs }}",
+  "image": "{{ request.scheme }}://{{ request.get_host }}{{ product.image.url }}",
+  "category": "{{ product.get_category_display|escapejs }}",
+  "offers": {
+    "@type": "Offer",
+    "priceCurrency": "TZS",
+    "price": "{{ product.price }}",
+    "availability": "https://schema.org/InStock",
+    "url": "{{ canonical_url }}"
+  }
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "{{ base_url }}/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Marketplace",
+      "item": "{{ base_url }}{% url 'marketplace' %}"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "{{ product.title|escapejs }}",
+      "item": "{{ canonical_url }}"
+    }
+  ]
+}
+</script>
+{% endblock structured_data %}

@@ -1,6 +1,38 @@
 {% extends "jobs/base.html" %}
 {% load static %}
 
+{% block title %}
+{% if search_form.keywords.value %}
+{{ search_form.keywords.value|truncatechars:40 }} Jobs in Tanzania
+{% elif search_form.location.value %}
+Jobs in {{ search_form.location.value|truncatechars:30 }} | Tanzania Careers
+{% else %}
+View Jobs for Students and Graduates in Tanzania
+{% endif %}
+{% endblock %}
+
+{% block meta_description %}
+{% if search_form.keywords.value %}
+View {{ total_jobs|default:0 }} jobs for "{{ search_form.keywords.value|truncatechars:35 }}" in Tanzania. Find internships and full-time roles quickly.
+{% else %}
+View the latest jobs, internships, and graduate opportunities in Tanzania. Filter by location, type, and experience level.
+{% endif %}
+{% endblock %}
+
+{% block meta_keywords %}jobs tanzania, internships tanzania, student jobs, graduate jobs, view jobs, career opportunities{% endblock %}
+
+{% block structured_data %}
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    "name": "Jobs in Tanzania",
+    "description": "Browse job opportunities, internships, and graduate roles in Tanzania.",
+    "url": "{{ canonical_url }}"
+}
+</script>
+{% endblock structured_data %}
+
 {% block job_sidebar %}
 <!-- Sidebar Filters -->
 <div class="card mb-4">
@@ -91,14 +123,14 @@
 <!-- Jobs Found and Sorting -->
 <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
-        <h4 class="mb-0">
+        <h1 class="h4 mb-0">
             {% if search_form.keywords.value %}
             Search results for "{{ search_form.keywords.value }}"
             {% else %}
             Available Jobs
             {% endif %}
             <span class="badge bg-primary ms-2">{{ total_jobs|default:page_obj.paginator.count }}</span>
-        </h4>
+        </h1>
     </div>
     <div class="d-flex">
         <div class="dropdown me-2">

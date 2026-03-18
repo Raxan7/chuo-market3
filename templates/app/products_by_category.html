@@ -1,11 +1,31 @@
 {% extends 'app/base.html' %}
-{% block title %}{{ category }} Products{% endblock title %}
+{% block title %}Buy {{ category_display }} in Tanzania{% endblock title %}
+
+{% block meta_description %}
+Browse {{ category_display|lower }} products from student sellers in Tanzania. Compare prices, view details, and buy securely on ChuoSmart.
+{% endblock meta_description %}
+
+{% block meta_keywords %}
+{{ category_display|lower }}, buy online tanzania, student marketplace, chuosmart products, view products
+{% endblock meta_keywords %}
+
+{% block structured_data %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "CollectionPage",
+  "name": "{{ category_display|escapejs }} Products",
+  "description": "Browse {{ category_display|lower|escapejs }} products in the ChuoSmart marketplace.",
+  "url": "{{ canonical_url }}"
+}
+</script>
+{% endblock structured_data %}
 
 {% block main-content %}
 <div class="container my-5">
   <div class="text-center mb-5">
-    <h1 class="display-4 font-weight-bold text-primary mb-3">{{ product.get_category_display }} Collection</h1>
-    <p class="lead text-muted">Discover our premium selection of {{ product.get_category_display }} products</p>
+    <h1 class="display-4 font-weight-bold text-primary mb-3">{{ category_display }} Collection</h1>
+    <p class="lead text-muted">Discover our premium selection of {{ category_display|lower }} products</p>
   </div>
 
   {% if products %}

@@ -2,6 +2,40 @@
 {% load static %}
 {% load lms_user_tags %}
 
+{% block title %}
+{% if current_filters.q %}
+{{ current_filters.q|truncatechars:45 }} Courses for Students in Tanzania
+{% elif current_filters.course_type or current_filters.program or current_filters.semester or current_filters.level %}
+Filtered Courses for Students in Tanzania
+{% else %}
+Free and Paid Courses in Tanzania
+{% endif %}
+{% endblock title %}
+
+{% block meta_description %}
+{% if current_filters.q %}
+View course results for "{{ current_filters.q|truncatechars:40 }}". Find free and paid student courses in Tanzania and start learning this week.
+{% elif current_filters.course_type or current_filters.program or current_filters.semester or current_filters.level %}
+View filtered courses for students in Tanzania. Compare free and paid options, choose your track, and complete your course in weeks.
+{% else %}
+View free and paid courses for students in Tanzania. Browse programs, levels, and semesters to find your next course this week.
+{% endif %}
+{% endblock meta_description %}
+
+{% block meta_keywords %}view course, free view course, students free, view course weeks, course weeks kozi, online courses tanzania{% endblock meta_keywords %}
+
+{% block structured_data %}
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    "name": "Course List",
+    "description": "Browse free and paid courses for students in Tanzania.",
+    "url": "{{ canonical_url }}"
+}
+</script>
+{% endblock structured_data %}
+
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'lms/css/course-list.css' %}">
 <style>
@@ -17,8 +51,6 @@
     }
 </style>
 {% endblock extra_css %}
-
-{% block title %}Course List{% endblock title %}
 
 {% block main-content %}
 <div class="container-fluid py-4 py-md-5 bg-light mb-4">

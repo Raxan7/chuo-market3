@@ -787,7 +787,16 @@ def upload_payment_proof(request, subscription_id):
 
 def products_by_category(request, category):
     products = Product.objects.filter(category=category)
-    return render(request, 'app/products_by_category.html', {'products': products, 'category': category})
+    category_display = dict(CATEGORY).get(category, category)
+    return render(
+        request,
+        'app/products_by_category.html',
+        {
+            'products': products,
+            'category': category,
+            'category_display': category_display,
+        }
+    )
 
 def clean_phone_number(phone):
     """

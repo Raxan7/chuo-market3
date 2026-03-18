@@ -1,11 +1,16 @@
 {% extends 'app/base.html' %}
 {% load static %}
 {% load markdown_deux_tags %}
-{% block title %}ChuoSmart - Premier Learning Management System in Tanzania{% endblock title %}
+{% block title %}View Courses for Students in Tanzania | Free & Paid{% endblock title %}
 
-{% block meta_description %}Premier Learning Management System for college & university students in Tanzania. Access courses, interact with instructors, and enhance your education.{% endblock meta_description %}
+{% block meta_description %}View free and paid courses for students in Tanzania. Learn in weeks, access online lessons, and start your next course on ChuoSmart today.{% endblock meta_description %}
 
-{% block meta_keywords %}chuosmart, LMS, learning management system, online courses, education tanzania, student learning, college courses, university courses, online education{% endblock meta_keywords %}
+{% block meta_keywords %}view course, students free, free view course, view course weeks, course weeks kozi, online courses tanzania, kozi ya bure{% endblock meta_keywords %}
+
+{% block og_title %}View Courses for Students in Tanzania | Free & Paid{% endblock og_title %}
+{% block og_description %}View free and paid courses for students in Tanzania. Learn in weeks and start your next course on ChuoSmart.{% endblock og_description %}
+{% block twitter_title %}View Courses for Students in Tanzania | Free & Paid{% endblock twitter_title %}
+{% block twitter_description %}View free and paid courses for students in Tanzania. Learn in weeks and start your next course on ChuoSmart.{% endblock twitter_description %}
 
 <style>
   .hover-notification {
@@ -221,6 +226,11 @@
 
 {% block main-content %}
 
+<div class="container mt-4">
+  <h1 class="display-6 fw-bold text-dark mb-2">View Free and Paid Courses for Students in Tanzania</h1>
+  <p class="text-muted mb-0">Start a new course this week, study at your pace, and build practical skills for school and work.</p>
+</div>
+
 <!-- Marketplace Quick Access Card -->
 <div class="container my-4">
   <div class="row">
@@ -335,7 +345,7 @@
       <div class="card shadow border-0 bg-gradient" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
         <div class="card-body text-white text-center p-5">
           <i class="fas fa-store fa-3x mb-3"></i>
-          <h3 class="fw-bold mb-3">Student Marketplace</h3>
+          <h2 class="fw-bold mb-3">Student Marketplace</h2>
           <p class="lead mb-4">Buy and sell products with fellow students. Find textbooks, electronics, and more!</p>
           <div class="row">
             <div class="col-md-8 offset-md-2">
@@ -364,6 +374,24 @@
   </div>
 </div>
 {% endblock main-content %}
+
+{% block structured_data %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebPage",
+  "name": "View Courses for Students in Tanzania",
+  "description": "View free and paid courses for students in Tanzania. Learn in weeks, access online lessons, and start your next course.",
+  "url": "{{ canonical_url }}",
+  "inLanguage": "en",
+  "about": [
+    "Online courses",
+    "Student learning",
+    "Education in Tanzania"
+  ]
+}
+</script>
+{% endblock structured_data %}
 
 {% block extra_scripts %}
 {{ block.super }}
