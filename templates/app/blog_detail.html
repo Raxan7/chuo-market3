@@ -380,11 +380,39 @@
             display: none;
         }
     }
+
+    .google-side-ad {
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+        padding: 8px;
+    }
+
+    .google-side-ad .adsbygoogle {
+        display: block;
+        width: 100%;
+        min-height: 250px;
+    }
 </style>
 
 <div class="container py-5">
-    <div class="row">
-        <div class="col-lg-8 col-md-10 mx-auto">
+    <div class="row g-4">
+        <div class="col-lg-2 d-none d-lg-block sidebar-ads">
+            <div class="google-side-ad sticky-top" style="top: 90px;">
+                <!-- ads1 -->
+                <ins class="adsbygoogle"
+                     style="display:block"
+                     data-ad-client="ca-pub-1815335112679958"
+                     data-ad-slot="9477202901"
+                     data-ad-format="auto"
+                     data-full-width-responsive="true"></ins>
+                <script>
+                     (adsbygoogle = window.adsbygoogle || []).push({});
+                </script>
+            </div>
+        </div>
+
+        <div class="col-12 col-lg-8">
             <div class="blog-container">
                 <!-- Back to blogs link -->
                 <div class="mb-4">
@@ -481,6 +509,21 @@
                         </a>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <div class="col-lg-2 d-none d-lg-block sidebar-ads">
+            <div class="google-side-ad sticky-top" style="top: 90px;">
+                <!-- ads1 -->
+                <ins class="adsbygoogle"
+                     style="display:block"
+                     data-ad-client="ca-pub-1815335112679958"
+                     data-ad-slot="9477202901"
+                     data-ad-format="auto"
+                     data-full-width-responsive="true"></ins>
+                <script>
+                     (adsbygoogle = window.adsbygoogle || []).push({});
+                </script>
             </div>
         </div>
         

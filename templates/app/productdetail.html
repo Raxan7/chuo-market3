@@ -55,73 +55,107 @@
 
 {% block main-content %}
 <div class="container my-5">
-  <div class="row">
-    <div class="col-md-6 text-center align-self-center">
-      {% load image_tags %}
-      <!-- Use picture tag with WebP and fallback support -->
-      {% picture webp_src=product.image_webp|safe_url fallback_src=product.image.url alt=product.title css_class="img-fluid img-thumbnail" lazy=False %}
+  <div class="row g-4">
+    <div class="col-lg-2 d-none d-lg-block">
+      <div class="google-side-ad sticky-top" style="top: 90px;">
+        <!-- ads1 -->
+        <ins class="adsbygoogle"
+             style="display:block"
+             data-ad-client="ca-pub-1815335112679958"
+             data-ad-slot="9477202901"
+             data-ad-format="auto"
+             data-full-width-responsive="true"></ins>
+        <script>
+             (adsbygoogle = window.adsbygoogle || []).push({});
+        </script>
+      </div>
     </div>
-    <div class="col-md-6">
-      <div class="d-flex justify-content-between align-items-start">
-        <h1>{{ product.title }}</h1>
-        {% if user.is_authenticated and product.user == user %}
-          <div class="product-actions">
-            <a href="{% url 'edit-product' slug=product.slug %}" class="btn btn-primary btn-sm">
-              <i class="fas fa-edit"></i> Edit
-            </a>
-            <a href="{% url 'delete-product' slug=product.slug %}" class="btn btn-danger btn-sm">
-              <i class="fas fa-trash"></i> Delete
-            </a>
+
+    <div class="col-12 col-lg-8">
+      <div class="row">
+        <div class="col-md-6 text-center align-self-center">
+          {% load image_tags %}
+          <!-- Use picture tag with WebP and fallback support -->
+          {% picture webp_src=product.image_webp|safe_url fallback_src=product.image.url alt=product.title css_class="img-fluid img-thumbnail" lazy=False %}
+        </div>
+        <div class="col-md-6">
+          <div class="d-flex justify-content-between align-items-start">
+            <h1>{{ product.title }}</h1>
+            {% if user.is_authenticated and product.user == user %}
+              <div class="product-actions">
+                <a href="{% url 'edit-product' slug=product.slug %}" class="btn btn-primary btn-sm">
+                  <i class="fas fa-edit"></i> Edit
+                </a>
+                <a href="{% url 'delete-product' slug=product.slug %}" class="btn btn-danger btn-sm">
+                  <i class="fas fa-trash"></i> Delete
+                </a>
+              </div>
+              {% include 'promotions/promote_button.html' with product=product %}
+            {% endif %}
           </div>
-          {% include 'promotions/promote_button.html' with product=product %}
-        {% endif %}
-      </div>
-      <div class="product-description">
-        {{ product.description|process_product_description|safe }}
-      </div>
-      <p><i class="fas fa-tag"></i> <strong>Price:</strong> TSh {{ product.price }}</p>
-      <p><i class="fas fa-user"></i> <strong>Posted by:</strong> {{ customer.name }}</p>
-      <p><i class="fas fa-university"></i> <strong>University:</strong> {{ customer.university }}</p>
-      <p><i class="fas fa-school"></i> <strong>College:</strong> {{ customer.college }}</p>
-      <p><i class="fas fa-building"></i> <strong>Block:</strong> {{ customer.block_number }}</p>
-      <p><i class="fas fa-door-open"></i> <strong>Room Number:</strong> {{ customer.room_number }}</p>
-      <p>
-        <i class="fas fa-star" 
-           style="color: 
-             {% if customer.subscription == 'Bronze' %}#cd7f32
-             {% elif customer.subscription == 'Silver' %}#c0c0c0
-             {% elif customer.subscription == 'Gold' %}#ffd700
-             {% endif %};">
-        </i> 
-        <strong>Seller Level:</strong> {{ customer.subscription }}
-      </p>
-      <p><i class="fas fa-phone"></i> <strong>Phone Number:</strong> {{ customer.phone_number }}</p>
-      <hr>
-      <h4>TSh {{ product.price }} <small class="fw-light text-decoration-line-through">{{ product.discount_price }}</small></h4>
-      {% if user.is_authenticated %}
-        {% if product_cart %}
-          <a href="{% url "carts" %}" class="btn btn-primary shadow px-5 py-2">View Cart</a>
-        {% else %}
-          <form action="/add-to-cart" class="d-inline">
-            <input type="hidden" name="product_id" value="{{ product.id }}" id="product_id">
-            <button type="submit" class="btn btn-primary shadow px-5 py-2">Add to Cart</button>
+          <div class="product-description">
+            {{ product.description|process_product_description|safe }}
+          </div>
+          <p><i class="fas fa-tag"></i> <strong>Price:</strong> TSh {{ product.price }}</p>
+          <p><i class="fas fa-user"></i> <strong>Posted by:</strong> {{ customer.name }}</p>
+          <p><i class="fas fa-university"></i> <strong>University:</strong> {{ customer.university }}</p>
+          <p><i class="fas fa-school"></i> <strong>College:</strong> {{ customer.college }}</p>
+          <p><i class="fas fa-building"></i> <strong>Block:</strong> {{ customer.block_number }}</p>
+          <p><i class="fas fa-door-open"></i> <strong>Room Number:</strong> {{ customer.room_number }}</p>
+          <p>
+            <i class="fas fa-star" 
+               style="color: 
+                 {% if customer.subscription == 'Bronze' %}#cd7f32
+                 {% elif customer.subscription == 'Silver' %}#c0c0c0
+                 {% elif customer.subscription == 'Gold' %}#ffd700
+                 {% endif %};">
+            </i> 
+            <strong>Seller Level:</strong> {{ customer.subscription }}
+          </p>
+          <p><i class="fas fa-phone"></i> <strong>Phone Number:</strong> {{ customer.phone_number }}</p>
+          <hr>
+          <h4>TSh {{ product.price }} <small class="fw-light text-decoration-line-through">{{ product.discount_price }}</small></h4>
+          {% if user.is_authenticated %}
+            {% if product_cart %}
+              <a href="{% url "carts" %}" class="btn btn-primary shadow px-5 py-2">View Cart</a>
+            {% else %}
+              <form action="/add-to-cart" class="d-inline">
+                <input type="hidden" name="product_id" value="{{ product.id }}" id="product_id">
+                <button type="submit" class="btn btn-primary shadow px-5 py-2">Add to Cart</button>
+              </form>
+            {% endif %}
+          {% else %}
+            <form action="/add-to-cart" class="d-inline">
+              <input type="hidden" name="product_id" value="{{ product.id }}" id="product_id">
+              <button type="submit" class="btn btn-primary shadow px-5 py-2">Add to Cart</button>
+            </form>
+          {% endif %}
+          <form action="https://wa.me/{{ customer.phone_number }}" method="get" target="_blank" class="d-inline">
+            <input type="hidden" name="text" value="Hello, I am interested in your product '{{ product.title }}' listed at TSh {{ product.price }}. Please let me know if it is still available.\nListed at chuosmart.com">
+            <button type="submit" class="btn btn-danger shadow px-5 py-2">Buy Now</button>
           </form>
-        {% endif %}
-      {% else %}
-        <form action="/add-to-cart" class="d-inline">
-          <input type="hidden" name="product_id" value="{{ product.id }}" id="product_id">
-          <button type="submit" class="btn btn-primary shadow px-5 py-2">Add to Cart</button>
-        </form>
-      {% endif %}
-      <form action="https://wa.me/{{ customer.phone_number }}" method="get" target="_blank" class="d-inline">
-        <input type="hidden" name="text" value="Hello, I am interested in your product '{{ product.title }}' listed at TSh {{ product.price }}. Please let me know if it is still available.\nListed at chuosmart.com">
-        <button type="submit" class="btn btn-danger shadow px-5 py-2">Buy Now</button>
-      </form>
-      <h5 class="mt-5">Available Offers</h5>
-      <ul>
-        <li>No shipping cost if you are at the University of Dodoma</li>
-        <li>5% discount if you buy more than 10 at once</li>
-      </ul>
+          <h5 class="mt-5">Available Offers</h5>
+          <ul>
+            <li>No shipping cost if you are at the University of Dodoma</li>
+            <li>5% discount if you buy more than 10 at once</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-2 d-none d-lg-block">
+      <div class="google-side-ad sticky-top" style="top: 90px;">
+        <!-- ads1 -->
+        <ins class="adsbygoogle"
+             style="display:block"
+             data-ad-client="ca-pub-1815335112679958"
+             data-ad-slot="9477202901"
+             data-ad-format="auto"
+             data-full-width-responsive="true"></ins>
+        <script>
+             (adsbygoogle = window.adsbygoogle || []).push({});
+        </script>
+      </div>
     </div>
   </div>
 </div>
@@ -210,6 +244,19 @@
     .related-product-image-wrapper {
       height: 150px;
     }
+  }
+
+  .google-side-ad {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+    padding: 8px;
+  }
+
+  .google-side-ad .adsbygoogle {
+    display: block;
+    width: 100%;
+    min-height: 250px;
   }
 </style>
 {% endblock main-content %}
