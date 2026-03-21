@@ -294,7 +294,7 @@
     </div>
     
     <!-- Products Grid (hidden until loaded) -->
-    <div class="row" id="products-grid" style="display: none;">
+    <div class="row" id="products-grid" style="display: none;" data-list-items>
       {% for product in products %}
         <div class="col-6 col-md-4 col-lg-3 mb-4">
           <a href="{% url 'product-detail' slug=product.slug %}" class="text-decoration-none">
@@ -322,8 +322,40 @@
             </div>
           </a>
         </div>
+        {% if show_list_ads and forloop.counter|divisibleby:5 %}
+          <div class="col-12 mb-2">
+            {% include 'app/partials/list_ad_card.html' %}
+          </div>
+        {% endif %}
       {% endfor %}
     </div>
+
+    {% if page_obj and page_obj.has_next %}
+      <div class="text-center mt-3">
+        <button
+          type="button"
+          class="btn btn-outline-primary"
+          id="marketplace-load-more"
+          data-next-url="{{ next_page_url }}"
+        >
+          Load more products
+        </button>
+      </div>
+    {% endif %}
+
+    {% if is_paginated %}
+      <nav class="mt-4" aria-label="Marketplace pagination">
+        <ul class="pagination justify-content-center">
+          {% if page_obj.has_previous %}
+            <li class="page-item"><a class="page-link" href="{{ prev_page_url }}">Previous</a></li>
+          {% endif %}
+          <li class="page-item active"><span class="page-link">{{ page_obj.number }}</span></li>
+          {% if page_obj.has_next %}
+            <li class="page-item"><a class="page-link" href="{{ next_page_url }}">Next</a></li>
+          {% endif %}
+        </ul>
+      </nav>
+    {% endif %}
   {% else %}
     <div class="text-center mt-5">
       <h3>No products available yet</h3>
@@ -340,11 +372,61 @@
   document.addEventListener('DOMContentLoaded', function() {
     // Add a short delay to simulate loading (remove in production)
     setTimeout(function() {
+      const skeletonProducts = document.getElementById('skeleton-products');
+      const productsGrid = document.getElementById('products-grid');
+      if (!skeletonProducts || !productsGrid) {
+        return;
+      }
       // Hide skeleton loaders
-      document.getElementById('skeleton-products').style.display = 'none';
+      skeletonProducts.style.display = 'none';
       // Show actual products
-      document.getElementById('products-grid').style.display = 'flex';
+      productsGrid.style.display = 'flex';
     }, 500);
+
+    const loadMoreBtn = document.getElementById('marketplace-load-more');
+    const listContainer = document.getElementById('products-grid');
+
+    if (!loadMoreBtn || !listContainer) {
+      return;
+    }
+
+    loadMoreBtn.addEventListener('click', async function () {
+      const nextUrl = loadMoreBtn.getAttribute('data-next-url');
+      if (!nextUrl) {
+        loadMoreBtn.style.display = 'none';
+        return;
+      }
+
+      loadMoreBtn.disabled = true;
+      loadMoreBtn.textContent = 'Loading...';
+
+      try {
+        const response = await fetch(nextUrl, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+        const html = await response.text();
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+        const incomingContainer = doc.getElementById('products-grid');
+        const incomingButton = doc.getElementById('marketplace-load-more');
+
+        if (incomingContainer) {
+          Array.from(incomingContainer.children).forEach((child) => listContainer.appendChild(child));
+          if (window.initializeListAds) {
+            window.initializeListAds(listContainer);
+          }
+        }
+
+        if (incomingButton && incomingButton.dataset.nextUrl) {
+          loadMoreBtn.setAttribute('data-next-url', incomingButton.dataset.nextUrl);
+          loadMoreBtn.disabled = false;
+          loadMoreBtn.textContent = 'Load more products';
+        } else {
+          loadMoreBtn.style.display = 'none';
+        }
+      } catch (error) {
+        console.error('Failed to load more products', error);
+        loadMoreBtn.disabled = false;
+        loadMoreBtn.textContent = 'Retry';
+      }
+    });
   });
 </script>
 {% endblock main-content %}

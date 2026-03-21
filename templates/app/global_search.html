@@ -1,0 +1,153 @@
+{% extends "app/base.html" %}
+{% load static %}
+{% load image_tags %}
+
+{% block title %}Search Results{% endblock title %}
+{% block meta_robots %}noindex,follow{% endblock %}
+
+{% block main-content %}
+<div class="container py-4">
+  <div class="mb-4">
+    <h1 class="h3 mb-1">Search Results</h1>
+    {% if query %}
+      <p class="text-muted mb-0">Showing matches for "{{ query }}" across products, courses, blogs, talents, and jobs.</p>
+    {% else %}
+      <p class="text-muted mb-0">Enter a keyword to search the entire platform.</p>
+    {% endif %}
+  </div>
+
+  {% if query %}
+    {% if products or courses or blogs or talents or jobs %}
+      {% if products %}
+      <section class="mb-5">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h2 class="h4 mb-0">Products</h2>
+          <a href="{% url 'marketplace' %}" class="small text-decoration-none">View marketplace</a>
+        </div>
+        <div class="row g-3">
+          {% for product in products %}
+          <div class="col-6 col-md-4 col-lg-3">
+            <a href="{% url 'product-detail' slug=product.slug %}" class="text-decoration-none text-reset">
+              <div class="card h-100 shadow-sm border-0">
+                {% if product.image %}
+                  {% picture webp_src=product.image_webp|safe_url fallback_src=product.image.url alt=product.title css_class="card-img-top" lazy=True height="180" style="height: 180px; object-fit: cover;" %}
+                {% endif %}
+                <div class="card-body">
+                  <h3 class="h6 mb-1">{{ product.title|truncatewords:6 }}</h3>
+                  <div class="text-primary fw-semibold">TSh {{ product.price }}</div>
+                </div>
+              </div>
+            </a>
+          </div>
+          {% endfor %}
+        </div>
+      </section>
+      {% endif %}
+
+      {% if courses %}
+      <section class="mb-5">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h2 class="h4 mb-0">Courses</h2>
+          <a href="{% url 'lms:course_list' %}" class="small text-decoration-none">View course catalog</a>
+        </div>
+        <div class="row g-3">
+          {% for course in courses %}
+          <div class="col-12 col-md-6 col-lg-4">
+            <a href="{% url 'lms:course_detail' course.slug %}" class="text-decoration-none text-reset">
+              <div class="card h-100 border-0 shadow-sm">
+                <div class="card-body">
+                  <h3 class="h6 mb-1">{{ course.title }}</h3>
+                  {% if course.code %}<div class="small text-muted mb-2">{{ course.code }}</div>{% endif %}
+                  {% if course.summary %}<p class="small text-muted mb-0">{{ course.summary|striptags|truncatewords:18 }}</p>{% endif %}
+                </div>
+              </div>
+            </a>
+          </div>
+          {% endfor %}
+        </div>
+      </section>
+      {% endif %}
+
+      {% if blogs %}
+      <section class="mb-5">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h2 class="h4 mb-0">Blogs</h2>
+          <a href="{% url 'blog_list' %}" class="small text-decoration-none">View all blogs</a>
+        </div>
+        <div class="row g-3">
+          {% for blog in blogs %}
+          <div class="col-12 col-md-6 col-lg-4">
+            <a href="{% url 'blog_detail' slug=blog.slug %}" class="text-decoration-none text-reset">
+              <div class="card h-100 border-0 shadow-sm">
+                <div class="card-body">
+                  <h3 class="h6 mb-1">{{ blog.title }}</h3>
+                  <div class="small text-muted mb-2">{{ blog.author.username }} • {{ blog.created_at|date:"M d, Y" }}</div>
+                  <p class="small text-muted mb-0">{{ blog.content|striptags|truncatewords:18 }}</p>
+                </div>
+              </div>
+            </a>
+          </div>
+          {% endfor %}
+        </div>
+      </section>
+      {% endif %}
+
+      {% if talents %}
+      <section class="mb-5">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h2 class="h4 mb-0">Talents</h2>
+          <a href="{% url 'talent_list' %}" class="small text-decoration-none">View all talents</a>
+        </div>
+        <div class="row g-3">
+          {% for talent in talents %}
+          <div class="col-12 col-md-6 col-lg-4">
+            <a href="{% url 'talent_detail' talent.id %}" class="text-decoration-none text-reset">
+              <div class="card h-100 border-0 shadow-sm">
+                <div class="card-body">
+                  <h3 class="h6 mb-1">{{ talent.title }}</h3>
+                  <p class="small text-muted mb-0">{{ talent.description|striptags|truncatewords:18 }}</p>
+                </div>
+              </div>
+            </a>
+          </div>
+          {% endfor %}
+        </div>
+      </section>
+      {% endif %}
+
+      {% if jobs %}
+      <section class="mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h2 class="h4 mb-0">Jobs</h2>
+          <a href="{% url 'jobs:job_list' %}" class="small text-decoration-none">View all jobs</a>
+        </div>
+        <div class="row g-3">
+          {% for job in jobs %}
+          <div class="col-12 col-md-6">
+            <a href="{% url 'jobs:job_detail' job.pk %}" class="text-decoration-none text-reset">
+              <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                  <h3 class="h6 mb-1">{{ job.title }}</h3>
+                  <div class="small text-muted">{{ job.company.name }}{% if job.location %} • {{ job.location }}{% endif %}</div>
+                </div>
+              </div>
+            </a>
+          </div>
+          {% endfor %}
+        </div>
+      </section>
+      {% endif %}
+    {% else %}
+      <div class="alert alert-light border text-center py-4">
+        <h2 class="h5">No results found</h2>
+        <p class="mb-0 text-muted">Try another keyword or browse categories from the main pages.</p>
+      </div>
+    {% endif %}
+  {% else %}
+    <div class="alert alert-light border text-center py-4">
+      <h2 class="h5">Start searching</h2>
+      <p class="mb-0 text-muted">Use the search bar to find products, courses, blogs, talents, and jobs.</p>
+    </div>
+  {% endif %}
+</div>
+{% endblock main-content %}

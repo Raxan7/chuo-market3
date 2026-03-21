@@ -1,13 +1,33 @@
 from django.contrib import messages
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
+from django.core.paginator import Paginator
 from .models import Talent, Comment, Like
 from .forms import TalentForm, CommentForm
 from core.decorators.customer_required import customer_required
 
+
+LIST_PAGE_SIZE = 12
+
+
+def _build_page_url(request, page_number):
+    params = request.GET.copy()
+    params['page'] = page_number
+    return f"{request.path}?{params.urlencode()}"
+
+
 def talent_list(request):
-    talents = Talent.objects.all().order_by('-created_at')
-    return render(request, 'talents/talent_list.html', {'talents': talents})
+    talents_qs = Talent.objects.select_related('user').order_by('-created_at')
+    paginator = Paginator(talents_qs, LIST_PAGE_SIZE)
+    page_number = request.GET.get('page')
+    talents_page = paginator.get_page(page_number)
+    return render(request, 'talents/talent_list.html', {
+        'talents': talents_page.object_list,
+        'page_obj': talents_page,
+        'is_paginated': talents_page.has_other_pages(),
+        'prev_page_url': _build_page_url(request, talents_page.previous_page_number()) if talents_page.has_previous() else None,
+        'next_page_url': _build_page_url(request, talents_page.next_page_number()) if talents_page.has_next() else None,
+    })
 
 
 def talent_detail(request, pk):

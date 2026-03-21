@@ -4,12 +4,12 @@
 {% block main-content %}
 {% if talents %}
   <div class="container py-4">
-    <div class="row g-4 justify-content-center">
+    <div class="row g-4 justify-content-center" id="talent-list-grid" data-list-items>
       {% for talent in talents %}
       <div class="col-12 col-sm-6 col-lg-4 col-xl-3">
         <div class="card h-100 border-warning shadow-sm" style="background: linear-gradient(135deg, rgba(255, 215, 0, 0.08), rgba(255, 215, 0, 0.22));">
           {% if talent.media %}
-          <img src="{{ talent.media.url }}" class="card-img-top" alt="{{ talent.title }}" style="height: 220px; object-fit: cover;">
+          <img src="{{ talent.media.url }}" class="card-img-top" alt="{{ talent.title }}" style="height: 220px; object-fit: cover;" loading="lazy" decoding="async">
           {% endif %}
           <div class="card-body d-flex flex-column">
             <h2 class="h5 card-title">{{ talent.title }}</h2>
@@ -25,8 +25,40 @@
           </div>
         </div>
       </div>
+      {% if show_list_ads and forloop.counter|divisibleby:5 %}
+      <div class="col-12">
+        {% include 'app/partials/list_ad_card.html' %}
+      </div>
+      {% endif %}
       {% endfor %}
     </div>
+
+    {% if page_obj and page_obj.has_next %}
+    <div class="text-center mt-4">
+      <button
+        type="button"
+        class="btn btn-outline-dark"
+        id="talent-load-more"
+        data-next-url="{{ next_page_url }}"
+      >
+        Load more talents
+      </button>
+    </div>
+    {% endif %}
+
+    {% if is_paginated %}
+    <nav class="mt-4" aria-label="Talent pagination">
+      <ul class="pagination justify-content-center">
+        {% if page_obj.has_previous %}
+          <li class="page-item"><a class="page-link" href="{{ prev_page_url }}">Previous</a></li>
+        {% endif %}
+        <li class="page-item active"><span class="page-link">{{ page_obj.number }}</span></li>
+        {% if page_obj.has_next %}
+          <li class="page-item"><a class="page-link" href="{{ next_page_url }}">Next</a></li>
+        {% endif %}
+      </ul>
+    </nav>
+    {% endif %}
   </div>
 {% else %}
   <div class="container py-5 d-flex justify-content-center align-items-center" style="min-height: 50vh;">
@@ -36,4 +68,53 @@
     </div>
   </div>
 {% endif %}
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const loadMoreBtn = document.getElementById('talent-load-more');
+    const listContainer = document.getElementById('talent-list-grid');
+
+    if (!loadMoreBtn || !listContainer) {
+      return;
+    }
+
+    loadMoreBtn.addEventListener('click', async function () {
+      const nextUrl = loadMoreBtn.getAttribute('data-next-url');
+      if (!nextUrl) {
+        loadMoreBtn.style.display = 'none';
+        return;
+      }
+
+      loadMoreBtn.disabled = true;
+      loadMoreBtn.textContent = 'Loading...';
+
+      try {
+        const response = await fetch(nextUrl, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+        const html = await response.text();
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+        const incomingContainer = doc.getElementById('talent-list-grid');
+        const incomingButton = doc.getElementById('talent-load-more');
+
+        if (incomingContainer) {
+          Array.from(incomingContainer.children).forEach((child) => listContainer.appendChild(child));
+          if (window.initializeListAds) {
+            window.initializeListAds(listContainer);
+          }
+        }
+
+        if (incomingButton && incomingButton.dataset.nextUrl) {
+          loadMoreBtn.setAttribute('data-next-url', incomingButton.dataset.nextUrl);
+          loadMoreBtn.disabled = false;
+          loadMoreBtn.textContent = 'Load more talents';
+        } else {
+          loadMoreBtn.style.display = 'none';
+        }
+      } catch (error) {
+        console.error('Failed to load more talents', error);
+        loadMoreBtn.disabled = false;
+        loadMoreBtn.textContent = 'Retry';
+      }
+    });
+  });
+</script>
 {% endblock main-content %}

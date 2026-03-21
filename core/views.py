@@ -7,11 +7,13 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.hashers import check_password
 from django.contrib.auth.models import AnonymousUser
 from django.core.mail import send_mail
+from django.core.paginator import Paginator
 from django.conf import settings
 from django.views.decorators.csrf import csrf_exempt
 from django.core.exceptions import ObjectDoesNotExist
 from django.utils import timezone
 from django.utils.decorators import method_decorator
+from django.db.models import Q
 
 from .models import *
 from .forms import RegistrationForm, LoginForm, ProductForm, BlogForm, SubscriptionForm, SubscriptionPaymentForm, CustomerProfileForm, AccountDeletionRequestForm
@@ -25,6 +27,14 @@ import logging
 import re
 
 logger = logging.getLogger(__name__)
+
+LIST_PAGE_SIZE = 12
+
+
+def _build_page_url(request, page_number):
+    params = request.GET.copy()
+    params['page'] = page_number
+    return f"{request.path}?{params.urlencode()}"
 
 def get_cart_count(request):
     if request.user.is_authenticated:
@@ -65,13 +75,16 @@ def home(request):
             request.session.modified = True
         customers = False
 
-    # Get all courses and randomize them (primary content now)
+    # Fetch courses using deterministic ordering and paginate for faster initial load.
     from lms.models import Course
-    courses = list(Course.objects.all().order_by('?'))  # '?' randomizes the order
+    courses_qs = Course.objects.select_related('program').order_by('-is_pinned', 'title')
+    paginator = Paginator(courses_qs, LIST_PAGE_SIZE)
+    page_number = request.GET.get('page')
+    courses_page = paginator.get_page(page_number)
     banners = list(Banners.objects.all())
     
-    # Get some featured products for secondary display
-    featured_products = list(Product.objects.all().order_by('?')[:8])  # Just 8 featured products
+    # Secondary section should stay light and deterministic.
+    featured_products = list(Product.objects.select_related('user').order_by('-created_at')[:8])
     
     # Get category counts for the category cards  
     from django.db.models import Count
@@ -91,7 +104,11 @@ def home(request):
     
     context = {
         'customers': customers,
-        'courses': courses,  # Primary content
+        'courses': courses_page.object_list,
+        'page_obj': courses_page,
+        'is_paginated': courses_page.has_other_pages(),
+        'prev_page_url': _build_page_url(request, courses_page.previous_page_number()) if courses_page.has_previous() else None,
+        'next_page_url': _build_page_url(request, courses_page.next_page_number()) if courses_page.has_next() else None,
         'featured_products': featured_products,  # Secondary content
         'banners': banners,
         'show_dashboard_modal': show_dashboard_modal,
@@ -120,8 +137,14 @@ def marketplace(request):
     else:
         customers = False
 
-    # Get all products and randomize them
-    products = list(Product.objects.all().order_by('?'))  # '?' randomizes the order
+    products_qs = Product.objects.select_related(
+        'user',
+        'user__customer',
+        'user__customer__subscription',
+    ).order_by('-created_at')
+    paginator = Paginator(products_qs, LIST_PAGE_SIZE)
+    page_number = request.GET.get('page')
+    products_page = paginator.get_page(page_number)
     banners = list(Banners.objects.all())
     
     # Get category counts for the category cards
@@ -137,7 +160,11 @@ def marketplace(request):
     
     context = {
         'customers': customers,
-        'products': products, 
+        'products': products_page.object_list,
+        'page_obj': products_page,
+        'is_paginated': products_page.has_other_pages(),
+        'prev_page_url': _build_page_url(request, products_page.previous_page_number()) if products_page.has_previous() else None,
+        'next_page_url': _build_page_url(request, products_page.next_page_number()) if products_page.has_next() else None,
         'banners': banners,
         'is_authenticated': is_authenticated,
         'category_counts': category_counts,
@@ -442,13 +469,56 @@ def user_logout(request):
 
 
 def search_bar(request):
-    if request.method == "POST":
-        query = request.POST.get('search')
-        print(query)
-        products = Product.objects.filter(title__icontains=query)
-        return render(request, 'app/search.html', {'products': products, "query": query})
-    else:
-        return render(request, 'app/home.html')
+    query = (request.GET.get('q') or request.GET.get('search') or '').strip()
+
+    products = Product.objects.none()
+    courses = []
+    blogs = Blog.objects.none()
+    talents = []
+    jobs = []
+
+    if query:
+        from lms.models import Course
+        from talents.models import Talent
+
+        products = Product.objects.filter(
+            Q(title__icontains=query) | Q(description__icontains=query)
+        ).select_related('user')[:24]
+
+        courses = Course.objects.filter(
+            Q(title__icontains=query) |
+            Q(code__icontains=query) |
+            Q(summary__icontains=query)
+        ).order_by('-is_pinned', 'title')[:24]
+
+        blogs = Blog.objects.filter(
+            Q(title__icontains=query) |
+            Q(content__icontains=query)
+        ).select_related('author').order_by('-created_at')[:24]
+
+        talents = Talent.objects.filter(
+            Q(title__icontains=query) |
+            Q(description__icontains=query)
+        ).select_related('user').order_by('-created_at')[:24]
+
+        try:
+            from jobs.models import Job
+            jobs = Job.objects.filter(
+                Q(title__icontains=query) |
+                Q(description__icontains=query)
+            ).select_related('company').order_by('-created_at')[:24]
+        except Exception:
+            jobs = []
+
+    context = {
+        'query': query,
+        'products': products,
+        'courses': courses,
+        'blogs': blogs,
+        'talents': talents,
+        'jobs': jobs,
+    }
+    return render(request, 'app/global_search.html', context)
 
 @login_required(login_url='login')
 def change_password(request):
@@ -561,9 +631,17 @@ def create_blog(request):
     return render(request, 'app/create_blog.html', {'form': form})
 
 def blog_list(request):
-    # Order by most recent first rather than random order for consistency
-    blogs = Blog.objects.all().order_by('-created_at')
-    return render(request, 'app/blog_list.html', {'blogs': blogs})
+    blogs_qs = Blog.objects.select_related('author').order_by('-created_at')
+    paginator = Paginator(blogs_qs, LIST_PAGE_SIZE)
+    page_number = request.GET.get('page')
+    blogs_page = paginator.get_page(page_number)
+    return render(request, 'app/blog_list.html', {
+        'blogs': blogs_page.object_list,
+        'page_obj': blogs_page,
+        'is_paginated': blogs_page.has_other_pages(),
+        'prev_page_url': _build_page_url(request, blogs_page.previous_page_number()) if blogs_page.has_previous() else None,
+        'next_page_url': _build_page_url(request, blogs_page.next_page_number()) if blogs_page.has_next() else None,
+    })
 
 def deep_clean_html_content(content):
     """

@@ -110,6 +110,7 @@ TEMPLATES = [
                 'core.context_processors.auth_status',  # Authentication status
                 'core.seo_context.seo_context',  # SEO context data
                 'core.context_processors.dashboard_notification',  # Dashboard notification
+                'core.context_processors.site_ad_settings',  # Site ad toggles
             ],
         },
     },

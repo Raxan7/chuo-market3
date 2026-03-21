@@ -10,6 +10,11 @@ class SiteSettings(models.Model):
         verbose_name="Show Ads Before Free Courses",
         help_text="When enabled, users will see advertisements before accessing free courses."
     )
+    show_list_ads = models.BooleanField(
+        default=True,
+        verbose_name="Show List Ads",
+        help_text="When enabled, ads are inserted into product, course, blog, and talent list pages."
+    )
     
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

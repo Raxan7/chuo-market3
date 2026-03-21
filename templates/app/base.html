@@ -507,10 +507,9 @@
             </li>
           </ul>
           <!-- Search Form - Enhanced Design -->
-          <form class="d-flex me-2 mb-2 mb-lg-0 navbar-search-form" method="post" action="{% url 'search' %}">
-            {% csrf_token %}
+          <form class="d-flex me-2 mb-2 mb-lg-0 navbar-search-form" method="get" action="{% url 'search' %}">
             <div class="input-group">
-              <input class="form-control border-end-0 navbar-search-input" name="search" type="search" placeholder="Search..." aria-label="Search">
+              <input class="form-control border-end-0 navbar-search-input" name="q" type="search" placeholder="Search products, courses, blogs, talents..." aria-label="Search">
               <button class="btn btn-light border-start-0" type="submit">
                 <i class="fas fa-search"></i>
               </button>
@@ -805,9 +804,8 @@
     <!-- Mobile Search Overlay -->
     <div id="mobile-search-overlay" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0,0,0,0.9); z-index: 1001; padding: 20px;">
       <button id="close-search" style="position: absolute; top: 20px; right: 20px; background: transparent; border: none; color: white; font-size: 20px;"><i class="fas fa-times"></i></button>
-      <form class="mobile-search-form" method="post" action="{% url 'search' %}">
-        {% csrf_token %}
-        <input class="form-control me-2" name="search" type="search" placeholder="Search" aria-label="Search">
+      <form class="mobile-search-form" method="get" action="{% url 'search' %}">
+        <input class="form-control me-2" name="q" type="search" placeholder="Search products, courses, blogs, talents..." aria-label="Search">
         <button class="btn btn-warning" type="submit">Search</button>
       </form>
     </div>
@@ -822,6 +820,26 @@
     <script src="{% static 'app/js/myscript.min.js' %}"></script>
     <!-- Lazy loading enhancement script -->
     <script src="{% static 'js/lazy-loading.min.js' %}" async></script>
+    <script>
+      window.initializeListAds = function(container) {
+        if (!container || typeof window.adsbygoogle === 'undefined') {
+          return;
+        }
+
+        const adSlots = container.querySelectorAll('ins.adsbygoogle:not([data-adsbygoogle-status])');
+        adSlots.forEach(function(slot) {
+          try {
+            (adsbygoogle = window.adsbygoogle || []).push({});
+          } catch (e) {
+            // Ad providers can reject duplicate initialization; ignore safely.
+          }
+        });
+      };
+
+      document.addEventListener('DOMContentLoaded', function() {
+        window.initializeListAds(document);
+      });
+    </script>
     <script>
       $(document).ready(function() {
     // Function to fetch cart count via AJAX

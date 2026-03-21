@@ -17,3 +17,16 @@ def dashboard_notification(request):
         show_dashboard_modal = request.session.pop('show_dashboard_modal', False)
     
     return {'show_dashboard_modal': show_dashboard_modal}
+
+
+def site_ad_settings(request):
+    """Expose site-wide ad toggles for templates with a safe default."""
+    show_list_ads = True
+    try:
+        from lms.models import SiteSettings
+        settings_obj = SiteSettings.get_settings()
+        show_list_ads = settings_obj.show_list_ads
+    except Exception:
+        show_list_ads = True
+
+    return {'show_list_ads': show_list_ads}
