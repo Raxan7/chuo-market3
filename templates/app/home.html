@@ -226,6 +226,15 @@
 
 {% block main-content %}
 
+<!-- Horizontal Ad Banner - Top of Page -->
+<div class="container my-4">
+  <div class="row">
+    <div class="col-12">
+      {% include 'app/partials/list_ad_card.html' %}
+    </div>
+  </div>
+</div>
+
 <div class="container mt-4">
   <h1 class="display-6 fw-bold text-dark mb-2">View Free and Paid Courses for Students in Tanzania</h1>
   <p class="text-muted mb-0">Start a new course this week, study at your pace, and build practical skills for school and work.</p>
@@ -264,25 +273,13 @@
 <!-- Available Courses Section -->
 <div class="container my-5">
   {% if courses %}
-    <!-- Horizontal Ad Above Featured Section -->
-    {% if show_list_ads %}
-      <div class="row mb-4">
-        <div class="col-12">
-          {% include 'app/partials/list_ad_card.html' %}
-        </div>
-      </div>
-    {% endif %}
-    
     <div class="text-center mb-4">
       <h2 class="fw-bold">Featured Courses</h2>
       <p class="text-muted">Start learning with our top-rated courses</p>
     </div>
     
-    <!-- Courses Grid with Sidebar -->
-    <div class="row g-4">
-      <!-- Main Courses Grid (9 columns on desktop, full width on mobile) -->
-      <div class="col-lg-9">
-        <div class="row g-4" id="home-courses-grid" data-list-items>
+    <!-- Courses Grid -->
+    <div class="row g-4" id="home-courses-grid" data-list-items>
       {% for course in courses %}
         <div class="col-lg-4 col-md-6 mb-4">
           <div class="card course-card h-100 shadow-sm border-0">
@@ -333,24 +330,21 @@
             </div>
           </div>
         </div>
+        
+        <!-- Horizontal Ad Card (Every 5 items) -->
         {% if show_list_ads and forloop.counter|divisibleby:5 %}
           <div class="col-12 mb-2">
+            {% include 'app/partials/list_ad_card.html' %}
+          </div>
+        {% endif %}
+        
+        <!-- Vertical Ad Card (Every 6 items, offset for variety) -->
+        {% if forloop.counter|divisibleby:6 %}
+          <div class="col-lg-4 col-md-6 mb-4 d-none d-md-block">
             {% include 'app/partials/vertical_ad_card.html' %}
           </div>
         {% endif %}
       {% endfor %}
-        </div>
-      </div>
-      
-      <!-- Sidebar with Vertical Ads (Desktop Only) -->
-      <div class="col-lg-3 d-none d-lg-block">
-        <div class="position-sticky" style="top: 20px;">
-          <h5 class="fw-bold mb-3">Featured Sponsors</h5>
-          {% if show_list_ads %}
-            {% include 'app/partials/vertical_ad_card.html' %}
-          {% endif %}
-        </div>
-      </div>
     </div>
 
     {% if page_obj and page_obj.has_next %}
@@ -500,152 +494,39 @@
   });
 </script>
 <style>
-  /* Course Cards Styles - Enhanced */
+  /* Course Cards Styles */
   .course-card {
     transition: transform 0.3s ease, box-shadow 0.3s ease;
-    border-radius: 12px;
+    border-radius: 15px;
     overflow: hidden;
-    border: 0;
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   }
   
   .course-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12) !important;
+    transform: translateY(-5px);
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1) !important;
   }
   
   .course-image {
     height: 200px;
     object-fit: cover;
     transition: transform 0.3s ease;
-    border-radius: 12px 12px 0 0;
   }
   
   .course-image-placeholder {
     height: 200px;
-    background-color: #f8f9fa;
-    border-radius: 12px 12px 0 0;
   }
   
   .course-card:hover .course-image {
-    transform: scale(1.04);
+    transform: scale(1.05);
   }
-
-  .course-card .card-body {
-    padding: 1.25rem;
-    display: flex;
-    flex-direction: column;
-    flex: 1;
-  }
-
-  .course-card .card-title {
-    font-size: 1.05rem;
-    font-weight: 600;
-    color: #222;
-    line-height: 1.3;
-    margin-bottom: 0.75rem;
-  }
-
-  .course-card .card-text {
-    flex: 1;
-    color: #666;
-    line-height: 1.5;
-    font-size: 0.95rem;
-    margin-bottom: 1rem;
-  }
-
-  .course-card .badge {
-    padding: 0.35rem 0.65rem;
-    font-size: 0.8rem;
-    font-weight: 500;
-  }
-
-  /* Grid spacing */
-  .row.g-4 {
-    gap: 1.5rem !important;
-  }
-
-  /* Sidebar ads styling */
-  .vertical-ad-card {
-    border-radius: 12px;
-    border: 0;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-    margin-bottom: 1.5rem;
-  }
-
-  .vertical-ad-card .card-body {
-    padding: 1rem;
-  }
-
-  /* List ad card styling */
-  .list-ad-card {
-    border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  }
-
-  .list-ad-card .card-body {
-    padding: 1.5rem;
-  }
-
+  
   /* LMS Feature Card Styles */
   .bg-gradient {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
   }
 
-  /* Responsive adjustments */
-  @media (max-width: 992px) {
-    .course-card { 
-      border-radius: 12px;
-    }
-    
-    .course-card .card-body {
-      padding: 1rem;
-    }
-  }
-
-  @media (max-width: 768px) {
-    .course-card { 
-      width: 100%; 
-    }
-    
-    .row.g-4 {
-      gap: 1rem !important;
-    }
-
-    .course-card .card-body {
-      padding: 0.9rem;
-    }
-
-    .course-card .card-title {
-      font-size: 0.95rem;
-    }
-
-    .course-card .card-text {
-      font-size: 0.85rem;
-      margin-bottom: 0.75rem;
-    }
-
-    /* Hide desktop sidebar on mobile */
-    .position-sticky {
-      position: static !important;
-    }
-  }
-
-  @media (max-width: 576px) {
-    .course-image {
-      height: 180px;
-    }
-
-    .course-image-placeholder {
-      height: 180px;
-    }
-
-    .course-card .card-body {
-      padding: 0.75rem;
-    }
+  @media (max-width: 600px) {
+    .course-card { width: 100%; }
   }
 </style>
 {% endblock %}

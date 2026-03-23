@@ -2,37 +2,37 @@
 {% load static %}
 
 {% block job_content %}
-<div class="card mb-4">
+<div class="card mb-4 border-0 shadow-sm">
     <div class="card-body">
-        <h2 class="mb-3">Welcome to Chuo Market Jobs</h2>
-        <p class="lead">Find your next opportunity or post a job to reach top talent in Tanzania and beyond.</p>
+        <h2 class="mb-3 fw-bold text-dark">Welcome to Chuo Market Jobs</h2>
+        <p class="lead text-muted">Find your next opportunity or post a job to reach top talent in Tanzania and beyond.</p>
     </div>
 </div>
 
 <!-- Featured Jobs -->
 {% if featured_jobs %}
-<div class="card mb-5">
-    <div class="card-header bg-primary text-white">
-        <h4 class="mb-0">Featured Jobs</h4>
+<div class="card mb-5 border-0 shadow-sm">
+    <div class="card-header bg-primary text-white rounded-top">
+        <h4 class="mb-0 fw-bold">⭐ Featured Jobs</h4>
     </div>
     <div class="card-body">
-        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+        <div class="row g-4">
             {% for job in featured_jobs %}
-            <div class="col">
-                <div class="card h-100">
-                    <div class="card-body">
-                        <h5 class="card-title">
-                            <a href="{% url 'jobs:job_detail' job.id %}" class="text-decoration-none">{{ job.title }}</a>
-                        </h5>
-                        <h6 class="card-subtitle mb-2 text-muted">{{ job.company.name }}</h6>
-                        <div class="mb-2">
+            <div class="col-12 col-md-6 col-lg-4">
+                <div class="card h-100 shadow-sm border-0 transition-lift" style="cursor: pointer;">
+                    <div class="card-body d-flex flex-column">
+                        <div class="mb-3">
                             <span class="badge bg-light text-dark">{{ job.get_job_type_display }}</span>
-                            {% if job.is_remote %}<span class="badge bg-success ms-1">Remote</span>{% endif %}
+                            {% if job.is_remote %}<span class="badge bg-success ms-2">🌐 Remote</span>{% endif %}
                         </div>
-                        <p class="card-text text-truncate-3">{{ job.description|striptags|truncatewords:20 }}</p>
+                        <h5 class="card-title fw-bold text-dark">
+                            <a href="{% url 'jobs:job_detail' job.id %}" class="text-decoration-none stretched-link">{{ job.title }}</a>
+                        </h5>
+                        <h6 class="card-subtitle mb-3 text-primary fw-semibold">{{ job.company.name }}</h6>
+                        <p class="card-text text-muted flex-grow-1" style="display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;">{{ job.description|striptags|truncatewords:25 }}</p>
                     </div>
-                    <div class="card-footer bg-transparent d-flex justify-content-between align-items-center">
-                        <small class="text-muted">{{ job.posted_date|timesince }} ago</small>
+                    <div class="card-footer bg-transparent border-top d-flex justify-content-between align-items-center">
+                        <small class="text-muted"><i class="fas fa-clock me-2"></i>{{ job.posted_date|timesince }} ago</small>
                         <a href="{% url 'jobs:job_detail' job.id %}" class="btn btn-sm btn-primary">View</a>
                     </div>
                 </div>
@@ -44,29 +44,29 @@
 {% endif %}
 
 <!-- Recent Jobs -->
-<div class="card mb-5">
-    <div class="card-header bg-primary text-white">
-        <h4 class="mb-0">Recent Jobs</h4>
+<div class="card mb-5 border-0 shadow-sm">
+    <div class="card-header bg-info text-white rounded-top">
+        <h4 class="mb-0 fw-bold">📋 Recent Jobs</h4>
     </div>
     <div class="card-body">
-        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+        <div class="row g-4">
             {% for job in recent_jobs %}
-            <div class="col">
-                <div class="card h-100">
-                    <div class="card-body">
-                        <h5 class="card-title">
-                            <a href="{% url 'jobs:job_detail' job.id %}" class="text-decoration-none">{{ job.title }}</a>
-                        </h5>
-                        <h6 class="card-subtitle mb-2 text-muted">{{ job.company.name }}</h6>
-                        <div class="mb-2">
+            <div class="col-12 col-md-6 col-lg-4">
+                <div class="card h-100 shadow-sm border-0 transition-lift" style="cursor: pointer;">
+                    <div class="card-body d-flex flex-column">
+                        <div class="mb-3">
                             <span class="badge bg-light text-dark">{{ job.get_job_type_display }}</span>
-                            {% if job.is_remote %}<span class="badge bg-success ms-1">Remote</span>{% endif %}
+                            {% if job.is_remote %}<span class="badge bg-success ms-2">🌐 Remote</span>{% endif %}
                         </div>
-                        <p class="card-text text-truncate-3">{{ job.description|striptags|truncatewords:20 }}</p>
+                        <h5 class="card-title fw-bold text-dark">
+                            <a href="{% url 'jobs:job_detail' job.id %}" class="text-decoration-none stretched-link">{{ job.title }}</a>
+                        </h5>
+                        <h6 class="card-subtitle mb-3 text-info fw-semibold">{{ job.company.name }}</h6>
+                        <p class="card-text text-muted flex-grow-1" style="display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;">{{ job.description|striptags|truncatewords:25 }}</p>
                     </div>
-                    <div class="card-footer bg-transparent d-flex justify-content-between align-items-center">
-                        <small class="text-muted">{{ job.posted_date|timesince }} ago</small>
-                        <a href="{% url 'jobs:job_detail' job.id %}" class="btn btn-sm btn-primary">View</a>
+                    <div class="card-footer bg-transparent border-top d-flex justify-content-between align-items-center">
+                        <small class="text-muted"><i class="fas fa-clock me-2"></i>{{ job.posted_date|timesince }} ago</small>
+                        <a href="{% url 'jobs:job_detail' job.id %}" class="btn btn-sm btn-info">View</a>
                     </div>
                 </div>
             </div>
@@ -77,16 +77,17 @@
 
 <!-- Industries -->
 {% if industries %}
-<div class="card mb-5">
-    <div class="card-header bg-primary text-white">
-        <h4 class="mb-0">Popular Industries</h4>
+<div class="card mb-5 border-0 shadow-sm">
+    <div class="card-header bg-success text-white rounded-top">
+        <h4 class="mb-0 fw-bold">🏢 Popular Industries</h4>
     </div>
     <div class="card-body">
-        <div class="row row-cols-2 row-cols-md-4 g-3">
+        <div class="row g-3">
             {% for industry in industries %}
-            <div class="col">
-                <a href="{% url 'jobs:job_list' %}?industry={{ industry.id }}" class="btn btn-outline-primary w-100">
-                    {{ industry.name }} <span class="badge bg-primary ms-2">{{ industry.job_count }}</span>
+            <div class="col-6 col-md-3">
+                <a href="{% url 'jobs:job_list' %}?industry={{ industry.id }}" class="btn btn-outline-success w-100 d-flex flex-column align-items-center gap-2">
+                    <span>{{ industry.name }}</span>
+                    <span class="badge bg-success">{{ industry.job_count }}</span>
                 </a>
             </div>
             {% endfor %}
@@ -96,10 +97,54 @@
 {% endif %}
 
 <!-- Call to Action -->
-<div class="card my-5">
-    <div class="card-body text-center">
-        <a href="{% url 'jobs:job_list' %}" class="btn btn-lg btn-primary me-2">Browse All Jobs</a>
-        <a href="{% url 'jobs:create_job' %}" class="btn btn-lg btn-outline-success">Post a Job</a>
+<div class="card mb-5 border-0 bg-gradient shadow-sm" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+    <div class="card-body text-white text-center py-5">
+        <h3 class="fw-bold mb-4">Ready to take the next step?</h3>
+        <div class="d-flex flex-wrap gap-3 justify-content-center">
+            <a href="{% url 'jobs:job_list' %}" class="btn btn-light btn-lg">
+                <i class="fas fa-search me-2"></i>Browse All Jobs
+            </a>
+            <a href="{% url 'jobs:create_job' %}" class="btn btn-outline-light btn-lg">
+                <i class="fas fa-plus me-2"></i>Post a Job
+            </a>
+        </div>
     </div>
 </div>
+
+<style>
+    /* Job page specific styles */
+    .transition-lift {
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    
+    .transition-lift:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15) !important;
+    }
+    
+    .card-header {
+        border-bottom: 3px solid rgba(255, 255, 255, 0.2);
+    }
+    
+    /* Responsive improvements */
+    @media (max-width: 768px) {
+        .card {
+            margin-bottom: 1rem;
+        }
+        
+        .btn {
+            font-size: 0.9rem;
+        }
+    }
+    
+    @media (max-width: 576px) {
+        h2, h3, h4 {
+            font-size: 1.25rem;
+        }
+        
+        .card-body {
+            padding: 1rem;
+        }
+    }
+</style>
 {% endblock %}
