@@ -454,6 +454,9 @@
                     {% endif %}
                 </div>
                 
+                <!-- In-Article Ad (Above Content) -->
+                {% include 'app/partials/in_article_ad.html' %}
+                
                 {% if has_severe_issues and has_emergency_redirect %}
                 <!-- Admin notice for severely problematic content -->
                 <div class="alert alert-warning mb-4">
@@ -493,6 +496,9 @@
                     </div>
                     {% endif %}
                 </div>
+                
+                <!-- In-Article Ad (Below Content) -->
+                {% include 'app/partials/in_article_ad.html' %}
                 
                 <!-- Share buttons -->
                 <div class="blog-share mt-5 pt-4 border-top">
