@@ -57,7 +57,7 @@ def home(request):
 
     is_authenticated = user.is_authenticated
     if is_authenticated:
-        messages = list(ChatMessage.objects.filter(user=user))
+        chat_messages = list(ChatMessage.objects.filter(user=user))
         # request.session.flush()  # Comment out this line to prevent session flush on login
         customers = Customer.objects.filter(user=user).exists()
         
@@ -68,10 +68,10 @@ def home(request):
             # Set a session variable to show the modal that will be picked up by our context processor
             request.session['show_dashboard_modal'] = True
     else:
-        messages = request.session.get('messages', [])
-        if not messages:
-            messages = list(UnauthenticatedChatMessage.objects.filter(session_key=session_key))
-            request.session['messages'] = [{'user_message': msg.user_message, 'bot_response': msg.bot_response} for msg in messages]
+        chat_messages = request.session.get('messages', [])
+        if not chat_messages:
+            chat_messages = list(UnauthenticatedChatMessage.objects.filter(session_key=session_key))
+            request.session['messages'] = [{'user_message': msg.user_message, 'bot_response': msg.bot_response} for msg in chat_messages]
             request.session.modified = True
         customers = False
 
@@ -112,7 +112,7 @@ def home(request):
         'featured_products': featured_products,  # Secondary content
         'banners': banners,
         'show_dashboard_modal': show_dashboard_modal,
-        'messages': messages,
+        'chat_messages': chat_messages,
         'is_authenticated': is_authenticated,
         'category_counts': category_counts,
     }

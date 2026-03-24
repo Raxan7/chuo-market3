@@ -36,83 +36,21 @@
   .card-text.text-muted {
     font-size: 0.9rem;
   }
-
-  /* Chatbox Message Styling to Prevent Overflow */
-  #chatbox-messages .d-flex > div {
-    max-width: 85%;
-    word-wrap: break-word;
-    overflow-wrap: break-word;
-    word-break: break-word;
-  }
-
-  #chatbox-messages .d-flex > div p {
-    word-wrap: break-word;
-    overflow-wrap: break-word;
-    word-break: break-word;
-    margin-bottom: 0.5rem;
-  }
-
-  #chatbox-messages .d-flex > div p:last-child {
-    margin-bottom: 0;
-  }
-
-  #chatbox-section .container {
-    overflow-x: hidden !important;
-  }
-
   @media (max-width: 768px) {
     .card {
       width: 100%;
     }
-    #chatbox-section {
-      padding: 0;
-      margin: 0;
-    }
     #chatbox-section .container {
       max-height: none !important;
-      margin: 0 !important;
-      padding: 0.5rem !important;
-      border-width: 2px !important;
-      max-width: 100% !important;
-      overflow: hidden;
-    }
-    #chatbox-section .container h2 {
-      margin-bottom: 0.75rem !important;
-      font-size: 1.25rem;
-    }
-    #chatbox-messages {
-      overflow-x: hidden !important;
-      overflow-y: auto !important;
-    }
-    #chatbox-messages > div {
-      margin: 0.25rem 0 !important;
-      max-width: 100%;
-    }
-    #chatbox-messages .d-flex > div {
-      margin: 0.25rem !important;
-      padding: 0.5rem !important;
-      max-width: calc(100% - 0.5rem);
-      word-wrap: break-word;
-      overflow-wrap: break-word;
-    }
-    #chatbox-messages p {
-      margin: 0.25rem 0 !important;
     }
     #chatbox-section form {
       flex-direction: column;
-      gap: 0.5rem;
-      padding: 0.5rem !important;
-      margin: 0 !important;
+      gap: 0.75rem;
     }
     #chatbox-section form .form-control,
     #chatbox-section form .btn {
       width: 100%;
       margin-right: 0 !important;
-      margin: 0 !important;
-    }
-    #chatbox-section form .form-control {
-      max-width: 100%;
-      box-sizing: border-box;
     }
   }
 
@@ -228,23 +166,121 @@
 
 {% block chatbox %}
 <!-- Chatbox Section -->
+<style>
+  #chatbox-section {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  .ai-lecturer-chat {
+    width: min(100%, 900px);
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
+  }
+
+  #chatbox-messages {
+    min-width: 0;
+    overflow-x: hidden;
+  }
+
+  .chat-row {
+    min-width: 0;
+  }
+
+  .chat-bubble {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    white-space: normal;
+  }
+
+  .chat-bubble p,
+  .chat-bubble pre,
+  .chat-bubble code,
+  .chat-bubble a {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .chat-input-wrap {
+    background-color: #f8f9fa;
+  }
+
+  .chat-input-form {
+    display: flex;
+    align-items: stretch;
+    gap: 0.5rem;
+  }
+
+  .chat-input-field {
+    min-width: 0;
+    min-height: 42px;
+    resize: vertical;
+  }
+
+  .chat-send-btn {
+    white-space: nowrap;
+    padding-left: 0.85rem;
+    padding-right: 0.85rem;
+  }
+
+  @media (max-width: 576px) {
+    #chatbox-section {
+      padding-left: 0.25rem;
+      padding-right: 0.25rem;
+    }
+
+    .ai-lecturer-chat {
+      margin-left: 0;
+      margin-right: 0;
+      border-width: 2px !important;
+    }
+
+    .chat-bubble {
+      max-width: calc(100vw - 2.5rem);
+    }
+  }
+
+  @media (max-width: 400px) {
+    .chat-input-wrap {
+      padding: 0.35rem 0.25rem !important;
+    }
+
+    .chat-input-form {
+      gap: 0.35rem;
+    }
+
+    .chat-input-field {
+      padding: 0.45rem 0.6rem;
+      font-size: 0.95rem;
+      line-height: 1.25;
+    }
+
+    .chat-send-btn {
+      padding: 0.45rem 0.7rem;
+      font-size: 0.9rem;
+    }
+  }
+</style>
 <div id="chatbox-section" class="d-flex justify-content-center">
-  <div class="container border border-4 rounded shadow-lg m-2 p-2 bg-light d-flex flex-column" style="max-height: 400px; border-radius: 15px; box-shadow: 0 4px 8px rgba(255, 215, 0, 0.3); border-color: #0077be; max-width: 100%;">
+  <div class="ai-lecturer-chat border border-4 rounded shadow-lg m-2 p-2 bg-light d-flex flex-column" style="max-height: 400px; border-radius: 15px; box-shadow: 0 4px 8px rgba(255, 215, 0, 0.3); border-color: #0077be;">
     <h2 class="text-center text-primary mb-3" style="font-family: 'Comic Sans MS', cursive, sans-serif;">AI Lecturer</h2>
     <div id="chatbox-messages" style="flex: 1; overflow-y: auto;">
       <!-- Messages Section -->
-      {% if messages %}
-        {% for message in messages %}
+      {% if chat_messages %}
+        {% for message in chat_messages %}
           {% if message.user_message %}
-          <div class="d-flex justify-content-end">
-            <div class="p-2 m-1 bg-primary text-white rounded">
+          <div class="d-flex justify-content-end chat-row">
+            <div class="p-2 m-1 bg-primary text-white rounded chat-bubble">
               <strong>User:</strong> {{ message.user_message|markdown }}
             </div>
           </div>
           {% endif %}
           {% if message.bot_response %}
-          <div class="d-flex justify-content-start">
-            <div class="p-2 m-1 bg-secondary text-white rounded">
+          <div class="d-flex justify-content-start chat-row">
+            <div class="p-2 m-1 bg-secondary text-white rounded chat-bubble">
               <strong>AI Lecturer:</strong> {{ message.bot_response|markdown }}
             </div>
           </div>
@@ -258,12 +294,12 @@
         </div>
       {% endif %}
     </div>
-    <div style="background-color: #f8f9fa;">
+    <div class="chat-input-wrap">
       <!-- Form Section -->
-      <form action="{% url 'send_message' %}#chatbox-section" method="post" class="d-flex">
+      <form action="{% url 'send_message' %}#chatbox-section" method="post" class="chat-input-form">
           {% csrf_token %}
-          <textarea name="user_message" class="form-control me-2" style="background-color: #e9ecef;" placeholder="Niulize Chochote Nitakujibu ..."></textarea>
-          <input type="submit" value="Send" class="btn btn-primary">
+          <textarea name="user_message" class="form-control chat-input-field" style="background-color: #e9ecef;" placeholder="Niulize Chochote Nitakujibu ..."></textarea>
+          <input type="submit" value="Send" class="btn btn-primary chat-send-btn">
       </form>
     </div>
   </div>
