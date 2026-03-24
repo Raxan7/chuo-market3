@@ -296,10 +296,10 @@
     </div>
     <div class="chat-input-wrap">
       <!-- Form Section -->
-      <form action="{% url 'send_message' %}#chatbox-section" method="post" class="chat-input-form">
+      <form id="chat-input-form" action="{% url 'send_message' %}#chatbox-section" method="post" class="chat-input-form">
           {% csrf_token %}
-          <textarea name="user_message" class="form-control chat-input-field" style="background-color: #e9ecef;" placeholder="Niulize Chochote Nitakujibu ..."></textarea>
-          <input type="submit" value="Send" class="btn btn-primary chat-send-btn">
+          <textarea id="chat-input-field" name="user_message" class="form-control chat-input-field" style="background-color: #e9ecef;" placeholder="Niulize Chochote Nitakujibu ..."></textarea>
+          <input id="chat-send-btn" type="submit" value="Send" class="btn btn-primary chat-send-btn">
       </form>
     </div>
   </div>
@@ -308,7 +308,94 @@
 <script>
   document.addEventListener("DOMContentLoaded", function() {
     var chatboxMessages = document.getElementById("chatbox-messages");
-    chatboxMessages.scrollTop = chatboxMessages.scrollHeight;
+    var chatForm = document.getElementById("chat-input-form");
+    var chatInput = document.getElementById("chat-input-field");
+    var sendButton = document.getElementById("chat-send-btn");
+
+    function scrollToBottom() {
+      chatboxMessages.scrollTop = chatboxMessages.scrollHeight;
+    }
+
+    function buildBubble(label, text, isUser) {
+      var row = document.createElement("div");
+      row.className = "d-flex chat-row " + (isUser ? "justify-content-end" : "justify-content-start");
+
+      var bubble = document.createElement("div");
+      bubble.className = "p-2 m-1 rounded chat-bubble " + (isUser ? "bg-primary text-white" : "bg-secondary text-white");
+
+      var strong = document.createElement("strong");
+      strong.textContent = label + ": ";
+
+      var bodyText = document.createElement("span");
+      bodyText.textContent = text;
+
+      bubble.appendChild(strong);
+      bubble.appendChild(bodyText);
+      row.appendChild(bubble);
+      return row;
+    }
+
+    scrollToBottom();
+
+    async function submitChat() {
+      var userMessage = chatInput.value.trim();
+      if (!userMessage) {
+        return;
+      }
+
+      chatboxMessages.appendChild(buildBubble("User", userMessage, true));
+      scrollToBottom();
+
+      chatInput.value = "";
+      sendButton.disabled = true;
+      sendButton.value = "Sending...";
+
+      var csrfTokenInput = chatForm.querySelector('input[name="csrfmiddlewaretoken"]');
+      var csrfToken = csrfTokenInput ? csrfTokenInput.value : "";
+
+      try {
+        var response = await fetch("{% url 'chatbot_api' %}", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": csrfToken
+          },
+          body: JSON.stringify({ message: userMessage }),
+          credentials: "same-origin"
+        });
+
+        var payload = await response.json();
+        var botText = payload.reply || "I am ChuoSmart AI Lecturer. I could not process that request right now.";
+        if (!response.ok && payload.error) {
+          botText = "I am ChuoSmart AI Lecturer. " + payload.error;
+        }
+
+        chatboxMessages.appendChild(buildBubble("AI Lecturer", botText, false));
+      } catch (error) {
+        chatboxMessages.appendChild(
+          buildBubble("AI Lecturer", "I am ChuoSmart AI Lecturer. I could not process that request right now. Please try again.", false)
+        );
+      } finally {
+        sendButton.disabled = false;
+        sendButton.value = "Send";
+        scrollToBottom();
+      }
+    }
+
+    chatForm.addEventListener("submit", async function(event) {
+      event.preventDefault();
+      await submitChat();
+    });
+
+    chatInput.addEventListener("keydown", function(event) {
+      if (event.key === "Enter") {
+        if (event.shiftKey) {
+          return;
+        }
+        event.preventDefault();
+        submitChat();
+      }
+    });
   });
 </script>
 {% endblock chatbox %}
