@@ -1139,58 +1139,6 @@
         </div>
     </div>
     
-    <!-- Dashboard notification modal -->
-    {% if show_dashboard_modal %}
-    <div class="modal fade" id="dashboardNotificationModal" tabindex="-1" aria-labelledby="dashboardNotificationModalLabel" aria-hidden="true">
-      <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-          <div class="modal-header bg-primary text-white">
-            <h5 class="modal-title" id="dashboardNotificationModalLabel">New Dashboard Feature!</h5>
-            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-          </div>
-          <div class="modal-body">
-            <div class="d-flex align-items-center mb-3">
-              <i class="fa fa-dashboard fa-2x me-3" style="color: #4e73df;"></i>
-              <div>
-                <h5 class="mb-1">Manage Your Content in One Place</h5>
-                <p class="text-muted mb-0">We've added a new dashboard feature!</p>
-              </div>
-            </div>
-            <p>Now you can easily manage all your products, blogs, and talents from a single dashboard. Access it anytime from your profile menu.</p>
-            <ul class="list-group list-group-flush mb-3">
-              <li class="list-group-item d-flex align-items-center">
-                <i class="fa fa-check-circle text-success me-2"></i>
-                View all your products, blogs, and talents
-              </li>
-              <li class="list-group-item d-flex align-items-center">
-                <i class="fa fa-check-circle text-success me-2"></i>
-                Edit or delete your content with ease
-              </li>
-              <li class="list-group-item d-flex align-items-center">
-                <i class="fa fa-check-circle text-success me-2"></i>
-                Monitor your activity all in one place
-              </li>
-            </ul>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-            <a href="{% url 'user_dashboard' %}" class="btn btn-primary">Go to Dashboard</a>
-          </div>
-        </div>
-      </div>
-    </div>
-    {% endif %}
-    
-    <script>
-      // Show dashboard notification modal when page loads
-      document.addEventListener('DOMContentLoaded', function() {
-        {% if show_dashboard_modal %}
-          var dashboardModal = new bootstrap.Modal(document.getElementById('dashboardNotificationModal'));
-          dashboardModal.show();
-        {% endif %}
-      });
-    </script>
-    
     {% block postloadjs %}
     <!-- Custom JavaScript that can be overridden by child templates -->
     {% endblock postloadjs %}
