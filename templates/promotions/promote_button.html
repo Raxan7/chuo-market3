@@ -1,0 +1,7 @@
+{% comment %}Safe fallback promote button include{% endcomment %}
+<div class="product-promote">
+  <form method="post" action="/promote/{{ product.slug }}/">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-sm btn-success">Promote</button>
+  </form>
+</div>
