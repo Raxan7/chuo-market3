@@ -275,7 +275,7 @@ def lms_home(request):
             })
     else:
         # For unauthenticated users, show featured courses
-        featured_courses = Course.objects.filter(is_pinned=True).order_by('-is_pinned', 'title')[:6]
+        featured_courses = Course.objects.filter(is_pinned=True).order_by('?')[:6]
         context.update({
             'featured_courses': featured_courses,
         })
@@ -299,7 +299,7 @@ class ProgramDetailView(DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         program = self.get_object()
-        context['courses'] = Course.objects.filter(program=program)
+        context['courses'] = Course.objects.filter(program=program).order_by('?')
         return context
 
 
@@ -311,8 +311,8 @@ class CourseListView(ListView):
     paginate_by = 10
     
     def get_queryset(self):
-        # Base queryset: pinned courses first, then by title
-        queryset = Course.objects.all().order_by('-is_pinned', 'title')
+        # Randomize the base queryset so the course list feels fresh across layouts.
+        queryset = Course.objects.all().order_by('?')
         
         # Filter by course type if provided
         course_type = self.request.GET.get('course_type')
@@ -343,8 +343,7 @@ class CourseListView(ListView):
                 Q(summary__icontains=query)
             )
         
-        # Order pinned courses first, then by title
-        return queryset.order_by('-is_pinned', 'title')
+        return queryset
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)

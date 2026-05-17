@@ -75,16 +75,16 @@ def home(request):
             request.session.modified = True
         customers = False
 
-    # Fetch courses using deterministic ordering and paginate for faster initial load.
+    # Fetch courses in random order so the homepage feels fresh on every device.
     from lms.models import Course
-    courses_qs = Course.objects.select_related('program').order_by('-is_pinned', 'title')
+    courses_qs = Course.objects.select_related('program').order_by('?')
     paginator = Paginator(courses_qs, LIST_PAGE_SIZE)
     page_number = request.GET.get('page')
     courses_page = paginator.get_page(page_number)
     banners = list(Banners.objects.all())
     
-    # Secondary section should stay light and deterministic.
-    featured_products = list(Product.objects.select_related('user').order_by('-created_at')[:8])
+    # Keep the product carousel randomized as well.
+    featured_products = list(Product.objects.select_related('user').order_by('?')[:8])
     
     # Get category counts for the category cards  
     from django.db.models import Count
@@ -141,7 +141,7 @@ def marketplace(request):
         'user',
         'user__customer',
         'user__customer__subscription',
-    ).order_by('-created_at')
+    ).order_by('?')
     paginator = Paginator(products_qs, LIST_PAGE_SIZE)
     page_number = request.GET.get('page')
     products_page = paginator.get_page(page_number)
@@ -631,7 +631,7 @@ def create_blog(request):
     return render(request, 'app/create_blog.html', {'form': form})
 
 def blog_list(request):
-    blogs_qs = Blog.objects.select_related('author').order_by('-created_at')
+    blogs_qs = Blog.objects.select_related('author').order_by('?')
     paginator = Paginator(blogs_qs, LIST_PAGE_SIZE)
     page_number = request.GET.get('page')
     blogs_page = paginator.get_page(page_number)
