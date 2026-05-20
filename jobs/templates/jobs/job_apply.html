@@ -2,6 +2,32 @@
 {% load static %}
 
 {% block job_content %}
+<style>
+    @media (max-width: 991.98px) {
+        .job-mobile-submit-bar {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+            z-index: 1002;
+            padding: 0.75rem 1rem;
+            background: rgba(255, 255, 255, 0.98);
+            border-top: 1px solid rgba(0, 0, 0, 0.08);
+            box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.08);
+            backdrop-filter: blur(10px);
+        }
+
+        .job-mobile-submit-bar .btn {
+            min-height: 48px;
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        .job-mobile-submit-spacer {
+            height: 96px;
+        }
+    }
+</style>
 <div class="container py-5">
     <!-- Job Header -->
     <div class="row mb-5">
@@ -50,7 +76,7 @@
                         </div>
                     {% endif %}
 
-                    <form method="post" enctype="multipart/form-data" class="needs-validation" novalidate>
+                    <form method="post" enctype="multipart/form-data" class="needs-validation" novalidate id="job-application-form">
                         {% csrf_token %}
                         {{ form.media }}
                         
@@ -240,6 +266,18 @@
         </div>
     </div>
 </div>
+
+<div class="job-mobile-submit-bar d-lg-none">
+    <div class="d-grid gap-2">
+        <button type="submit" form="job-application-form" class="btn btn-primary btn-lg">
+            <i class="bi bi-send me-2"></i>Submit Application
+        </button>
+        <a href="{% url 'jobs:job_detail' job.id %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-2"></i>Back to Job
+        </a>
+    </div>
+</div>
+<div class="job-mobile-submit-spacer d-lg-none" aria-hidden="true"></div>
 
 {% block extra_js %}
 {{ block.super }}
