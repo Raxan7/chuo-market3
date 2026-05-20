@@ -331,16 +331,8 @@
     </div>
 
     {% if page_obj and page_obj.has_next %}
-      <div class="text-center mt-3">
-        <button
-          type="button"
-          class="btn btn-outline-primary"
-          id="marketplace-load-more"
-          data-next-url="{{ next_page_url }}"
-        >
-          Load more products
-        </button>
-      </div>
+      <div id="marketplace-infinite-scroll-sentinel" class="infinite-scroll-sentinel" data-next-url="{{ next_page_url }}" aria-hidden="true"></div>
+      <div id="marketplace-loading-more" class="text-center text-muted small mt-3 d-none">Loading more products...</div>
     {% endif %}
 
     {% if is_paginated %}
@@ -383,29 +375,36 @@
       productsGrid.style.display = 'flex';
     }, 500);
 
-    const loadMoreBtn = document.getElementById('marketplace-load-more');
     const listContainer = document.getElementById('products-grid');
+    const sentinel = document.getElementById('marketplace-infinite-scroll-sentinel');
+    const loadingIndicator = document.getElementById('marketplace-loading-more');
+    let nextUrl = {% if page_obj and page_obj.has_next %}'{{ next_page_url }}'{% else %}null{% endif %};
+    let isLoading = false;
 
-    if (!loadMoreBtn || !listContainer) {
+    if (!listContainer || !sentinel || !nextUrl) {
       return;
     }
 
-    loadMoreBtn.addEventListener('click', async function () {
-      const nextUrl = loadMoreBtn.getAttribute('data-next-url');
-      if (!nextUrl) {
-        loadMoreBtn.style.display = 'none';
+    const setLoadingState = (loading) => {
+      isLoading = loading;
+      if (loadingIndicator) {
+        loadingIndicator.classList.toggle('d-none', !loading);
+      }
+    };
+
+    const loadMoreProducts = async () => {
+      if (!nextUrl || isLoading) {
         return;
       }
 
-      loadMoreBtn.disabled = true;
-      loadMoreBtn.textContent = 'Loading...';
+      setLoadingState(true);
 
       try {
         const response = await fetch(nextUrl, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
         const html = await response.text();
         const doc = new DOMParser().parseFromString(html, 'text/html');
         const incomingContainer = doc.getElementById('products-grid');
-        const incomingButton = doc.getElementById('marketplace-load-more');
+        const incomingSentinel = doc.getElementById('marketplace-infinite-scroll-sentinel');
 
         if (incomingContainer) {
           Array.from(incomingContainer.children).forEach((child) => listContainer.appendChild(child));
@@ -414,19 +413,34 @@
           }
         }
 
-        if (incomingButton && incomingButton.dataset.nextUrl) {
-          loadMoreBtn.setAttribute('data-next-url', incomingButton.dataset.nextUrl);
-          loadMoreBtn.disabled = false;
-          loadMoreBtn.textContent = 'Load more products';
+        if (incomingSentinel && incomingSentinel.dataset.nextUrl) {
+          nextUrl = incomingSentinel.dataset.nextUrl;
         } else {
-          loadMoreBtn.style.display = 'none';
+          nextUrl = null;
+          observer.disconnect();
+          sentinel.remove();
         }
       } catch (error) {
         console.error('Failed to load more products', error);
-        loadMoreBtn.disabled = false;
-        loadMoreBtn.textContent = 'Retry';
+      } finally {
+        setLoadingState(false);
       }
+
+    };
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          loadMoreProducts();
+        }
+      });
+    }, {
+      root: null,
+      rootMargin: '300px 0px',
+      threshold: 0.1,
     });
+
+    observer.observe(sentinel);
   });
 </script>
 {% endblock main-content %}
@@ -434,6 +448,12 @@
 {% block extra_scripts %}
 {{ block.super }}
 <style>
+  .infinite-scroll-sentinel {
+    width: 100%;
+    height: 1px;
+    margin-top: 1rem;
+  }
+
   /* Category Cards Styles */
   .category-card {
     transition: transform 0.3s ease, box-shadow 0.3s ease;

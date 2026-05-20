@@ -63,16 +63,8 @@
     </div>
 
     {% if page_obj and page_obj.has_next %}
-    <div class="text-center mt-4">
-        <button
-            type="button"
-            class="btn btn-outline-primary"
-            id="blog-load-more"
-            data-next-url="{{ next_page_url }}"
-        >
-            Load more blogs
-        </button>
-    </div>
+    <div id="blog-infinite-scroll-sentinel" class="infinite-scroll-sentinel" data-next-url="{{ next_page_url }}" aria-hidden="true"></div>
+    <div id="blog-loading-more" class="text-center text-muted small mt-4 d-none">Loading more blogs...</div>
     {% endif %}
 
     {% if is_paginated %}
@@ -102,6 +94,12 @@
 </div>
 
 <style>
+    .infinite-scroll-sentinel {
+        width: 100%;
+        height: 1px;
+        margin-top: 1rem;
+    }
+
     /* Custom hover effect for blog cards */
     .hover-shadow {
         transition: all 0.3s ease;
@@ -125,29 +123,36 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function () {
-        const loadMoreBtn = document.getElementById('blog-load-more');
         const listContainer = document.getElementById('blog-list-grid');
+        const sentinel = document.getElementById('blog-infinite-scroll-sentinel');
+        const loadingIndicator = document.getElementById('blog-loading-more');
+        let nextUrl = {% if page_obj and page_obj.has_next %}'{{ next_page_url }}'{% else %}null{% endif %};
+        let isLoading = false;
 
-        if (!loadMoreBtn || !listContainer) {
+        if (!listContainer || !sentinel || !nextUrl) {
             return;
         }
 
-        loadMoreBtn.addEventListener('click', async function () {
-            const nextUrl = loadMoreBtn.getAttribute('data-next-url');
-            if (!nextUrl) {
-                loadMoreBtn.style.display = 'none';
+        const setLoadingState = (loading) => {
+            isLoading = loading;
+            if (loadingIndicator) {
+                loadingIndicator.classList.toggle('d-none', !loading);
+            }
+        };
+
+        const loadMoreBlogs = async () => {
+            if (!nextUrl || isLoading) {
                 return;
             }
 
-            loadMoreBtn.disabled = true;
-            loadMoreBtn.textContent = 'Loading...';
+            setLoadingState(true);
 
             try {
                 const response = await fetch(nextUrl, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
                 const html = await response.text();
                 const doc = new DOMParser().parseFromString(html, 'text/html');
                 const incomingContainer = doc.getElementById('blog-list-grid');
-                const incomingButton = doc.getElementById('blog-load-more');
+                const incomingSentinel = doc.getElementById('blog-infinite-scroll-sentinel');
 
                 if (incomingContainer) {
                     Array.from(incomingContainer.children).forEach((child) => listContainer.appendChild(child));
@@ -156,19 +161,33 @@
                     }
                 }
 
-                if (incomingButton && incomingButton.dataset.nextUrl) {
-                    loadMoreBtn.setAttribute('data-next-url', incomingButton.dataset.nextUrl);
-                    loadMoreBtn.disabled = false;
-                    loadMoreBtn.textContent = 'Load more blogs';
+                if (incomingSentinel && incomingSentinel.dataset.nextUrl) {
+                    nextUrl = incomingSentinel.dataset.nextUrl;
                 } else {
-                    loadMoreBtn.style.display = 'none';
+                    nextUrl = null;
+                    observer.disconnect();
+                    sentinel.remove();
                 }
             } catch (error) {
                 console.error('Failed to load more blogs', error);
-                loadMoreBtn.disabled = false;
-                loadMoreBtn.textContent = 'Retry';
+            } finally {
+                setLoadingState(false);
             }
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach((entry) => {
+                if (entry.isIntersecting) {
+                    loadMoreBlogs();
+                }
+            });
+        }, {
+            root: null,
+            rootMargin: '300px 0px',
+            threshold: 0.1,
         });
+
+        observer.observe(sentinel);
     });
 </script>
 {% endblock main-content %}
