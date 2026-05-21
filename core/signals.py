@@ -6,6 +6,7 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.contrib.auth.models import User
 from django.db.models import Q
+from django.db import transaction
 from .models import Customer, Subscription, UserNewsletterPreference, Blog, Product
 from .newsletter import send_blog_newsletter, send_product_newsletter
 
@@ -43,14 +44,17 @@ def notify_new_blog(sender, instance, created, **kwargs):
     if not created:
         return
 
-    related_blogs = Blog.objects.exclude(pk=instance.pk)
-    if instance.category:
-        related_blogs = related_blogs.filter(Q(category=instance.category) | Q(author=instance.author))
-    else:
-        related_blogs = related_blogs.filter(author=instance.author)
+    def dispatch_newsletter():
+        related_blogs = Blog.objects.exclude(pk=instance.pk)
+        if instance.category:
+            related_blogs = related_blogs.filter(Q(category=instance.category) | Q(author=instance.author))
+        else:
+            related_blogs = related_blogs.filter(author=instance.author)
 
-    related_blogs = related_blogs.order_by('-created_at')[:3]
-    send_blog_newsletter(instance, related_blogs)
+        related_blogs = related_blogs.order_by('-created_at')[:3]
+        send_blog_newsletter(instance, related_blogs)
+
+    transaction.on_commit(dispatch_newsletter)
 
 
 @receiver(post_save, sender=Product)
@@ -58,6 +62,9 @@ def notify_new_product(sender, instance, created, **kwargs):
     if not created:
         return
 
-    related_products = Product.objects.exclude(pk=instance.pk)
-    related_products = related_products.filter(Q(category=instance.category) | Q(user=instance.user)).order_by('-created_at')[:3]
-    send_product_newsletter(instance, related_products)
+    def dispatch_newsletter():
+        related_products = Product.objects.exclude(pk=instance.pk)
+        related_products = related_products.filter(Q(category=instance.category) | Q(user=instance.user)).order_by('-created_at')[:3]
+        send_product_newsletter(instance, related_products)
+
+    transaction.on_commit(dispatch_newsletter)

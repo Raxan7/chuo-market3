@@ -6,6 +6,7 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.contrib.auth.models import User
 from django.db.models import Q
+from django.db import transaction
 from .models import LMSProfile, Course
 from core.newsletter import send_course_newsletter
 
@@ -42,11 +43,14 @@ def notify_new_course(sender, instance, created, **kwargs):
     if not created:
         return
 
-    related_courses = Course.objects.exclude(pk=instance.pk)
-    if instance.program:
-        related_courses = related_courses.filter(Q(program=instance.program) | Q(level=instance.level) | Q(course_type=instance.course_type))
-    else:
-        related_courses = related_courses.filter(Q(level=instance.level) | Q(course_type=instance.course_type))
+    def dispatch_newsletter():
+        related_courses = Course.objects.exclude(pk=instance.pk)
+        if instance.program:
+            related_courses = related_courses.filter(Q(program=instance.program) | Q(level=instance.level) | Q(course_type=instance.course_type))
+        else:
+            related_courses = related_courses.filter(Q(level=instance.level) | Q(course_type=instance.course_type))
 
-    related_courses = related_courses.order_by('-id')[:3]
-    send_course_newsletter(instance, related_courses)
+        related_courses = related_courses.order_by('-id')[:3]
+        send_course_newsletter(instance, related_courses)
+
+    transaction.on_commit(dispatch_newsletter)

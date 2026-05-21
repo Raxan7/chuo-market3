@@ -1,11 +1,14 @@
 """Shared newsletter helpers for content announcement emails."""
 
 import logging
+import threading
+import traceback
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core import signing
 from django.core.mail import EmailMultiAlternatives
+from django.db import close_old_connections
 from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils.html import strip_tags
@@ -38,6 +41,27 @@ def get_newsletter_delivery_emails(recipient_email):
         return [test_email]
 
     return [recipient_email]
+
+
+def get_newsletter_log_email():
+    return getattr(settings, 'NEWSLETTER_LOG_EMAIL', '').strip()
+
+
+def send_newsletter_log_email(subject, details):
+    log_email = get_newsletter_log_email()
+    if not log_email:
+        return
+
+    try:
+        message = EmailMultiAlternatives(
+            subject,
+            details,
+            settings.DEFAULT_FROM_EMAIL,
+            [log_email],
+        )
+        message.send(fail_silently=True)
+    except Exception:
+        logger.exception('Failed to send newsletter log email')
 
 
 def get_newsletter_recipients(exclude_user_id=None):
@@ -77,7 +101,7 @@ def send_newsletter_email(recipient, subject, template_name, context):
     message.send(fail_silently=True)
 
 
-def _send_content_newsletter(instance, content_type, template_name, subject, related_items):
+def _send_content_newsletter_sync(instance, content_type, template_name, subject, related_items):
     owner = getattr(instance, 'user', None) or getattr(instance, 'author', None)
     owner_id = owner.id if owner and owner.pk else None
     recipients = get_newsletter_recipients(exclude_user_id=owner_id)
@@ -125,8 +149,34 @@ def _send_content_newsletter(instance, content_type, template_name, subject, rel
     return sent_count
 
 
+def _queue_newsletter_log(instance, content_type, error):
+    error_trace = traceback.format_exc()
+    details = (
+        f'Newsletter delivery failed for {content_type}\n\n'
+        f'Object: {instance!r}\n'
+        f'Error: {error}\n'
+        f'Traceback:\n{error_trace}\n'
+    )
+    logger.error('Newsletter delivery failed for %s', content_type, exc_info=True)
+    send_newsletter_log_email(f'Newsletter delivery failure: {content_type}', details)
+
+
+def _run_content_newsletter_async(instance, content_type, template_name, subject, related_items):
+    def worker():
+        close_old_connections()
+        try:
+            _send_content_newsletter_sync(instance, content_type, template_name, subject, related_items)
+        except Exception as exc:
+            _queue_newsletter_log(instance, content_type, exc)
+        finally:
+            close_old_connections()
+
+    thread = threading.Thread(target=worker, daemon=True)
+    thread.start()
+
+
 def send_blog_newsletter(blog, related_blogs):
-    return _send_content_newsletter(
+    return _run_content_newsletter_async(
         blog,
         'blog post',
         'emails/newsletter/content_announcement.html',
@@ -136,7 +186,7 @@ def send_blog_newsletter(blog, related_blogs):
 
 
 def send_product_newsletter(product, related_products):
-    return _send_content_newsletter(
+    return _run_content_newsletter_async(
         product,
         'product listing',
         'emails/newsletter/content_announcement.html',
@@ -146,7 +196,7 @@ def send_product_newsletter(product, related_products):
 
 
 def send_course_newsletter(course, related_courses):
-    return _send_content_newsletter(
+    return _run_content_newsletter_async(
         course,
         'course',
         'emails/newsletter/content_announcement.html',
@@ -156,7 +206,7 @@ def send_course_newsletter(course, related_courses):
 
 
 def send_talent_newsletter(talent, related_talents):
-    return _send_content_newsletter(
+    return _run_content_newsletter_async(
         talent,
         'talent',
         'emails/newsletter/content_announcement.html',
