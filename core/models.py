@@ -335,6 +335,39 @@ class NewsletterSubscriber(models.Model):
         return self.email
 
 
+class UserNewsletterPreference(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='newsletter_preference')
+    newsletter = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.user.username} newsletter preference"
+
+
+def _get_newsletter_preference(user):
+    if not getattr(user, 'pk', None):
+        return None
+    preference, _ = UserNewsletterPreference.objects.get_or_create(user=user)
+    return preference
+
+
+def _get_user_newsletter(self):
+    preference = _get_newsletter_preference(self)
+    return preference.newsletter if preference else True
+
+
+def _set_user_newsletter(self, value):
+    preference = _get_newsletter_preference(self)
+    if preference is None:
+        return
+    preference.newsletter = bool(value)
+    preference.save()
+
+
+User.add_to_class('newsletter', property(_get_user_newsletter, _set_user_newsletter))
+
+
 class AccountDeletionRequest(models.Model):
     PRODUCT_CHOICES = [
         ('chuosmart', 'ChuoSmart'),

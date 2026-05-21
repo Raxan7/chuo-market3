@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.utils import timezone
-from .models import Customer, Product, OrderPlaced, Cart, Banners, Blog, Subscription, SubscriptionPayment, AccountDeletionRequest
+from .models import Customer, Product, OrderPlaced, Cart, Banners, Blog, Subscription, SubscriptionPayment, AccountDeletionRequest, UserNewsletterPreference
 
 class OrderPlacedAdmin(admin.ModelAdmin):
     list_display = ('user', 'customer', 'product', 'quantity', 'ordered_date', 'status')
@@ -12,6 +12,7 @@ admin.site.register(Cart)
 admin.site.register(Banners)
 admin.site.register(Blog)
 admin.site.register(Subscription)
+admin.site.register(UserNewsletterPreference)
 
 @admin.register(SubscriptionPayment)
 class SubscriptionPaymentAdmin(admin.ModelAdmin):

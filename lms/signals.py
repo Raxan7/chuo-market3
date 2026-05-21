@@ -5,7 +5,9 @@ Signal handlers for the LMS application
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.contrib.auth.models import User
-from .models import LMSProfile
+from django.db.models import Q
+from .models import LMSProfile, Course
+from core.newsletter import send_course_newsletter
 
 
 @receiver(post_save, sender=User)
@@ -33,3 +35,18 @@ def create_lms_profile(sender, instance, created, **kwargs):
             role=role,
             phone_number=phone_number
         )
+
+
+@receiver(post_save, sender=Course)
+def notify_new_course(sender, instance, created, **kwargs):
+    if not created:
+        return
+
+    related_courses = Course.objects.exclude(pk=instance.pk)
+    if instance.program:
+        related_courses = related_courses.filter(Q(program=instance.program) | Q(level=instance.level) | Q(course_type=instance.course_type))
+    else:
+        related_courses = related_courses.filter(Q(level=instance.level) | Q(course_type=instance.course_type))
+
+    related_courses = related_courses.order_by('-id')[:3]
+    send_course_newsletter(instance, related_courses)

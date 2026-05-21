@@ -273,6 +273,10 @@ EMAIL_USE_SSL = True
 EMAIL_USE_TLS = False
 DEFAULT_FROM_EMAIL = 'ChuoSmart <support@chuosmart.com>'
 
+# Newsletter delivery safety controls
+NEWSLETTER_DEBUG = os.getenv('NEWSLETTER_DEBUG', 'false').strip().lower() in {'1', 'true', 'yes', 'on'}
+NEWSLETTER_TEST_EMAIL = os.getenv('NEWSLETTER_TEST_EMAIL', '').strip()
+
 # Password reset settings
 PASSWORD_RESET_TIMEOUT = 86400  # 24 hours in seconds
 
