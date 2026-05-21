@@ -3,6 +3,8 @@
 import logging
 import threading
 import traceback
+import os
+from django.utils import timezone
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -51,7 +53,19 @@ def send_newsletter_log_email(subject, details):
     log_email = get_newsletter_log_email()
     if not log_email:
         return
+    # Always write a local copy for diagnostics
+    try:
+        base_dir = getattr(settings, 'BASE_DIR', None) or os.getcwd()
+        logs_dir = os.path.join(base_dir, 'logs')
+        os.makedirs(logs_dir, exist_ok=True)
+        log_file = os.path.join(logs_dir, 'newsletter_failures.log')
+        with open(log_file, 'a', encoding='utf-8') as f:
+            f.write(f"{timezone.now().isoformat()} - {subject}\n")
+            f.write(details + '\n\n')
+    except Exception:
+        logger.exception('Failed to write newsletter failure log file')
 
+    # Try to email the log; don't swallow exceptions silently
     try:
         message = EmailMultiAlternatives(
             subject,
@@ -59,7 +73,7 @@ def send_newsletter_log_email(subject, details):
             settings.DEFAULT_FROM_EMAIL,
             [log_email],
         )
-        message.send(fail_silently=True)
+        message.send(fail_silently=False)
     except Exception:
         logger.exception('Failed to send newsletter log email')
 
