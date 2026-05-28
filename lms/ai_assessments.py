@@ -145,6 +145,9 @@ def _normalise_questions(raw_payload, question_count):
 
 @transaction.atomic
 def ensure_module_assessment(module, question_count=DEFAULT_QUESTION_COUNT, force=False):
+    if getattr(module, 'skip_assessment', False):
+        return None
+
     existing = Quiz.objects.filter(module=module, draft=False).order_by('id').first()
     if existing and existing.questions.exists() and not force:
         return existing

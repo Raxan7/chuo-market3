@@ -335,8 +335,12 @@
                         {% with module=state.module %}
                         <div class="accordion-item">
                             <h2 class="accordion-header" id="heading{{ module.id }}">
+                                {% if state.unlocked or is_course_instructor %}
                                 <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
                                         data-bs-target="#collapse{{ module.id }}" aria-expanded="false" aria-controls="collapse{{ module.id }}">
+                                {% else %}
+                                <button class="accordion-button collapsed disabled" type="button" aria-disabled="true" tabindex="-1">
+                                {% endif %}
                                     <span class="me-2">{{ module.title }}</span>
                                     {% if is_course_instructor %}
                                         <span class="badge bg-info">Instructor</span>
@@ -385,10 +389,16 @@
                                         <div class="d-flex flex-column flex-md-row justify-content-between gap-2">
                                             <div>
                                                 <strong>Mastery check</strong>
+                                                {% if state.skip_assessment %}
+                                                <div class="small text-muted">This overview module does not require a quiz.</div>
+                                                {% else %}
                                                 <div class="small text-muted">AI-generated from this module. Passing score: 70%.</div>
                                                 {% if state.best_score %}<div class="small">Best score: {{ state.best_score }}%</div>{% endif %}
+                                                {% endif %}
                                             </div>
-                                            {% if state.assessment %}
+                                            {% if state.skip_assessment %}
+                                                <span class="badge bg-success align-self-start">No quiz required</span>
+                                            {% elif state.assessment %}
                                                 {% if state.unlocked or is_course_instructor %}
                                                 <a href="{% url 'lms:quiz_detail' state.assessment.slug %}" class="btn btn-outline-primary btn-sm">Open Assessment</a>
                                                 {% else %}

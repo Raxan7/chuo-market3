@@ -300,12 +300,21 @@ class CourseModule(models.Model):
     description = models.TextField(blank=True)
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='modules')
     order = models.PositiveIntegerField(default=0)
+    skip_assessment = models.BooleanField(
+        default=False,
+        verbose_name=_("Skip Assessment"),
+        help_text=_("Mark this module as an overview or introduction module without a quiz.")
+    )
     
     class Meta:
         ordering = ['order']
         
     def __str__(self):
         return f"{self.title} - {self.course.title}"
+
+    @property
+    def requires_assessment(self):
+        return not self.skip_assessment
 
 
 class CourseContent(models.Model):

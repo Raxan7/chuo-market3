@@ -150,7 +150,7 @@ class CourseModuleForm(forms.ModelForm):
     """Form for creating and updating course modules"""
     class Meta:
         model = CourseModule
-        fields = ['title', 'description', 'order']
+        fields = ['title', 'description', 'order', 'skip_assessment']
         widgets = {
             'title': forms.TextInput(attrs={
                 'class': 'form-control',
@@ -165,6 +165,9 @@ class CourseModuleForm(forms.ModelForm):
                 'class': 'form-control',
                 'min': '0',
                 'placeholder': 'Display order (0, 1, 2, ...)'
+            }),
+            'skip_assessment': forms.CheckboxInput(attrs={
+                'class': 'form-check-input',
             }),
         }
 

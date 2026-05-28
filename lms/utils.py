@@ -92,6 +92,8 @@ def get_previous_module(module):
 
 
 def get_module_assessment(module):
+    if getattr(module, 'skip_assessment', False):
+        return None
     return Quiz.objects.filter(module=module, draft=False).order_by('id').first()
 
 
@@ -124,6 +126,8 @@ def update_module_content_completion(module, student):
         completed=True,
     ).count()
     progress.content_completed = total_contents == 0 or completed_contents >= total_contents
+    if getattr(module, 'skip_assessment', False):
+        progress.assessment_passed = True
     progress.refresh_completion()
     return progress
 
@@ -169,6 +173,7 @@ def get_module_progress_states(course, student):
             'unlocked': unlocked,
             'completed': completed,
             'assessment': assessment,
+            'skip_assessment': getattr(module, 'skip_assessment', False),
             'content_completed': bool(progress and progress.content_completed),
             'assessment_passed': bool(progress and progress.assessment_passed),
             'best_score': progress.best_score if progress else 0,
