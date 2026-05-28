@@ -588,10 +588,9 @@ class QuizDetailView(DetailView):
                 elif quiz.module:
                     from .utils import is_module_unlocked
                     module_locked = not is_module_unlocked(quiz.module, profile)
-                if module_locked:
-                    can_take_quiz = False
+                # Do not block taking the quiz based on module lock status.
                 # Check single attempt restriction
-                elif quiz.single_attempt and completed_attempt and completed_attempt.score >= quiz.pass_mark:
+                if quiz.single_attempt and completed_attempt and completed_attempt.score >= quiz.pass_mark:
                     can_take_quiz = False
                 else:
                     can_take_quiz = True
@@ -645,10 +644,9 @@ def start_quiz(request, slug):
             messages.info(request, _("This module does not require an assessment."))
             return redirect('lms:course_detail', slug=quiz.course.slug)
 
-        from .utils import is_module_unlocked
-        if not is_module_unlocked(quiz.module, profile):
-            messages.error(request, _("Complete the previous module before taking this assessment."))
-            return redirect('lms:course_detail', slug=quiz.course.slug)
+        # Allow taking mastery checks even if the module is locked.
+        # The module lock still applies to content access, but assessments
+        # can be taken to qualify for unlocking subsequent modules.
 
         if not quiz.questions.exists():
             from .ai_assessments import ensure_module_assessment

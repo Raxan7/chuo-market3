@@ -70,7 +70,9 @@ class LMSModuleGatingTests(TestCase):
         self.assertTrue(response.context['module_states'][0]['skip_assessment'])
         self.assertTrue(response.context['module_states'][0]['completed'])
         self.assertTrue(response.context['module_states'][1]['unlocked'])
-        self.assertNotContains(response, 'Open Assessment')
+        self.assertIsNone(response.context['module_states'][0]['assessment'])
+        self.assertIsNotNone(response.context['module_states'][1]['assessment'])
+        self.assertContains(response, 'Open Assessment')
 
     @override_settings(CEREBRAS_API_KEY=None)
     def test_generated_assessment_is_required_before_next_module_unlocks(self):
@@ -130,5 +132,7 @@ class LMSModuleGatingTests(TestCase):
         response = self.client.get(reverse('lms:course_detail', kwargs={'slug': self.course.slug}), follow=True)
         self.assertEqual(response.status_code, 200)
         self.assertFalse(response.context['module_states'][1]['unlocked'])
+        self.assertIsNotNone(response.context['module_states'][1]['assessment'])
+        self.assertContains(response, 'Open Assessment')
         self.assertIn('aria-disabled="true"', response.content.decode())
         self.assertNotIn(f'data-bs-target="#collapse{second_module.id}"', response.content.decode())

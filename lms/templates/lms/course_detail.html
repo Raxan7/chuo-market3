@@ -399,13 +399,9 @@
                                             {% if state.skip_assessment %}
                                                 <span class="badge bg-success align-self-start">No quiz required</span>
                                             {% elif state.assessment %}
-                                                {% if state.unlocked or is_course_instructor %}
                                                 <a href="{% url 'lms:quiz_detail' state.assessment.slug %}" class="btn btn-outline-primary btn-sm">Open Assessment</a>
-                                                {% else %}
-                                                <span class="btn btn-outline-secondary btn-sm disabled">Locked</span>
-                                                {% endif %}
                                             {% else %}
-                                                <span class="badge bg-secondary align-self-start">Available after content completion</span>
+                                                <span class="badge bg-secondary align-self-start">Assessment is being prepared</span>
                                             {% endif %}
                                         </div>
                                     </div>
