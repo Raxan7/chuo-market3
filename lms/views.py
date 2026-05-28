@@ -555,6 +555,9 @@ class QuizDetailView(DetailView):
         completed_attempt = None
         user_score = None
         module_locked = False
+        generation_status = getattr(quiz, 'generation_status', 'ready')
+        generation_message = getattr(quiz, 'generation_message', '')
+        quiz_is_ready = bool(quiz.questions.exists()) and generation_status == 'ready'
         
         context['is_authenticated'] = self.request.user.is_authenticated
         
@@ -590,7 +593,9 @@ class QuizDetailView(DetailView):
                     module_locked = not is_module_unlocked(quiz.module, profile)
                 # Do not block taking the quiz based on module lock status.
                 # Check single attempt restriction
-                if quiz.single_attempt and completed_attempt and completed_attempt.score >= quiz.pass_mark:
+                if not quiz_is_ready:
+                    can_take_quiz = False
+                elif quiz.single_attempt and completed_attempt and completed_attempt.score >= quiz.pass_mark:
                     can_take_quiz = False
                 else:
                     can_take_quiz = True
@@ -613,6 +618,11 @@ class QuizDetailView(DetailView):
             'module_locked': module_locked,
             'is_past_due': is_past_due,
             'past_due': is_past_due,
+            'generation_status': generation_status,
+            'generation_message': generation_message,
+            'quiz_is_ready': quiz_is_ready,
+            'is_generating': generation_status in {'pending', 'processing'},
+            'generation_failed': generation_status == 'failed' and not quiz_is_ready,
         })
         
         return context
@@ -644,16 +654,13 @@ def start_quiz(request, slug):
             messages.info(request, _("This module does not require an assessment."))
             return redirect('lms:course_detail', slug=quiz.course.slug)
 
+        if quiz.generation_status in {'pending', 'processing'} or not quiz.questions.exists():
+            messages.info(request, _("Your personalized quiz is still being prepared. Please check the progress page in a moment."))
+            return redirect('lms:quiz_detail', slug=quiz.slug)
+
         # Allow taking mastery checks even if the module is locked.
         # The module lock still applies to content access, but assessments
         # can be taken to qualify for unlocking subsequent modules.
-
-        if not quiz.questions.exists():
-            from .ai_assessments import ensure_module_assessment
-            quiz = ensure_module_assessment(quiz.module)
-            if quiz is None:
-                messages.info(request, _("This module does not require an assessment."))
-                return redirect('lms:course_detail', slug=quiz.course.slug)
     
     # Check single attempt restriction
     completed_attempt = QuizTaker.objects.filter(user=profile, quiz=quiz, completed=True).first()
@@ -939,12 +946,12 @@ def course_content_detail(request, course_slug, content_id):
             from .utils import update_module_content_completion
             progress = update_module_content_completion(content.module, profile)
             if progress.content_completed and not progress.assessment_passed:
-                from .ai_assessments import ensure_module_assessment
-                quiz = ensure_module_assessment(content.module)
+                from .ai_assessments import queue_module_assessment_generation
+                quiz = queue_module_assessment_generation(content.module, student=profile)
                 if quiz is None:
                     messages.success(request, _("Content completed! This overview module does not require a quiz."))
                     return redirect('lms:content_detail', course_slug=course_slug, content_id=content_id)
-                messages.success(request, _("Content completed. Take the module mastery check to unlock the next module."))
+                messages.success(request, _("Content completed. Your personalized mastery check is being prepared now."))
                 return redirect('lms:quiz_detail', slug=quiz.slug)
             messages.success(request, _("Content marked as completed!"))
             return redirect('lms:content_detail', course_slug=course_slug, content_id=content_id)

@@ -3,8 +3,12 @@
 import json
 import logging
 import re
+import sys
+import threading
 
 from django.conf import settings
+from django.db import close_old_connections, transaction
+from django.utils import timezone
 from django.db import transaction
 from django.utils.html import strip_tags
 from django.utils.text import Truncator
@@ -17,12 +21,25 @@ logger = logging.getLogger(__name__)
 DEFAULT_QUESTION_COUNT = 5
 
 
-def collect_module_learning_context(module):
+def _personalization_lines(student):
+    if not student:
+        return []
+
+    display_name = student.user.get_full_name() or student.user.username
+    return [
+        f"Learner: {display_name}",
+        f"Learner role: {getattr(student, 'role', 'student')}",
+        f"Learner username: {student.user.username}",
+    ]
+
+
+def collect_module_learning_context(module, student=None):
     parts = [
         f"Course: {module.course.title}",
         f"Module: {module.title}",
         f"Module description: {strip_tags(module.description or '')}",
     ]
+    parts.extend(_personalization_lines(student))
     for content in module.contents.order_by('order', 'id'):
         body = ''
         if content.content_type == 'text':
@@ -38,6 +55,77 @@ def collect_module_learning_context(module):
 
     limit = getattr(settings, 'CEREBRAS_CONTEXT_LIMIT', 12000)
     return Truncator("\n\n".join(parts)).chars(limit)
+
+
+def _get_existing_assessment_quiz(module, student=None):
+    if student:
+        personal_quiz = Quiz.objects.filter(
+            module=module,
+            generated_for=student,
+            draft=False,
+        ).order_by('-id').first()
+        if personal_quiz:
+            return personal_quiz
+
+    return Quiz.objects.filter(module=module, draft=False).order_by('generated_for', 'id').first()
+
+
+def _get_personal_assessment_quiz(module, student):
+    if not student:
+        return None
+
+    return Quiz.objects.filter(
+        module=module,
+        generated_for=student,
+        draft=False,
+    ).order_by('-id').first()
+
+
+def _create_assessment_quiz(module, student=None):
+    return Quiz.objects.create(
+        course=module.course,
+        module=module,
+        generated_for=student,
+        title=f"{module.title} Mastery Check",
+        description=(
+            "AI-generated assessment based on this module's content. "
+            "Score 70% or higher to unlock the next module."
+        ),
+        category='practice',
+        pass_mark=70,
+        answers_at_end=True,
+        exam_paper=True,
+        draft=False,
+        generation_status='processing',
+        generation_message='Quiz is being prepared.',
+        generation_started_at=timezone.now(),
+    )
+
+
+def _mark_quiz_generation_state(quiz, status, message=''):
+    quiz.generation_status = status
+    quiz.generation_message = message or ''
+    if status == 'processing' and not quiz.generation_started_at:
+        quiz.generation_started_at = timezone.now()
+    if status in {'ready', 'failed'}:
+        quiz.generation_completed_at = timezone.now()
+    quiz.save(update_fields=[
+        'generation_status',
+        'generation_message',
+        'generation_started_at',
+        'generation_completed_at',
+        'slug',
+        'course',
+        'module',
+        'generated_for',
+        'title',
+        'description',
+        'category',
+        'pass_mark',
+        'answers_at_end',
+        'exam_paper',
+        'draft',
+    ])
 
 
 def _call_cerebras_for_questions(module, context, question_count):
@@ -165,42 +253,46 @@ def _normalise_questions(raw_payload, question_count):
 
 
 @transaction.atomic
-def ensure_module_assessment(module, question_count=DEFAULT_QUESTION_COUNT, force=False):
+def ensure_module_assessment(module, student=None, question_count=DEFAULT_QUESTION_COUNT, force=False):
     if getattr(module, 'skip_assessment', False):
         return None
 
-    existing = Quiz.objects.filter(module=module, draft=False).order_by('id').first()
-    if existing and existing.questions.exists() and not force:
+    existing = _get_personal_assessment_quiz(module, student) if student else _get_existing_assessment_quiz(module, student=student)
+    if existing and existing.questions.exists() and not force and existing.generation_status == 'ready':
         return existing
 
-    context = collect_module_learning_context(module)
+    if existing is None:
+        existing = _create_assessment_quiz(module, student=student)
+    elif force:
+        existing.questions.all().delete()
+        existing.generation_status = 'processing'
+        existing.generation_message = 'Quiz is being prepared.'
+        existing.generation_started_at = timezone.now()
+        existing.generation_completed_at = None
+        existing.save(update_fields=[
+            'generation_status',
+            'generation_message',
+            'generation_started_at',
+            'generation_completed_at',
+        ])
+
+    context = collect_module_learning_context(module, student=student)
     raw_payload, status, msg = _call_cerebras_for_questions(module, context, question_count)
     if status != 'success' or not raw_payload:
-        # In strict assessments mode do not fall back to generic questions.
         if getattr(settings, 'CEREBRAS_STRICT_ASSESSMENTS', True):
-            logger.warning(f"Module {getattr(module, 'id', '?')}: AI generation failed ({status}), not creating assessment: {msg}")
-            return None
-        # If not strict, we could fall back (kept for backward compatibility)
+            logger.warning(
+                f"Module {getattr(module, 'id', '?')}: AI generation failed ({status}), leaving quiz in progress/failure state: {msg}"
+            )
+            _mark_quiz_generation_state(existing, 'failed', msg)
+            return existing
+
         questions = _normalise_questions(_fallback_questions(module, context, question_count), question_count)
     else:
         questions = _normalise_questions(raw_payload, question_count)
 
-    quiz = existing or Quiz.objects.create(
-        course=module.course,
-        module=module,
-        title=f"{module.title} Mastery Check",
-        description=(
-            "AI-generated assessment based on this module's content. "
-            "Score 70% or higher to unlock the next module."
-        ),
-        category='practice',
-        pass_mark=70,
-        answers_at_end=True,
-        exam_paper=True,
-        draft=False,
-    )
+    quiz = existing
 
-    if force:
+    if force or quiz.generation_status != 'ready':
         quiz.questions.all().delete()
 
     for order, item in enumerate(questions, start=1):
@@ -217,4 +309,61 @@ def ensure_module_assessment(module, question_count=DEFAULT_QUESTION_COUNT, forc
                 correct=choice_index == item['correct_index'],
             )
 
+    _mark_quiz_generation_state(quiz, 'ready', 'Quiz is ready.')
+    return quiz
+
+
+def queue_module_assessment_generation(module, student=None, question_count=DEFAULT_QUESTION_COUNT):
+    if getattr(module, 'skip_assessment', False):
+        return None
+
+    quiz = _get_personal_assessment_quiz(module, student) if student else _get_existing_assessment_quiz(module, student=student)
+    if quiz and quiz.generation_status == 'ready' and quiz.questions.exists():
+        return quiz
+
+    if quiz is None:
+        quiz = _create_assessment_quiz(module, student=student)
+    else:
+        quiz.generation_status = 'processing'
+        quiz.generation_message = 'Quiz is being prepared.'
+        quiz.generation_started_at = timezone.now()
+        quiz.generation_completed_at = None
+        quiz.save(update_fields=['generation_status', 'generation_message', 'generation_started_at', 'generation_completed_at'])
+
+    module_id = module.id
+    student_id = student.id if student else None
+
+    if 'test' in sys.argv:
+        from .models import CourseModule, LMSProfile
+
+        module_obj = CourseModule.objects.get(pk=module_id)
+        student_obj = LMSProfile.objects.filter(pk=student_id).first() if student_id else None
+        return ensure_module_assessment(module_obj, student=student_obj, question_count=question_count, force=True)
+
+    def worker():
+        close_old_connections()
+        try:
+            from .models import CourseModule, LMSProfile
+
+            module_obj = CourseModule.objects.get(pk=module_id)
+            student_obj = LMSProfile.objects.filter(pk=student_id).first() if student_id else None
+            ensure_module_assessment(module_obj, student=student_obj, question_count=question_count, force=True)
+        except Exception as exc:
+            logger.exception(
+                "Module %s: background assessment generation failed for student %s: %s",
+                module_id,
+                student_id,
+                exc,
+            )
+            if quiz.pk:
+                Quiz.objects.filter(pk=quiz.pk).update(
+                    generation_status='failed',
+                    generation_message=str(exc),
+                    generation_completed_at=timezone.now(),
+                )
+        finally:
+            close_old_connections()
+
+    thread = threading.Thread(target=worker, daemon=True)
+    thread.start()
     return quiz

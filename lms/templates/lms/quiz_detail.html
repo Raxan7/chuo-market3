@@ -5,10 +5,36 @@
 
 {% block main-content %}
 <div class="container my-5">
+    {% if is_generating %}
+        <script>
+            setTimeout(function () {
+                window.location.reload();
+            }, 10000);
+        </script>
+    {% endif %}
     <div class="row mb-4">
         <div class="col-md-8">
             <h1>{{ quiz.title }}</h1>
             <div class="lead">{{ quiz.description|safe }}</div>
+
+            {% if is_generating %}
+                <div class="alert alert-info shadow-sm">
+                    <h4 class="alert-heading">Creating your personalized quiz</h4>
+                    <p class="mb-1">The assessment is being generated in the background. You can stay on this page and it will refresh automatically.</p>
+                    {% if generation_message %}
+                        <p class="mb-0"><strong>Status:</strong> {{ generation_message }}</p>
+                    {% endif %}
+                </div>
+            {% elif generation_failed %}
+                <div class="alert alert-warning shadow-sm">
+                    <h4 class="alert-heading">Quiz creation needs a retry</h4>
+                    {% if generation_message %}
+                        <p class="mb-0">{{ generation_message }}</p>
+                    {% else %}
+                        <p class="mb-0">The personalized quiz could not be prepared yet. Please try again shortly.</p>
+                    {% endif %}
+                </div>
+            {% endif %}
             
             <div class="card shadow-sm mb-4">
                 <div class="card-body">
@@ -107,6 +133,10 @@
                                     </div>
                                 </div>
                             </div>
+                        {% elif is_generating %}
+                            Your personalized quiz is still being prepared. Please wait or refresh this page.
+                        {% elif generation_failed %}
+                            The personalized quiz could not be created right now. Please refresh after a short while.
                         {% elif module_locked %}
                             Complete the previous module with at least 70% before starting this assessment.
                         {% elif past_due %}

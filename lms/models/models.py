@@ -386,6 +386,13 @@ class Quiz(models.Model):
     """
     Quiz model for assessments
     """
+    GENERATION_STATUS_CHOICES = (
+        ('pending', _('Pending')),
+        ('processing', _('Processing')),
+        ('ready', _('Ready')),
+        ('failed', _('Failed')),
+    )
+
     course = models.ForeignKey(Course, on_delete=models.CASCADE)
     title = models.CharField(verbose_name=_("Title"), max_length=60)
     slug = models.SlugField(unique=True, blank=True)
@@ -395,6 +402,14 @@ class Quiz(models.Model):
         help_text=_("A detailed description of the quiz")
     )
     module = models.ForeignKey(CourseModule, on_delete=models.CASCADE, related_name='quizzes', null=True, blank=True)
+    generated_for = models.ForeignKey(
+        LMSProfile,
+        on_delete=models.CASCADE,
+        related_name='generated_quizzes',
+        null=True,
+        blank=True,
+        help_text=_("When set, this quiz is personalized for one enrolled learner.")
+    )
     category = models.CharField(max_length=20, choices=CATEGORY_OPTIONS, blank=True)
     random_order = models.BooleanField(
         default=False,
@@ -432,6 +447,15 @@ class Quiz(models.Model):
         )
     )
     due_date = models.DateTimeField(blank=True, null=True)
+    generation_status = models.CharField(
+        max_length=20,
+        choices=GENERATION_STATUS_CHOICES,
+        default='ready',
+        help_text=_("Tracks whether a personalized assessment is being prepared.")
+    )
+    generation_message = models.TextField(blank=True, default='')
+    generation_started_at = models.DateTimeField(blank=True, null=True)
+    generation_completed_at = models.DateTimeField(blank=True, null=True)
     timestamp = models.DateTimeField(auto_now=True)
     
     class Meta:
@@ -441,6 +465,19 @@ class Quiz(models.Model):
     
     def __str__(self):
         return self.title
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            base_slug = slugify(self.title) or 'quiz'
+            suffix_parts = [base_slug]
+            if self.module_id:
+                suffix_parts.append(str(self.module_id))
+            if self.generated_for_id:
+                suffix_parts.append(str(self.generated_for_id))
+            suffix_parts.append(uuid.uuid4().hex[:8])
+            self.slug = slugify('-'.join(suffix_parts))[:100]
+
+        super().save(*args, **kwargs)
     
     def get_absolute_url(self):
         return reverse("lms:quiz_detail", kwargs={"slug": self.slug})

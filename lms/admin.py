@@ -79,17 +79,17 @@ class CourseContentAdmin(admin.ModelAdmin):
 
 @admin.register(Quiz)
 class QuizAdmin(admin.ModelAdmin):
-    list_display = ('title', 'course', 'category', 'draft', 'due_date')
-    list_filter = ('course', 'category', 'draft')
+    list_display = ('title', 'course', 'generated_for', 'generation_status', 'category', 'draft', 'due_date')
+    list_filter = ('course', 'category', 'draft', 'generation_status')
     search_fields = ('title', 'description')
     prepopulated_fields = {'slug': ('title',)}
     filter_horizontal = ()
     fieldsets = (
         (None, {
-            'fields': ('course', 'module', 'title', 'slug', 'description', 'category')
+            'fields': ('course', 'module', 'generated_for', 'title', 'slug', 'description', 'category')
         }),
         (_('Options'), {
-            'fields': ('random_order', 'answers_at_end', 'exam_paper', 'single_attempt', 'pass_mark', 'draft', 'due_date')
+            'fields': ('random_order', 'answers_at_end', 'exam_paper', 'single_attempt', 'pass_mark', 'draft', 'due_date', 'generation_status', 'generation_message', 'generation_started_at', 'generation_completed_at')
         })
     )
 

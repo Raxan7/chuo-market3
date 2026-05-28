@@ -91,10 +91,20 @@ def get_previous_module(module):
     ).order_by('-order', '-id').first()
 
 
-def get_module_assessment(module):
+def get_module_assessment(module, student=None):
     if getattr(module, 'skip_assessment', False):
         return None
-    return Quiz.objects.filter(module=module, draft=False).order_by('id').first()
+
+    if student:
+        personal_quiz = Quiz.objects.filter(
+            module=module,
+            generated_for=student,
+            draft=False,
+        ).order_by('-id').first()
+        if personal_quiz:
+            return personal_quiz
+
+    return Quiz.objects.filter(module=module, draft=False).order_by('generated_for', 'id').first()
 
 
 def is_first_module(module):
@@ -165,8 +175,17 @@ def get_module_progress_states(course, student):
     for index, module in enumerate(modules):
         progress = progress_map.get(module.id)
         unlocked = index == 0 or previous_completed
-        assessment = get_module_assessment(module)
-        assessment_status = 'ready' if assessment else 'not_ready'
+        assessment = get_module_assessment(module, student=student)
+        if not assessment:
+            assessment_status = 'not_ready'
+        elif assessment.generation_status in {'pending', 'processing'}:
+            assessment_status = 'processing'
+        elif assessment.generation_status == 'failed' and not assessment.questions.exists():
+            assessment_status = 'failed'
+        elif assessment.questions.exists():
+            assessment_status = 'ready'
+        else:
+            assessment_status = 'not_ready'
         completed = bool(progress and progress.completed)
         states.append({
             'module': module,

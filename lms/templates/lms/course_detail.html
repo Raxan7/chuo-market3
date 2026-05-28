@@ -398,8 +398,12 @@
                                             </div>
                                             {% if state.skip_assessment %}
                                                 <span class="badge bg-success align-self-start">No quiz required</span>
-                                            {% elif state.assessment %}
+                                            {% elif state.assessment_status == 'ready' and state.assessment %}
                                                 <a href="{% url 'lms:quiz_detail' state.assessment.slug %}" class="btn btn-outline-primary btn-sm">Open Assessment</a>
+                                            {% elif state.assessment_status == 'processing' %}
+                                                <span class="badge bg-info text-dark align-self-start">Assessment is being prepared</span>
+                                            {% elif state.assessment_status == 'failed' %}
+                                                <span class="badge bg-danger align-self-start">Retry required</span>
                                             {% else %}
                                                 <span class="badge bg-secondary align-self-start">Assessment is being prepared</span>
                                             {% endif %}

@@ -3,7 +3,7 @@ from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
-from .ai_assessments import ensure_module_assessment
+from .ai_assessments import ensure_module_assessment, queue_module_assessment_generation
 from .models import Course, CourseContent, CourseEnrollment, LMSProfile, CourseModule, ContentAccess, QuizTaker
 from .utils import is_module_unlocked, update_module_content_completion, update_module_assessment_completion
 
@@ -115,6 +115,27 @@ class LMSModuleGatingTests(TestCase):
         self.assertTrue(progress.assessment_passed)
         self.assertTrue(progress.completed)
         self.assertTrue(is_module_unlocked(second_module, self.profile))
+
+    @override_settings(CEREBRAS_API_KEY=None, CEREBRAS_STRICT_ASSESSMENTS=False)
+    def test_enrollment_queues_personalized_assessment_for_student(self):
+        module = CourseModule.objects.create(
+            course=self.course,
+            title='Module 1',
+            description='First module',
+            order=0,
+        )
+
+        quiz = queue_module_assessment_generation(module, student=self.profile)
+
+        self.assertIsNotNone(quiz)
+        self.assertEqual(quiz.generated_for, self.profile)
+        self.assertEqual(quiz.generation_status, 'ready')
+        self.assertGreater(quiz.questions.count(), 0)
+
+        response = self.client.get(reverse('lms:quiz_detail', kwargs={'slug': quiz.slug}), follow=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.context['quiz_is_ready'])
+        self.assertFalse(response.context['is_generating'])
 
     def test_locked_modules_render_as_disabled_controls(self):
         first_module = CourseModule.objects.create(

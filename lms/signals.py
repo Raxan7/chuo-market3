@@ -7,7 +7,8 @@ from django.dispatch import receiver
 from django.contrib.auth.models import User
 from django.db.models import Q
 from django.db import transaction
-from .models import LMSProfile, Course, CourseContent
+from .models import LMSProfile, Course, CourseContent, CourseEnrollment
+from .ai_assessments import queue_module_assessment_generation
 from core.newsletter import send_course_newsletter, send_course_content_newsletter
 
 
@@ -68,3 +69,21 @@ def notify_new_course_content(sender, instance, created, **kwargs):
         send_course_content_newsletter(instance, related_contents)
 
     transaction.on_commit(dispatch_newsletter)
+
+
+@receiver(post_save, sender=CourseEnrollment)
+def queue_assessment_generation_on_enrollment(sender, instance, created, **kwargs):
+    """Prepare personalized module assessments as soon as access is granted."""
+    if not instance.course:
+        return
+
+    should_queue = instance.course.is_free or instance.payment_status in {'not_required', 'approved'}
+    if not should_queue:
+        return
+
+    def dispatch_generation():
+        modules = instance.course.modules.exclude(skip_assessment=True).order_by('order', 'id')
+        for module in modules:
+            queue_module_assessment_generation(module, student=instance.student)
+
+    transaction.on_commit(dispatch_generation)
