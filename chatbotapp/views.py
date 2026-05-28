@@ -52,7 +52,7 @@ def _create_bot_reply(user_message):
     try:
         client = Cerebras(api_key=CEREBRAS_API_KEY)
         response = client.chat.completions.create(
-            model="llama3.1-8b",
+            model="zai-glm-4.7",
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": user_message}

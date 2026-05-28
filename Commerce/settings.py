@@ -248,6 +248,12 @@ SESSION_IDLE_TIMEOUT = 31536000  # 1 year in seconds - effectively disabled
 # Cerebras AI configuration
 CEREBRAS_API_KEY = os.getenv('CEREBRAS_API_KEY')
 
+# Cerebras / assessment generation settings
+CEREBRAS_ASSESSMENT_MODEL = os.getenv('CEREBRAS_ASSESSMENT_MODEL', 'zai-glm-4.7')
+CEREBRAS_CONTEXT_LIMIT = int(os.getenv('CEREBRAS_CONTEXT_LIMIT', '12000'))
+# When True, do not fall back to generic static questions; require AI-generated assessments only
+CEREBRAS_STRICT_ASSESSMENTS = os.getenv('CEREBRAS_STRICT_ASSESSMENTS', 'True').lower() in ('1', 'true', 'yes')
+
 # Only raise error if not in test mode or check command
 import sys
 if not CEREBRAS_API_KEY and 'test' not in sys.argv and 'check' not in sys.argv:

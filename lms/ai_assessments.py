@@ -36,25 +36,38 @@ def collect_module_learning_context(module):
 
         parts.append(f"Content item: {content.title}\n{body}")
 
-    return Truncator("\n\n".join(parts)).chars(12000)
+    limit = getattr(settings, 'CEREBRAS_CONTEXT_LIMIT', 12000)
+    return Truncator("\n\n".join(parts)).chars(limit)
 
 
 def _call_cerebras_for_questions(module, context, question_count):
+    """Call Cerebras API and return (payload_dict, status, message).
+
+    status is one of: 'success', 'missing_api_key', 'sdk_error', 'api_error', 'invalid_json'
+    """
     api_key = getattr(settings, 'CEREBRAS_API_KEY', None)
     if not api_key:
-        return None
+        msg = f"Module {getattr(module, 'id', '?')}: missing CEREBRAS_API_KEY"
+        logger.warning(msg)
+        return None, 'missing_api_key', msg
 
     try:
         from cerebras.cloud.sdk import Cerebras
-    except Exception:
-        logger.exception("Cerebras SDK is unavailable; using fallback assessment generator.")
-        return None
+    except Exception as exc:
+        msg = f"Module {getattr(module, 'id', '?')}: Cerebras SDK import failed: {exc}"
+        logger.exception(msg)
+        return None, 'sdk_error', msg
 
     prompt = f"""
 You are creating a mastery check for an online course module.
-Use only the module content below. Generate exactly {question_count} multiple choice questions.
-Each question must test understanding, not trivia. Each item must have 4 choices, exactly one correct answer, and a short explanation.
-Return strict JSON only in this shape:
+Use ONLY the module content below. Generate exactly {question_count} multiple choice questions.
+Each question must:
+- Test deep understanding of the module content
+- Have 4 distinct choices
+- Have exactly one correct answer
+- Include a brief learning explanation tied to the module content
+
+Return ONLY valid JSON in this exact shape (no Markdown, no code fences):
 {{"questions":[{{"question":"...","choices":["...","...","...","..."],"correct_index":0,"explanation":"..."}}]}}
 
 MODULE CONTENT:
@@ -64,7 +77,7 @@ MODULE CONTENT:
     try:
         client = Cerebras(api_key=api_key)
         response = client.chat.completions.create(
-            model=getattr(settings, 'CEREBRAS_ASSESSMENT_MODEL', 'llama3.1-8b'),
+            model=getattr(settings, 'CEREBRAS_ASSESSMENT_MODEL', 'zai-glm-4.7'),
             messages=[
                 {"role": "system", "content": "Return valid JSON only. Do not wrap it in Markdown."},
                 {"role": "user", "content": prompt},
@@ -73,10 +86,18 @@ MODULE CONTENT:
             max_tokens=3000,
         )
         payload = response.choices[0].message.content
-        return json.loads(payload)
-    except Exception:
-        logger.exception("AI assessment generation failed; using fallback assessment generator.")
-        return None
+        try:
+            parsed = json.loads(payload)
+            return parsed, 'success', 'ok'
+        except json.JSONDecodeError as je:
+            msg = f"Module {getattr(module, 'id', '?')}: invalid JSON from Cerebras: {je}"
+            logger.error(msg)
+            logger.debug("Payload start: %s", payload[:500])
+            return None, 'invalid_json', msg
+    except Exception as exc:
+        msg = f"Module {getattr(module, 'id', '?')}: Cerebras API call failed: {type(exc).__name__}: {exc}"
+        logger.exception(msg)
+        return None, 'api_error', msg
 
 
 def _fallback_questions(module, context, question_count):
@@ -153,10 +174,16 @@ def ensure_module_assessment(module, question_count=DEFAULT_QUESTION_COUNT, forc
         return existing
 
     context = collect_module_learning_context(module)
-    raw_payload = _call_cerebras_for_questions(module, context, question_count)
-    questions = _normalise_questions(raw_payload, question_count)
-    if len(questions) < question_count:
+    raw_payload, status, msg = _call_cerebras_for_questions(module, context, question_count)
+    if status != 'success' or not raw_payload:
+        # In strict assessments mode do not fall back to generic questions.
+        if getattr(settings, 'CEREBRAS_STRICT_ASSESSMENTS', True):
+            logger.warning(f"Module {getattr(module, 'id', '?')}: AI generation failed ({status}), not creating assessment: {msg}")
+            return None
+        # If not strict, we could fall back (kept for backward compatibility)
         questions = _normalise_questions(_fallback_questions(module, context, question_count), question_count)
+    else:
+        questions = _normalise_questions(raw_payload, question_count)
 
     quiz = existing or Quiz.objects.create(
         course=module.course,

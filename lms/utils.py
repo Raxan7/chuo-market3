@@ -166,9 +166,7 @@ def get_module_progress_states(course, student):
         progress = progress_map.get(module.id)
         unlocked = index == 0 or previous_completed
         assessment = get_module_assessment(module)
-        if assessment is None and not getattr(module, 'skip_assessment', False):
-            from .ai_assessments import ensure_module_assessment
-            assessment = ensure_module_assessment(module)
+        assessment_status = 'ready' if assessment else 'not_ready'
         completed = bool(progress and progress.completed)
         states.append({
             'module': module,
@@ -176,6 +174,7 @@ def get_module_progress_states(course, student):
             'unlocked': unlocked,
             'completed': completed,
             'assessment': assessment,
+            'assessment_status': assessment_status,
             'skip_assessment': getattr(module, 'skip_assessment', False),
             'content_completed': bool(progress and progress.content_completed),
             'assessment_passed': bool(progress and progress.assessment_passed),

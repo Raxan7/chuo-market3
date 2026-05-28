@@ -38,7 +38,7 @@ class LMSModuleGatingTests(TestCase):
             order=1,
         )
 
-    @override_settings(CEREBRAS_API_KEY=None)
+    @override_settings(CEREBRAS_API_KEY=None, CEREBRAS_STRICT_ASSESSMENTS=False)
     def test_overview_module_skips_assessment_and_unlocks_next_module(self):
         overview_module = CourseModule.objects.create(
             course=self.course,
@@ -65,6 +65,9 @@ class LMSModuleGatingTests(TestCase):
         self.assertTrue(progress.completed)
         self.assertTrue(is_module_unlocked(next_module, self.profile))
 
+        # Ensure non-overview module has an assessment available for UI
+        ensure_module_assessment(next_module)
+
         response = self.client.get(reverse('lms:course_detail', kwargs={'slug': self.course.slug}), follow=True)
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.context['module_states'][0]['skip_assessment'])
@@ -74,7 +77,7 @@ class LMSModuleGatingTests(TestCase):
         self.assertIsNotNone(response.context['module_states'][1]['assessment'])
         self.assertContains(response, 'Open Assessment')
 
-    @override_settings(CEREBRAS_API_KEY=None)
+    @override_settings(CEREBRAS_API_KEY=None, CEREBRAS_STRICT_ASSESSMENTS=False)
     def test_generated_assessment_is_required_before_next_module_unlocks(self):
         first_module = CourseModule.objects.create(
             course=self.course,
@@ -128,6 +131,9 @@ class LMSModuleGatingTests(TestCase):
         )
         self._create_content(first_module)
         self._create_content(second_module, title='Lesson 2')
+
+        # Ensure second module has an assessment available for UI
+        ensure_module_assessment(second_module)
 
         response = self.client.get(reverse('lms:course_detail', kwargs={'slug': self.course.slug}), follow=True)
         self.assertEqual(response.status_code, 200)
