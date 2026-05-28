@@ -71,6 +71,15 @@ urlpatterns = [
     # Grades
     path('grades/', views.GradeListView.as_view(), name='grade_list'),
     path('courses/<slug:course_slug>/grade-students/', views.grade_students, name='grade_students'),
+
+    # Certificates
+    path('certificates/templates/', views.CertificateTemplateListView.as_view(), name='certificate_template_list'),
+    path('certificates/templates/create/', views.CertificateTemplateCreateView.as_view(), name='certificate_template_create'),
+    path('certificates/templates/<int:pk>/edit/', views.CertificateTemplateUpdateView.as_view(), name='certificate_template_edit'),
+    path('certificates/templates/<int:pk>/preview/', views.CertificateTemplatePreviewView.as_view(), name='certificate_template_preview'),
+    path('certificates/templates/<int:pk>/publish/', views.publish_certificate_template, name='certificate_template_publish'),
+    path('certificates/verify/<str:certificate_id>/', views.verify_certificate, name='certificate_verify'),
+    path('certificates/<str:certificate_id>/download/', views.download_certificate, name='certificate_download'),
     
     # Instructor Request
     path('become-instructor/', views.request_instructor_role, name='request_instructor_role'),

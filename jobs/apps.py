@@ -10,4 +10,4 @@ class JobsConfig(AppConfig):
         Initialize job functionality when the app is ready.
         Note: APScheduler has been removed from the project.
         """
-        pass
+        import jobs.signals

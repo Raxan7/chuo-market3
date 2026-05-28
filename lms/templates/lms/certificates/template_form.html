@@ -1,0 +1,127 @@
+{% extends "app/base.html" %}
+{% load widget_tweaks %}
+
+{% block title %}Certificate Template{% endblock title %}
+
+{% block main-content %}
+<div class="container-fluid my-4 px-3 px-xl-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="mb-1">{% if form.instance.pk %}Edit Certificate Template{% else %}Create Certificate Template{% endif %}</h1>
+            <p class="text-muted mb-0">Configure the certificate learners earn after completing every module.</p>
+        </div>
+        <a href="{% url 'lms:certificate_template_list' %}" class="btn btn-outline-secondary">Cancel</a>
+    </div>
+
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="row g-4">
+            <div class="col-xl-7">
+                {% if form.non_field_errors %}
+                <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+                {% endif %}
+
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-white"><h2 class="h5 mb-0">Certificate Basic Information</h2></div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            {% for field in form.visible_fields|slice:":8" %}
+                            <div class="{% if field.name == 'description' %}col-12{% else %}col-md-6{% endif %}">
+                                <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                                {{ field }}
+                                {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+                                {% if field.errors %}<div class="text-danger small">{{ field.errors }}</div>{% endif %}
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-white"><h2 class="h5 mb-0">Certificate Design Settings</h2></div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            {% for field in form.visible_fields|slice:"8:17" %}
+                            <div class="col-md-4">
+                                <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                                {{ field }}
+                                {% if field.errors %}<div class="text-danger small">{{ field.errors }}</div>{% endif %}
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-white"><h2 class="h5 mb-0">Branding and Media</h2></div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            {% for field in form.visible_fields|slice:"17:21" %}
+                            <div class="col-md-6">
+                                <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                                <div class="border rounded p-3 bg-light">{{ field }}</div>
+                                <div class="form-text">PNG, JPG, or SVG where supported.</div>
+                                {% if field.errors %}<div class="text-danger small">{{ field.errors }}</div>{% endif %}
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-white"><h2 class="h5 mb-0">Certificate Content Customization</h2></div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            {% for field in form.visible_fields|slice:"21:28" %}
+                            <div class="{% if field.name == 'certificate_body' or field.name == 'footer_note' %}col-12{% else %}col-md-6{% endif %}">
+                                <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                                {{ field }}
+                                {% if field.errors %}<div class="text-danger small">{{ field.errors }}</div>{% endif %}
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <div class="alert alert-light border mt-3 mb-0 small">
+                            {% verbatim %}
+                            Dynamic placeholders: <code>{{ student_name }}</code>, <code>{{ course_title }}</code>,
+                            <code>{{ completion_date }}</code>, <code>{{ instructor_name }}</code>,
+                            <code>{{ certificate_id }}</code>, <code>{{ organization_name }}</code>
+                            {% endverbatim %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-white"><h2 class="h5 mb-0">Verification Settings</h2></div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            {% for field in form.visible_fields|slice:"28:" %}
+                            <div class="col-md-6">
+                                <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                                {{ field }}
+                                {% if field.errors %}<div class="text-danger small">{{ field.errors }}</div>{% endif %}
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex gap-2 justify-content-end mb-4">
+                    <button type="submit" name="certificate_action" value="draft" class="btn btn-outline-primary">Save as Draft</button>
+                    <button type="submit" name="certificate_action" value="publish" class="btn btn-primary">Publish Certificate</button>
+                </div>
+            </div>
+
+            <div class="col-xl-5">
+                <div class="sticky-top" style="top: 90px;">
+                    <div class="card shadow-sm">
+                        <div class="card-header bg-white"><h2 class="h5 mb-0">Live Certificate Preview</h2></div>
+                        <div class="card-body">
+                            {% include "lms/certificates/preview_card.html" with template=form.instance %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock main-content %}

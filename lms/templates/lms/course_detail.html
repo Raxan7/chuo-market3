@@ -301,111 +301,111 @@
                     {% endif %}
                 </div>
                 <div class="card-body">
-                    {% if not is_enrolled and not is_course_instructor %}
-                    <div class="alert alert-info mb-4">
-                        <div class="d-flex">
-                            <div class="me-3">
-                                <i class="fas fa-info-circle fa-2x"></i>
-                            </div>
-                            <div>
-                                <h5 class="alert-heading">Viewing Preview</h5>
-                                <p>You can view this course without enrolling. Your progress won't be saved unless you <strong>login and enroll</strong>.</p>
-                                {% if user.is_authenticated %}
-                                <div class="mt-3">
-                                    <a href="{% url 'lms:enroll_course' slug=course.slug %}" class="btn btn-success">
-                                        <i class="fas fa-user-plus me-2"></i>Enroll to Save Progress
-                                    </a>
-                                </div>
-                                {% else %}
-                                <div class="mt-3">
-                                    <a href="{% url 'login' %}?next={% url 'lms:enroll_course' slug=course.slug %}" class="btn btn-primary">
-                                        <i class="fas fa-sign-in-alt me-2"></i>Login to Enroll
-                                    </a>
-                                </div>
-                                {% endif %}
-                            </div>
+                    {% if issued_certificate %}
+                    <div class="alert alert-success d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
+                        <div>
+                            <strong>Course completed.</strong> Your certificate is ready.
                         </div>
-                    </div>
-
-                    {% if modules %}
-                    <!-- Unauthenticated users can preview content; show preview notice -->
-                    {% if not is_authenticated and can_view_content %}
-                    <div class="alert alert-info mb-4">
-                        <i class="fas fa-info-circle me-2"></i>
-                        You're previewing this course. <a href="{% url 'login' %}?next={% url 'lms:enroll_course' slug=course.slug %}" class="alert-link">Login to enroll</a> to save your progress.
+                        <a href="{% url 'lms:certificate_download' issued_certificate.certificate_id %}" class="btn btn-success btn-sm">Download Certificate</a>
                     </div>
                     {% endif %}
+
+                    {% if not is_enrolled and not is_course_instructor %}
+                    <div class="alert alert-info mb-4">
+                        <h5 class="alert-heading">Modules are locked</h5>
+                        <p>Enroll to start module 1. Each next module opens after you complete the previous module and score at least 70% on its mastery check.</p>
+                        {% if user.is_authenticated %}
+                        <a href="{% url 'lms:enroll_course' slug=course.slug %}" class="btn btn-success">Enroll in this Course</a>
+                        {% else %}
+                        <a href="{% url 'login' %}?next={% url 'lms:enroll_course' slug=course.slug %}" class="btn btn-primary">Login to Enroll</a>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+
+                    {% if not has_access and is_enrolled and not course.is_free and not is_course_instructor %}
+                    <div class="alert alert-warning">
+                        Payment approval is required before modules can be opened.
+                        <a href="{% url 'lms:payment_form' slug=course.slug %}" class="alert-link">Submit payment proof</a>.
+                    </div>
+                    {% endif %}
+
+                    {% if module_states %}
                     <div class="accordion" id="moduleAccordion">
-                        {% for module in modules %}
+                        {% for state in module_states %}
+                        {% with module=state.module %}
                         <div class="accordion-item">
                             <h2 class="accordion-header" id="heading{{ module.id }}">
-                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" 
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
                                         data-bs-target="#collapse{{ module.id }}" aria-expanded="false" aria-controls="collapse{{ module.id }}">
-                                    {{ module.title }}
+                                    <span class="me-2">{{ module.title }}</span>
                                     {% if is_course_instructor %}
-                                    <div class="ms-2" onclick="event.stopPropagation();">
-                                        <a href="{% url 'lms:module_update' course_slug=course.slug module_id=module.id %}" 
-                                           class="btn btn-sm btn-outline-secondary me-2">
-                                            <i class="fas fa-edit me-1"></i>Edit
-                                        </a>
-                                        <a href="{% url 'lms:module_delete' course_slug=course.slug module_id=module.id %}" 
-                                           class="btn btn-sm btn-outline-danger"
-                                           onclick="return confirm('Are you sure you want to delete this module? This action cannot be undone.');">
-                                            <i class="fas fa-trash me-1"></i>Delete
-                                        </a>
-                                    </div>
+                                        <span class="badge bg-info">Instructor</span>
+                                    {% elif state.completed %}
+                                        <span class="badge bg-success">Completed</span>
+                                    {% elif state.unlocked %}
+                                        <span class="badge bg-primary">Unlocked</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary"><i class="fas fa-lock me-1"></i>Locked</span>
                                     {% endif %}
                                 </button>
                             </h2>
-                            <div id="collapse{{ module.id }}" class="accordion-collapse collapse" 
+                            <div id="collapse{{ module.id }}" class="accordion-collapse collapse"
                                  aria-labelledby="heading{{ module.id }}" data-bs-parent="#moduleAccordion">
                                 <div class="accordion-body">
                                     <div class="module-description">{{ module.description|safe }}</div>
-                                    
-                                    {% if module.contents.all %}
+                                    {% if not state.unlocked and not is_course_instructor %}
+                                    <div class="alert alert-secondary">Complete the previous module and score 70% or higher to unlock this module.</div>
+                                    {% endif %}
+
                                     <h5 class="mt-3">Module Content</h5>
-                                    <ul class="list-group">
+                                    {% if module.contents.all %}
+                                    <ul class="list-group mb-3">
                                         {% for content in module.contents.all %}
-                                        {% if has_access or is_course_instructor or can_view_content %}
-                                        <li class="list-group-item">
-                                            <div class="d-flex justify-content-between align-items-center">
-                                                <div>
-                                                    <i class="fas 
-                                                    {% if content.content_type == 'document' %}fa-file-pdf
-                                                    {% elif content.content_type == 'video' %}fa-video
-                                                    {% elif content.content_type == 'link' %}fa-link
-                                                    {% else %}fa-file-alt{% endif %} me-2"></i>
-                                                    <a href="{% url 'lms:content_detail' course_slug=course.slug content_id=content.id %}">
-                                                        {{ content.title }}
-                                                    </a>
-                                                    <span class="badge bg-secondary ms-2">{{ content.get_content_type_display }}</span>
-                                                </div>
-                                                {% if is_course_instructor %}
-                                                <a href="{% url 'lms:content_update' course_slug=course.slug content_id=content.id %}" 
-                                                   class="btn btn-sm btn-outline-secondary">Edit</a>
+                                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <i class="fas {% if content.content_type == 'document' %}fa-file-pdf{% elif content.content_type == 'video' %}fa-video{% elif content.content_type == 'link' %}fa-link{% else %}fa-file-alt{% endif %} me-2"></i>
+                                                {% if state.unlocked or is_course_instructor %}
+                                                <a href="{% url 'lms:content_detail' course_slug=course.slug content_id=content.id %}">{{ content.title }}</a>
+                                                {% else %}
+                                                <span class="text-muted">{{ content.title }}</span>
                                                 {% endif %}
+                                                <span class="badge bg-secondary ms-2">{{ content.get_content_type_display }}</span>
                                             </div>
+                                            {% if is_course_instructor %}
+                                            <a href="{% url 'lms:content_update' course_slug=course.slug content_id=content.id %}" class="btn btn-sm btn-outline-secondary">Edit</a>
+                                            {% endif %}
                                         </li>
-                                        {% else %}
-                                        <!-- Only show limited info for premium content -->
-                                        <li class="list-group-item text-muted">
-                                            <i class="fas fa-lock me-2"></i> {{ content.title }} <span class="badge bg-warning">Premium Content</span>
-                                        </li>
-                                        {% endif %}
                                         {% endfor %}
                                     </ul>
                                     {% else %}
-                                    <p class="text-muted mt-3">No content available for this module yet.</p>
+                                    <p class="text-muted">No content available for this module yet.</p>
                                     {% endif %}
-                                    
+
+                                    <div class="border rounded p-3 bg-light">
+                                        <div class="d-flex flex-column flex-md-row justify-content-between gap-2">
+                                            <div>
+                                                <strong>Mastery check</strong>
+                                                <div class="small text-muted">AI-generated from this module. Passing score: 70%.</div>
+                                                {% if state.best_score %}<div class="small">Best score: {{ state.best_score }}%</div>{% endif %}
+                                            </div>
+                                            {% if state.assessment %}
+                                                {% if state.unlocked or is_course_instructor %}
+                                                <a href="{% url 'lms:quiz_detail' state.assessment.slug %}" class="btn btn-outline-primary btn-sm">Open Assessment</a>
+                                                {% else %}
+                                                <span class="btn btn-outline-secondary btn-sm disabled">Locked</span>
+                                                {% endif %}
+                                            {% else %}
+                                                <span class="badge bg-secondary align-self-start">Available after content completion</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+
                                     {% if is_course_instructor %}
                                     <div class="mt-3">
-                                        <a href="{% url 'lms:content_create' course_slug=course.slug module_id=module.id %}" 
-                                           class="btn btn-sm btn-outline-primary">
+                                        <a href="{% url 'lms:content_create' course_slug=course.slug module_id=module.id %}" class="btn btn-sm btn-outline-primary">
                                             <i class="fas fa-plus"></i> Add Content
                                         </a>
-                                        <a href="{% url 'lms:quiz_create_in_module' course_slug=course.slug module_id=module.id %}" 
-                                           class="btn btn-sm btn-outline-info ms-2">
+                                        <a href="{% url 'lms:quiz_create_in_module' course_slug=course.slug module_id=module.id %}" class="btn btn-sm btn-outline-info ms-2">
                                             <i class="fas fa-question-circle"></i> Add Quiz
                                         </a>
                                     </div>
@@ -413,67 +413,23 @@
                                 </div>
                             </div>
                         </div>
+                        {% endwith %}
                         {% endfor %}
                     </div>
-                    {% else %}
-                    <p class="text-muted">No modules have been created for this course yet.</p>
-                    {% endif %}
-
-                    {% else %}
-                    <!-- Check if user has access to this content -->
-                    {% if not has_access and is_enrolled and not course.is_free and not is_course_instructor %}
-                        <div class="alert alert-warning">
-                            <div class="text-center">
-                                <i class="fas fa-lock fa-3x mb-3"></i>
-                                <h4>Premium Content</h4>
-                                <p>This content is only available after payment approval.</p>
-                                
-                                {% if payment_status == 'pending' %}
-                                    <p>Your payment is being processed. This usually takes just a few minutes.</p>
-                                    <a href="{% url 'lms:payment_pending' slug=course.slug %}" class="btn btn-warning">
-                                        <i class="fas fa-clock"></i> View Payment Status
-                                    </a>
-                                {% else %}
-                                    <a href="{% url 'lms:payment_form' slug=course.slug %}" class="btn btn-primary">
-                                        <i class="fas fa-credit-card"></i> Make Payment
-                                    </a>
-                                {% endif %}
-                            </div>
-                        </div>
-                    {% endif %}
-
-                    {% if modules %}
+                    {% elif modules %}
                     <div class="list-group">
                         {% for module in modules %}
-                        <div class="list-group-item">
-                            <h5>{{ module.title }}</h5>
-                            <p>{{ module.description|safe }}</p>
-                            
-                            {% if module.contents.all %}
-                            <h6>Content</h6>
-                            <ul class="list-group">
-                                {% for content in module.contents.all %}
-                                {% if has_access or is_course_instructor or can_view_content %}
-                                <li class="list-group-item">
-                                    <a href="{% url 'lms:content_detail' course_slug=course.slug content_id=content.id %}">
-                                        {{ content.title }}
-                                    </a>
-                                </li>
-                                {% else %}
-                                <li class="list-group-item text-muted">
-                                    {{ content.title }} <span class="badge bg-warning">Premium Content</span>
-                                </li>
-                                {% endif %}
-                                {% endfor %}
-                            </ul>
-                            {% endif %}
+                        <div class="list-group-item d-flex justify-content-between align-items-start">
+                            <div>
+                                <h5>{{ module.title }}</h5>
+                                <p class="mb-0 text-muted">{{ module.description|striptags|truncatechars:140 }}</p>
+                            </div>
+                            <span class="badge bg-secondary"><i class="fas fa-lock me-1"></i>Locked</span>
                         </div>
                         {% endfor %}
                     </div>
                     {% else %}
                     <p class="text-muted">No modules have been created for this course yet.</p>
-                    {% endif %}
-
                     {% endif %}
                 </div>
             </div>

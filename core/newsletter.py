@@ -101,7 +101,13 @@ def build_related_items(items):
         related_items.append({
             'title': getattr(item, 'title', str(item)),
             'url': build_absolute_url(item_url) if item_url != '#' else item_url,
-            'summary': Truncator(strip_tags(getattr(item, 'summary', '') or getattr(item, 'description', '') or getattr(item, 'content', ''))).chars(120),
+            'summary': Truncator(strip_tags(
+                getattr(item, 'summary', '')
+                or getattr(item, 'description', '')
+                or getattr(item, 'content', '')
+                or getattr(item, 'text_content', '')
+                or getattr(item, 'requirements', '')
+            )).chars(120),
         })
     return related_items
 
@@ -136,6 +142,8 @@ def _send_content_newsletter_sync(instance, content_type, template_name, subject
         getattr(instance, 'summary', None)
         or getattr(instance, 'description', None)
         or getattr(instance, 'content', None)
+        or getattr(instance, 'text_content', None)
+        or getattr(instance, 'requirements', None)
         or ''
     )
     summary = Truncator(strip_tags(summary_source)).chars(180)
@@ -216,6 +224,26 @@ def send_course_newsletter(course, related_courses):
         'emails/newsletter/content_announcement.html',
         f'New course available: {course.title}',
         related_courses,
+    )
+
+
+def send_course_content_newsletter(content, related_contents):
+    return _run_content_newsletter_async(
+        content,
+        'course lesson',
+        'emails/newsletter/content_announcement.html',
+        f'New lesson in {content.module.course.title}: {content.title}',
+        related_contents,
+    )
+
+
+def send_job_newsletter(job, related_jobs):
+    return _run_content_newsletter_async(
+        job,
+        'job post',
+        'emails/newsletter/content_announcement.html',
+        f'New job post: {job.title}',
+        related_jobs,
     )
 
 

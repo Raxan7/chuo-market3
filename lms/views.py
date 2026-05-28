@@ -21,13 +21,13 @@ from .models import (
     LMSProfile, Program, Course, CourseModule, CourseContent, Quiz, Question,
     MCQuestion, Choice, TF_Question, Essay_Question, QuizTaker, StudentAnswer, ContentAccess,
     Grade, Semester, CourseEnrollment, ActivityLog, InstructorRequest, SiteSettings,
-    AdExemptUser, PaymentMethod
+    AdExemptUser, PaymentMethod, ModuleProgress, CertificateTemplate, StudentCertificate
 )
 from .forms import (
     LMSProfileForm, CourseForm, CourseModuleForm, CourseContentForm,
     QuizForm, MCQuestionForm, ChoiceForm, TFQuestionForm, EssayQuestionForm,
     GradeForm, CourseEnrollForm, EssayAnswerForm, InstructorRequestForm,
-    ProgramForm
+    ProgramForm, CertificateTemplateForm
 )
 
 from .forms import PaymentMethodForm
@@ -155,6 +155,27 @@ def is_course_instructor(user, course):
         return False
         
     return is_admin(user) or course.instructors.filter(id=user.lms_profile.id).exists()
+
+
+def get_question_kind(question):
+    """Return the concrete question instance for multi-table inherited questions."""
+    try:
+        return question.mcquestion
+    except MCQuestion.DoesNotExist:
+        pass
+    try:
+        return question.tf_question
+    except TF_Question.DoesNotExist:
+        pass
+    try:
+        return question.essay_question
+    except Essay_Question.DoesNotExist:
+        pass
+    return question
+
+
+def can_manage_course(user, course):
+    return is_course_instructor(user, course)
 
 
 class InstructorRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
@@ -380,9 +401,8 @@ class CourseDetailView(DetailView):
         student_profile = None
         enrollment = None
         payment_status = None
-        # Default: everyone can view course content (enrollment is optional)
-        has_access = True
-        can_view_content = True  # New flag for unauthenticated users
+        has_access = course.is_free
+        can_view_content = False
         
         if self.request.user.is_authenticated and hasattr(self.request.user, 'lms_profile'):
             student_profile = self.request.user.lms_profile
@@ -396,8 +416,7 @@ class CourseDetailView(DetailView):
                 # For enrolled users: access depends on course type and payment status
                 has_access = course.is_free or payment_status == 'approved'
             except CourseEnrollment.DoesNotExist:
-                # Enrolled users without payment approval on paid courses can still view
-                has_access = True
+                has_access = course.is_free
         
         # Check if user is instructor for this course
         is_course_instructor = False
@@ -409,9 +428,14 @@ class CourseDetailView(DetailView):
         
         # Get course progress if user is enrolled and has access
         course_progress = None
+        module_states = []
+        issued_certificate = None
         if is_enrolled and student_profile and has_access:
-            from .utils import calculate_course_progress
+            from .utils import calculate_course_progress, get_module_progress_states, issue_certificate_if_eligible
             course_progress = calculate_course_progress(course, student_profile)
+            module_states = get_module_progress_states(course, student_profile)
+            if course_progress.get('course_completed'):
+                issued_certificate = issue_certificate_if_eligible(course, student_profile)
             
         # Add is_free status to context
         context['is_free'] = course.is_free
@@ -421,6 +445,8 @@ class CourseDetailView(DetailView):
         if is_course_instructor:
             from .utils import get_all_enrolled_students_progress
             students_progress = get_all_enrolled_students_progress(course)
+            from .utils import get_module_progress_states
+            module_states = get_module_progress_states(course, self.request.user.lms_profile)
         
         # Get payment methods for premium courses
         payment_methods = None
@@ -433,6 +459,8 @@ class CourseDetailView(DetailView):
             'is_enrolled': is_enrolled,
             'is_course_instructor': is_course_instructor,
             'course_progress': course_progress,
+            'module_states': module_states,
+            'issued_certificate': issued_certificate,
             'students_progress': students_progress,
             'has_access': has_access,
             'can_view_content': can_view_content,  # Allow unauthenticated preview
@@ -526,6 +554,7 @@ class QuizDetailView(DetailView):
         previous_attempts = None
         completed_attempt = None
         user_score = None
+        module_locked = False
         
         context['is_authenticated'] = self.request.user.is_authenticated
         
@@ -553,8 +582,13 @@ class QuizDetailView(DetailView):
                 user_score = completed_attempt.get_score_percentage()
             
             if is_enrolled:
+                if quiz.module:
+                    from .utils import is_module_unlocked
+                    module_locked = not is_module_unlocked(quiz.module, profile)
+                if module_locked:
+                    can_take_quiz = False
                 # Check single attempt restriction
-                if quiz.single_attempt and completed_attempt:
+                elif quiz.single_attempt and completed_attempt and completed_attempt.score >= quiz.pass_mark:
                     can_take_quiz = False
                 else:
                     can_take_quiz = True
@@ -571,8 +605,10 @@ class QuizDetailView(DetailView):
             'is_enrolled': is_enrolled,
             'not_enrolled': not is_enrolled,
             'previous_attempts': previous_attempts,
+            'completed_attempt': completed_attempt,
             'has_already_taken': completed_attempt is not None,
             'user_score': user_score,
+            'module_locked': module_locked,
             'is_past_due': is_past_due,
             'past_due': is_past_due,
         })
@@ -600,33 +636,42 @@ def start_quiz(request, slug):
     if not is_enrolled:
         messages.error(request, _("You must be enrolled in the course to take this quiz."))
         return redirect('lms:quiz_detail', slug=quiz.slug)
+
+    if quiz.module:
+        from .utils import is_module_unlocked
+        if not is_module_unlocked(quiz.module, profile):
+            messages.error(request, _("Complete the previous module before taking this assessment."))
+            return redirect('lms:course_detail', slug=quiz.course.slug)
+
+        if not quiz.questions.exists():
+            from .ai_assessments import ensure_module_assessment
+            quiz = ensure_module_assessment(quiz.module)
     
     # Check single attempt restriction
-    if quiz.single_attempt:
-        completed_attempts = QuizTaker.objects.filter(
-            user=profile,
-            quiz=quiz,
-            completed=True
-        )
-        
-        if completed_attempts.exists():
-            messages.error(request, _("You have already completed this quiz and can only take it once."))
-            return redirect('lms:quiz_detail', slug=quiz.slug)
+    completed_attempt = QuizTaker.objects.filter(user=profile, quiz=quiz, completed=True).first()
+    if quiz.single_attempt and completed_attempt and completed_attempt.score >= quiz.pass_mark:
+        messages.error(request, _("You have already passed this quiz."))
+        return redirect('lms:quiz_detail', slug=quiz.slug)
     
     # Check if quiz is past due date
     if quiz.due_date and timezone.now() > quiz.due_date:
         messages.error(request, _("This quiz is past its due date."))
         return redirect('lms:quiz_detail', slug=quiz.slug)
+
+    if not quiz.questions.exists():
+        messages.error(request, _("This quiz does not have any questions yet."))
+        return redirect('lms:quiz_detail', slug=quiz.slug)
     
-    # Create new quiz taker instance or get existing incomplete one
-    quiz_taker, created = QuizTaker.objects.get_or_create(
-        user=profile,
-        quiz=quiz,
-        completed=False
-    )
-    
-    if created:
-        # Reset the start time for a new attempt
+    quiz_taker, created = QuizTaker.objects.get_or_create(user=profile, quiz=quiz)
+
+    if not created and quiz_taker.completed and quiz_taker.score < quiz.pass_mark:
+        quiz_taker.answers.all().delete()
+        quiz_taker.completed = False
+        quiz_taker.score = 0
+        quiz_taker.date_started = timezone.now()
+        quiz_taker.date_completed = None
+        quiz_taker.save()
+    elif created:
         quiz_taker.date_started = timezone.now()
         quiz_taker.save()
     
@@ -652,7 +697,7 @@ def quiz_question(request, quiz_id, quiz_taker_id, question_number):
         return redirect('lms:quiz_detail', slug=quiz.slug)
     
     # Get current question
-    question = questions[question_number - 1]
+    question = get_question_kind(questions[question_number - 1])
     
     # Handle form submission
     if request.method == 'POST':
@@ -661,7 +706,7 @@ def quiz_question(request, quiz_id, quiz_taker_id, question_number):
             # Handle multiple choice
             selected_choice_id = request.POST.get('choice')
             if selected_choice_id:
-                selected_choice = get_object_or_404(Choice, id=selected_choice_id)
+                selected_choice = get_object_or_404(Choice, id=selected_choice_id, question=question)
                 is_correct = question.check_if_correct(selected_choice)
                 
                 # Save answer
@@ -779,11 +824,27 @@ def complete_quiz(request, quiz_taker_id):
     quiz_taker.completed = True
     quiz_taker.date_completed = timezone.now()
     quiz_taker.save()
+
+    module_progress = None
+    issued_certificate = None
+    if quiz.module:
+        from .utils import update_module_assessment_completion, update_module_content_completion, issue_certificate_if_eligible
+        update_module_content_completion(quiz.module, quiz_taker.user)
+        module_progress = update_module_assessment_completion(quiz_taker)
+        if module_progress and module_progress.completed:
+            issued_certificate = issue_certificate_if_eligible(quiz.course, quiz_taker.user)
     
     # Create activity log
     ActivityLog.objects.create(
         message=_(f"User {request.user.username} completed quiz '{quiz.title}' with score {score_percentage:.1f}%.")
     )
+
+    if score_percentage >= ModuleProgress.PASSING_PERCENTAGE:
+        messages.success(request, _("Assessment passed. The next module is now unlocked."))
+        if issued_certificate:
+            messages.success(request, _("Congratulations! Your course certificate has been issued."))
+    else:
+        messages.warning(request, _("You need at least 70% to unlock the next module. Review the module and try again."))
     
     return redirect('lms:quiz_results', quiz_taker_id=quiz_taker.id)
 
@@ -826,6 +887,22 @@ def course_content_detail(request, course_slug, content_id):
         is_enrolled = CourseEnrollment.objects.filter(student=profile, course=course).exists()
         is_instructor = course.instructors.filter(id=profile.id).exists()
 
+    if not is_instructor:
+        if not request.user.is_authenticated:
+            messages.info(request, _("Login and enroll to open course modules."))
+            return redirect(f"{reverse('login')}?next={request.path}")
+        if not is_enrolled:
+            messages.info(request, _("Enroll in this course to open its modules."))
+            return redirect('lms:enroll_course', slug=course.slug)
+        if not course.user_has_access(request.user):
+            messages.warning(request, _("Your payment must be approved before you can access this course."))
+            return redirect('lms:course_detail', slug=course.slug)
+
+        from .utils import is_module_unlocked
+        if not is_module_unlocked(content.module, profile):
+            messages.error(request, _("This module is locked. Complete the previous module assessment with at least 70% first."))
+            return redirect('lms:course_detail', slug=course.slug)
+
     # If user attempts to mark content complete, require login and enrollment to save progress
     mark_complete = request.GET.get('mark_complete') == 'true'
     if mark_complete:
@@ -851,6 +928,13 @@ def course_content_detail(request, course_slug, content_id):
         # Mark as completed if it's a request from the "mark complete" button
         if mark_complete:
             content_access.mark_complete()
+            from .utils import update_module_content_completion
+            progress = update_module_content_completion(content.module, profile)
+            if progress.content_completed and not progress.assessment_passed:
+                from .ai_assessments import ensure_module_assessment
+                quiz = ensure_module_assessment(content.module)
+                messages.success(request, _("Content completed. Take the module mastery check to unlock the next module."))
+                return redirect('lms:quiz_detail', slug=quiz.slug)
             messages.success(request, _("Content marked as completed!"))
             return redirect('lms:content_detail', course_slug=course_slug, content_id=content_id)
     
@@ -870,6 +954,7 @@ def course_content_detail(request, course_slug, content_id):
         'content_completed': content_completed,
         'is_enrolled': is_enrolled,
         'is_authenticated': request.user.is_authenticated,
+        'can_save_progress': bool(profile and is_enrolled and not is_instructor),
     }
     
     return render(request, 'lms/course_content_detail.html', context)
@@ -1502,6 +1587,125 @@ class GradeListView(LoginRequiredMixin, ListView):
         return context
 
 
+class CertificateTemplateListView(InstructorRequiredMixin, ListView):
+    model = CertificateTemplate
+    template_name = 'lms/certificates/template_list.html'
+    context_object_name = 'templates'
+
+    def get_queryset(self):
+        queryset = CertificateTemplate.objects.select_related('course')
+        if is_admin(self.request.user):
+            return queryset
+        return queryset.filter(course__instructors=self.request.user.lms_profile)
+
+
+class CertificateTemplateCreateView(InstructorRequiredMixin, CreateView):
+    model = CertificateTemplate
+    form_class = CertificateTemplateForm
+    template_name = 'lms/certificates/template_form.html'
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['user'] = self.request.user
+        if self.request.method in ('POST', 'PUT'):
+            kwargs['files'] = self.request.FILES
+        return kwargs
+
+    def form_valid(self, form):
+        course = form.cleaned_data['course']
+        if not can_manage_course(self.request.user, course):
+            messages.error(self.request, _("You cannot create certificate templates for this course."))
+            return self.form_invalid(form)
+        if self.request.POST.get('certificate_action') == 'draft':
+            form.instance.status = 'draft'
+        elif self.request.POST.get('certificate_action') == 'publish':
+            CertificateTemplate.objects.filter(course=course, status='active').update(status='archived')
+            form.instance.status = 'active'
+        messages.success(self.request, _("Certificate template saved."))
+        return super().form_valid(form)
+
+    def get_success_url(self):
+        return reverse('lms:certificate_template_list')
+
+
+class CertificateTemplateUpdateView(InstructorRequiredMixin, UpdateView):
+    model = CertificateTemplate
+    form_class = CertificateTemplateForm
+    template_name = 'lms/certificates/template_form.html'
+
+    def get_queryset(self):
+        queryset = CertificateTemplate.objects.select_related('course')
+        if is_admin(self.request.user):
+            return queryset
+        return queryset.filter(course__instructors=self.request.user.lms_profile)
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['user'] = self.request.user
+        if self.request.method in ('POST', 'PUT'):
+            kwargs['files'] = self.request.FILES
+        return kwargs
+
+    def form_valid(self, form):
+        if self.request.POST.get('certificate_action') == 'draft':
+            form.instance.status = 'draft'
+        elif self.request.POST.get('certificate_action') == 'publish':
+            CertificateTemplate.objects.filter(course=form.instance.course, status='active').exclude(pk=form.instance.pk).update(status='archived')
+            form.instance.status = 'active'
+        messages.success(self.request, _("Certificate template updated."))
+        return super().form_valid(form)
+
+    def get_success_url(self):
+        return reverse('lms:certificate_template_list')
+
+
+class CertificateTemplatePreviewView(InstructorRequiredMixin, DetailView):
+    model = CertificateTemplate
+    template_name = 'lms/certificates/template_preview.html'
+    context_object_name = 'template'
+
+    def get_queryset(self):
+        queryset = CertificateTemplate.objects.select_related('course')
+        if is_admin(self.request.user):
+            return queryset
+        return queryset.filter(course__instructors=self.request.user.lms_profile)
+
+
+@login_required(login_url='login')
+def publish_certificate_template(request, pk):
+    template = get_object_or_404(CertificateTemplate, pk=pk)
+    if not can_manage_course(request.user, template.course):
+        messages.error(request, _("You cannot publish this certificate template."))
+        return redirect('lms:certificate_template_list')
+    CertificateTemplate.objects.filter(course=template.course, status='active').exclude(pk=template.pk).update(status='archived')
+    template.status = 'active'
+    template.save(update_fields=['status', 'updated_at'])
+    messages.success(request, _("Certificate template published."))
+    return redirect('lms:certificate_template_list')
+
+
+def verify_certificate(request, certificate_id):
+    certificate = get_object_or_404(
+        StudentCertificate.objects.select_related('student', 'course', 'template'),
+        certificate_id=certificate_id,
+    )
+    return render(request, 'lms/certificates/verify.html', {'certificate': certificate})
+
+
+@login_required(login_url='login')
+def download_certificate(request, certificate_id):
+    certificate = get_object_or_404(
+        StudentCertificate.objects.select_related('student', 'course', 'template'),
+        certificate_id=certificate_id,
+    )
+    if certificate.student != request.user and not can_manage_course(request.user, certificate.course):
+        messages.error(request, _("You can only download certificates you earned."))
+        return redirect('lms:student_dashboard')
+
+    from .certificates import certificate_pdf_response
+    return certificate_pdf_response(certificate, request=request)
+
+
 @login_required(login_url='login')
 def grade_students(request, course_slug):
     """Grade students for a course"""
@@ -1582,6 +1786,7 @@ def student_dashboard(request):
     
     # Get grades
     grades = Grade.objects.filter(student=profile)
+    certificates = StudentCertificate.objects.filter(student=request.user).select_related('course')
     
     # Get upcoming quizzes
     upcoming_quizzes = Quiz.objects.filter(
@@ -1608,7 +1813,8 @@ def student_dashboard(request):
         'grades': grades,
         'upcoming_quizzes': upcoming_quizzes,
         'recent_contents': recent_contents,
-        'course_progress': course_progress
+        'course_progress': course_progress,
+        'certificates': certificates,
     }
     
     return render(request, 'lms/student_dashboard.html', context)

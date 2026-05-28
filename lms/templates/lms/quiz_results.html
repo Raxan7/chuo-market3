@@ -1,0 +1,51 @@
+{% extends "app/base.html" %}
+
+{% block title %}Quiz Results{% endblock title %}
+
+{% block main-content %}
+<div class="container my-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow-sm mb-4">
+                <div class="card-body text-center py-5">
+                    <div class="display-4 fw-bold {% if passed %}text-success{% else %}text-danger{% endif %}">
+                        {{ quiz_taker.score|floatformat:1 }}%
+                    </div>
+                    <h1 class="h3 mt-3">{{ quiz.title }}</h1>
+                    {% if passed %}
+                        <p class="lead mb-0">Passed. You scored at least {{ quiz.pass_mark }}%.</p>
+                    {% else %}
+                        <p class="lead mb-0">You need {{ quiz.pass_mark }}% or higher to continue.</p>
+                    {% endif %}
+                </div>
+                <div class="card-footer d-flex flex-column flex-sm-row gap-2 justify-content-center">
+                    <a href="{% url 'lms:course_detail' quiz.course.slug %}" class="btn btn-primary">Back to Course</a>
+                    {% if not passed %}
+                    <a href="{% url 'lms:start_quiz' quiz.slug %}" class="btn btn-outline-primary">Try Again</a>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if show_answers %}
+            <div class="card shadow-sm">
+                <div class="card-header bg-light">
+                    <h2 class="h5 mb-0">Review</h2>
+                </div>
+                <div class="list-group list-group-flush">
+                    {% for answer in answers %}
+                    <div class="list-group-item">
+                        <div class="fw-semibold">{{ answer.question.content }}</div>
+                        {% if answer.is_correct %}
+                            <span class="badge bg-success mt-2">Correct</span>
+                        {% else %}
+                            <span class="badge bg-danger mt-2">Needs Review</span>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock main-content %}

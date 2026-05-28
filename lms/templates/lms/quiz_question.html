@@ -1,0 +1,63 @@
+{% extends "app/base.html" %}
+
+{% block title %}{{ quiz.title }}{% endblock title %}
+
+{% block main-content %}
+<div class="container my-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                    <h1 class="h3 mb-1">{{ quiz.title }}</h1>
+                    <div class="text-muted">Question {{ question_number }} of {{ total_questions }}</div>
+                </div>
+                <span class="badge bg-primary">{{ quiz.pass_mark }}% required</span>
+            </div>
+
+            <div class="progress mb-4" style="height: 10px;">
+                <div class="progress-bar" style="width: {% widthratio question_number total_questions 100 %}%"></div>
+            </div>
+
+            <form method="post" enctype="multipart/form-data" class="card shadow-sm">
+                {% csrf_token %}
+                <div class="card-body">
+                    <h2 class="h5 mb-4">{{ question.content }}</h2>
+
+                    {% if choices %}
+                        <div class="list-group">
+                            {% for choice in choices %}
+                            <label class="list-group-item d-flex gap-2 align-items-start">
+                                <input class="form-check-input mt-1" type="radio" name="choice" value="{{ choice.id }}" required
+                                       {% if previous_answer and previous_answer.id == choice.id %}checked{% endif %}>
+                                <span>{{ choice.content }}</span>
+                            </label>
+                            {% endfor %}
+                        </div>
+                    {% elif essay_form %}
+                        {{ essay_form.as_p }}
+                    {% else %}
+                        <div class="d-flex gap-3">
+                            <label class="form-check">
+                                <input class="form-check-input" type="radio" name="answer" value="true" required
+                                       {% if previous_answer == True %}checked{% endif %}>
+                                <span class="form-check-label">True</span>
+                            </label>
+                            <label class="form-check">
+                                <input class="form-check-input" type="radio" name="answer" value="false" required
+                                       {% if previous_answer == False %}checked{% endif %}>
+                                <span class="form-check-label">False</span>
+                            </label>
+                        </div>
+                    {% endif %}
+                </div>
+                <div class="card-footer d-flex justify-content-between align-items-center">
+                    <a href="{% url 'lms:quiz_detail' quiz.slug %}" class="btn btn-outline-secondary">Exit</a>
+                    <button type="submit" class="btn btn-primary">
+                        {% if question_number == total_questions %}Finish Quiz{% else %}Next Question{% endif %}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock main-content %}

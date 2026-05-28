@@ -64,7 +64,10 @@
                 </div>
                 
                 <div class="d-grid gap-2">
-                    <a href="#" class="btn btn-outline-primary">View Results</a>
+                    <a href="{% url 'lms:quiz_results' completed_attempt.id %}" class="btn btn-outline-primary">View Results</a>
+                    {% if user_score < quiz.pass_mark %}
+                    <a href="{% url 'lms:start_quiz' quiz.slug %}" class="btn btn-primary">Try Again</a>
+                    {% endif %}
                 </div>
             {% else %}
                 <div class="alert alert-warning">
@@ -104,6 +107,8 @@
                                     </div>
                                 </div>
                             </div>
+                        {% elif module_locked %}
+                            Complete the previous module with at least 70% before starting this assessment.
                         {% elif past_due %}
                             This quiz is past the due date.
                         {% else %}

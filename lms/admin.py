@@ -10,7 +10,8 @@ from .models import (
     ActivityLog, Semester, LMSProfile, Program, Course, CourseModule, 
     CourseContent, Quiz, Question, MCQuestion, Choice, TF_Question, 
     Essay_Question, QuizTaker, StudentAnswer, Grade, CourseEnrollment,
-    InstructorRequest, ContentAccess, SiteSettings, AdExemptUser, PaymentMethod
+    InstructorRequest, ContentAccess, SiteSettings, AdExemptUser, PaymentMethod,
+    ModuleProgress, CertificateTemplate, StudentCertificate
 )
 
 
@@ -210,6 +211,30 @@ class ContentAccessAdmin(admin.ModelAdmin):
     list_filter = ('completed', 'accessed_at', 'completed_at')
     search_fields = ('student__user__username', 'content__title')
     readonly_fields = ('accessed_at',)
+
+
+@admin.register(ModuleProgress)
+class ModuleProgressAdmin(admin.ModelAdmin):
+    list_display = ('student', 'module', 'content_completed', 'assessment_passed', 'best_score', 'completed_at')
+    list_filter = ('content_completed', 'assessment_passed', 'module__course')
+    search_fields = ('student__user__username', 'module__title', 'module__course__title')
+    readonly_fields = ('completed_at', 'updated_at')
+
+
+@admin.register(CertificateTemplate)
+class CertificateTemplateAdmin(admin.ModelAdmin):
+    list_display = ('title', 'course', 'organization_name', 'completion_percentage', 'status', 'updated_at')
+    list_filter = ('status', 'template_style', 'orientation')
+    search_fields = ('title', 'course__title', 'organization_name')
+    readonly_fields = ('created_at', 'updated_at')
+
+
+@admin.register(StudentCertificate)
+class StudentCertificateAdmin(admin.ModelAdmin):
+    list_display = ('certificate_id', 'student', 'course', 'issued_at', 'verification_status', 'is_valid')
+    list_filter = ('is_valid', 'course', 'issued_at')
+    search_fields = ('certificate_id', 'student__username', 'student__email', 'course__title')
+    readonly_fields = ('certificate_id', 'issued_at')
 
 
 class SiteSettingsAdmin(admin.ModelAdmin):

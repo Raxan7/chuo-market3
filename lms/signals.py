@@ -7,8 +7,8 @@ from django.dispatch import receiver
 from django.contrib.auth.models import User
 from django.db.models import Q
 from django.db import transaction
-from .models import LMSProfile, Course
-from core.newsletter import send_course_newsletter
+from .models import LMSProfile, Course, CourseContent
+from core.newsletter import send_course_newsletter, send_course_content_newsletter
 
 
 @receiver(post_save, sender=User)
@@ -52,5 +52,19 @@ def notify_new_course(sender, instance, created, **kwargs):
 
         related_courses = related_courses.order_by('-id')[:3]
         send_course_newsletter(instance, related_courses)
+
+    transaction.on_commit(dispatch_newsletter)
+
+
+@receiver(post_save, sender=CourseContent)
+def notify_new_course_content(sender, instance, created, **kwargs):
+    if not created:
+        return
+
+    def dispatch_newsletter():
+        related_contents = CourseContent.objects.filter(
+            module__course=instance.module.course
+        ).exclude(pk=instance.pk).order_by('-date_added')[:3]
+        send_course_content_newsletter(instance, related_contents)
 
     transaction.on_commit(dispatch_newsletter)

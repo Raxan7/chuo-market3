@@ -173,6 +173,32 @@
     </div>
 
     <!-- Upcoming Quizzes and Recent Activities -->
+    {% if certificates %}
+    <div class="row mb-4">
+        <div class="col">
+            <div class="card shadow-sm">
+                <div class="card-header bg-light">
+                    <h4 class="mb-0">Certificates</h4>
+                </div>
+                <div class="card-body">
+                    <div class="list-group">
+                        {% for certificate in certificates %}
+                        <div class="list-group-item d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
+                            <div>
+                                <strong>{{ certificate.course.title }}</strong>
+                                <div class="small text-muted">{{ certificate.certificate_id }} issued {{ certificate.issued_at|date:"M d, Y" }}</div>
+                            </div>
+                            <a href="{% url 'lms:certificate_download' certificate.certificate_id %}" class="btn btn-sm btn-success">Download</a>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Upcoming Quizzes and Recent Activities -->
     <div class="row">
         <div class="col-12 col-xl-6">
             <div class="card shadow-sm mb-4 mb-md-0">

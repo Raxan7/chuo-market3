@@ -1,0 +1,53 @@
+{% extends "app/base.html" %}
+
+{% block title %}Certificate Templates{% endblock title %}
+
+{% block main-content %}
+<div class="container my-5">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+        <div>
+            <h1 class="mb-1">Certificate Templates</h1>
+            <p class="text-muted mb-0">Design the certificates learners receive after course completion.</p>
+        </div>
+        <a href="{% url 'lms:certificate_template_create' %}" class="btn btn-primary">Create Template</a>
+    </div>
+
+    {% if templates %}
+    <div class="row g-4">
+        {% for template in templates %}
+        <div class="col-md-6 col-xl-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <span class="badge {% if template.status == 'active' %}bg-success{% elif template.status == 'draft' %}bg-secondary{% else %}bg-dark{% endif %}">
+                            {{ template.get_status_display }}
+                        </span>
+                        <span class="badge bg-light text-dark border">{{ template.get_template_style_display }}</span>
+                    </div>
+                    <h2 class="h5">{{ template.title }}</h2>
+                    <p class="text-muted">{{ template.course.title }}</p>
+                    <p class="small mb-0">Updated {{ template.updated_at|date:"M d, Y" }}</p>
+                </div>
+                <div class="card-footer bg-white d-flex flex-wrap gap-2">
+                    <a href="{% url 'lms:certificate_template_edit' template.pk %}" class="btn btn-sm btn-outline-primary">Edit</a>
+                    <a href="{% url 'lms:certificate_template_preview' template.pk %}" class="btn btn-sm btn-outline-secondary">Preview</a>
+                    {% if template.status != 'active' %}
+                    <a href="{% url 'lms:certificate_template_publish' template.pk %}" class="btn btn-sm btn-success"
+                       onclick="return confirm('Publish this template and archive any other active template for this course?');">Publish</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="card shadow-sm">
+        <div class="card-body text-center py-5">
+            <h2 class="h4">No certificate template yet</h2>
+            <p class="text-muted">Create a professional certificate that students will receive after completing a course.</p>
+            <a href="{% url 'lms:certificate_template_create' %}" class="btn btn-primary">Create Certificate Template</a>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock main-content %}

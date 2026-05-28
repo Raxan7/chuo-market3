@@ -4,15 +4,18 @@ Models for the LMS application, based on SkyLearn but adapted for chuo-market3
 
 from django.db import models
 from django.urls import reverse
-from django.core.validators import FileExtensionValidator, MaxValueValidator
+from django.core.validators import FileExtensionValidator, MaxValueValidator, MinValueValidator
+from django.core.exceptions import ValidationError
 from django.conf import settings
 from django.db.models import Q
 from django.contrib.auth.models import User
 from django.utils.translation import gettext_lazy as _
 from django.utils.text import slugify
 from django.utils import timezone
+from datetime import timedelta
 import random
 import string
+import uuid
 from django.dispatch import receiver
 from django.db.models.signals import pre_save, post_save, post_delete
 
@@ -339,6 +342,12 @@ class CourseContent(models.Model):
     def __str__(self):
         return self.title
 
+    def get_absolute_url(self):
+        return reverse("lms:content_detail", kwargs={
+            "course_slug": self.module.course.slug,
+            "content_id": self.id,
+        })
+
 
 class ContentAccess(models.Model):
     """
@@ -401,7 +410,7 @@ class Quiz(models.Model):
         help_text=_("If yes, only one attempt by a user will be permitted.")
     )
     pass_mark = models.SmallIntegerField(
-        default=50,
+        default=70,
         verbose_name=_("Pass Mark"),
         validators=[MaxValueValidator(100)],
         help_text=_("Percentage required to pass exam.")
@@ -426,6 +435,30 @@ class Quiz(models.Model):
     
     def get_absolute_url(self):
         return reverse("lms:quiz_detail", kwargs={"slug": self.slug})
+
+    @property
+    def get_questions(self):
+        return self.questions.all()
+
+    @property
+    def question_count(self):
+        return self.questions.count()
+
+    @property
+    def total_points(self):
+        return self.question_count
+
+    @property
+    def passing_score(self):
+        return self.pass_mark
+
+    @property
+    def time_limit_mins(self):
+        return 0
+
+    @property
+    def allowed_attempts(self):
+        return 1 if self.single_attempt else 0
 
 
 class Question(models.Model):
@@ -511,6 +544,198 @@ class QuizTaker(models.Model):
         
     def __str__(self):
         return f"{self.user.user.username}: {self.quiz.title}"
+
+    def get_score_percentage(self):
+        return round(float(self.score or 0), 1)
+
+    @property
+    def passed(self):
+        return self.completed and self.score >= self.quiz.pass_mark
+
+
+class ModuleProgress(models.Model):
+    """
+    Stores a student's gate status for one course module.
+
+    A module is complete only after all its content is marked complete and the
+    module assessment has been passed at or above the required threshold.
+    """
+    PASSING_PERCENTAGE = 70
+
+    student = models.ForeignKey(LMSProfile, on_delete=models.CASCADE, related_name='module_progress')
+    module = models.ForeignKey(CourseModule, on_delete=models.CASCADE, related_name='student_progress')
+    content_completed = models.BooleanField(default=False)
+    assessment_passed = models.BooleanField(default=False)
+    best_score = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    best_quiz_taker = models.ForeignKey(
+        QuizTaker,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='module_progress_records'
+    )
+    completed_at = models.DateTimeField(null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ['student', 'module']
+        ordering = ['module__order', 'module__id']
+
+    def __str__(self):
+        return f"{self.student.user.username} - {self.module.title}"
+
+    @property
+    def completed(self):
+        return self.content_completed and self.assessment_passed
+
+    def refresh_completion(self, save=True):
+        completed_now = self.completed
+        if completed_now and not self.completed_at:
+            self.completed_at = timezone.now()
+        elif not completed_now:
+            self.completed_at = None
+
+        if save:
+            self.save()
+        return completed_now
+
+
+class CertificateTemplate(models.Model):
+    TEMPLATE_STYLE_CHOICES = (
+        ('classic', _('Classic')),
+        ('modern', _('Modern')),
+        ('minimal', _('Minimal')),
+        ('academic', _('Academic')),
+        ('corporate', _('Corporate')),
+    )
+    ORIENTATION_CHOICES = (
+        ('landscape', _('Landscape')),
+        ('portrait', _('Portrait')),
+    )
+    BACKGROUND_STYLE_CHOICES = (
+        ('plain', _('Plain')),
+        ('gradient', _('Gradient')),
+        ('bordered', _('Bordered')),
+        ('watermark', _('Watermark')),
+    )
+    BORDER_STYLE_CHOICES = (
+        ('none', _('None')),
+        ('thin', _('Thin')),
+        ('double', _('Double')),
+        ('premium', _('Premium Frame')),
+    )
+    FONT_STYLE_CHOICES = (
+        ('serif', _('Serif')),
+        ('sans', _('Sans Serif')),
+        ('modern', _('Modern')),
+        ('academic', _('Academic')),
+    )
+    STATUS_CHOICES = (
+        ('draft', _('Draft')),
+        ('active', _('Active')),
+        ('archived', _('Archived')),
+    )
+
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name="certificate_templates")
+    title = models.CharField(max_length=255, default="Certificate of Completion")
+    subtitle = models.CharField(max_length=255, blank=True)
+    organization_name = models.CharField(max_length=255, default="ChuoSmart Academy")
+    instructor_name = models.CharField(max_length=255, blank=True)
+    description = models.TextField(blank=True)
+    template_style = models.CharField(max_length=50, choices=TEMPLATE_STYLE_CHOICES, default="modern")
+    orientation = models.CharField(max_length=20, choices=ORIENTATION_CHOICES, default="landscape")
+    primary_color = models.CharField(max_length=20, default="#1E40AF")
+    secondary_color = models.CharField(max_length=20, default="#111827")
+    accent_color = models.CharField(max_length=20, default="#D97706")
+    background_style = models.CharField(max_length=50, choices=BACKGROUND_STYLE_CHOICES, default="plain")
+    border_style = models.CharField(max_length=50, choices=BORDER_STYLE_CHOICES, default="premium")
+    font_style = models.CharField(max_length=50, choices=FONT_STYLE_CHOICES, default="serif")
+    logo = models.ImageField(upload_to="certificates/logos/", blank=True, null=True)
+    signature_image = models.ImageField(upload_to="certificates/signatures/", blank=True, null=True)
+    seal_image = models.ImageField(upload_to="certificates/seals/", blank=True, null=True)
+    watermark_image = models.ImageField(upload_to="certificates/watermarks/", blank=True, null=True)
+    certificate_body = models.TextField(
+        blank=True,
+        default="This certificate is proudly presented to {{ student_name }} for successfully completing {{ course_title }} on {{ completion_date }}."
+    )
+    recipient_name_format = models.CharField(max_length=100, default="{{ student_name }}")
+    course_name_display = models.CharField(max_length=150, default="{{ course_title }}")
+    completion_date_display = models.CharField(max_length=100, default="{{ completion_date }}")
+    certificate_id_display = models.CharField(max_length=100, default="{{ certificate_id }}")
+    instructor_signature_text = models.CharField(max_length=255, blank=True)
+    footer_note = models.TextField(blank=True)
+    completion_percentage = models.PositiveIntegerField(
+        default=100,
+        validators=[MinValueValidator(1), MaxValueValidator(100)]
+    )
+    enable_verification = models.BooleanField(default=True)
+    show_qr_code = models.BooleanField(default=True)
+    show_certificate_id = models.BooleanField(default=True)
+    verification_url_format = models.CharField(max_length=255, blank=True)
+    expires = models.BooleanField(default=False)
+    validity_months = models.PositiveIntegerField(blank=True, null=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="draft")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['course', '-updated_at']
+
+    def __str__(self):
+        return f"{self.course.title} - {self.title}"
+
+    def clean(self):
+        super().clean()
+        import re
+        color_re = re.compile(r'^#(?:[0-9a-fA-F]{3}){1,2}$')
+        for field_name in ('primary_color', 'secondary_color', 'accent_color'):
+            if not color_re.match(getattr(self, field_name) or ''):
+                raise ValidationError({field_name: _('Enter a valid hex color, for example #1E40AF.')})
+
+        if self.expires and not self.validity_months:
+            raise ValidationError({'validity_months': _('Set a validity period when certificates expire.')})
+
+
+class StudentCertificate(models.Model):
+    student = models.ForeignKey(User, on_delete=models.CASCADE, related_name='student_certificates')
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='student_certificates')
+    template = models.ForeignKey(CertificateTemplate, on_delete=models.SET_NULL, null=True)
+    certificate_id = models.CharField(max_length=100, unique=True, blank=True)
+    issued_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField(blank=True, null=True)
+    is_valid = models.BooleanField(default=True)
+
+    class Meta:
+        unique_together = ['student', 'course']
+        ordering = ['-issued_at']
+
+    def __str__(self):
+        return f"{self.certificate_id} - {self.student.username}"
+
+    def save(self, *args, **kwargs):
+        if not self.certificate_id:
+            self.certificate_id = self.generate_certificate_id()
+
+        if self.template and self.template.expires and self.template.validity_months and not self.expires_at:
+            self.expires_at = timezone.now() + timedelta(days=self.template.validity_months * 30)
+
+        super().save(*args, **kwargs)
+
+    @staticmethod
+    def generate_certificate_id():
+        return f"CHUO-{timezone.now():%Y%m%d}-{uuid.uuid4().hex[:10].upper()}"
+
+    @property
+    def is_expired(self):
+        return bool(self.expires_at and timezone.now() > self.expires_at)
+
+    @property
+    def verification_status(self):
+        if not self.is_valid:
+            return _('Revoked')
+        if self.is_expired:
+            return _('Expired')
+        return _('Valid')
 
 
 class StudentAnswer(models.Model):

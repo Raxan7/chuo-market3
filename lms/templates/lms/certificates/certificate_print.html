@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>{{ certificate.certificate_id }}</title>
+    <style>
+        @page { size: A4 landscape; margin: 18mm; }
+        body { margin: 0; font-family: Georgia, "Times New Roman", serif; color: #111827; background: #f3f4f6; }
+        .sheet { background: #fff; min-height: 680px; padding: 48px; border: 10px solid {{ template.primary_color|default:"#1E40AF" }}; text-align: center; position: relative; }
+        .accent { color: {{ template.accent_color|default:"#D97706" }}; }
+        .primary { color: {{ template.primary_color|default:"#1E40AF" }}; }
+        .student { font-size: 52px; margin: 24px 0; font-weight: 700; }
+        .title { font-size: 44px; margin: 12px 0; text-transform: uppercase; letter-spacing: 2px; }
+        .body { font-size: 20px; line-height: 1.7; max-width: 820px; margin: 0 auto; }
+        .footer { display: flex; justify-content: space-between; align-items: end; margin-top: 80px; }
+        .line { border-top: 1px solid #111827; padding-top: 8px; min-width: 220px; }
+        .seal { border: 2px solid {{ template.accent_color|default:"#D97706" }}; border-radius: 999px; width: 96px; height: 96px; display: inline-flex; align-items: center; justify-content: center; }
+        .meta { margin-top: 24px; color: #6b7280; font-size: 13px; }
+    </style>
+</head>
+<body>
+    <main class="sheet">
+        {% if template.logo %}<img src="{{ template.logo.url }}" alt="" style="max-height:72px;">{% endif %}
+        <div class="accent" style="margin-top:16px;text-transform:uppercase;font-weight:700;">{{ organization_name }}</div>
+        <h1 class="title primary">{{ template.title|default:"Certificate of Completion" }}</h1>
+        <p>{{ template.subtitle|default:"Awarded for successfully completing this course" }}</p>
+        <p style="margin-top:42px;">This certificate is proudly presented to</p>
+        <div class="student">{{ student_name }}</div>
+        <div class="body">{{ rendered_body }}</div>
+        <h2 class="primary">{{ course_title }}</h2>
+        <p>Issued on {{ completion_date }}</p>
+        <div class="footer">
+            <div>
+                {% if template.signature_image %}<img src="{{ template.signature_image.url }}" alt="" style="max-height:64px;"><br>{% endif %}
+                <div class="line">{{ instructor_name|default:"Instructor" }}</div>
+            </div>
+            <div>
+                {% if template.seal_image %}<img src="{{ template.seal_image.url }}" alt="" style="max-height:96px;">{% else %}<div class="seal">Seal</div>{% endif %}
+            </div>
+        </div>
+        <div class="meta">
+            Certificate ID: {{ certificate.certificate_id }}{% if verification_url %} | Verify: {{ verification_url }}{% endif %}
+        </div>
+        {% if template.footer_note %}<div class="meta">{{ template.footer_note }}</div>{% endif %}
+    </main>
+</body>
+</html>

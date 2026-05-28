@@ -1,0 +1,40 @@
+{% extends "app/base.html" %}
+
+{% block title %}Verify Certificate{% endblock title %}
+
+{% block main-content %}
+<div class="container my-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-7">
+            <div class="card shadow-sm">
+                <div class="card-body text-center py-5">
+                    <span class="badge {% if certificate.is_valid and not certificate.is_expired %}bg-success{% else %}bg-danger{% endif %} mb-3">
+                        {{ certificate.verification_status }}
+                    </span>
+                    <h1 class="h3">Certificate Verified</h1>
+                    <p class="text-muted">Certificate ID: {{ certificate.certificate_id }}</p>
+                    <hr>
+                    <div class="row text-start g-3">
+                        <div class="col-md-6">
+                            <div class="small text-muted">Student</div>
+                            <div class="fw-semibold">{{ certificate.student.get_full_name|default:certificate.student.username }}</div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="small text-muted">Course</div>
+                            <div class="fw-semibold">{{ certificate.course.title }}</div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="small text-muted">Issued By</div>
+                            <div class="fw-semibold">{{ certificate.template.organization_name|default:"ChuoSmart Academy" }}</div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="small text-muted">Issue Date</div>
+                            <div class="fw-semibold">{{ certificate.issued_at|date:"F d, Y" }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock main-content %}

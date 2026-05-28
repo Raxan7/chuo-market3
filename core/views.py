@@ -7,7 +7,6 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.hashers import check_password
 from django.contrib.auth.models import AnonymousUser
 from django.core.mail import send_mail
-from django.core import signing
 from django.core.paginator import Paginator
 from django.conf import settings
 from django.views.decorators.csrf import csrf_exempt
@@ -18,12 +17,12 @@ from django.db.models import Q
 
 from .models import *
 from .forms import RegistrationForm, LoginForm, ProductForm, BlogForm, SubscriptionForm, SubscriptionPaymentForm, CustomerProfileForm, AccountDeletionRequestForm
-from .newsletter import decode_newsletter_confirmation_token, send_unsubscribe_confirmation_email
 from .universities_colleges_tanzania import universities_data
 from chatbotapp.models import ChatMessage, UnauthenticatedChatMessage
 from asgiref.sync import sync_to_async
 from datetime import timedelta
 from core.decorators.customer_required import customer_required, phone_required
+from core.newsletter import decode_newsletter_confirmation_token, send_unsubscribe_confirmation_email
 
 import logging
 import re
@@ -44,6 +43,47 @@ def get_cart_count(request):
     else:
         cart_count = 0
     return JsonResponse({'cart_count': cart_count})
+
+
+@login_required
+def newsletter_settings(request):
+    preference, _ = UserNewsletterPreference.objects.get_or_create(user=request.user)
+
+    if request.method == 'POST':
+        action = request.POST.get('newsletter_action')
+        if action == 'subscribe':
+            preference.newsletter = True
+            preference.save(update_fields=['newsletter', 'updated_at'])
+            messages.success(request, 'You are subscribed to ChuoSmart newsletter updates.')
+            return redirect('newsletter_settings')
+        if action == 'unsubscribe':
+            send_unsubscribe_confirmation_email(request.user)
+            messages.info(request, 'Please check your email to confirm the unsubscribe request.')
+            return redirect('newsletter_settings')
+
+    return render(request, 'app/newsletter_settings.html', {
+        'newsletter_enabled': preference.newsletter,
+    })
+
+
+def newsletter_confirm_unsubscribe(request, token):
+    try:
+        payload = decode_newsletter_confirmation_token(token)
+        user_id = payload.get('user_id')
+        action = payload.get('action')
+    except Exception:
+        messages.error(request, 'This unsubscribe confirmation link is invalid or expired.')
+        return redirect('newsletter_settings' if request.user.is_authenticated else 'home')
+
+    if action != 'unsubscribe':
+        messages.error(request, 'This newsletter confirmation action is not supported.')
+        return redirect('home')
+
+    preference, _ = UserNewsletterPreference.objects.get_or_create(user_id=user_id)
+    preference.newsletter = False
+    preference.save(update_fields=['newsletter', 'updated_at'])
+
+    return HttpResponse('You have been unsubscribed from ChuoSmart newsletter emails.')
 
 def home(request):
     user = request.user
@@ -328,57 +368,6 @@ def profile(request):
         'user_products': user_products,
     }
     return render(request, 'app/profile.html', context)
-
-
-@login_required(login_url='login')
-def newsletter_settings(request):
-    user = request.user
-    preference, _ = UserNewsletterPreference.objects.get_or_create(user=user)
-
-    if request.method == 'POST':
-        action = request.POST.get('newsletter_action')
-
-        if action == 'unsubscribe':
-            if not user.email:
-                messages.error(request, 'Add an email address to your account before unsubscribing.')
-            else:
-                send_unsubscribe_confirmation_email(user)
-                messages.success(request, 'We sent a confirmation email. Open it to complete the unsubscribe request.')
-                return redirect('newsletter_settings')
-
-        if action == 'subscribe':
-            user.newsletter = True
-            messages.success(request, 'You are subscribed to the newsletter again.')
-            return redirect('newsletter_settings')
-
-    context = {
-        'newsletter_enabled': preference.newsletter,
-        'preference': preference,
-    }
-    return render(request, 'app/newsletter_settings.html', context)
-
-
-def newsletter_confirm_unsubscribe(request, token):
-    context = {
-        'status': 'error',
-        'message': 'That unsubscribe link is invalid or has expired.',
-    }
-
-    try:
-        payload = decode_newsletter_confirmation_token(token)
-        if payload.get('action') != 'unsubscribe':
-            raise signing.BadSignature('Unexpected newsletter action')
-
-        user = get_user_model().objects.get(pk=payload['user_id'])
-        user.newsletter = False
-        context = {
-            'status': 'success',
-            'message': 'Your newsletter subscription has been cancelled.',
-        }
-    except (signing.BadSignature, signing.SignatureExpired, get_user_model().DoesNotExist):
-        pass
-
-    return render(request, 'app/newsletter_confirmation.html', context)
 
 @login_required(login_url='login')
 def address(request):

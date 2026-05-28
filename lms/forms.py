@@ -11,7 +11,7 @@ import re
 from .models import (
     LMSProfile, Program, Course, CourseModule, CourseContent,
     Quiz, Question, MCQuestion, Choice, TF_Question, Essay_Question,
-    Grade, InstructorRequest, PaymentMethod
+    Grade, InstructorRequest, PaymentMethod, CertificateTemplate
 )
 
 # Import utility function from core app
@@ -331,3 +331,63 @@ class ProgramForm(forms.ModelForm):
                 'placeholder': 'Provide a brief description of this program'
             }),
         }
+
+
+class CertificateTemplateForm(forms.ModelForm):
+    """Premium admin form for course certificate templates."""
+
+    class Meta:
+        model = CertificateTemplate
+        fields = [
+            'course', 'title', 'subtitle', 'organization_name', 'instructor_name',
+            'description', 'completion_percentage', 'status', 'template_style',
+            'orientation', 'primary_color', 'secondary_color', 'accent_color',
+            'background_style', 'border_style', 'font_style', 'logo',
+            'signature_image', 'seal_image', 'watermark_image',
+            'recipient_name_format', 'course_name_display',
+            'completion_date_display', 'certificate_id_display',
+            'certificate_body', 'instructor_signature_text', 'footer_note',
+            'enable_verification', 'show_qr_code', 'show_certificate_id',
+            'verification_url_format', 'expires', 'validity_months',
+        ]
+        widgets = {
+            'course': forms.Select(attrs={'class': 'form-select'}),
+            'title': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Certificate of Completion'}),
+            'subtitle': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Awarded for successfully completing this course'}),
+            'organization_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'ChuoSmart Academy'}),
+            'instructor_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Instructor name'}),
+            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'completion_percentage': forms.NumberInput(attrs={'class': 'form-control', 'min': 1, 'max': 100, 'placeholder': '100'}),
+            'status': forms.Select(attrs={'class': 'form-select'}),
+            'template_style': forms.Select(attrs={'class': 'form-select'}),
+            'orientation': forms.Select(attrs={'class': 'form-select'}),
+            'primary_color': forms.TextInput(attrs={'class': 'form-control form-control-color', 'type': 'color'}),
+            'secondary_color': forms.TextInput(attrs={'class': 'form-control form-control-color', 'type': 'color'}),
+            'accent_color': forms.TextInput(attrs={'class': 'form-control form-control-color', 'type': 'color'}),
+            'background_style': forms.Select(attrs={'class': 'form-select'}),
+            'border_style': forms.Select(attrs={'class': 'form-select'}),
+            'font_style': forms.Select(attrs={'class': 'form-select'}),
+            'logo': forms.ClearableFileInput(attrs={'class': 'form-control'}),
+            'signature_image': forms.ClearableFileInput(attrs={'class': 'form-control'}),
+            'seal_image': forms.ClearableFileInput(attrs={'class': 'form-control'}),
+            'watermark_image': forms.ClearableFileInput(attrs={'class': 'form-control'}),
+            'recipient_name_format': forms.TextInput(attrs={'class': 'form-control'}),
+            'course_name_display': forms.TextInput(attrs={'class': 'form-control'}),
+            'completion_date_display': forms.TextInput(attrs={'class': 'form-control'}),
+            'certificate_id_display': forms.TextInput(attrs={'class': 'form-control'}),
+            'certificate_body': forms.Textarea(attrs={'class': 'form-control', 'rows': 4}),
+            'instructor_signature_text': forms.TextInput(attrs={'class': 'form-control'}),
+            'footer_note': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+            'enable_verification': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'show_qr_code': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'show_certificate_id': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'verification_url_format': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'https://chuosmart.com/lms/certificates/verify/{{ certificate_id }}/'}),
+            'expires': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'validity_months': forms.NumberInput(attrs={'class': 'form-control', 'min': 1}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+        if user and hasattr(user, 'lms_profile') and user.lms_profile.role == 'instructor':
+            self.fields['course'].queryset = Course.objects.filter(instructors=user.lms_profile)
