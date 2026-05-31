@@ -357,7 +357,15 @@
                                 <div class="accordion-body">
                                     <div class="module-description">{{ module.description|safe }}</div>
                                     {% if not state.unlocked and not is_course_instructor %}
-                                    <div class="alert alert-secondary">Complete the previous module and score 70% or higher to unlock this module.</div>
+                                    <div class="alert alert-warning border-0">
+                                        <div class="fw-semibold">Module locked</div>
+                                        <div class="mt-1">{{ state.lock_message|default:"Complete the previous module and pass its quiz to unlock this module." }}</div>
+                                        {% if state.previous_module %}
+                                        <div class="small text-muted mt-2">
+                                            Prerequisite module: {{ state.previous_module.title }}
+                                        </div>
+                                        {% endif %}
+                                    </div>
                                     {% endif %}
 
                                     <h5 class="mt-3">Module Content</h5>

@@ -315,6 +315,57 @@ class CourseModule(models.Model):
     def requires_assessment(self):
         return not self.skip_assessment
 
+    def get_previous_module(self):
+        return CourseModule.objects.filter(
+            course=self.course,
+            order__lt=self.order,
+        ).order_by('-order', '-id').first()
+
+    def get_next_module(self):
+        return CourseModule.objects.filter(
+            course=self.course,
+            order__gt=self.order,
+        ).order_by('order', 'id').first()
+
+    def get_progress_for(self, student):
+        if not student:
+            return None
+        return self.student_progress.filter(student=student).first()
+
+    def is_unlocked_for(self, student):
+        if not student:
+            return False
+
+        previous_module = self.get_previous_module()
+        if previous_module is None:
+            return True
+
+        previous_progress = previous_module.get_progress_for(student)
+        if not previous_progress:
+            return False
+
+        return previous_progress.unlocks_next
+
+    def is_locked_for(self, student):
+        return not self.is_unlocked_for(student)
+
+    def lock_message_for(self, student):
+        previous_module = self.get_previous_module()
+        if previous_module is None:
+            return ''
+
+        if getattr(previous_module, 'skip_assessment', False):
+            return _(
+                "Complete %(module)s to unlock this module."
+            ) % {'module': previous_module.title}
+
+        return _(
+            "Complete %(module)s and pass its quiz with at least %(score)s%% to unlock this module."
+        ) % {
+            'module': previous_module.title,
+            'score': ModuleProgress.PASSING_PERCENTAGE,
+        }
+
 
 class CourseContent(models.Model):
     """
@@ -633,6 +684,12 @@ class ModuleProgress(models.Model):
     @property
     def completed(self):
         return self.content_completed and self.assessment_passed
+
+    @property
+    def unlocks_next(self):
+        if getattr(self.module, 'skip_assessment', False):
+            return self.content_completed
+        return self.assessment_passed
 
     def refresh_completion(self, save=True):
         completed_now = self.completed

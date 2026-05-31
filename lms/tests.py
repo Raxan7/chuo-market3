@@ -8,7 +8,10 @@ from .models import Course, CourseContent, CourseEnrollment, LMSProfile, CourseM
 from .utils import is_module_unlocked, update_module_content_completion, update_module_assessment_completion
 
 
-@override_settings(STATICFILES_STORAGE='django.contrib.staticfiles.storage.StaticFilesStorage')
+@override_settings(
+    DEBUG=True,
+    STATICFILES_STORAGE='django.contrib.staticfiles.storage.StaticFilesStorage',
+)
 class LMSModuleGatingTests(TestCase):
     def setUp(self):
         self.client = Client()
@@ -159,8 +162,10 @@ class LMSModuleGatingTests(TestCase):
         response = self.client.get(reverse('lms:course_detail', kwargs={'slug': self.course.slug}), follow=True)
         self.assertEqual(response.status_code, 200)
         self.assertFalse(response.context['module_states'][1]['unlocked'])
+        self.assertIn('Module 1', response.context['module_states'][1]['lock_message'])
         self.assertIsNotNone(response.context['module_states'][1]['assessment'])
         self.assertContains(response, 'Open Assessment')
+        self.assertContains(response, 'Prerequisite module: Module 1')
         self.assertIn('aria-disabled="true"', response.content.decode())
         self.assertNotIn(f'data-bs-target="#collapse{second_module.id}"', response.content.decode())
 

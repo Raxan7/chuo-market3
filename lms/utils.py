@@ -85,17 +85,11 @@ def get_all_enrolled_students_progress(course):
 
 
 def get_previous_module(module):
-    return CourseModule.objects.filter(
-        course=module.course,
-        order__lt=module.order
-    ).order_by('-order', '-id').first()
+    return module.get_previous_module()
 
 
 def get_next_module(module):
-    return CourseModule.objects.filter(
-        course=module.course,
-        order__gt=module.order
-    ).order_by('order', 'id').first()
+    return module.get_next_module()
 
 
 def get_module_assessment(module, student=None):
@@ -123,21 +117,14 @@ def module_unlocks_next(module, student):
     if not progress:
         return False
 
-    if getattr(module, 'skip_assessment', False):
-        return progress.content_completed
-
-    return progress.assessment_passed
+    return progress.unlocks_next
 
 
 def is_module_unlocked(module, student):
     if not student:
         return False
 
-    previous_module = get_previous_module(module)
-    if previous_module is None:
-        return True
-
-    return module_unlocks_next(previous_module, student)
+    return module.is_unlocked_for(student)
 
 
 def update_module_content_completion(module, student):
@@ -183,11 +170,11 @@ def get_module_progress_states(course, student):
         for item in ModuleProgress.objects.filter(student=student, module__course=course)
     } if student else {}
     states = []
-    previous_completed = True
 
     for index, module in enumerate(modules):
         progress = progress_map.get(module.id)
-        unlocked = index == 0 or previous_completed
+        previous_module = module.get_previous_module()
+        unlocked = module.is_unlocked_for(student) if student else index == 0
         assessment = get_module_assessment(module, student=student)
         if not assessment:
             assessment_status = 'not_ready'
@@ -211,8 +198,9 @@ def get_module_progress_states(course, student):
             'content_completed': bool(progress and progress.content_completed),
             'assessment_passed': bool(progress and progress.assessment_passed),
             'best_score': progress.best_score if progress else 0,
+            'previous_module': previous_module,
+            'lock_message': module.lock_message_for(student) if student else '',
         })
-        previous_completed = module_unlocks_next(module, student) if progress else False
 
     return states
 
