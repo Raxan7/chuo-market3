@@ -158,13 +158,17 @@ def update_module_assessment_completion(quiz_taker):
 
     if quiz_taker.score >= ModuleProgress.PASSING_PERCENTAGE:
         progress.assessment_passed = True
+        # Automatically mark content as completed if the assessment is passed.
+        # This ensures that passing the quiz immediately unlocks the next module,
+        # even if some content items weren't explicitly marked as complete.
+        progress.content_completed = True
 
     progress.refresh_completion()
     return progress
 
 
 def get_module_progress_states(course, student):
-    modules = list(course.modules.prefetch_related('contents', 'quizzes').order_by('order', 'id'))
+    modules = list(course.modules.prefetch_related('contents', 'quizzes').all())
     progress_map = {
         item.module_id: item
         for item in ModuleProgress.objects.filter(student=student, module__course=course)

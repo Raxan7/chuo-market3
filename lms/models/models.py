@@ -306,7 +306,7 @@ class CourseModule(models.Model):
     )
     
     class Meta:
-        ordering = ['order', 'id']
+        ordering = ['order']
         
     def __str__(self):
         return f"{self.title} - {self.course.title}"
@@ -315,24 +315,21 @@ class CourseModule(models.Model):
     def requires_assessment(self):
         return not self.skip_assessment
 
-    def _ordered_siblings(self):
-        return list(
-            CourseModule.objects.filter(course=self.course).order_by('order', 'id')
-        )
-
     def get_previous_module(self):
-        siblings = self._ordered_siblings()
-        for index, module in enumerate(siblings):
-            if module.id == self.id:
-                return siblings[index - 1] if index > 0 else None
-        return None
+        return CourseModule.objects.filter(
+            models.Q(course=self.course) & (
+                models.Q(order__lt=self.order) | 
+                models.Q(order=self.order, id__lt=self.id)
+            )
+        ).order_by('-order', '-id').first()
 
     def get_next_module(self):
-        siblings = self._ordered_siblings()
-        for index, module in enumerate(siblings):
-            if module.id == self.id:
-                return siblings[index + 1] if index + 1 < len(siblings) else None
-        return None
+        return CourseModule.objects.filter(
+            models.Q(course=self.course) & (
+                models.Q(order__gt=self.order) | 
+                models.Q(order=self.order, id__gt=self.id)
+            )
+        ).order_by('order', 'id').first()
 
     def get_progress_for(self, student):
         if not student:
