@@ -395,7 +395,7 @@ class Quiz(models.Model):
 
     course = models.ForeignKey(Course, on_delete=models.CASCADE)
     title = models.CharField(verbose_name=_("Title"), max_length=60)
-    slug = models.SlugField(unique=True, blank=True)
+    slug = models.SlugField(unique=True, blank=True, max_length=150)
     description = models.TextField(
         verbose_name=_("Description"),
         blank=True,
@@ -475,7 +475,7 @@ class Quiz(models.Model):
             if self.generated_for_id:
                 suffix_parts.append(str(self.generated_for_id))
             suffix_parts.append(uuid.uuid4().hex[:8])
-            self.slug = slugify('-'.join(suffix_parts))[:100]
+            self.slug = slugify('-'.join(suffix_parts))[:150]
 
         super().save(*args, **kwargs)
     
@@ -893,8 +893,13 @@ def unique_slug_generator(instance, new_slug=None):
     Generate a unique slug for models
     Handle emojis and ensure the slug isn't too long
     """
+    try:
+        max_length = instance._meta.get_field('slug').max_length or 50
+    except Exception:
+        max_length = 50
+
     if new_slug is not None:
-        slug = new_slug
+        slug = new_slug[:max_length]
     else:
         # Remove any emojis or special characters that can't be properly slugified
         import re
@@ -909,8 +914,8 @@ def unique_slug_generator(instance, new_slug=None):
             random_string = ''.join(random.choices(string.ascii_lowercase + string.digits, k=8))
             title = f"course-{random_string}"
         
-        # Create slug and limit to 50 chars to avoid DB field length issues
-        slug = slugify(title)[:50]
+        # Create slug and limit to the model field length to avoid DB field length issues
+        slug = slugify(title)[:max_length]
     
     # Get the model class
     Klass = instance.__class__
@@ -920,7 +925,8 @@ def unique_slug_generator(instance, new_slug=None):
     if qs_exists:
         # Generate random string
         random_string = ''.join(random.choices(string.ascii_lowercase + string.digits, k=4))
-        new_slug = f"{slug[:45]}-{random_string}"  # Ensure we stay under the limit even with the suffix
+        suffix = f"-{random_string}"
+        new_slug = f"{slug[:max(0, max_length - len(suffix))]}{suffix}"
         return unique_slug_generator(instance, new_slug=new_slug)
     return slug
 
