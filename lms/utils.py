@@ -118,6 +118,17 @@ def is_first_module(module):
     return get_previous_module(module) is None
 
 
+def module_unlocks_next(module, student):
+    progress = ModuleProgress.objects.filter(student=student, module=module).first()
+    if not progress:
+        return False
+
+    if getattr(module, 'skip_assessment', False):
+        return progress.content_completed
+
+    return progress.assessment_passed
+
+
 def is_module_unlocked(module, student):
     if not student:
         return False
@@ -126,12 +137,7 @@ def is_module_unlocked(module, student):
     if previous_module is None:
         return True
 
-    return ModuleProgress.objects.filter(
-        student=student,
-        module=previous_module,
-        content_completed=True,
-        assessment_passed=True,
-    ).exists()
+    return module_unlocks_next(previous_module, student)
 
 
 def update_module_content_completion(module, student):
@@ -165,9 +171,6 @@ def update_module_assessment_completion(quiz_taker):
 
     if quiz_taker.score >= ModuleProgress.PASSING_PERCENTAGE:
         progress.assessment_passed = True
-        # If the student passed the assessment, we treat the module as fully completed.
-        # This ensures progression to the next module is never blocked by a missed "mark complete" on content.
-        progress.content_completed = True
 
     progress.refresh_completion()
     return progress
@@ -209,7 +212,7 @@ def get_module_progress_states(course, student):
             'assessment_passed': bool(progress and progress.assessment_passed),
             'best_score': progress.best_score if progress else 0,
         })
-        previous_completed = completed
+        previous_completed = module_unlocks_next(module, student) if progress else False
 
     return states
 

@@ -862,6 +862,9 @@ def complete_quiz(request, quiz_taker_id):
         )
 
         if score_percentage >= ModuleProgress.PASSING_PERCENTAGE:
+            if quiz.module:
+                from .utils import get_next_module
+                next_module = get_next_module(quiz.module)
             messages.success(request, _("Assessment passed. The next module is now unlocked."))
             if issued_certificate:
                 messages.success(request, _("Congratulations! Your course certificate has been issued."))

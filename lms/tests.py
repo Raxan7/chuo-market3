@@ -178,6 +178,7 @@ class LMSModuleGatingTests(TestCase):
             description='Second module',
             order=1,
         )
+        self._create_content(first_module, title='Lesson 1')
         quiz = Quiz.objects.create(
             course=self.course,
             module=first_module,
@@ -213,6 +214,7 @@ class LMSModuleGatingTests(TestCase):
         self.assertIn(f'#collapse{second_module.id}', response['Location'])
 
         progress = ModuleProgress.objects.get(student=self.profile, module=first_module)
-        self.assertTrue(progress.completed)
         self.assertTrue(progress.assessment_passed)
+        self.assertFalse(progress.content_completed)
         self.assertGreaterEqual(float(progress.best_score), 70)
+        self.assertFalse(progress.completed)
