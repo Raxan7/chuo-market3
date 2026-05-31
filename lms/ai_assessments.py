@@ -162,26 +162,60 @@ MODULE CONTENT:
 {context}
 """.strip()
 
+    def parse_payload(payload_text):
+        if not payload_text:
+            raise ValueError('empty response from Cerebras')
+
+        text = str(payload_text).strip()
+        if text.startswith('```'):
+            text = re.sub(r'^```(?:json)?\s*', '', text, flags=re.IGNORECASE)
+            text = re.sub(r'\s*```$', '', text)
+
+        try:
+            return json.loads(text)
+        except json.JSONDecodeError:
+            start = text.find('{')
+            end = text.rfind('}')
+            if start != -1 and end != -1 and end > start:
+                return json.loads(text[start:end + 1])
+            raise
+
     try:
         client = Cerebras(api_key=api_key)
-        response = client.chat.completions.create(
-            model=getattr(settings, 'CEREBRAS_ASSESSMENT_MODEL', 'zai-glm-4.7'),
-            messages=[
-                {"role": "system", "content": "Return valid JSON only. Do not wrap it in Markdown."},
-                {"role": "user", "content": prompt},
-            ],
-            temperature=0.2,
-            max_tokens=3000,
-        )
-        payload = response.choices[0].message.content
-        try:
-            parsed = json.loads(payload)
-            return parsed, 'success', 'ok'
-        except json.JSONDecodeError as je:
-            msg = f"Module {getattr(module, 'id', '?')}: invalid JSON from Cerebras: {je}"
-            logger.error(msg)
-            logger.debug("Payload start: %s", payload[:500])
-            return None, 'invalid_json', msg
+        messages = [
+            {"role": "system", "content": "Return valid JSON only. Do not wrap it in Markdown."},
+            {"role": "user", "content": prompt},
+        ]
+
+        for attempt in range(2):
+            response = client.chat.completions.create(
+                model=getattr(settings, 'CEREBRAS_ASSESSMENT_MODEL', 'zai-glm-4.7'),
+                messages=messages,
+                temperature=0.0 if attempt else 0.2,
+                max_tokens=3000,
+            )
+            payload = response.choices[0].message.content
+            try:
+                parsed = parse_payload(payload)
+                return parsed, 'success', 'ok'
+            except Exception as exc:
+                msg = f"Module {getattr(module, 'id', '?')}: invalid JSON from Cerebras: {exc}"
+                logger.error(msg)
+                logger.debug("Payload start: %s", str(payload)[:500])
+                if attempt == 0:
+                    messages = [
+                        {"role": "system", "content": "Return valid JSON only. Do not wrap it in Markdown."},
+                        {
+                            "role": "user",
+                            "content": (
+                                f"The previous response was invalid JSON. Re-answer using only valid JSON that matches this schema exactly: "
+                                f'{{"questions":[{{"question":"...","choices":["...","...","...","..."],"correct_index":0,"explanation":"..."}}]}}\n\n'
+                                f"MODULE CONTENT:\n{context}"
+                            ),
+                        },
+                    ]
+                    continue
+                return None, 'invalid_json', msg
     except Exception as exc:
         msg = f"Module {getattr(module, 'id', '?')}: Cerebras API call failed: {type(exc).__name__}: {exc}"
         logger.exception(msg)
@@ -279,16 +313,19 @@ def ensure_module_assessment(module, student=None, question_count=DEFAULT_QUESTI
     context = collect_module_learning_context(module, student=student)
     raw_payload, status, msg = _call_cerebras_for_questions(module, context, question_count)
     if status != 'success' or not raw_payload:
-        if getattr(settings, 'CEREBRAS_STRICT_ASSESSMENTS', True):
-            logger.warning(
-                f"Module {getattr(module, 'id', '?')}: AI generation failed ({status}), leaving quiz in progress/failure state: {msg}"
-            )
-            _mark_quiz_generation_state(existing, 'failed', msg)
-            return existing
-
-        questions = _normalise_questions(_fallback_questions(module, context, question_count), question_count)
+        logger.warning(
+            f"Module {getattr(module, 'id', '?')}: AI generation failed ({status}), using fallback questions: {msg}"
+        )
+        fallback_payload = _fallback_questions(module, context, question_count)
+        questions = _normalise_questions(fallback_payload, question_count)
     else:
         questions = _normalise_questions(raw_payload, question_count)
+
+    if not questions:
+        logger.warning(
+            f"Module {getattr(module, 'id', '?')}: no valid questions generated, using fallback questions"
+        )
+        questions = _normalise_questions(_fallback_questions(module, context, question_count), question_count)
 
     quiz = existing
 
