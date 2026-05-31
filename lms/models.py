@@ -554,8 +554,14 @@ def unique_slug_generator(instance, new_slug=None):
     Generate a unique slug for models
     Handle emojis and ensure the slug isn't too long
     """
+    # Determine max length from the model field to avoid DB field length issues
+    try:
+        max_length = instance._meta.get_field('slug').max_length or 50
+    except Exception:
+        max_length = 50
+
     if new_slug is not None:
-        slug = new_slug
+        slug = new_slug[:max_length]
     else:
         # Remove any emojis or special characters that can't be properly slugified
         import re
@@ -570,12 +576,6 @@ def unique_slug_generator(instance, new_slug=None):
             random_string = ''.join(random.choices(string.ascii_lowercase + string.digits, k=8))
             title = f"course-{random_string}"
         
-        # Determine max length from the model field to avoid DB field length issues
-        try:
-            max_length = instance._meta.get_field('slug').max_length or 50
-        except Exception:
-            max_length = 50
-        # Create slug and limit to the field's max_length
         slug = slugify(title)[:max_length]
     
     # Get the model class
@@ -600,6 +600,10 @@ def course_pre_save_receiver(sender, instance, **kwargs):
     """
     if not instance.slug:
         instance.slug = unique_slug_generator(instance)
+    else:
+        # Ensure manually provided slugs also fit within DB limits
+        max_length = sender._meta.get_field('slug').max_length or 100
+        instance.slug = instance.slug[:max_length]
 
 
 @receiver(pre_save, sender=Quiz)
@@ -609,6 +613,10 @@ def quiz_pre_save_receiver(sender, instance, **kwargs):
     """
     if not instance.slug:
         instance.slug = unique_slug_generator(instance)
+    else:
+        # Ensure manually provided slugs also fit within DB limits
+        max_length = sender._meta.get_field('slug').max_length or 150
+        instance.slug = instance.slug[:max_length]
 
 
 @receiver(post_save, sender=Course)
