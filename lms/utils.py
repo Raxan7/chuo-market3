@@ -91,6 +91,13 @@ def get_previous_module(module):
     ).order_by('-order', '-id').first()
 
 
+def get_next_module(module):
+    return CourseModule.objects.filter(
+        course=module.course,
+        order__gt=module.order
+    ).order_by('order', 'id').first()
+
+
 def get_module_assessment(module, student=None):
     if getattr(module, 'skip_assessment', False):
         return None

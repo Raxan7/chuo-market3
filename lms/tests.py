@@ -4,7 +4,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from .ai_assessments import ensure_module_assessment, queue_module_assessment_generation
-from .models import Course, CourseContent, CourseEnrollment, LMSProfile, CourseModule, ContentAccess, QuizTaker
+from .models import Course, CourseContent, CourseEnrollment, LMSProfile, CourseModule, ContentAccess, QuizTaker, Quiz, MCQuestion, Choice, StudentAnswer, ModuleProgress
 from .utils import is_module_unlocked, update_module_content_completion, update_module_assessment_completion
 
 
@@ -163,3 +163,56 @@ class LMSModuleGatingTests(TestCase):
         self.assertContains(response, 'Open Assessment')
         self.assertIn('aria-disabled="true"', response.content.decode())
         self.assertNotIn(f'data-bs-target="#collapse{second_module.id}"', response.content.decode())
+
+    @override_settings(CEREBRAS_API_KEY=None, CEREBRAS_STRICT_ASSESSMENTS=False)
+    def test_passing_quiz_saves_progress_and_redirects_to_next_module(self):
+        first_module = CourseModule.objects.create(
+            course=self.course,
+            title='Module 1',
+            description='First module',
+            order=0,
+        )
+        second_module = CourseModule.objects.create(
+            course=self.course,
+            title='Module 2',
+            description='Second module',
+            order=1,
+        )
+        quiz = Quiz.objects.create(
+            course=self.course,
+            module=first_module,
+            title='Module 1 Mastery Check',
+            category='practice',
+            pass_mark=70,
+            answers_at_end=True,
+            exam_paper=True,
+            draft=False,
+            generation_status='ready',
+        )
+        question = MCQuestion.objects.create(quiz=quiz, content='What is 2 + 2?', explanation='Basic math', order=1)
+        correct_choice = Choice.objects.create(question=question, content='4', correct=True)
+        Choice.objects.create(question=question, content='3', correct=False)
+        StudentAnswer.objects.create(
+            quiz_taker=QuizTaker.objects.create(
+                user=self.profile,
+                quiz=quiz,
+                score=0,
+                completed=False,
+                date_started=timezone.now(),
+            ),
+            question=question,
+            mc_answer=correct_choice,
+            is_correct=True,
+        )
+
+        quiz_taker = QuizTaker.objects.get(user=self.profile, quiz=quiz)
+        response = self.client.get(reverse('lms:complete_quiz', kwargs={'quiz_taker_id': quiz_taker.id}), follow=False)
+
+        self.assertIn(response.status_code, (301, 302))
+        self.assertIn(f'/lms/courses/{self.course.slug}/', response['Location'])
+        self.assertIn(f'#collapse{second_module.id}', response['Location'])
+
+        progress = ModuleProgress.objects.get(student=self.profile, module=first_module)
+        self.assertTrue(progress.completed)
+        self.assertTrue(progress.assessment_passed)
+        self.assertGreaterEqual(float(progress.best_score), 70)

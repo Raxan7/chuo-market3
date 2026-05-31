@@ -843,12 +843,14 @@ def complete_quiz(request, quiz_taker_id):
 
     module_progress = None
     issued_certificate = None
+    next_module = None
     if quiz.module:
-        from .utils import update_module_assessment_completion, update_module_content_completion, issue_certificate_if_eligible
+        from .utils import update_module_assessment_completion, update_module_content_completion, issue_certificate_if_eligible, get_next_module
         update_module_content_completion(quiz.module, quiz_taker.user)
         module_progress = update_module_assessment_completion(quiz_taker)
         if module_progress and module_progress.completed:
             issued_certificate = issue_certificate_if_eligible(quiz.course, quiz_taker.user)
+            next_module = get_next_module(quiz.module)
     
     # Create activity log
     ActivityLog.objects.create(
@@ -859,6 +861,8 @@ def complete_quiz(request, quiz_taker_id):
         messages.success(request, _("Assessment passed. The next module is now unlocked."))
         if issued_certificate:
             messages.success(request, _("Congratulations! Your course certificate has been issued."))
+        if next_module:
+            return redirect(f"{reverse('lms:course_detail', kwargs={'slug': quiz.course.slug})}#collapse{next_module.id}")
     else:
         messages.warning(request, _("You need at least 70% to unlock the next module. Review the module and try again."))
     
