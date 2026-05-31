@@ -869,7 +869,6 @@ def complete_quiz(request, quiz_taker_id):
             message=_(f"User {request.user.username} completed quiz '{quiz.title}' with score {score_percentage:.1f}%.")
         )
 
-        if score_percentage >= ModuleProgress.PASSING_PERCENTAGE:
         if score_percentage >= pass_threshold:
             if unlock_message:
                 messages.success(request, unlock_message)
@@ -878,7 +877,6 @@ def complete_quiz(request, quiz_taker_id):
             if next_module:
                 return redirect(f"{reverse('lms:course_detail', kwargs={'slug': quiz.course.slug})}#collapse{next_module.id}")
         else:
-            messages.warning(request, _("You need at least 70% to unlock the next module. Review this module and try again."))
             messages.warning(request, _("You need at least %(score)s%% to unlock the next module. Review this module and try again.") % {'score': pass_threshold})
         
         return redirect('lms:quiz_results', quiz_taker_id=quiz_taker.id)
