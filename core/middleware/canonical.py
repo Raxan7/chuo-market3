@@ -19,6 +19,10 @@ class CanonicalDomainMiddleware:
         If the request's host doesn't match the canonical domain,
         redirect to the same path on the canonical domain.
         """
+        # Never redirect in DEBUG mode to allow local testing
+        if settings.DEBUG:
+            return self.get_response(request)
+            
         host = request.get_host().split(':')[0]
         
         # If we're not on the canonical domain, redirect

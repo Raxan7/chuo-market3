@@ -307,6 +307,22 @@ class EssayAnswerForm(forms.Form):
         return cleaned_data
 
 
+class MCAnswerForm(forms.Form):
+    """Form for answering multiple choice questions"""
+    choice = forms.ModelChoiceField(queryset=Choice.objects.none(), empty_label=None)
+
+    def __init__(self, *args, **kwargs):
+        question = kwargs.pop('question', None)
+        super().__init__(*args, **kwargs)
+        if question is not None:
+            self.fields['choice'].queryset = Choice.objects.filter(question=question)
+
+
+class TFAnswerForm(forms.Form):
+    """Form for answering true/false questions"""
+    answer = forms.ChoiceField(choices=(('true', _('True')), ('false', _('False'))))
+
+
 class InstructorRequestForm(forms.ModelForm):
     """Form for requesting instructor status"""
     class Meta:

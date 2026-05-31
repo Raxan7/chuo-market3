@@ -17,10 +17,15 @@ class CanonicalDomainMiddleware:
         self.get_response = get_response
         # Define canonical domain - preferably from settings
         self.canonical_domain = getattr(settings, 'CANONICAL_DOMAIN', 'chuosmart.com')
+        self.local_hosts = {'localhost', '127.0.0.1', '::1'}
         
     def __call__(self, request):
+        # Never redirect in DEBUG mode to allow local testing and prevent browser caching issues
+        if settings.DEBUG:
+            return self.get_response(request)
+            
         host = request.get_host().split(':')[0]
-        
+
         # If not on the canonical domain and not in DEBUG mode
         if host != self.canonical_domain and not settings.DEBUG:
             # Build the new URL using the canonical domain
@@ -45,6 +50,10 @@ class TrailingSlashMiddleware:
         self.get_response = get_response
         
     def __call__(self, request):
+        # Disable permanent trailing slash redirects in DEBUG mode to avoid browser caching loops
+        if settings.DEBUG:
+            return self.get_response(request)
+            
         # Skip if this is a file or media URL
         path = request.path
         

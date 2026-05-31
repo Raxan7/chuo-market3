@@ -5,6 +5,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse, reverse_lazy
 from django.http import HttpResponseRedirect, JsonResponse, HttpResponse, Http404
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.views import redirect_to_login
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth.models import User
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
@@ -27,7 +28,7 @@ from .forms import (
     LMSProfileForm, CourseForm, CourseModuleForm, CourseContentForm,
     QuizForm, MCQuestionForm, ChoiceForm, TFQuestionForm, EssayQuestionForm,
     GradeForm, CourseEnrollForm, EssayAnswerForm, InstructorRequestForm,
-    ProgramForm, CertificateTemplateForm
+    ProgramForm, CertificateTemplateForm, MCAnswerForm, TFAnswerForm
 )
 
 from .forms import PaymentMethodForm
@@ -719,9 +720,9 @@ def quiz_question(request, quiz_id, quiz_taker_id, question_number):
         # Process different question types
         if isinstance(question, MCQuestion):
             # Handle multiple choice
-            selected_choice_id = request.POST.get('choice')
-            if selected_choice_id:
-                selected_choice = get_object_or_404(Choice, id=selected_choice_id, question=question)
+            form = MCAnswerForm(request.POST, question=question)
+            if form.is_valid():
+                selected_choice = form.cleaned_data['choice']
                 is_correct = question.check_if_correct(selected_choice)
                 
                 # Save answer
@@ -736,9 +737,9 @@ def quiz_question(request, quiz_id, quiz_taker_id, question_number):
             
         elif isinstance(question, TF_Question):
             # Handle true/false
-            answer = request.POST.get('answer')
-            if answer in ['true', 'false']:
-                selected_answer = answer == 'true'
+            form = TFAnswerForm(request.POST)
+            if form.is_valid():
+                selected_answer = form.cleaned_data['answer'] == 'true'
                 is_correct = selected_answer == question.correct
                 
                 # Save answer
@@ -905,7 +906,7 @@ def course_content_detail(request, course_slug, content_id):
     if not is_instructor:
         if not request.user.is_authenticated:
             messages.info(request, _("Login and enroll to open course modules."))
-            return redirect(f"{reverse('login')}?next={request.path}")
+            return redirect_to_login(request.get_full_path(), reverse('login'))
         if not is_enrolled:
             messages.info(request, _("Enroll in this course to open its modules."))
             return redirect('lms:enroll_course', slug=course.slug)
@@ -922,7 +923,7 @@ def course_content_detail(request, course_slug, content_id):
     mark_complete = request.GET.get('mark_complete') == 'true'
     if mark_complete:
         if not request.user.is_authenticated:
-            return redirect(f"{reverse('login')}?next={request.path}")
+            return redirect_to_login(request.get_full_path(), reverse('login'))
         # Ensure user has a profile
         if not profile:
             messages.error(request, _("You need an LMS profile to save progress."))
@@ -2059,6 +2060,11 @@ def debug_upload_view(request):
     Debug view for testing file uploads.
     This is a temporary view for troubleshooting file upload issues.
     """
+    from django.conf import settings
+
+    if not settings.DEBUG:
+        raise Http404("Not found")
+
     if request.method == 'POST':
         print(f"DEBUG UPLOAD: Files in request: {request.FILES}")
         if 'test_file' in request.FILES:
@@ -2067,16 +2073,17 @@ def debug_upload_view(request):
             print(f"DEBUG UPLOAD: File size: {file.size}")
             print(f"DEBUG UPLOAD: File content type: {file.content_type}")
             
-            # Save the file to the media directory
+            # Save the file using a generated filename to avoid path manipulation.
             import os
-            from django.conf import settings
-            
-            file_path = os.path.join(settings.MEDIA_ROOT, 'lms', 'debug_uploads', file.name)
-            os.makedirs(os.path.dirname(file_path), exist_ok=True)
-            
-            with open(file_path, 'wb+') as destination:
-                for chunk in file.chunks():
-                    destination.write(chunk)
+            from pathlib import Path
+            from uuid import uuid4
+            from django.core.files.storage import default_storage
+
+            suffix = Path(file.name).suffix.lower()
+            safe_name = f"{uuid4().hex}{suffix}"
+            relative_path = os.path.join('lms', 'debug_uploads', safe_name)
+            saved_path = default_storage.save(relative_path, file)
+            file_path = default_storage.path(saved_path)
                     
             return render(request, 'lms/debug_upload.html', {
                 'success': True,
