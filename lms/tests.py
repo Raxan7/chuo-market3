@@ -169,7 +169,7 @@ class LMSModuleGatingTests(TestCase):
         self.assertIn('aria-disabled="true"', response.content.decode())
         self.assertNotIn(f'data-bs-target="#collapse{second_module.id}"', response.content.decode())
 
-    def test_default_order_modules_still_lock_later_modules(self):
+    def test_modules_with_default_order_still_lock_later_modules(self):
         first_module = CourseModule.objects.create(
             course=self.course,
             title='Module 1',
@@ -180,13 +180,14 @@ class LMSModuleGatingTests(TestCase):
             title='Module 2',
             description='Second module',
         )
+        self._create_content(first_module)
+        self._create_content(second_module, title='Lesson 2')
 
         response = self.client.get(reverse('lms:course_detail', kwargs={'slug': self.course.slug}), follow=True)
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.context['module_states'][0]['unlocked'])
         self.assertFalse(response.context['module_states'][1]['unlocked'])
-        self.assertEqual(response.context['module_states'][0]['module'].id, first_module.id)
-        self.assertEqual(response.context['module_states'][1]['module'].id, second_module.id)
+        self.assertContains(response, 'Prerequisite module: Module 1')
 
     @override_settings(CEREBRAS_API_KEY=None, CEREBRAS_STRICT_ASSESSMENTS=False)
     def test_passing_quiz_saves_progress_and_redirects_to_next_module(self):

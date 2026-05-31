@@ -164,7 +164,7 @@ def update_module_assessment_completion(quiz_taker):
 
 
 def get_module_progress_states(course, student):
-    modules = list(course.modules.prefetch_related('contents', 'quizzes').all())
+    modules = list(course.modules.prefetch_related('contents', 'quizzes').order_by('order', 'id'))
     progress_map = {
         item.module_id: item
         for item in ModuleProgress.objects.filter(student=student, module__course=course)
