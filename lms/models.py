@@ -277,7 +277,7 @@ class Quiz(models.Model):
     """
     course = models.ForeignKey(Course, on_delete=models.CASCADE)
     title = models.CharField(verbose_name=_("Title"), max_length=60)
-    slug = models.SlugField(unique=True, blank=True)
+    slug = models.SlugField(unique=True, blank=True, max_length=150)
     description = models.TextField(
         verbose_name=_("Description"),
         blank=True,
@@ -570,8 +570,13 @@ def unique_slug_generator(instance, new_slug=None):
             random_string = ''.join(random.choices(string.ascii_lowercase + string.digits, k=8))
             title = f"course-{random_string}"
         
-        # Create slug and limit to 50 chars to avoid DB field length issues
-        slug = slugify(title)[:50]
+        # Determine max length from the model field to avoid DB field length issues
+        try:
+            max_length = instance._meta.get_field('slug').max_length or 50
+        except Exception:
+            max_length = 50
+        # Create slug and limit to the field's max_length
+        slug = slugify(title)[:max_length]
     
     # Get the model class
     Klass = instance.__class__
@@ -579,9 +584,11 @@ def unique_slug_generator(instance, new_slug=None):
     # Check if slug exists
     qs_exists = Klass.objects.filter(slug=slug).exists()
     if qs_exists:
-        # Generate random string
+        # Generate random suffix and ensure the final slug stays within the max length
         random_string = ''.join(random.choices(string.ascii_lowercase + string.digits, k=4))
-        new_slug = f"{slug[:45]}-{random_string}"  # Ensure we stay under the limit even with the suffix
+        suffix = f"-{random_string}"
+        base_length = max_length - len(suffix)
+        new_slug = f"{slug[:base_length]}{suffix}"
         return unique_slug_generator(instance, new_slug=new_slug)
     return slug
 
