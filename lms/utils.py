@@ -151,12 +151,13 @@ def update_module_assessment_completion(quiz_taker):
         student=quiz_taker.user,
         module=module,
     )
+    pass_threshold = quiz_taker.quiz.pass_mark or ModuleProgress.PASSING_PERCENTAGE
 
     if quiz_taker.score > progress.best_score:
         progress.best_score = quiz_taker.score
         progress.best_quiz_taker = quiz_taker
 
-    if quiz_taker.score >= ModuleProgress.PASSING_PERCENTAGE:
+    if quiz_taker.score >= pass_threshold:
         progress.assessment_passed = True
         # Automatically mark content as completed if the assessment is passed.
         # This ensures that passing the quiz immediately unlocks the next module,
@@ -173,12 +174,14 @@ def get_module_progress_states(course, student):
         item.module_id: item
         for item in ModuleProgress.objects.filter(student=student, module__course=course)
     } if student else {}
+    
     states = []
-
+    previously_completed = True  # The first module is always unlocked
+    
     for index, module in enumerate(modules):
         progress = progress_map.get(module.id)
-        previous_module = module.get_previous_module()
-        unlocked = module.is_unlocked_for(student) if student else index == 0
+        # Logic sequence gating: unlocked if the module BEFORE this one in the list was passed
+        unlocked = previously_completed
         assessment = get_module_assessment(module, student=student)
         if not assessment:
             assessment_status = 'not_ready'
@@ -202,9 +205,13 @@ def get_module_progress_states(course, student):
             'content_completed': bool(progress and progress.content_completed),
             'assessment_passed': bool(progress and progress.assessment_passed),
             'best_score': progress.best_score if progress else 0,
-            'previous_module': previous_module,
+            'previous_module': modules[index-1] if index > 0 else None,
             'lock_message': module.lock_message_for(student) if student else '',
         })
+        
+        # Update previously_completed for the next iteration in the sequence
+        current_unlocked_next = bool(progress and progress.unlocks_next)
+        previously_completed = current_unlocked_next
 
     return states
 

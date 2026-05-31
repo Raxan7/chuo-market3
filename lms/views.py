@@ -847,6 +847,7 @@ def complete_quiz(request, quiz_taker_id):
     next_module = None
     unlock_message = None
     
+    pass_threshold = quiz.pass_mark or ModuleProgress.PASSING_PERCENTAGE
     from django.db import transaction
     with transaction.atomic():
         if quiz.module:
@@ -869,6 +870,7 @@ def complete_quiz(request, quiz_taker_id):
         )
 
         if score_percentage >= ModuleProgress.PASSING_PERCENTAGE:
+        if score_percentage >= pass_threshold:
             if unlock_message:
                 messages.success(request, unlock_message)
             if issued_certificate:
@@ -877,6 +879,7 @@ def complete_quiz(request, quiz_taker_id):
                 return redirect(f"{reverse('lms:course_detail', kwargs={'slug': quiz.course.slug})}#collapse{next_module.id}")
         else:
             messages.warning(request, _("You need at least 70% to unlock the next module. Review this module and try again."))
+            messages.warning(request, _("You need at least %(score)s%% to unlock the next module. Review this module and try again.") % {'score': pass_threshold})
         
         return redirect('lms:quiz_results', quiz_taker_id=quiz_taker.id)
 
