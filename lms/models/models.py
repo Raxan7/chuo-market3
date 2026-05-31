@@ -315,17 +315,24 @@ class CourseModule(models.Model):
     def requires_assessment(self):
         return not self.skip_assessment
 
+    def get_ordered_modules(self):
+        return list(
+            CourseModule.objects.filter(course=self.course).order_by('order', 'id')
+        )
+
     def get_previous_module(self):
-        return CourseModule.objects.filter(
-            course=self.course,
-            order__lt=self.order,
-        ).order_by('-order', '-id').first()
+        modules = self.get_ordered_modules()
+        for index, module in enumerate(modules):
+            if module.id == self.id:
+                return modules[index - 1] if index > 0 else None
+        return None
 
     def get_next_module(self):
-        return CourseModule.objects.filter(
-            course=self.course,
-            order__gt=self.order,
-        ).order_by('order', 'id').first()
+        modules = self.get_ordered_modules()
+        for index, module in enumerate(modules):
+            if module.id == self.id:
+                return modules[index + 1] if index + 1 < len(modules) else None
+        return None
 
     def get_progress_for(self, student):
         if not student:
