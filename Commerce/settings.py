@@ -20,12 +20,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
-
+DEBUG = os.getenv('DEBUG', 'False').strip().lower() in {'1', 'true', 'yes', 'on'}
+# DEBUG = True  # Set to True for development; ensure this is False in production
 # Define the canonical domain (without www)
 CANONICAL_DOMAIN = 'chuosmart.com'
 
-ALLOWED_HOSTS = ['chuo-market3.onrender.com', 'localhost', '127.0.0.1', 'chuosmart.com', 'www.chuosmart.com']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'chuosmart.com', 'www.chuosmart.com']
 # CSRF_TRUSTED_ORIGINS = ['https://chuo-market3.onrender.com', 'http://localhost:8000']
 CSRF_TRUSTED_ORIGINS = [
     'https://chuo-market3.onrender.com',
@@ -254,10 +254,12 @@ CEREBRAS_CONTEXT_LIMIT = int(os.getenv('CEREBRAS_CONTEXT_LIMIT', '12000'))
 # When True, do not fall back to generic static questions; require AI-generated assessments only
 CEREBRAS_STRICT_ASSESSMENTS = os.getenv('CEREBRAS_STRICT_ASSESSMENTS', 'True').lower() in ('1', 'true', 'yes')
 
-# Only raise error if not in test mode or check command
-import sys
-if not CEREBRAS_API_KEY and 'test' not in sys.argv and 'check' not in sys.argv:
-    raise ValueError('CEREBRAS_API_KEY environment variable not set')
+# Do not block application startup if the key is missing.
+# LMS AI assessment code already falls back when Cerebras is unavailable.
+if not CEREBRAS_API_KEY:
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.warning('CEREBRAS_API_KEY is not set; AI-generated assessments will use fallback behavior or remain unavailable.')
 
 # Cloudinary Configuration for image storage and optimization
 CLOUDINARY_STORAGE = {
