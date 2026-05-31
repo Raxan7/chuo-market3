@@ -165,6 +165,9 @@ def update_module_assessment_completion(quiz_taker):
 
     if quiz_taker.score >= ModuleProgress.PASSING_PERCENTAGE:
         progress.assessment_passed = True
+        # If the student passed the assessment, we treat the module as fully completed.
+        # This ensures progression to the next module is never blocked by a missed "mark complete" on content.
+        progress.content_completed = True
 
     progress.refresh_completion()
     return progress

@@ -474,7 +474,8 @@ class Quiz(models.Model):
             if self.generated_for_id:
                 suffix_parts.append(str(self.generated_for_id))
             suffix_parts.append(uuid.uuid4().hex[:8])
-            self.slug = slugify('-'.join(suffix_parts))[:50]
+            max_len = self._meta.get_field('slug').max_length or 150
+            self.slug = slugify('-'.join(suffix_parts))[:max_len]
 
         super().save(*args, **kwargs)
     
@@ -896,7 +897,6 @@ def unique_slug_generator(instance, new_slug=None):
         max_length = instance._meta.get_field('slug').max_length or 50
     except Exception:
         max_length = 50
-    max_length = min(max_length, 50)
 
     if new_slug is not None:
         slug = new_slug[:max_length]
