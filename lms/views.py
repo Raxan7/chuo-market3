@@ -11,6 +11,7 @@ from django.contrib.auth.models import User
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib import messages
 from django.views.generic import (
+    
     ListView, DetailView, CreateView, UpdateView, DeleteView, FormView, TemplateView, View
 )
 from django.db.models import Q, Count, Avg
@@ -844,29 +845,32 @@ def complete_quiz(request, quiz_taker_id):
     module_progress = None
     issued_certificate = None
     next_module = None
-    if quiz.module:
-        from .utils import update_module_assessment_completion, update_module_content_completion, issue_certificate_if_eligible, get_next_module
-        update_module_content_completion(quiz.module, quiz_taker.user)
-        module_progress = update_module_assessment_completion(quiz_taker)
-        if module_progress and module_progress.completed:
-            issued_certificate = issue_certificate_if_eligible(quiz.course, quiz_taker.user)
-            next_module = get_next_module(quiz.module)
     
-    # Create activity log
-    ActivityLog.objects.create(
-        message=_(f"User {request.user.username} completed quiz '{quiz.title}' with score {score_percentage:.1f}%.")
-    )
+    from django.db import transaction
+    with transaction.atomic():
+        if quiz.module:
+            from .utils import update_module_assessment_completion, update_module_content_completion, issue_certificate_if_eligible, get_next_module
+            update_module_content_completion(quiz.module, quiz_taker.user)
+            module_progress = update_module_assessment_completion(quiz_taker)
+            if module_progress and module_progress.completed:
+                issued_certificate = issue_certificate_if_eligible(quiz.course, quiz_taker.user)
+                next_module = get_next_module(quiz.module)
+        
+        # Create activity log
+        ActivityLog.objects.create(
+            message=_(f"User {request.user.username} completed quiz '{quiz.title}' with score {score_percentage:.1f}%.")
+        )
 
-    if score_percentage >= ModuleProgress.PASSING_PERCENTAGE:
-        messages.success(request, _("Assessment passed. The next module is now unlocked."))
-        if issued_certificate:
-            messages.success(request, _("Congratulations! Your course certificate has been issued."))
-        if next_module:
-            return redirect(f"{reverse('lms:course_detail', kwargs={'slug': quiz.course.slug})}#collapse{next_module.id}")
-    else:
-        messages.warning(request, _("You need at least 70% to unlock the next module. Review the module and try again."))
-    
-    return redirect('lms:quiz_results', quiz_taker_id=quiz_taker.id)
+        if score_percentage >= ModuleProgress.PASSING_PERCENTAGE:
+            messages.success(request, _("Assessment passed. The next module is now unlocked."))
+            if issued_certificate:
+                messages.success(request, _("Congratulations! Your course certificate has been issued."))
+            if next_module:
+                return redirect(f"{reverse('lms:course_detail', kwargs={'slug': quiz.course.slug})}#collapse{next_module.id}")
+        else:
+            messages.warning(request, _("You need at least 70% to unlock the next module. Review the module and try again."))
+        
+        return redirect('lms:quiz_results', quiz_taker_id=quiz_taker.id)
 
 
 @login_required(login_url='login')
