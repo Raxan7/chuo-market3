@@ -310,19 +310,24 @@
                     </span>
                     <h3 class="fw-bold mb-1">Congratulations!</h3>
                     <p class="mb-3" style="color: rgba(255,255,255,0.78);">
-                        {% if certificate_downloads_enabled %}
-                            You have completed all modules in this course. Your certificate is ready to claim.
-                        {% else %}
-                            You have completed all modules in this course. You can preview your certificate now &mdash; downloads unlock soon.
-                        {% endif %}
+                        You have completed all modules in this course. Click below to preview the certificate you earned.
                     </p>
                     {% if issued_certificate %}
-                    <a href="{% url 'lms:certificate_detail' issued_certificate.certificate_id %}" class="btn btn-lg px-4" style="background: linear-gradient(135deg,#F5C148 0%,#E0A82E 100%); color:#0B1437; font-weight:700; border:1px solid #B8861E; box-shadow: 0 10px 24px -8px rgba(224,168,46,0.6);">
-                        <i class="fas fa-award me-2"></i>{% if certificate_downloads_enabled %}Claim Your Certificate{% else %}Preview Your Certificate{% endif %}
-                    </a>
+                    <div class="d-flex flex-wrap justify-content-center gap-2">
+                        <button type="button" class="btn btn-lg px-4" data-cs-preview-index="0" style="background: linear-gradient(135deg,#FFD66B 0%,#F5C148 50%,#E0A82E 100%); color:#0B1437; font-weight:700; border:1px solid #B8861E; box-shadow: 0 10px 24px -8px rgba(224,168,46,0.6);">
+                            <i class="fas fa-eye me-2"></i>Preview Certificate
+                        </button>
+                        <a href="{% url 'lms:certificate_detail' issued_certificate.certificate_id %}" class="btn btn-lg btn-outline-light px-4">
+                            <i class="fas fa-up-right-from-square me-2"></i>Open full page
+                        </a>
+                    </div>
                     {% endif %}
                 </div>
             </div>
+            {% if issued_certificate %}
+            <script id="csCertPreviewsData" type="application/json">{{ certificate_previews|safe }}</script>
+            {% include "lms/certificates/_preview_modal.html" %}
+            {% endif %}
             {% endif %}
 
                     {% if not is_enrolled and not is_course_instructor %}

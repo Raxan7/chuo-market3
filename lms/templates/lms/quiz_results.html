@@ -36,11 +36,18 @@
                                 </div>
                             </div>
                         </div>
-                        <a href="{% url 'lms:certificate_detail' issued_certificate.certificate_id %}" class="btn" style="background: linear-gradient(135deg,#F5C148 0%,#E0A82E 100%); color:#0B1437; font-weight:700; border:1px solid #B8861E;">
-                            <i class="fas fa-arrow-right me-2"></i>{% if certificate_downloads_enabled %}View Certificate{% else %}Preview Certificate{% endif %}
-                        </a>
+                        <div class="d-flex flex-wrap gap-2">
+                            <button type="button" class="btn" data-cs-preview-index="0" style="background: linear-gradient(135deg,#F5C148 0%,#E0A82E 100%); color:#0B1437; font-weight:700; border:1px solid #B8861E;">
+                                <i class="fas fa-eye me-2"></i>Preview
+                            </button>
+                            <a href="{% url 'lms:certificate_detail' issued_certificate.certificate_id %}" class="btn btn-outline-dark">
+                                <i class="fas fa-up-right-from-square me-2"></i>Open page
+                            </a>
+                        </div>
                     </div>
                 </div>
+                <script id="csCertPreviewsData" type="application/json">{{ certificate_previews|safe }}</script>
+                {% include "lms/certificates/_preview_modal.html" %}
                 {% endif %}
                 <div class="card-footer d-flex flex-column flex-sm-row gap-2 justify-content-center">
                     <a href="{% url 'lms:course_detail' quiz.course.slug %}" class="btn btn-primary">Back to Course</a>

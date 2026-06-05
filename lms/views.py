@@ -210,6 +210,51 @@ def _resolve_instructor_name(course, template=None):
     return 'Course Instructor'
 
 
+def _build_certificate_previews(certificates):
+    """Build a JSON-serializable list of certificate preview payloads.
+
+    Used by views that include the certificate preview modal so the
+    dashboard / course detail / quiz results can show an inline preview
+    without a full page reload.
+    """
+    from django.urls import reverse
+    from django.utils import timezone as _tz
+    import json
+    out = []
+    for cert in certificates:
+        template = cert.template
+        out.append({
+            'id': cert.certificate_id,
+            'course_title': cert.course.title if cert.course else '',
+            'student_name': _resolve_student_name(cert.student),
+            'instructor_name': _resolve_instructor_name(cert.course, template),
+            'issue_date': _tz.localtime(cert.issued_at).strftime('%B %d, %Y') if cert.issued_at else '',
+            'organization_name': template.organization_name if template else 'ChuoSmart Academy',
+            'certificate_title': template.title if template else 'Certificate of Completion',
+            'detail_url': reverse('lms:certificate_detail', kwargs={'certificate_id': cert.certificate_id}),
+            'download_url': reverse('lms:certificate_download', kwargs={'certificate_id': cert.certificate_id}),
+        })
+    return out
+
+
+def _certificate_previews_json(certificates):
+    """Render the certificate previews list as a </script>-safe JSON string.
+
+    json.dumps handles the backslash and quote escaping, but it does NOT
+    escape the `</` sequence — so a course title like `</script><img>`
+    would break out of the surrounding <script type="application/json">
+    block. We do a targeted replace here so the resulting text is still
+    valid JSON for `JSON.parse(...)` on the client.
+    """
+    from django.utils.safestring import mark_safe
+    import json
+    payload = json.dumps(_build_certificate_previews(certificates))
+    # Only neutralise the </script> close-tag and stray `<!--`. The result
+    # is still valid JSON that JS can parse with JSON.parse().
+    payload = payload.replace('</', '<\\/')
+    return mark_safe(payload)
+
+
 def _resolve_safe_next(request, fallback):
     """Return a safe relative URL for redirect-after-post.
 
@@ -605,12 +650,12 @@ class CourseDetailView(DetailView):
             'enrollment': enrollment,
             'payment_methods': payment_methods,
             'certificate_downloads_enabled': bool(getattr(settings, 'CERTIFICATE_DOWNLOADS_ENABLED', False)),
+            'certificate_previews': _certificate_previews_json([issued_certificate]) if issued_certificate else '[]',
         })
 
         from django.utils.html import strip_tags
         from django.template.defaultfilters import truncatechars
         from django.templatetags.static import static
-        from django.conf import settings
         domain = getattr(settings, 'SITE_DOMAIN', 'chuosmart.com')
         base_url = f"https://{domain}"
         course_url = self.request.build_absolute_uri(course.get_absolute_url() if hasattr(course, 'get_absolute_url') else f'/lms/courses/{course.slug}/')
@@ -1092,6 +1137,7 @@ def quiz_results(request, quiz_taker_id):
         'issued_certificate': issued_certificate,
         'show_answers': quiz.answers_at_end or not quiz.exam_paper,
         'certificate_downloads_enabled': bool(getattr(settings, 'CERTIFICATE_DOWNLOADS_ENABLED', False)),
+        'certificate_previews': _certificate_previews_json([issued_certificate]) if issued_certificate else '[]',
     }
 
     return render(request, 'lms/quiz_results.html', context)
@@ -1919,6 +1965,7 @@ def certificate_detail(request, certificate_id):
         'download_url': reverse('lms:certificate_download', kwargs={'certificate_id': certificate.certificate_id}),
         'verify_url': ctx.get('verification_url'),
         'page_title': _("Your Certificate is Ready"),
+        'certificate_previews': _certificate_previews_json([certificate]),
     })
     return render(request, 'lms/certificates/certificate_detail.html', ctx)
 
@@ -2050,7 +2097,7 @@ def student_dashboard(request):
             issue_certificate_if_eligible(course, profile)
     
     # Re-fetch certificates after any auto-issuance
-    certificates = StudentCertificate.objects.filter(student=request.user).select_related('course')
+    certificates = StudentCertificate.objects.filter(student=request.user).select_related('course', 'template', 'template__course')
 
     context = {
         'profile': profile,
@@ -2061,6 +2108,7 @@ def student_dashboard(request):
         'recent_contents': recent_contents,
         'course_progress': course_progress,
         'certificates': certificates,
+        'certificate_previews': _certificate_previews_json(certificates),
         'needs_legal_name': not profile.has_legal_name,
         'certificate_downloads_enabled': bool(getattr(settings, 'CERTIFICATE_DOWNLOADS_ENABLED', False)),
     }

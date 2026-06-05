@@ -229,6 +229,25 @@
     }
     .cs-btn-locked > i { font-size: 18px; color: #6b7280; }
 
+    .cs-btn-outline {
+        position: relative;
+        display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+        margin-top: 12px;
+        padding: 12px 22px;
+        border-radius: 12px;
+        font-weight: 700; font-size: 15px;
+        color: #0B1437;
+        background: #fff;
+        border: 1.5px solid #0B1437;
+        cursor: pointer;
+        text-decoration: none;
+        transition: background .2s ease, color .2s ease, transform .15s ease;
+        width: 100%;
+    }
+    .cs-btn-outline:hover { background: #0B1437; color: #F5C148; }
+    .cs-btn-outline:active { transform: translateY(1px); }
+    .cs-btn-outline > i { font-size: 16px; }
+
     .cs-lock-banner {
         margin-top: 14px;
         padding: 14px 16px;
@@ -494,6 +513,10 @@
                             </div>
                         </div>
                         {% endif %}
+                        <button type="button" class="cs-btn-outline" data-cs-preview-index="0" data-testid="open-preview">
+                            <i class="fas fa-eye"></i>
+                            View full preview
+                        </button>
                     </div>
 
                     <!-- Preview -->

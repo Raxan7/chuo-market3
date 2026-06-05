@@ -1,0 +1,392 @@
+{# Reusable certificate preview modal. Slides up from the bottom (hover-up), shows a rendered certificate preview, and fires confetti on open.
+
+   Required page context:
+     - certificate_previews: list of dicts with keys:
+         id, course_title, student_name, instructor_name, issue_date, organization_name, detail_url
+     - certificate_downloads_enabled: bool
+#}
+
+<style>
+    /* ============================================================
+       Certificate preview modal — slide-up (hover-up) animation
+       ============================================================ */
+    #csCertPreviewModal {
+        z-index: 1080;
+    }
+    #csCertPreviewModal .modal-dialog {
+        max-width: 760px;
+        margin: auto 12px;
+        transform: translate(0, 100%);
+        transition: transform .55s cubic-bezier(.22, 1, .36, 1);
+    }
+    #csCertPreviewModal.show .modal-dialog {
+        transform: translate(0, 0);
+    }
+    #csCertPreviewModal .modal-content {
+        border: 0;
+        border-radius: 18px;
+        overflow: hidden;
+        box-shadow: 0 -20px 60px -10px rgba(11, 20, 55, 0.45);
+        background: linear-gradient(180deg, #FFF8E7 0%, #ffffff 12%, #ffffff 100%);
+    }
+    #csCertPreviewModal .modal-header {
+        background: linear-gradient(135deg, #0B1437 0%, #131E4F 50%, #1B2A6B 100%);
+        color: #fff;
+        border: 0;
+        padding: 16px 20px;
+        position: relative;
+    }
+    #csCertPreviewModal .modal-header::after {
+        content: "";
+        position: absolute; left: 0; right: 0; bottom: 0; height: 4px;
+        background: linear-gradient(90deg, #F5C148 0%, #E0A82E 50%, #B8861E 100%);
+    }
+    #csCertPreviewModal .modal-title {
+        display: flex; align-items: center; gap: 10px;
+        font-weight: 700; font-size: 17px;
+    }
+    #csCertPreviewModal .modal-title .pill {
+        background: rgba(245, 193, 72, 0.2);
+        color: #F5C148;
+        font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase;
+        padding: 4px 10px; border-radius: 999px; font-weight: 700;
+    }
+    #csCertPreviewModal .btn-close { filter: invert(1) brightness(180%); }
+
+    #csCertPreviewModal .modal-body {
+        padding: 0;
+        background: #f6f7fb;
+    }
+
+    /* The certificate preview itself, styled like the printable certificate */
+    .cs-preview-canvas {
+        position: relative;
+        background:
+            radial-gradient(1200px 600px at 50% -10%, rgba(31, 170, 89, 0.10), transparent 60%),
+            radial-gradient(900px 500px at 50% 110%, rgba(13, 110, 253, 0.10), transparent 60%),
+            #ffffff;
+        padding: 22px;
+    }
+    .cs-preview-canvas::before,
+    .cs-preview-canvas::after {
+        content: "";
+        position: absolute;
+        width: 70px; height: 70px;
+        z-index: 1;
+    }
+    .cs-preview-canvas::before {
+        top: 10px; left: 10px;
+        background: linear-gradient(135deg, #1FAA59 0 50%, transparent 50% 100%);
+    }
+    .cs-preview-canvas::after {
+        bottom: 10px; right: 10px;
+        background: linear-gradient(315deg, #B8861E 0 50%, transparent 50% 100%);
+    }
+    .cs-preview-frame {
+        position: relative; z-index: 2;
+        border: 3px solid #0d6efd;
+        padding: 6px;
+    }
+    .cs-preview-frame-inner {
+        position: relative;
+        border: 1px solid #1FAA59;
+        padding: 26px 22px 22px;
+        text-align: center;
+        background:
+            linear-gradient(180deg, rgba(255,255,255,1) 0%, rgba(248,250,252,0.4) 100%);
+    }
+    .cs-preview-medal {
+        width: 56px; height: 56px;
+        border-radius: 50%;
+        margin: 0 auto 10px;
+        background: conic-gradient(from 0deg, #F5C148 0deg 90deg, #E0A82E 90deg 180deg, #B8861E 180deg 270deg, #E0A82E 270deg 360deg);
+        display: flex; align-items: center; justify-content: center;
+        box-shadow: 0 6px 16px -4px rgba(11, 20, 55, 0.25), 0 0 0 4px #fff inset;
+        position: relative;
+    }
+    .cs-preview-medal::after {
+        content: "";
+        position: absolute; inset: 5px; border-radius: 50%;
+        background: #0d6efd; box-shadow: 0 0 0 2px #F5C148 inset;
+    }
+    .cs-preview-medal i {
+        position: relative; z-index: 2; color: #F5C148; font-size: 22px;
+    }
+    .cs-preview-org {
+        font-size: 11px; letter-spacing: 4px; text-transform: uppercase;
+        color: #1FAA59; font-weight: 700;
+    }
+    .cs-preview-title {
+        font-family: "Georgia", "Times New Roman", serif;
+        font-size: 26px; font-weight: 700;
+        color: #0d6efd; letter-spacing: 3px; text-transform: uppercase;
+        margin: 8px 0 4px;
+    }
+    .cs-preview-subtitle {
+        font-style: italic; font-size: 12px; color: #4B5563;
+        margin: 0 0 16px;
+    }
+    .cs-preview-presented {
+        font-size: 11px; letter-spacing: 2.5px; text-transform: uppercase;
+        color: #6B7280; font-weight: 700;
+        margin: 0 0 6px;
+    }
+    .cs-preview-name {
+        font-family: "Brush Script MT", "Lucida Handwriting", "Apple Chancery", cursive;
+        font-size: 40px; line-height: 1.05; font-style: italic;
+        color: #0d6efd; font-weight: 700; margin: 4px 0 4px;
+        text-shadow: 0 1px 0 rgba(13, 110, 253, 0.08);
+    }
+    .cs-preview-underline {
+        display: block; width: 60%; max-width: 380px; height: 2px;
+        margin: 4px auto 12px;
+        background: linear-gradient(90deg, transparent, #1FAA59, #0d6efd, #1FAA59, transparent);
+        border-radius: 2px;
+    }
+    .cs-preview-body {
+        font-size: 13px; line-height: 1.6; color: #4B5563;
+        max-width: 540px; margin: 0 auto 6px;
+    }
+    .cs-preview-course {
+        font-family: "Georgia", "Times New Roman", serif;
+        font-size: 18px; font-weight: 700; color: #0d6efd;
+        margin: 4px 0 2px;
+    }
+    .cs-preview-date {
+        font-size: 12px; color: #4B5563; margin: 4px 0 16px;
+    }
+
+    .cs-preview-footer {
+        display: grid; grid-template-columns: 1fr auto 1fr;
+        align-items: end; gap: 16px; margin-top: 18px;
+        padding: 0 4px;
+    }
+    .cs-preview-sig {
+        text-align: left;
+    }
+    .cs-preview-sig .name {
+        font-family: "Brush Script MT", "Lucida Handwriting", cursive;
+        font-size: 20px; color: #111827;
+        border-bottom: 1.5px solid #111827;
+        padding-bottom: 2px; display: inline-block; min-width: 160px;
+    }
+    .cs-preview-sig .label {
+        font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase;
+        color: #4B5563; margin-top: 4px;
+    }
+    .cs-preview-sig .label strong { color: #111827; }
+    .cs-preview-seal {
+        width: 72px; height: 72px; border-radius: 50%;
+        background:
+            radial-gradient(circle at 50% 50%, #ffffff 55%, transparent 56%),
+            conic-gradient(from 0deg, #0d6efd 0deg 90deg, #1FAA59 90deg 180deg, #F5C148 180deg 270deg, #B8861E 270deg 360deg);
+        display: flex; align-items: center; justify-content: center;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.12);
+    }
+    .cs-preview-seal::before {
+        content: ""; position: absolute;
+        width: 60px; height: 60px; border-radius: 50%; background: #fff;
+    }
+    .cs-preview-seal .inner {
+        position: relative; z-index: 2; text-align: center; line-height: 1.1;
+    }
+    .cs-preview-seal .inner .lbl {
+        font-family: "Helvetica Neue", Arial, sans-serif;
+        font-size: 6px; letter-spacing: 1px;
+        font-weight: 700; color: #0d6efd;
+        text-transform: uppercase;
+    }
+    .cs-preview-seal .inner .yr {
+        font-size: 5.5px; color: #6B7280; letter-spacing: 0.8px;
+    }
+    .cs-preview-meta { text-align: right; }
+    .cs-preview-meta .lbl {
+        font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase;
+        color: #6B7280; margin-bottom: 2px;
+    }
+    .cs-preview-meta .id {
+        font-family: "Courier New", monospace;
+        font-size: 11px; color: #4B5563; word-break: break-all;
+    }
+
+    .cs-preview-id-pill {
+        position: absolute; top: 14px; right: 14px;
+        font-family: "Courier New", monospace;
+        font-size: 10px;
+        background: rgba(13, 110, 253, 0.08);
+        color: #0d6efd;
+        padding: 4px 8px; border-radius: 6px;
+        z-index: 3;
+    }
+
+    .cs-preview-actions {
+        display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;
+        padding: 16px 20px 20px;
+        background: #fff;
+        border-top: 1px solid #eef0f7;
+    }
+    .cs-preview-actions .btn { font-weight: 600; }
+
+    @media (max-width: 575.98px) {
+        .cs-preview-name { font-size: 32px; }
+        .cs-preview-title { font-size: 22px; }
+        .cs-preview-footer { grid-template-columns: 1fr; gap: 12px; text-align: center; }
+        .cs-preview-sig, .cs-preview-meta { text-align: center; }
+    }
+</style>
+
+<div class="modal fade" id="csCertPreviewModal" tabindex="-1" aria-labelledby="csCertPreviewModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="csCertPreviewModalLabel">
+                    <span class="pill"><i class="fas fa-award me-1"></i>Preview</span>
+                    <span id="csPreviewHeaderText">Certificate</span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="cs-preview-canvas">
+                    <span class="cs-preview-id-pill" id="csPreviewIdPill"></span>
+                    <div class="cs-preview-frame">
+                        <div class="cs-preview-frame-inner">
+                            <div class="cs-preview-medal" aria-hidden="true">
+                                <i class="fas fa-award"></i>
+                            </div>
+                            <div class="cs-preview-org" id="csPreviewOrg">ChuoSmart Academy</div>
+                            <div class="cs-preview-title" id="csPreviewTitle">Certificate of Completion</div>
+                            <div class="cs-preview-subtitle">Awarded in recognition of successful course completion</div>
+                            <div class="cs-preview-presented">This certificate is proudly presented to</div>
+                            <div class="cs-preview-name" id="csPreviewName">Student Name</div>
+                            <span class="cs-preview-underline" aria-hidden="true"></span>
+                            <div class="cs-preview-body">
+                                for successfully completing the course
+                            </div>
+                            <div class="cs-preview-course" id="csPreviewCourse">Course Title</div>
+                            <div class="cs-preview-date" id="csPreviewDate">Issued on &mdash;</div>
+
+                            <div class="cs-preview-footer">
+                                <div class="cs-preview-sig">
+                                    <div class="name" id="csPreviewInstructor">Course Instructor</div>
+                                    <div class="label"><strong id="csPreviewInstructorLabel">Course Instructor</strong><br>Course Instructor</div>
+                                </div>
+                                <div class="cs-preview-seal" aria-hidden="true">
+                                    <div class="inner">
+                                        <div class="lbl" id="csPreviewSealOrg">ChuoSmart</div>
+                                        <div class="yr">Official Seal</div>
+                                    </div>
+                                </div>
+                                <div class="cs-preview-meta">
+                                    <div class="lbl">Certificate ID</div>
+                                    <div class="id" id="csPreviewIdMeta">&mdash;</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="cs-preview-actions">
+                    <a href="#" id="csPreviewViewFull" class="btn btn-outline-primary">
+                        <i class="fas fa-up-right-from-square me-1"></i> View full details
+                    </a>
+                    {% if certificate_downloads_enabled %}
+                    <a href="#" id="csPreviewDownload" class="btn" style="background: linear-gradient(135deg,#FFD66B 0%,#F5C148 50%,#E0A82E 100%); color:#0B1437; font-weight:700; border:1px solid #B8861E;">
+                        <i class="fas fa-download me-1"></i> Download PDF
+                    </a>
+                    {% else %}
+                    <button type="button" class="btn" disabled style="background:#f3f4f8; color:#6b7280; border:1px dashed #b6bdd2; font-weight:600;">
+                        <i class="fas fa-lock me-1"></i> Download unlocks soon
+                    </button>
+                    {% endif %}
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">
+                        <i class="fas fa-xmark me-1"></i> Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.4.0/dist/confetti.browser.min.js"></script>
+<script>
+(function () {
+    var modalEl = document.getElementById('csCertPreviewModal');
+    if (!modalEl) return;
+
+    // Parse the previews list out of the data-attribute set on the container.
+    function readPreviews() {
+        var raw = document.getElementById('csCertPreviewsData');
+        if (!raw) return [];
+        try { return JSON.parse(raw.textContent || '[]'); } catch (e) { return []; }
+    }
+    var previews = readPreviews();
+
+    function setText(id, value) {
+        var el = document.getElementById(id);
+        if (el) el.textContent = value || '';
+    }
+    function setHtml(id, value) {
+        var el = document.getElementById(id);
+        if (el) el.innerHTML = value || '';
+    }
+
+    function fireConfetti() {
+        if (typeof confetti !== 'function') return;
+        var duration = 2500;
+        var end = Date.now() + duration;
+        var defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 2000 };
+        (function frame() {
+            var remaining = end - Date.now();
+            if (remaining <= 0) return;
+            var particleCount = 60 * (remaining / duration);
+            confetti(Object.assign({}, defaults, {
+                particleCount,
+                origin: { x: Math.random() * 0.3, y: Math.random() * 0.3 - 0.1 }
+            }));
+            confetti(Object.assign({}, defaults, {
+                particleCount,
+                origin: { x: Math.random() * 0.3 + 0.7, y: Math.random() * 0.3 - 0.1 }
+            }));
+            requestAnimationFrame(frame);
+        })();
+    }
+
+    function openPreview(idx) {
+        var p = previews[idx];
+        if (!p) return;
+        setText('csPreviewHeaderText', p.course_title || 'Certificate');
+        setText('csPreviewOrg', p.organization_name || 'ChuoSmart Academy');
+        setText('csPreviewSealOrg', (p.organization_name || 'ChuoSmart').split(' ')[0] || 'ChuoSmart');
+        setText('csPreviewTitle', p.certificate_title || 'Certificate of Completion');
+        setText('csPreviewName', p.student_name || '');
+        setText('csPreviewCourse', p.course_title || '');
+        setText('csPreviewDate', 'Issued on ' + (p.issue_date || '—'));
+        setText('csPreviewInstructor', p.instructor_name || 'Course Instructor');
+        setText('csPreviewInstructorLabel', p.instructor_name || 'Course Instructor');
+        setText('csPreviewIdPill', p.id || '');
+        setText('csPreviewIdMeta', p.id || '');
+
+        var viewFull = document.getElementById('csPreviewViewFull');
+        if (viewFull && p.detail_url) viewFull.setAttribute('href', p.detail_url);
+
+        var dl = document.getElementById('csPreviewDownload');
+        if (dl && p.download_url) dl.setAttribute('href', p.download_url);
+
+        // Use Bootstrap's modal API so focus and backdrop are handled correctly.
+        var bsModal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        bsModal.show();
+    }
+
+    // Wire up any element with [data-cs-preview-index].
+    document.addEventListener('click', function (ev) {
+        var trigger = ev.target.closest('[data-cs-preview-index]');
+        if (!trigger) return;
+        ev.preventDefault();
+        var idx = parseInt(trigger.getAttribute('data-cs-preview-index'), 10);
+        if (!isNaN(idx)) openPreview(idx);
+    });
+
+    // Fire confetti on every modal show.
+    modalEl.addEventListener('shown.bs.modal', function () { fireConfetti(); });
+})();
+</script>
