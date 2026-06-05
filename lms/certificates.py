@@ -16,9 +16,44 @@ PLACEHOLDER_KEYS = (
 )
 
 
+def _resolve_student_name(user):
+    """Prefer the user's saved legal name, then full name, then username."""
+    if not user:
+        return ''
+    profile = getattr(user, 'lms_profile', None)
+    if profile and profile.has_legal_name:
+        return profile.display_legal_name
+    return (user.get_full_name() or user.username or '').strip()
+
+
+def _resolve_instructor_name(course, template=None):
+    """Build the instructor name shown on the certificate.
+
+    Falls back to the template's stored ``instructor_name`` for backwards
+    compatibility, but always prefers the live ``legal_name`` of the
+    course's instructors when available.
+    """
+    instructors = list(course.instructors.all()[:2]) if course else []
+    names = []
+    for instructor in instructors:
+        if instructor.has_legal_name:
+            names.append(instructor.display_legal_name)
+        else:
+            full = instructor.user.get_full_name() or instructor.user.username
+            if full:
+                names.append(full)
+
+    if names:
+        return ', '.join(names)
+    if template and template.instructor_name:
+        return template.instructor_name
+    return 'Course Instructor'
+
+
 def certificate_context(certificate, request=None):
     template = certificate.template
-    student_name = certificate.student.get_full_name() or certificate.student.username
+    student_name = _resolve_student_name(certificate.student)
+    instructor_name = _resolve_instructor_name(certificate.course, template)
     completion_date = timezone.localtime(certificate.issued_at).strftime('%B %d, %Y')
     verification_path = reverse('lms:certificate_verify', kwargs={'certificate_id': certificate.certificate_id})
     verification_url = request.build_absolute_uri(verification_path) if request else verification_path
@@ -26,7 +61,7 @@ def certificate_context(certificate, request=None):
         'student_name': student_name,
         'course_title': certificate.course.title,
         'completion_date': completion_date,
-        'instructor_name': template.instructor_name if template else '',
+        'instructor_name': instructor_name,
         'certificate_id': certificate.certificate_id,
         'organization_name': template.organization_name if template else 'ChuoSmart Academy',
     }
@@ -38,6 +73,7 @@ def certificate_context(certificate, request=None):
         'certificate': certificate,
         'template': template,
         'student_name': student_name,
+        'instructor_name': instructor_name,
         'completion_date': completion_date,
         'verification_url': verification_url,
         'rendered_body': body,

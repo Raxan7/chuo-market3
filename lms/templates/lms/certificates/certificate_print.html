@@ -1,47 +1,568 @@
 <!doctype html>
+{% load static %}
+{% load sanitize_tags %}
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>{{ certificate.certificate_id }}</title>
+    <title>{{ certificate.certificate_id }} | {{ organization_name }}</title>
     <style>
-        @page { size: A4 landscape; margin: 18mm; }
-        body { margin: 0; font-family: Georgia, "Times New Roman", serif; color: #111827; background: #f3f4f6; }
-        .sheet { background: #fff; min-height: 680px; padding: 48px; border: 10px solid {{ template.primary_color|default:"#1E40AF" }}; text-align: center; position: relative; }
-        .accent { color: {{ template.accent_color|default:"#D97706" }}; }
-        .primary { color: {{ template.primary_color|default:"#1E40AF" }}; }
-        .student { font-size: 52px; margin: 24px 0; font-weight: 700; }
-        .title { font-size: 44px; margin: 12px 0; text-transform: uppercase; letter-spacing: 2px; }
-        .body { font-size: 20px; line-height: 1.7; max-width: 820px; margin: 0 auto; }
-        .footer { display: flex; justify-content: space-between; align-items: end; margin-top: 80px; }
-        .line { border-top: 1px solid #111827; padding-top: 8px; min-width: 220px; }
-        .seal { border: 2px solid {{ template.accent_color|default:"#D97706" }}; border-radius: 999px; width: 96px; height: 96px; display: inline-flex; align-items: center; justify-content: center; }
-        .meta { margin-top: 24px; color: #6b7280; font-size: 13px; }
+        /* ============================================================
+           ChuoSmart Certificate — Brand-aligned Professional Design
+           Palette drawn from static/app/images/logo.png
+           ============================================================ */
+        :root {
+            --cs-primary:   {{ template.primary_color|default:"#0d6efd" }};   /* ChuoSmart brand blue */
+            --cs-accent:    {{ template.accent_color|default:"#1FAA59" }};    /* ChuoSmart logo green */
+            --cs-gold:      #F59E0B;                                          /* Logo yellow/orange */
+            --cs-teal:      #1E6F5C;                                          /* Logo deep teal */
+            --cs-navy:      #0F4C5C;                                          /* Logo navy */
+            --cs-secondary: {{ template.secondary_color|default:"#111827" }}; /* Body text */
+            --cs-ink:       #111827;
+            --cs-ink-soft:  #4B5563;
+            --cs-mute:      #6B7280;
+            --cs-line:      #E5E7EB;
+            --cs-bg-soft:   #F8FAFC;
+        }
+
+        @page { size: A4 landscape; margin: 0; }
+
+        * { box-sizing: border-box; }
+
+        html, body {
+            margin: 0;
+            padding: 0;
+            font-family: "Georgia", "Times New Roman", "Cambria", serif;
+            color: var(--cs-ink);
+            background: #E5E7EB;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+
+        /* Outer canvas */
+        .canvas {
+            position: relative;
+            width: 297mm;
+            min-height: 210mm;
+            margin: 0 auto;
+            background:
+                radial-gradient(1200px 600px at 50% -10%, rgba(31, 170, 89, 0.08), transparent 60%),
+                radial-gradient(900px 500px at 50% 110%, rgba(13, 110, 253, 0.08), transparent 60%),
+                #ffffff;
+            padding: 14mm;
+            overflow: hidden;
+        }
+
+        /* Brand watermark — large logo behind everything */
+        .watermark {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
+            z-index: 0;
+        }
+        .watermark img {
+            width: 360px;
+            height: auto;
+            opacity: 0.06;
+            filter: grayscale(0%);
+        }
+
+        /* Decorative corner ornaments */
+        .corner {
+            position: absolute;
+            width: 90px;
+            height: 90px;
+            z-index: 1;
+        }
+        .corner.tl { top: 8mm; left: 8mm;
+            background: linear-gradient(135deg, var(--cs-accent) 0 50%, transparent 50% 100%);
+        }
+        .corner.tr { top: 8mm; right: 8mm;
+            background: linear-gradient(225deg, var(--cs-primary) 0 50%, transparent 50% 100%);
+        }
+        .corner.bl { bottom: 8mm; left: 8mm;
+            background: linear-gradient(45deg, var(--cs-gold) 0 50%, transparent 50% 100%);
+        }
+        .corner.br { bottom: 8mm; right: 8mm;
+            background: linear-gradient(315deg, var(--cs-teal) 0 50%, transparent 50% 100%);
+        }
+        .corner-dot {
+            position: absolute;
+            width: 12px; height: 12px;
+            border-radius: 50%;
+            z-index: 1;
+        }
+        .corner-dot.tl { top: 6mm; left: 6mm; background: var(--cs-primary); }
+        .corner-dot.tr { top: 6mm; right: 6mm; background: var(--cs-accent); }
+        .corner-dot.bl { bottom: 6mm; left: 6mm; background: var(--cs-teal); }
+        .corner-dot.br { bottom: 6mm; right: 6mm; background: var(--cs-gold); }
+
+        /* Multi-layer frame */
+        .frame {
+            position: relative;
+            z-index: 2;
+            width: 100%;
+            min-height: 182mm;
+            border: 3px solid var(--cs-primary);
+            background: #ffffff;
+            padding: 6mm;
+        }
+        .frame-inner {
+            width: 100%;
+            min-height: 170mm;
+            border: 1px solid var(--cs-accent);
+            padding: 10mm 14mm;
+            position: relative;
+            text-align: center;
+            background:
+                linear-gradient(180deg, rgba(255,255,255,1) 0%, rgba(248,250,252,0.4) 100%);
+        }
+
+        /* Top brand band */
+        .brand {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+        }
+        .logo-wrap {
+            position: relative;
+            width: 96px;
+            height: 96px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .logo-ring {
+            position: absolute;
+            inset: 0;
+            border-radius: 50%;
+            background:
+                conic-gradient(from 0deg,
+                    var(--cs-primary) 0deg 90deg,
+                    var(--cs-accent) 90deg 180deg,
+                    var(--cs-gold) 180deg 270deg,
+                    var(--cs-teal) 270deg 360deg);
+            padding: 4px;
+        }
+        .logo-ring::after {
+            content: "";
+            position: absolute;
+            inset: 4px;
+            background: #ffffff;
+            border-radius: 50%;
+        }
+        .logo-disc {
+            position: relative;
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 16px rgba(15, 76, 92, 0.18);
+        }
+        .logo-disc img {
+            width: 60px;
+            height: 60px;
+            object-fit: contain;
+        }
+        .org-name {
+            margin-top: 8px;
+            font-family: "Helvetica Neue", "Arial", sans-serif;
+            font-size: 14px;
+            font-weight: 700;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            color: var(--cs-accent);
+        }
+        .org-tagline {
+            font-family: "Helvetica Neue", "Arial", sans-serif;
+            font-size: 10px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--cs-mute);
+        }
+
+        /* Divider with center dot */
+        .divider {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin: 16px auto 6px;
+            max-width: 70%;
+        }
+        .divider .bar {
+            flex: 1;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--cs-accent), transparent);
+        }
+        .divider .pip {
+            width: 6px; height: 6px; border-radius: 50%;
+            background: var(--cs-accent);
+        }
+        .divider .pip.gold { background: var(--cs-gold); }
+        .divider .pip.blue { background: var(--cs-primary); }
+
+        /* Title block */
+        .title {
+            font-family: "Georgia", "Times New Roman", serif;
+            font-size: 40px;
+            font-weight: 700;
+            margin: 8px 0 4px;
+            color: var(--cs-primary);
+            letter-spacing: 4px;
+            text-transform: uppercase;
+        }
+        .subtitle {
+            font-style: italic;
+            font-size: 14px;
+            color: var(--cs-ink-soft);
+            margin: 0 0 22px;
+        }
+
+        /* Presented-to label */
+        .presented-label {
+            font-size: 12px;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: var(--cs-mute);
+            margin: 6px 0 10px;
+        }
+
+        /* Student name */
+        .student {
+            font-family: "Brush Script MT", "Lucida Handwriting", "Apple Chancery", cursive;
+            font-size: 64px;
+            line-height: 1.05;
+            color: var(--cs-primary);
+            margin: 4px 0 6px;
+            font-weight: 700;
+            font-style: italic;
+            text-shadow: 0 1px 0 rgba(13, 110, 253, 0.08);
+        }
+        .student-underline {
+            display: block;
+            width: 60%;
+            max-width: 460px;
+            height: 2px;
+            margin: 6px auto 14px;
+            background: linear-gradient(90deg, transparent, var(--cs-accent), var(--cs-primary), var(--cs-accent), transparent);
+            border-radius: 2px;
+        }
+
+        /* Body */
+        .body-text {
+            font-size: 14px;
+            line-height: 1.7;
+            color: var(--cs-ink-soft);
+            max-width: 720px;
+            margin: 0 auto 14px;
+        }
+        .rendered-body {
+            font-size: 14px;
+            line-height: 1.7;
+            color: var(--cs-ink-soft);
+            max-width: 760px;
+            margin: 0 auto 6px;
+        }
+
+        /* Course title with ornaments */
+        .course {
+            font-family: "Georgia", "Times New Roman", serif;
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--cs-primary);
+            margin: 6px 0 4px;
+            display: inline-flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .course .orn {
+            color: var(--cs-gold);
+            font-size: 22px;
+        }
+        .course .orn.left { transform: scaleX(-1); }
+
+        /* Date row */
+        .date-row {
+            font-size: 13px;
+            color: var(--cs-ink-soft);
+            margin: 4px 0 22px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .date-row .cal {
+            display: inline-flex;
+            width: 18px; height: 18px;
+            border: 1.5px solid var(--cs-accent);
+            border-radius: 3px;
+            position: relative;
+        }
+        .date-row .cal::before {
+            content: "";
+            position: absolute;
+            top: 3px; left: 1px; right: 1px; bottom: 1px;
+            border-top: 1.5px solid var(--cs-accent);
+        }
+        .date-row .cal::after {
+            content: "";
+            position: absolute;
+            top: -3px; left: 3px; right: 3px;
+            height: 3px;
+            background: var(--cs-accent);
+            border-radius: 1px 1px 0 0;
+        }
+
+        /* Footer grid: signature | seal | meta */
+        .footer {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            align-items: end;
+            gap: 24px;
+            margin-top: 28px;
+            padding: 0 8mm;
+        }
+        .sig-block { text-align: left; }
+        .seal-block { text-align: center; }
+        .meta-block { text-align: right; }
+
+        .signature {
+            font-family: "Brush Script MT", "Lucida Handwriting", cursive;
+            font-size: 26px;
+            color: var(--cs-ink);
+            border-bottom: 1.5px solid var(--cs-ink);
+            padding-bottom: 2px;
+            display: inline-block;
+            min-width: 200px;
+        }
+        .sig-name {
+            font-size: 11px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--cs-ink-soft);
+            margin-top: 4px;
+        }
+        .sig-name strong { color: var(--cs-secondary); }
+
+        /* Circular official seal */
+        .seal {
+            width: 110px;
+            height: 110px;
+            margin: 0 auto;
+            border-radius: 50%;
+            position: relative;
+            background:
+                radial-gradient(circle at 50% 50%, #ffffff 55%, transparent 56%),
+                conic-gradient(from 0deg,
+                    var(--cs-primary) 0deg 90deg,
+                    var(--cs-accent) 90deg 180deg,
+                    var(--cs-gold) 180deg 270deg,
+                    var(--cs-teal) 270deg 360deg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+        }
+        .seal::before {
+            content: "";
+            position: absolute;
+            inset: 6px;
+            background: #ffffff;
+            border-radius: 50%;
+        }
+        .seal-inner {
+            position: relative;
+            text-align: center;
+            line-height: 1.1;
+        }
+        .seal-inner img {
+            width: 42px; height: 42px;
+            object-fit: contain;
+            display: block;
+            margin: 0 auto 2px;
+        }
+        .seal-inner .seal-text {
+            font-family: "Helvetica Neue", "Arial", sans-serif;
+            font-size: 6.5px;
+            letter-spacing: 1.2px;
+            font-weight: 700;
+            color: var(--cs-primary);
+            text-transform: uppercase;
+        }
+        .seal-inner .seal-year {
+            font-size: 6px;
+            color: var(--cs-mute);
+            letter-spacing: 1px;
+        }
+        .seal-caption {
+            font-size: 9px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--cs-mute);
+            margin-top: 4px;
+        }
+
+        .meta-block .cert-id {
+            font-family: "Courier New", monospace;
+            font-size: 11px;
+            color: var(--cs-ink-soft);
+            word-break: break-all;
+        }
+        .meta-block .verify-label {
+            font-size: 9px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--cs-mute);
+            margin-bottom: 2px;
+        }
+        .meta-block .verify-link {
+            font-size: 10px;
+            color: var(--cs-primary);
+            word-break: break-all;
+            text-decoration: none;
+        }
+
+        /* Bottom strip with brand colors */
+        .brand-strip {
+            position: absolute;
+            left: 0; right: 0; bottom: 0;
+            height: 8px;
+            display: flex;
+        }
+        .brand-strip span { flex: 1; }
+        .brand-strip .s1 { background: var(--cs-primary); }
+        .brand-strip .s2 { background: var(--cs-accent); }
+        .brand-strip .s3 { background: var(--cs-gold); }
+        .brand-strip .s4 { background: var(--cs-teal); }
+        .brand-strip .s5 { background: var(--cs-navy); }
+
+        /* Tiny helpers */
+        .footer-note {
+            margin-top: 12px;
+            font-size: 10px;
+            color: var(--cs-mute);
+            font-style: italic;
+        }
     </style>
 </head>
 <body>
-    <main class="sheet">
-        {% if template.logo %}<img src="{{ template.logo.url }}" alt="" style="max-height:72px;">{% endif %}
-        <div class="accent" style="margin-top:16px;text-transform:uppercase;font-weight:700;">{{ organization_name }}</div>
-        <h1 class="title primary">{{ template.title|default:"Certificate of Completion" }}</h1>
-        <p>{{ template.subtitle|default:"Awarded for successfully completing this course" }}</p>
-        <p style="margin-top:42px;">This certificate is proudly presented to</p>
-        <div class="student">{{ student_name }}</div>
-        <div class="body">{{ rendered_body }}</div>
-        <h2 class="primary">{{ course_title }}</h2>
-        <p>Issued on {{ completion_date }}</p>
-        <div class="footer">
-            <div>
-                {% if template.signature_image %}<img src="{{ template.signature_image.url }}" alt="" style="max-height:64px;"><br>{% endif %}
-                <div class="line">{{ instructor_name|default:"Instructor" }}</div>
-            </div>
-            <div>
-                {% if template.seal_image %}<img src="{{ template.seal_image.url }}" alt="" style="max-height:96px;">{% else %}<div class="seal">Seal</div>{% endif %}
+    <div class="canvas">
+
+        <!-- Watermark -->
+        <div class="watermark" aria-hidden="true">
+            <img src="{% static 'app/images/logo.png' %}" alt="">
+        </div>
+
+        <!-- Corner ornaments -->
+        <div class="corner tl" aria-hidden="true"></div>
+        <div class="corner tr" aria-hidden="true"></div>
+        <div class="corner bl" aria-hidden="true"></div>
+        <div class="corner br" aria-hidden="true"></div>
+        <div class="corner-dot tl" aria-hidden="true"></div>
+        <div class="corner-dot tr" aria-hidden="true"></div>
+        <div class="corner-dot bl" aria-hidden="true"></div>
+        <div class="corner-dot br" aria-hidden="true"></div>
+
+        <!-- Frame -->
+        <div class="frame">
+            <div class="frame-inner">
+
+                <!-- Brand block -->
+                <div class="brand">
+                    <div class="logo-wrap" aria-label="{{ organization_name }} logo">
+                        <div class="logo-ring" aria-hidden="true"></div>
+                        <div class="logo-disc">
+                            <img src="{% static 'app/images/logo.png' %}" alt="{{ organization_name }}">
+                        </div>
+                    </div>
+                    <div class="org-name">{{ organization_name }}</div>
+                    <div class="org-tagline">Learning &middot; Marketplace &middot; Community</div>
+                </div>
+
+                <!-- Divider -->
+                <div class="divider" aria-hidden="true">
+                    <span class="bar"></span>
+                    <span class="pip blue"></span>
+                    <span class="pip"></span>
+                    <span class="pip gold"></span>
+                    <span class="bar"></span>
+                </div>
+
+                <!-- Title -->
+                <h1 class="title">{{ template.title|default:"Certificate of Completion" }}</h1>
+                <p class="subtitle">{{ template.subtitle|default:"Awarded in recognition of successful course completion" }}</p>
+
+                <!-- Presented-to label -->
+                <div class="presented-label">This certificate is proudly presented to</div>
+
+                <!-- Student -->
+                <div class="student">{{ student_name }}</div>
+                <span class="student-underline" aria-hidden="true"></span>
+
+                <!-- Body -->
+                <div class="rendered-body">{{ rendered_body }}</div>
+
+                <!-- Course -->
+                <div class="course" aria-label="Course title">
+                    <span class="orn left">&#10070;</span>
+                    <span>{{ course_title }}</span>
+                    <span class="orn">&#10070;</span>
+                </div>
+
+                <!-- Date -->
+                <div class="date-row">
+                    <span class="cal" aria-hidden="true"></span>
+                    <span>Issued on <strong style="color:var(--cs-ink);">{{ completion_date }}</strong></span>
+                </div>
+
+                <!-- Footer -->
+                <div class="footer">
+                    <div class="sig-block">
+                        <div class="signature">{{ instructor_name|default:"Course Instructor" }}</div>
+                        <div class="sig-name"><strong>{{ instructor_name|default:"Course Instructor" }}</strong><br>Course Instructor</div>
+                    </div>
+
+                    <div class="seal-block">
+                        <div class="seal" aria-hidden="true">
+                            <div class="seal-inner">
+                                <img src="{% static 'app/images/logo.png' %}" alt="">
+                                <div class="seal-text">{{ organization_name }}</div>
+                                <div class="seal-year">Official Seal</div>
+                            </div>
+                        </div>
+                        <div class="seal-caption">Verified &amp; Issued</div>
+                    </div>
+
+                    <div class="meta-block">
+                        <div class="verify-label">Certificate ID</div>
+                        <div class="cert-id">{{ certificate.certificate_id }}</div>
+                        {% if verification_url %}
+                        <div class="verify-label" style="margin-top:6px;">Verify Online</div>
+                        <a class="verify-link" href="{{ verification_url |safe_href }}">{{ verification_url }}</a>
+                        {% endif %}
+                    </div>
+                </div>
+
+                {% if template.footer_note %}
+                <div class="footer-note">{{ template.footer_note }}</div>
+                {% endif %}
+
+                <!-- Bottom brand strip -->
+                <div class="brand-strip" aria-hidden="true">
+                    <span class="s1"></span>
+                    <span class="s2"></span>
+                    <span class="s3"></span>
+                    <span class="s4"></span>
+                    <span class="s5"></span>
+                </div>
             </div>
         </div>
-        <div class="meta">
-            Certificate ID: {{ certificate.certificate_id }}{% if verification_url %} | Verify: {{ verification_url }}{% endif %}
-        </div>
-        {% if template.footer_note %}<div class="meta">{{ template.footer_note }}</div>{% endif %}
-    </main>
+    </div>
 </body>
 </html>

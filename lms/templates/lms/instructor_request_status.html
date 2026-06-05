@@ -1,5 +1,6 @@
 {% extends 'app/base.html' %}
 {% load static %}
+{% load sanitize_tags %}
 {% block title %}Instructor Request Status{% endblock title %}
 {% block main-content %}
 
@@ -43,7 +44,7 @@
                     <div class="row mb-3">
                         <div class="col-md-3 fw-bold">CV/Resume:</div>
                         <div class="col-md-9">
-                            <a href="{{ instructor_request.cv.url }}" class="btn btn-sm btn-outline-primary" target="_blank">
+                            <a href="{{ instructor_request.cv.url |safe_href }}" class="btn btn-sm btn-outline-primary" target="_blank">
                                 <i class="fas fa-file-download"></i> Download CV
                             </a>
                         </div>

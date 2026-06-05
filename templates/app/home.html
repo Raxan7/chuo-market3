@@ -1,6 +1,8 @@
 {% extends 'app/base.html' %}
 {% load static %}
+{% load sanitize_tags %}
 {% load markdown_deux_tags %}
+{% load sanitize_tags %}
 {% block title %}View Courses for Students in Tanzania | Free & Paid{% endblock title %}
 
 {% block meta_description %}View free and paid courses for students in Tanzania. Learn in weeks, access online lessons, and start your next course on ChuoSmart today.{% endblock meta_description %}
@@ -141,6 +143,7 @@
         {% for banner in banners %}
           <div class="carousel-item{% if forloop.first %} active{% endif %}">
             {% load image_tags %}
+{% load sanitize_tags %}
             {% if forloop.first %}
               <!-- Don't lazy load the first banner for faster initial display -->
               {% optimized_img src=banner.image.url alt=banner.title|default:'Banner image' css_class="d-block w-100" lazy=False %}
@@ -541,11 +544,11 @@
       <nav class="mt-4" aria-label="Home courses pagination">
         <ul class="pagination justify-content-center">
           {% if page_obj.has_previous %}
-            <li class="page-item"><a class="page-link" href="{{ prev_page_url }}">Previous</a></li>
+            <li class="page-item"><a class="page-link" href="{{ prev_page_url |safe_href }}">Previous</a></li>
           {% endif %}
           <li class="page-item active"><span class="page-link">{{ page_obj.number }}</span></li>
           {% if page_obj.has_next %}
-            <li class="page-item"><a class="page-link" href="{{ next_page_url }}">Next</a></li>
+            <li class="page-item"><a class="page-link" href="{{ next_page_url |safe_href }}">Next</a></li>
           {% endif %}
         </ul>
       </nav>
@@ -603,31 +606,19 @@
 {% endblock main-content %}
 
 {% block structured_data %}
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "WebPage",
-  "name": "View Courses for Students in Tanzania",
-  "description": "View free and paid courses for students in Tanzania. Learn in weeks, access online lessons, and start your next course.",
-  "url": "{{ canonical_url }}",
-  "inLanguage": "en",
-  "about": [
-    "Online courses",
-    "Student learning",
-    "Education in Tanzania"
-  ]
-}
-</script>
+{{ home_page_json_ld|json_script:"home-schema" }}
 {% endblock structured_data %}
 
 {% block extra_scripts %}
 {{ block.super }}
+{{ next_page_url|default_if_none:''|json_script:"home-next-page" }}
 <script>
   document.addEventListener('DOMContentLoaded', function () {
     const listContainer = document.getElementById('home-courses-grid');
     const sentinel = document.getElementById('home-infinite-scroll-sentinel');
     const loadingIndicator = document.getElementById('home-loading-more');
-    let nextUrl = {% if page_obj and page_obj.has_next %}'{{ next_page_url }}'{% else %}null{% endif %};
+    const nextUrlRaw = document.getElementById('home-next-page').textContent;
+    let nextUrl = nextUrlRaw && nextUrlRaw.length > 0 ? nextUrlRaw : null;
     let isLoading = false;
 
     if (!listContainer || !sentinel || !nextUrl) {

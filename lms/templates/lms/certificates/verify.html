@@ -17,11 +17,15 @@
                     <div class="row text-start g-3">
                         <div class="col-md-6">
                             <div class="small text-muted">Student</div>
-                            <div class="fw-semibold">{{ certificate.student.get_full_name|default:certificate.student.username }}</div>
+                            <div class="fw-semibold">{{ student_legal_name|default:certificate.student.username }}</div>
                         </div>
                         <div class="col-md-6">
                             <div class="small text-muted">Course</div>
                             <div class="fw-semibold">{{ certificate.course.title }}</div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="small text-muted">Instructor</div>
+                            <div class="fw-semibold">{{ instructor_legal_name|default:"Course Instructor" }}</div>
                         </div>
                         <div class="col-md-6">
                             <div class="small text-muted">Issued By</div>

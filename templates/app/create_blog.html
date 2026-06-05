@@ -121,6 +121,8 @@
 <script src="https://cdn.tiny.cloud/1/79mav6qxv90aa5ok0e06rrdtfsld589tfny17p83j3p5qxwk/tinymce/5/tinymce.min.js" referrerpolicy="origin"></script>
 <!-- Include Cloudinary Upload Widget -->
 <script src="https://upload-widget.cloudinary.com/latest/sources/index.js" referrerpolicy="origin"></script>
+{{ cloudinary_cloud_name|json_script:"cloudinary-cloud-name" }}
+{{ cloudinary_upload_preset|json_script:"cloudinary-upload-preset" }}
 <script>
     tinymce.init({
         selector: '#id_content',
@@ -179,8 +181,8 @@
             if (typeof cloudinary !== 'undefined') {
                 // Use Cloudinary Upload Widget
                 cloudinary.openUploadWidget({
-                    cloudName: "{{ settings.CLOUDINARY_CLOUD_NAME|default:'your-cloud-name' }}",
-                    uploadPreset: "{{ settings.CLOUDINARY_UPLOAD_PRESET|default:'unsigned_preset' }}",
+                    cloudName: document.getElementById('cloudinary-cloud-name').textContent,
+                    uploadPreset: document.getElementById('cloudinary-upload-preset').textContent,
                     folder: "blog_thumbnails",
                     maxFiles: 1,
                     resourceType: "image",

@@ -1,5 +1,6 @@
 {% extends "app/base.html" %}
 {% load static %}
+{% load sanitize_tags %}
 
 {% block title %}{{ quiz.title }}{% endblock title %}
 
@@ -15,23 +16,33 @@
     <div class="row mb-4">
         <div class="col-md-8">
             <h1>{{ quiz.title }}</h1>
-            <div class="lead">{{ quiz.description|safe }}</div>
+            <div class="lead">{{ quiz.description|sanitize }}</div>
 
-            {% if is_generating %}
-                <div class="alert alert-info shadow-sm">
-                    <h4 class="alert-heading">Creating your personalized quiz</h4>
-                    <p class="mb-1">The assessment is being generated in the background. You can stay on this page and it will refresh automatically.</p>
-                    {% if generation_message %}
+            {% if is_generating or generation_failed %}
+                <div class="alert {% if generation_failed %}alert-warning{% else %}alert-info{% endif %} shadow-sm">
+                    <h4 class="alert-heading">{% if generation_failed %}Quiz creation needs a retry{% else %}Creating your personalized quiz{% endif %}</h4>
+                    <p class="mb-3">
+                        {% if generation_failed %}
+                            {% if generation_message %}
+                                {{ generation_message }}
+                            {% else %}
+                                The personalized quiz could not be prepared yet. Please try again shortly.
+                            {% endif %}
+                        {% else %}
+                            The assessment is being generated in the background. You can stay on this page and it will refresh automatically.
+                        {% endif %}
+                    </p>
+                    {% if assessment_progress %}
+                        <div class="d-flex justify-content-between align-items-center mb-2 small text-muted">
+                            <span>Module quizzes ready</span>
+                            <span>{{ assessment_progress.prepared_count }} of {{ assessment_progress.total_count }}</span>
+                        </div>
+                        <div class="progress" style="height: 14px;">
+                            <div class="progress-bar bg-info{% if not is_generating %} progress-bar-striped{% endif %}" role="progressbar" style="width: {{ assessment_progress.percentage }}%;" aria-valuenow="{{ assessment_progress.percentage }}" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                        <div class="small text-muted mt-2">{{ assessment_progress.percentage }}% prepared</div>
+                    {% elif generation_message %}
                         <p class="mb-0"><strong>Status:</strong> {{ generation_message }}</p>
-                    {% endif %}
-                </div>
-            {% elif generation_failed %}
-                <div class="alert alert-warning shadow-sm">
-                    <h4 class="alert-heading">Quiz creation needs a retry</h4>
-                    {% if generation_message %}
-                        <p class="mb-0">{{ generation_message }}</p>
-                    {% else %}
-                        <p class="mb-0">The personalized quiz could not be prepared yet. Please try again shortly.</p>
                     {% endif %}
                 </div>
             {% endif %}
@@ -41,7 +52,7 @@
                     <div class="row">
                         <div class="col-md-6">
                             <p><strong>Course:</strong> <a href="{% url 'lms:course_detail' quiz.course.slug %}">{{ quiz.course.title }}</a></p>
-                            <p><strong>Time Limit:</strong> {{ quiz.time_limit_mins }} minutes</p>
+                            <p><strong>Time Limit:</strong> {% if quiz.time_limit_mins %}{{ quiz.time_limit_mins }} minutes{% else %}NO time limit{% endif %}</p>
                             <p>
                                 <strong>Due Date:</strong> 
                                 {% if quiz.due_date %}
@@ -63,9 +74,15 @@
             {% if user_can_take_quiz %}
                 <div class="alert alert-info">
                     <h4 class="alert-heading">Quiz Instructions</h4>
-                    <div>{{ quiz.instructions|default:"Please answer all questions to the best of your ability."|safe }}</div>
+                    <div>{{ quiz.instructions|default:"Please answer all questions to the best of your ability."|sanitize }}</div>
                     <hr>
-                    <p class="mb-0">Once you start the quiz, the timer will begin. You'll have {{ quiz.time_limit_mins }} minutes to complete it.</p>
+                    <p class="mb-0">
+                        {% if quiz.time_limit_mins %}
+                            Once you start the quiz, the timer will begin. You'll have {{ quiz.time_limit_mins }} minutes to complete it.
+                        {% else %}
+                            Once you start the quiz, there is NO time limit.
+                        {% endif %}
+                    </p>
                 </div>
                 
                 <div class="d-grid gap-2">
@@ -76,11 +93,13 @@
             {% elif user_is_instructor %}
                 <div class="alert alert-warning">
                     <h4 class="alert-heading">Instructor View</h4>
-                    <p>You are viewing this quiz as an instructor.</p>
+                    <p>This assessment is AI-generated from the module content.</p>
                 </div>
                 
                 <div class="d-grid gap-2">
-                    <a href="#" class="btn btn-outline-primary">Edit Quiz</a>
+                    {% if quiz.module %}
+                    <a href="{% url 'lms:quiz_create_in_module' course_slug=quiz.course.slug module_id=quiz.module.id %}" class="btn btn-outline-primary">Regenerate AI Assessment</a>
+                    {% endif %}
                     <a href="#" class="btn btn-outline-secondary">View Submissions</a>
                 </div>
             {% elif has_already_taken %}
@@ -133,10 +152,24 @@
                                     </div>
                                 </div>
                             </div>
-                        {% elif is_generating %}
-                            Your personalized quiz is still being prepared. Please wait or refresh this page.
-                        {% elif generation_failed %}
-                            The personalized quiz could not be created right now. Please refresh after a short while.
+                        {% elif is_generating or generation_failed %}
+                            {% if assessment_progress %}
+                                <div class="mb-3">
+                                    <div class="d-flex justify-content-between align-items-center mb-2 small text-muted">
+                                        <span>Module quizzes ready</span>
+                                        <span>{{ assessment_progress.prepared_count }} of {{ assessment_progress.total_count }}</span>
+                                    </div>
+                                    <div class="progress" style="height: 14px;">
+                                        <div class="progress-bar {% if generation_failed %}bg-warning{% else %}bg-info{% endif %}" role="progressbar" style="width: {{ assessment_progress.percentage }}%;" aria-valuenow="{{ assessment_progress.percentage }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                    </div>
+                                    <div class="small text-muted mt-2">{{ assessment_progress.percentage }}% prepared</div>
+                                </div>
+                            {% endif %}
+                            {% if is_generating %}
+                                Your personalized quiz is still being prepared. Please wait or refresh this page.
+                            {% else %}
+                                The personalized quiz could not be created right now. Please refresh after a short while.
+                            {% endif %}
                         {% elif module_locked %}
                             Complete the previous module with at least 70% before starting this assessment.
                         {% elif past_due %}
@@ -157,7 +190,11 @@
                 <ul class="list-group list-group-flush">
                     <li class="list-group-item">
                         <i class="fas fa-clock text-muted me-2"></i> 
-                        {{ quiz.time_limit_mins }} minute time limit
+                        {% if quiz.time_limit_mins %}
+                            {{ quiz.time_limit_mins }} minute time limit
+                        {% else %}
+                            NO time limit
+                        {% endif %}
                     </li>
                     <li class="list-group-item">
                         <i class="fas fa-question-circle text-muted me-2"></i>

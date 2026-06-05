@@ -3,13 +3,14 @@ from django.urls import reverse
 from django.http import HttpResponseRedirect, JsonResponse, HttpResponseForbidden, Http404
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash, get_user_model
+from django.templatetags.static import static
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.hashers import check_password
 from django.contrib.auth.models import AnonymousUser
 from django.core.mail import send_mail
 from django.core.paginator import Paginator
 from django.conf import settings
-from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
 from django.core.exceptions import ObjectDoesNotExist
 from django.utils import timezone
 from django.utils.decorators import method_decorator
@@ -36,6 +37,22 @@ def _build_page_url(request, page_number):
     params = request.GET.copy()
     params['page'] = page_number
     return f"{request.path}?{params.urlencode()}"
+
+
+def _cloudinary_context():
+    """
+    Return a context dict with the configured Cloudinary cloud name and upload
+    preset. Use in templates that wire up the Cloudinary upload widget so the
+    settings are not embedded directly inside a <script> block.
+    """
+    return {
+        'cloudinary_cloud_name': getattr(
+            settings, 'CLOUDINARY_CLOUD_NAME', 'your-cloud-name'
+        ),
+        'cloudinary_upload_preset': getattr(
+            settings, 'CLOUDINARY_UPLOAD_PRESET', 'unsigned_preset'
+        ),
+    }
 
 def get_cart_count(request):
     if request.user.is_authenticated:
@@ -157,6 +174,21 @@ def home(request):
         'chat_messages': chat_messages,
         'is_authenticated': is_authenticated,
         'category_counts': category_counts,
+        'home_page_json_ld': {
+            '@context': 'https://schema.org',
+            '@type': 'WebPage',
+            'name': 'View Courses for Students in Tanzania',
+            'description': (
+                'View free and paid courses for students in Tanzania. '
+                'Learn in weeks, access online lessons, and start your next course.'
+            ),
+            'inLanguage': 'en',
+            'about': [
+                'Online courses',
+                'Student learning',
+                'Education in Tanzania',
+            ],
+        },
     }
     return render(request, 'app/home.html', context)
 
@@ -252,13 +284,65 @@ def product_detail(request, pk=None, slug=None):
     if len(related_products) < 6:
         seller_products = [p for p in related_by_seller if p not in related_products]
         related_products.extend(seller_products[:6 - len(related_products)])
-    
+
+    from django.utils.html import strip_tags
+    from django.template.defaultfilters import truncatechars
+    from core.templatetags.product_filters import process_product_description
+    product_image_url = ''
+    try:
+        if product.image:
+            product_image_url = request.build_absolute_uri(product.image.url)
+    except Exception:
+        product_image_url = ''
+    description_html = process_product_description(product.description or '')
+    description_plain = truncatechars(strip_tags(description_html), 200)
+    product_json_ld = {
+        '@context': 'https://schema.org',
+        '@type': 'Product',
+        'name': product.title or '',
+        'description': description_plain,
+        'image': product_image_url,
+        'category': product.get_category_display(),
+        'offers': {
+            '@type': 'Offer',
+            'priceCurrency': 'TZS',
+            'price': str(product.price),
+            'availability': 'https://schema.org/InStock',
+            'url': request.build_absolute_uri(),
+        },
+    }
+    breadcrumb_json_ld = {
+        '@context': 'https://schema.org',
+        '@type': 'BreadcrumbList',
+        'itemListElement': [
+            {
+                '@type': 'ListItem',
+                'position': 1,
+                'name': 'Home',
+                'item': request.build_absolute_uri('/'),
+            },
+            {
+                '@type': 'ListItem',
+                'position': 2,
+                'name': 'Marketplace',
+                'item': request.build_absolute_uri(reverse('marketplace')),
+            },
+            {
+                '@type': 'ListItem',
+                'position': 3,
+                'name': product.title or '',
+                'item': request.build_absolute_uri(),
+            },
+        ],
+    }
     return render(request, 'app/productdetail.html', {
-        'product': product, 
-        'product_cart': product_cart, 
-        'user': user, 
+        'product': product,
+        'product_cart': product_cart,
+        'user': user,
         'customer': customer,
         'related_products': related_products,
+        'product_json_ld': product_json_ld,
+        'product_breadcrumb_json_ld': breadcrumb_json_ld,
     })
 
 
@@ -574,11 +658,18 @@ def change_password(request):
         elif new_pass != confirm_pass:
             messages.error(request, 'New passwords do not match.')
         else:
+            from django.contrib.auth.password_validation import validate_password
+            try:
+                validate_password(new_pass, user=request.user)
+            except Exception as exc:
+                messages.error(request, '; '.join(exc.messages))
+                return render(request, 'app/changepassword.html')
             user = request.user
             user.set_password(new_pass)
             user.save()
+            update_session_auth_hash(request, user)
             messages.success(request, 'Password changed successfully.')
-            return redirect('profile')  
+            return redirect('profile')
     return render(request, 'app/changepassword.html')
 
 
@@ -626,7 +717,7 @@ def add_blog(request):
         if blog_form.is_valid():
             blog = blog_form.save(commit=False)
             blog.author = request.user
-            
+             
             # Determine which upload method was used and store accordingly
             upload_method = blog_form.cleaned_data.get('upload_method', 'local')
             blog.upload_method = upload_method
@@ -643,7 +734,9 @@ def add_blog(request):
             return redirect('blog_list')
     else:
         blog_form = BlogForm()
-    return render(request, 'app/add_blog.html', {'blog_form': blog_form})
+    context = {'blog_form': blog_form}
+    context.update(_cloudinary_context())
+    return render(request, 'app/add_blog.html', context)
 
 @login_required(login_url='login')
 @customer_required
@@ -670,7 +763,9 @@ def create_blog(request):
             return redirect('blog_list')
     else:
         form = BlogForm()
-    return render(request, 'app/create_blog.html', {'form': form})
+    context = {'form': form}
+    context.update(_cloudinary_context())
+    return render(request, 'app/create_blog.html', context)
 
 def blog_list(request):
     blogs_qs = Blog.objects.select_related('author').order_by('?')
@@ -915,6 +1010,15 @@ def products_by_category(request, category):
             'products': products,
             'category': category,
             'category_display': category_display,
+            'category_listing_json_ld': {
+                '@context': 'https://schema.org',
+                '@type': 'CollectionPage',
+                'name': f'{category_display} Products',
+                'description': (
+                    f'Browse {category_display.lower()} products in the '
+                    'ChuoSmart marketplace.'
+                ),
+            },
         }
     )
 
@@ -1113,7 +1217,36 @@ def account_deletion_request(request, product):
 
 def terms_of_service(request):
     """Render the Terms of Service page"""
-    return render(request, 'app/terms.html')
+    from django.conf import settings
+    domain = getattr(settings, 'SITE_DOMAIN', 'chuosmart.com')
+    base_url = f"https://{domain}"
+    logo_url = f"{base_url}{static('app/images/logo.png')}"
+    context = {
+        'terms_page_json_ld': {
+            '@context': 'https://schema.org',
+            '@type': 'WebPage',
+            'name': 'Terms of Service - ChuoSmart',
+            'description': (
+                'Learn about the terms and conditions for using the '
+                'ChuoSmart platform.'
+            ),
+            'publisher': {
+                '@type': 'Organization',
+                'name': 'ChuoSmart',
+                'logo': {
+                    '@type': 'ImageObject',
+                    'url': logo_url,
+                },
+            },
+            'mainEntity': {
+                '@type': 'WebContent',
+                'headline': 'ChuoSmart Terms of Service',
+                'datePublished': '2025-07-09',
+                'dateModified': '2025-07-09',
+            },
+        },
+    }
+    return render(request, 'app/terms.html', context)
 
 def clean_all_blog_content(request):
     """
@@ -1437,11 +1570,13 @@ def edit_blog(request, slug):
             return redirect('blog_detail', slug=blog.slug)
     else:
         form = BlogForm(instance=blog)
-    
-    return render(request, 'app/edit_blog.html', {
+
+    context = {
         'form': form,
         'blog': blog,
-    })
+    }
+    context.update(_cloudinary_context())
+    return render(request, 'app/edit_blog.html', context)
 
 @login_required
 @customer_required
@@ -1537,19 +1672,20 @@ def subscription_view(request):
     return render(request, 'app/subscription.html', context)
 
 
-@csrf_exempt
 @login_required(login_url='login')
 @customer_required
+@require_POST
 def upload_tinymce_image(request):
     """
     API endpoint for TinyMCE image uploads to Cloudinary
-    
+
     Handles image file uploads from the TinyMCE editor and stores them in Cloudinary.
     Returns JSON response with the image URL.
-    
+
     Expected POST parameters:
     - file: Image file from TinyMCE
-    
+    - X-CSRFToken: CSRF token (sent by TinyMCE when configured)
+
     Returns JSON:
     {
         'location': 'https://cloudinary-image-url.jpg'  # For TinyMCE success
@@ -1559,6 +1695,16 @@ def upload_tinymce_image(request):
         'error': 'Error message'  # For TinyMCE error handling
     }
     """
+    # Require the CSRF token via header (TinyMCE posts FormData via XHR).
+    from django.middleware.csrf import get_token
+    sent_token = (
+        request.META.get('HTTP_X_CSRFTOKEN')
+        or request.META.get('CSRF_COOKIE')
+    )
+    expected_token = get_token(request)
+    if not sent_token or sent_token != expected_token:
+        return JsonResponse({'error': 'CSRF verification failed.'}, status=403)
+
     if request.method != 'POST':
         return JsonResponse({'error': 'Method not allowed'}, status=405)
     
@@ -1630,3 +1776,9 @@ def upload_tinymce_image(request):
     except Exception as e:
         logger.error(f"TinyMCE image upload error: {str(e)}")
         return JsonResponse({'error': f'Upload failed: {str(e)}'}, status=500)
+
+
+def csrf_failure(request, reason=""):
+    """Custom CSRF failure view that shows a user-friendly error page."""
+    from django.shortcuts import render
+    return render(request, '403.html', {'reason': reason}, status=403)

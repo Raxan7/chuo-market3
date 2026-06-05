@@ -1,6 +1,7 @@
 {% extends 'app/base.html' %}
 {% load markdown_deux_tags %}  {# Load the markdown filter #}
 {% load blog_filters %}  {# Load our custom blog filters #}
+{% load sanitize_tags %}
 {% block title %}{{ blog.title }}{% endblock title %}
 
 {% block meta_description %}{{ blog.content|striptags|truncatewords:25 }}{% endblock meta_description %}
@@ -465,15 +466,13 @@
                 
                 <div class="blog-content">
                     {% if blog.is_markdown %}
-                        <!-- Markdown content rendering -->
-                        {{ blog.content|process_mixed_markdown|safe }}
+                        <!-- Markdown content rendering (sanitized through bleach) -->
+                        {{ blog.content|process_mixed_markdown|sanitize }}
                     {% else %}
                         <!-- Process content with potential markdown mixed with HTML -->
                         <div class="tinymce-content" id="tinymce-content-container">
-                            {% autoescape off %}
-                                <!-- Process any markdown-style formatting like **bold** within HTML using our custom filter -->
-                                {{ blog.content|process_mixed_markdown|safe }}
-                            {% endautoescape %}
+                            <!-- bleach-sanitized; no autoescape off needed -->
+                            {{ blog.content|process_mixed_markdown|sanitize }}
                         </div>
                     {% endif %}
                     

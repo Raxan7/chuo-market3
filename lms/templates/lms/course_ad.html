@@ -1,5 +1,6 @@
 {% extends "app/base.html" %}
 {% load static %}
+{% load sanitize_tags %}
 
 {% block title %}Course Advertisement | {{ course.title }}{% endblock %}
 
@@ -45,7 +46,7 @@
                                 <span id="countdown">5</span>
                             </div>
                         </div>
-                        <a href="{{ course_detail_url }}" class="btn btn-primary btn-lg disabled" id="continue-btn">
+                        <a href="{{ course_detail_url |safe_href }}" class="btn btn-primary btn-lg disabled" id="continue-btn">
                             <i class="fas fa-lock me-2"></i>Continue to Course
                         </a>
                         <p class="text-muted small mt-2">Please view the advertisement while waiting</p>
@@ -58,6 +59,7 @@
 
 {% block extra_js %}
 {% load static %}
+{% load sanitize_tags %}
 <script src="{% static 'lms/js/ad-tracker.js' %}"></script>
 <script>
     // Enhanced Countdown timer
@@ -71,7 +73,7 @@
     if (typeof gtag === 'function') {
         gtag('event', 'ad_impression', {
             'event_category': 'Course Ads',
-            'event_label': '{{ course.title }}',
+            'event_label': '{{ course.title|escapejs }}',
             'value': 1
         });
     }
@@ -104,7 +106,7 @@
             if (typeof gtag === 'function') {
                 gtag('event', 'ad_completed', {
                     'event_category': 'Course Ads',
-                    'event_label': '{{ course.title }}',
+                    'event_label': '{{ course.title|escapejs }}',
                     'value': 1
                 });
             }
@@ -117,7 +119,7 @@
             if (typeof gtag === 'function') {
                 gtag('event', 'course_continue', {
                     'event_category': 'Course Access',
-                    'event_label': '{{ course.title }}',
+                    'event_label': '{{ course.title|escapejs }}',
                     'value': 1
                 });
             }

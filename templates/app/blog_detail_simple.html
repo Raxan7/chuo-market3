@@ -1,5 +1,6 @@
 {% extends 'app/base.html' %}
 {% load markdown_deux_tags %}
+{% load sanitize_tags %}
 {% block title %}{{ blog.title }}{% endblock title %}
 
 {% block meta_description %}{{ blog.content|striptags|truncatewords:25 }}{% endblock meta_description %}
@@ -249,11 +250,9 @@
                 </div>
                 {% endif %}
                 
-                <!-- Simple, direct rendering of blog content -->
+                <!-- Simple, direct rendering of blog content (sanitized through bleach) -->
                 <div class="blog-content">
-                    {% autoescape off %}
-                        {{ blog.content|safe }}
-                    {% endautoescape %}
+                    {{ blog.content|sanitize }}
                 </div>
                 
                 <!-- Share buttons -->

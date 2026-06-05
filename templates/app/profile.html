@@ -1,6 +1,7 @@
 {% extends 'app/base.html' %}
 {% load static %}
 {% load form_tags %}
+{% load sanitize_tags %}
 {% block title %}Profile{% endblock title %}
 {% block meta_robots %}noindex,follow{% endblock %}
 
@@ -187,14 +188,20 @@
  </div>
 </div>
 
+{{ universities_data|json_script:"universities-data" }}
+{% with university_id=form.university.id_for_label college_id=form.college.id_for_label phone_id=form.phone_number.id_for_label student_id=form.is_university_student.id_for_label %}
+{{ university_id|json_script:"profile-university-id" }}
+{{ college_id|json_script:"profile-college-id" }}
+{{ phone_id|json_script:"profile-phone-id" }}
+{{ student_id|json_script:"profile-student-id" }}
 <script>
-  const universitiesData = {{ universities_data|safe }};
-  const universitySelect = document.getElementById('{{ form.university.id_for_label }}');
-  const collegeSelect = document.getElementById('{{ form.college.id_for_label }}');
-  const phoneInput = document.getElementById('{{ form.phone_number.id_for_label }}');
+  const universitiesData = JSON.parse(document.getElementById('universities-data').textContent);
+  const universitySelect = document.getElementById(JSON.parse(document.getElementById('profile-university-id').textContent));
+  const collegeSelect = document.getElementById(JSON.parse(document.getElementById('profile-college-id').textContent));
+  const phoneInput = document.getElementById(JSON.parse(document.getElementById('profile-phone-id').textContent));
   const submitBtn = document.getElementById('submitBtn');
   const form = document.querySelector('form');
-  const isUniversityStudent = document.getElementById('{{ form.is_university_student.id_for_label }}');
+  const isUniversityStudent = document.getElementById(JSON.parse(document.getElementById('profile-student-id').textContent));
   const universityFields = document.getElementById('university-fields');
 
   // Toggle university fields based on checkbox
@@ -284,4 +291,5 @@
     }
   });
 </script>
+{% endwith %}
 {% endblock main-content %}

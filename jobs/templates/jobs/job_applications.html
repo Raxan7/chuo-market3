@@ -1,5 +1,6 @@
 {% extends "jobs/base.html" %}
 {% load static %}
+{% load sanitize_tags %}
 
 {% block job_content %}
 <div class="card mb-4">
@@ -121,7 +122,7 @@
                                 <a href="{% url 'jobs:application_detail' application.id %}" class="btn btn-sm btn-outline-primary">
                                     <i class="bi bi-eye"></i>
                                 </a>
-                                <a href="{{ application.resume.url }}" target="_blank" class="btn btn-sm btn-outline-secondary">
+                                <a href="{{ application.resume.url |safe_href }}" target="_blank" class="btn btn-sm btn-outline-secondary">
                                     <i class="bi bi-file-earmark-pdf"></i>
                                 </a>
                                 <button type="button" class="btn btn-sm btn-outline-info" 

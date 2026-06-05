@@ -17,8 +17,7 @@
         <div class="col-md-9">
             <div id="add-product-form">
                 <h2 class="mb-4">Add New Product</h2>
-                <form method="post" enctype="multipart/form-data">
-                    {% csrf_token %}
+                <form method="post" action="" enctype="multipart/form-data">{% csrf_token %}
                     <div class="form-group">
                         <label for="id_title">Title</label>
                         {{ product_form.title|add_class:"form-control" }}
@@ -48,8 +47,7 @@
             </div>
             <div id="add-blog-form" style="display: none;">
                 <h2 class="mb-4">Add New Blog</h2>
-                <form method="post">
-                    {% csrf_token %}
+                <form method="post" enctype="multipart/form-data">{% csrf_token %}{# blog form #}
                     <div class="form-group">
                         <label for="id_title">Title</label>
                         {{ blog_form.title|add_class:"form-control" }}

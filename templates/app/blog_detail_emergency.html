@@ -1,5 +1,6 @@
 {% extends 'app/base.html' %}
 {% load markdown_deux_tags %}
+{% load sanitize_tags %}
 {% block title %}{{ blog.title }}{% endblock title %}
 
 {% block meta_description %}{{ blog.content|striptags|truncatewords:25 }}{% endblock meta_description %}
@@ -314,13 +315,13 @@
                 
                 <div class="blog-content">
                     {% if blog.is_markdown %}
-                        {{ blog.content|markdown|safe }}
+                        {{ blog.content|markdown|sanitize }}
                     {% else %}
                         {% if raw_content %}
-                            {{ raw_content|safe }}
+                            {{ raw_content|sanitize }}
                         {% else %}
                             <div class="fixed-content">
-                                {{ fixed_content|safe }}
+                                {{ fixed_content|sanitize }}
                             </div>
                         {% endif %}
                     {% endif %}

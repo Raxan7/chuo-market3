@@ -644,7 +644,7 @@ class AjiraJobsClient(JobApiClient):
             request_params={}
         )
         try:
-            response = requests.get(self.BASE_URL, headers=headers, verify=False)
+            response = requests.get(self.BASE_URL, headers=headers, verify=True)
             log_entry.response_status = response.status_code
             response.raise_for_status()
             soup = BeautifulSoup(response.text, 'html.parser')
@@ -673,7 +673,7 @@ class AjiraJobsClient(JobApiClient):
             for cat_link in candidate_links:
                 logger.info(f"Scraping candidate link: {cat_link}")
                 try:
-                    cat_resp = requests.get(cat_link, headers=headers, verify=False, timeout=20)
+                    cat_resp = requests.get(cat_link, headers=headers, verify=True, timeout=20)
                     cat_resp.raise_for_status()
                     cat_soup = BeautifulSoup(cat_resp.text, 'html.parser')
 
@@ -711,7 +711,7 @@ class AjiraJobsClient(JobApiClient):
                             requirements = ''
                             if job_url:
                                 try:
-                                    job_resp = requests.get(job_url, headers=headers, verify=False, timeout=20)
+                                    job_resp = requests.get(job_url, headers=headers, verify=True, timeout=20)
                                     job_resp.raise_for_status()
                                     job_soup = BeautifulSoup(job_resp.text, 'html.parser')
                                     title_tag = job_soup.find(['h1', 'h2']) or job_soup.find('title')
@@ -769,7 +769,7 @@ class AjiraJobsClient(JobApiClient):
                             description = ''
                             requirements = ''
                             try:
-                                job_resp = requests.get(job_url, headers=headers, verify=False, timeout=20)
+                                job_resp = requests.get(job_url, headers=headers, verify=True, timeout=20)
                                 job_resp.raise_for_status()
                                 job_soup = BeautifulSoup(job_resp.text, 'html.parser')
                                 title_tag = job_soup.find(['h1', 'h2']) or job_soup.find('title')
@@ -878,7 +878,7 @@ class AjiraJobsClient(JobApiClient):
                 external_id = job_url.split('/')[-1]
             if not external_id and job_data.get('title'):
                 import hashlib
-                external_id = hashlib.md5(job_data.get('title', '').encode()).hexdigest()
+                external_id = hashlib.sha256(job_data.get('title', '').encode()).hexdigest()
 
         # Ensure we have a company name
         company_name = job_data.get('employer', '')

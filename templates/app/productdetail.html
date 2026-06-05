@@ -1,6 +1,7 @@
 {% extends 'app/base.html' %}
 {% load static %}
 {% load product_filters %}
+{% load sanitize_tags %}
 {% block title %}{{ product.title|truncatechars:34 }} | Buy in Tanzania{% endblock title %}
 
 {% block meta_description %}
@@ -94,7 +95,7 @@
             {% endif %}
           </div>
           <div class="product-description">
-            {{ product.description|process_product_description|safe }}
+            {{ product.description|process_product_description|sanitize }}
           </div>
           <p><i class="fas fa-tag"></i> <strong>Price:</strong> TSh {{ product.price }}</p>
           <p><i class="fas fa-user"></i> <strong>Posted by:</strong> {{ customer.name }}</p>
@@ -262,47 +263,6 @@
 {% endblock main-content %}
 
 {% block structured_data %}
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "Product",
-  "name": "{{ product.title|escapejs }}",
-  "description": "{{ product.description|process_product_description|striptags|truncatechars:200|escapejs }}",
-  "image": "{{ request.scheme }}://{{ request.get_host }}{{ product.image.url }}",
-  "category": "{{ product.get_category_display|escapejs }}",
-  "offers": {
-    "@type": "Offer",
-    "priceCurrency": "TZS",
-    "price": "{{ product.price }}",
-    "availability": "https://schema.org/InStock",
-    "url": "{{ canonical_url }}"
-  }
-}
-</script>
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "BreadcrumbList",
-  "itemListElement": [
-    {
-      "@type": "ListItem",
-      "position": 1,
-      "name": "Home",
-      "item": "{{ base_url }}/"
-    },
-    {
-      "@type": "ListItem",
-      "position": 2,
-      "name": "Marketplace",
-      "item": "{{ base_url }}{% url 'marketplace' %}"
-    },
-    {
-      "@type": "ListItem",
-      "position": 3,
-      "name": "{{ product.title|escapejs }}",
-      "item": "{{ canonical_url }}"
-    }
-  ]
-}
-</script>
+{{ product_json_ld|json_script:"product-schema" }}
+{{ product_breadcrumb_json_ld|json_script:"product-breadcrumb-schema" }}
 {% endblock structured_data %}

@@ -1,6 +1,5 @@
 from webpush import send_user_notification, send_group_notification
 from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.views.decorators.http import require_POST
 from django.shortcuts import render, redirect
@@ -61,7 +60,6 @@ def send_test_notification(request):
 
 @login_required
 @require_POST
-@csrf_exempt
 def send_notification_to_user(request, user_id=None):
     """
     Send a notification to a specific user or the current user

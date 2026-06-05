@@ -24,7 +24,7 @@ urlpatterns = [
     # Courses
     path('courses/', views.CourseListView.as_view(), name='course_list'),
     path('courses/create/', views.CourseCreateView.as_view(), name='course_create'),
-     path('courses/<slug:slug>/', views.CourseDetailView.as_view(), name='course_detail'),
+    path('courses/<slug:slug>/', views.CourseDetailView.as_view(), name='course_detail'),
     path('courses/<slug:slug>/direct/', views.CourseDetailView.as_view(), name='course_detail_direct'),
     path('courses/<slug:slug>/update/', views.CourseUpdateView.as_view(), name='course_update'),
     path('courses/<slug:slug>/enroll/', views.enroll_course, name='enroll_course'),
@@ -79,7 +79,11 @@ urlpatterns = [
     path('certificates/templates/<int:pk>/preview/', views.CertificateTemplatePreviewView.as_view(), name='certificate_template_preview'),
     path('certificates/templates/<int:pk>/publish/', views.publish_certificate_template, name='certificate_template_publish'),
     path('certificates/verify/<str:certificate_id>/', views.verify_certificate, name='certificate_verify'),
+    path('certificates/<str:certificate_id>/', views.certificate_detail, name='certificate_detail'),
     path('certificates/<str:certificate_id>/download/', views.download_certificate, name='certificate_download'),
+
+    # Legal name (required for certificates)
+    path('legal-name/', views.set_legal_name, name='set_legal_name'),
     
     # Instructor Request
     path('become-instructor/', views.request_instructor_role, name='request_instructor_role'),

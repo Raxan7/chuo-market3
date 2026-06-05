@@ -1,5 +1,6 @@
 {% extends "jobs/base.html" %}
 {% load static %}
+{% load sanitize_tags %}
 
 {% block job_content %}
 <div class="card mb-4">
@@ -45,7 +46,7 @@
                         <p>
                             <i class="bi bi-globe me-2"></i>
                             {% if company.website %}
-                            <a href="{{ company.website }}" target="_blank">{{ company.website }}</a>
+                            <a href="{{ company.website |safe_href }}" target="_blank">{{ company.website }}</a>
                             {% else %}
                             <span class="text-muted">No website provided</span>
                             {% endif %}
@@ -300,7 +301,7 @@
     </div>
     <div class="card-body">
         <div class="company-description">
-            {{ company.description|safe }}
+            {{ company.description|sanitize }}
         </div>
     </div>
 </div>

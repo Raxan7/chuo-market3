@@ -133,7 +133,3 @@ def chatbot_api(request):
         return JsonResponse({'reply': bot_response_text})
     return JsonResponse({'error': 'Invalid request method'}, status=400)
 
-def clear_session(request):
-    time.sleep(5)
-    request.session.flush()
-    return JsonResponse({'status': 'Session cleared'})

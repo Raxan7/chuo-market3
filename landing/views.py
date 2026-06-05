@@ -19,7 +19,11 @@ def landing_page(request):
             return render(request, 'landing/countdown.html', {
                 'redirect_url': 'https://chuosmart.com/lms/courses/ujasiriamali-wa-kidijitali-kwa-kutumia-chuosmart/direct/',
                 'seconds': 3,
-                'email': email
+                'email': email,
+                'countdown_data': {
+                    'redirect_url': 'https://chuosmart.com/lms/courses/ujasiriamali-wa-kidijitali-kwa-kutumia-chuosmart/direct/',
+                    'seconds': 3,
+                },
             })
     else:
         form = EmailSignupForm()

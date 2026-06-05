@@ -1,0 +1,43 @@
+{% extends 'app/base.html' %}
+{% load static %}
+
+{% block title %}Server Error - ChuoSmart{% endblock title %}
+
+{% block meta_description %}Something went wrong on our end. Please try again later.{% endblock meta_description %}
+
+{% block main-content %}
+<div class="container py-5 my-5">
+    <div class="row">
+        <div class="col-md-8 mx-auto text-center">
+            <div class="mb-4">
+                <img src="{% static 'app/images/logo.png' %}" alt="ChuoSmart Logo" class="img-fluid" style="max-width: 150px;">
+            </div>
+            <h1 class="display-4 fw-bold text-danger mb-4">Server Error</h1>
+            <div class="card border-0 shadow-sm p-4 mb-5">
+                <div class="card-body">
+                    <h2 class="h4 mb-4">Something went wrong on our end.</h2>
+                    <p class="lead">We're working on fixing this issue. Please try again in a few minutes.</p>
+                    <p class="mb-4">If the problem persists, please contact our support team.</p>
+
+                    <div class="row mt-4">
+                        <div class="col-md-6 mb-3">
+                            <div class="d-grid">
+                                <a href="{% url 'home' %}" class="btn btn-primary btn-lg">
+                                    <i class="fas fa-home me-2"></i> Go Home
+                                </a>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <div class="d-grid">
+                                <a href="{% url 'contact' %}" class="btn btn-outline-primary btn-lg">
+                                    <i class="fas fa-envelope me-2"></i> Report Issue
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock main-content %}

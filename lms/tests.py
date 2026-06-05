@@ -5,7 +5,7 @@ from django.utils import timezone
 
 from .ai_assessments import ensure_module_assessment, queue_module_assessment_generation
 from .models import Course, CourseContent, CourseEnrollment, LMSProfile, CourseModule, ContentAccess, QuizTaker, Quiz, MCQuestion, Choice, StudentAnswer, ModuleProgress
-from .utils import is_module_unlocked, update_module_content_completion, update_module_assessment_completion
+from .utils import ensure_course_learning_records, is_module_unlocked, update_module_content_completion, update_module_assessment_completion
 
 
 @override_settings(
@@ -140,6 +140,88 @@ class LMSModuleGatingTests(TestCase):
         self.assertTrue(response.context['quiz_is_ready'])
         self.assertFalse(response.context['is_generating'])
 
+    @override_settings(CEREBRAS_API_KEY=None, CEREBRAS_STRICT_ASSESSMENTS=False)
+    def test_new_module_after_enrollment_gets_progress_and_one_ai_quiz(self):
+        module = CourseModule.objects.create(
+            course=self.course,
+            title='Late Module',
+            description='Added after the student enrolled',
+            order=2,
+        )
+        self._create_content(module, title='Late Lesson')
+
+        stats = ensure_course_learning_records(self.course, self.profile)
+
+        self.assertGreaterEqual(stats['progress_existing'] + stats['progress_created'], 1)
+        progress = ModuleProgress.objects.get(student=self.profile, module=module)
+        self.assertFalse(progress.content_completed)
+        self.assertFalse(progress.assessment_passed)
+
+        quizzes = Quiz.objects.filter(module=module, generated_for=self.profile, draft=False)
+        self.assertEqual(quizzes.count(), 1)
+        self.assertEqual(quizzes.first().generation_status, 'ready')
+        self.assertGreater(quizzes.first().questions.count(), 0)
+
+        response = self.client.get(reverse('lms:course_detail', kwargs={'slug': self.course.slug}), follow=True)
+        self.assertEqual(response.status_code, 200)
+        state = next(item for item in response.context['module_states'] if item['module'].id == module.id)
+        self.assertIsNotNone(state['progress'])
+        self.assertIsNotNone(state['assessment'])
+        self.assertEqual(state['assessment_status'], 'ready')
+
+    @override_settings(CEREBRAS_API_KEY=None, CEREBRAS_STRICT_ASSESSMENTS=False)
+    def test_queueing_module_assessment_is_idempotent(self):
+        module = CourseModule.objects.create(
+            course=self.course,
+            title='No Duplicate Module',
+            description='Only one quiz should exist',
+            order=3,
+        )
+
+        first_quiz = queue_module_assessment_generation(module, student=self.profile)
+        second_quiz = queue_module_assessment_generation(module, student=self.profile)
+
+        self.assertEqual(first_quiz.id, second_quiz.id)
+        self.assertEqual(
+            Quiz.objects.filter(module=module, generated_for=self.profile, draft=False).count(),
+            1,
+        )
+
+    @override_settings(CEREBRAS_API_KEY=None, CEREBRAS_STRICT_ASSESSMENTS=False)
+    def test_instructor_quiz_create_route_queues_ai_instead_of_manual_form(self):
+        instructor_user = User.objects.create_user(
+            username='instructor',
+            email='instructor@example.com',
+            password='testpassword',
+        )
+        instructor_profile, _ = LMSProfile.objects.get_or_create(
+            user=instructor_user,
+            defaults={'role': 'instructor'},
+        )
+        instructor_profile.role = 'instructor'
+        instructor_profile.save()
+        self.course.instructors.add(instructor_profile)
+        module = CourseModule.objects.create(
+            course=self.course,
+            title='AI Route Module',
+            description='Route test module',
+            order=4,
+        )
+
+        self.client.logout()
+        self.client.login(username='instructor', password='testpassword')
+        response = self.client.get(
+            reverse('lms:quiz_create_in_module', kwargs={'course_slug': self.course.slug, 'module_id': module.id}),
+            follow=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, 'Create New Quiz')
+        self.assertEqual(
+            Quiz.objects.filter(module=module, generated_for__isnull=True, draft=False).count(),
+            1,
+        )
+
     def test_locked_modules_render_as_disabled_controls(self):
         first_module = CourseModule.objects.create(
             course=self.course,
@@ -220,6 +302,6 @@ class LMSModuleGatingTests(TestCase):
 
         progress = ModuleProgress.objects.get(student=self.profile, module=first_module)
         self.assertTrue(progress.assessment_passed)
-        self.assertFalse(progress.content_completed)
+        self.assertTrue(progress.content_completed)
         self.assertGreaterEqual(float(progress.best_score), 70)
-        self.assertFalse(progress.completed)
+        self.assertTrue(progress.completed)

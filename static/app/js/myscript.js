@@ -71,14 +71,17 @@ $(document).ready(function(){
         var eml = this.parentNode.children[1];
         $.ajax({
             type: "GET",
-            url: "/pluscart",
+            url: "/plus-cart/",
             data: {
-                prod_id: id
+                pid: id
             },
             success: function(data){
                 eml.innerText = data.quantity;
                 document.getElementById("amount").innerText = data.amount;
                 document.getElementById("totalamount").innerText = data.totalamount;
+            },
+            error: function() {
+                console.error('Failed to increase quantity');
             }
         });
     });
@@ -88,14 +91,17 @@ $(document).ready(function(){
         var eml = this.parentNode.children[1];
         $.ajax({
             type: "GET",
-            url: "/minuscart",
+            url: "/minus-cart/",
             data: {
-                prod_id: id
+                pid: id
             },
             success: function(data){
                 eml.innerText = data.quantity;
                 document.getElementById("amount").innerText = data.amount;
                 document.getElementById("totalamount").innerText = data.totalamount;
+            },
+            error: function() {
+                console.error('Failed to decrease quantity');
             }
         });
     });
@@ -105,14 +111,22 @@ $(document).ready(function(){
         var eml = this;
         $.ajax({
             type: "GET",
-            url: "/removecart",
-            data: {
-                prod_id: id
+            url: "/remove-cart/" + id + "/",
+            success: function(){
+                document.getElementById("amount").innerText = "0";
+                document.getElementById("totalamount").innerText = "0";
+                var row = eml.closest('tr') || eml.parentNode.parentNode.parentNode.parentNode;
+                if (row && row.parentNode) {
+                    row.remove();
+                }
+                // Reload cart count
+                if (typeof updateCartCount === 'function') {
+                    updateCartCount();
+                    updateMobileCartCount();
+                }
             },
-            success: function(data){
-                document.getElementById("amount").innerText = data.amount;
-                document.getElementById("totalamount").innerText = data.totalamount;
-                eml.parentNode.parentNode.parentNode.parentNode.remove();
+            error: function() {
+                console.error('Failed to remove item from cart');
             }
         });
     });

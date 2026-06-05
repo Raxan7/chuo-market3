@@ -2,11 +2,23 @@
 Utility functions for the LMS application
 """
 
+import logging
+
 from django.db.models import Count, Q
 from .models import (
     Course, CourseModule, CourseContent, ContentAccess, ModuleProgress,
-    Quiz, QuizTaker, StudentCertificate, CertificateTemplate
+    Quiz, QuizTaker, StudentCertificate, CertificateTemplate, ActivityLog
 )
+
+logger = logging.getLogger(__name__)
+
+
+def _log_learning_record_event(message):
+    logger.info(message)
+    try:
+        ActivityLog.objects.create(message=message)
+    except Exception:
+        logger.exception("Could not write LMS learning record activity log: %s", message)
 
 
 def calculate_course_progress(course, student):
@@ -28,10 +40,18 @@ def calculate_course_progress(course, student):
     total_count = course_contents.count()
     
     if total_count == 0:
+        module_states = get_module_progress_states(course, student)
+        total_modules = len(module_states)
+        completed_modules = len([state for state in module_states if state['completed']])
+        module_percentage = (completed_modules / total_modules) * 100 if total_modules else 0
         return {
             'percentage': 0,
             'completed_count': 0,
-            'total_count': 0
+            'total_count': 0,
+            'module_percentage': round(module_percentage, 1),
+            'completed_modules': completed_modules,
+            'total_modules': total_modules,
+            'course_completed': total_modules > 0 and completed_modules == total_modules,
         }
     
     # Get completed content items
@@ -101,11 +121,92 @@ def get_module_assessment(module, student=None):
             module=module,
             generated_for=student,
             draft=False,
-        ).order_by('-id').first()
+        ).order_by('id').first()
         if personal_quiz:
             return personal_quiz
 
-    return Quiz.objects.filter(module=module, draft=False).order_by('generated_for', 'id').first()
+    return Quiz.objects.filter(
+        module=module,
+        generated_for__isnull=True,
+        draft=False,
+    ).order_by('id').first()
+
+
+def ensure_course_learning_records(course, student, queue_assessments=True, force_assessment_regeneration=False):
+    """
+    Ensure an enrolled learner has module progress rows and AI quiz jobs.
+
+    This is intentionally idempotent so it can run from enrollment signals,
+    module/content changes, and course detail rendering without creating
+    duplicate quizzes or progress records.
+    """
+    if not course or not student:
+        return {
+            'progress_created': 0,
+            'progress_existing': 0,
+            'assessments_queued': 0,
+            'assessments_skipped': 0,
+        }
+
+    stats = {
+        'progress_created': 0,
+        'progress_existing': 0,
+        'assessments_queued': 0,
+        'assessments_skipped': 0,
+    }
+
+    for module in course.modules.order_by('order', 'id'):
+        progress, created = ModuleProgress.objects.get_or_create(
+            student=student,
+            module=module,
+        )
+        if created:
+            stats['progress_created'] += 1
+            _log_learning_record_event(
+                "Created module progress for student %s, course %s, module %s." % (
+                    student.id,
+                    course.id,
+                    module.id,
+                )
+            )
+        else:
+            stats['progress_existing'] += 1
+
+        content_completed_before = progress.content_completed
+        progress = update_module_content_completion(module, student)
+        if progress.content_completed != content_completed_before:
+            _log_learning_record_event(
+                "Updated content progress for student %s, course %s, module %s: content_completed=%s." % (
+                    student.id,
+                    course.id,
+                    module.id,
+                    progress.content_completed,
+                )
+            )
+
+        if getattr(module, 'skip_assessment', False):
+            stats['assessments_skipped'] += 1
+            continue
+
+        if queue_assessments:
+            from .ai_assessments import queue_module_assessment_generation
+
+            quiz = queue_module_assessment_generation(
+                module,
+                student=student,
+                force=force_assessment_regeneration,
+            )
+            if quiz:
+                stats['assessments_queued'] += 1
+
+    _log_learning_record_event(
+        "Ensured learning records for student %s in course %s: %s." % (
+            student.id,
+            course.id,
+            stats,
+        )
+    )
+    return stats
 
 
 def is_first_module(module):
@@ -169,7 +270,7 @@ def update_module_assessment_completion(quiz_taker):
 
 
 def get_module_progress_states(course, student):
-    modules = list(course.modules.prefetch_related('contents', 'quizzes').all())
+    modules = list(course.modules.prefetch_related('contents', 'quizzes').order_by('order', 'id'))
     progress_map = {
         item.module_id: item
         for item in ModuleProgress.objects.filter(student=student, module__course=course)
@@ -221,8 +322,27 @@ def is_course_completed(course, student):
     return bool(states) and all(state['completed'] for state in states)
 
 
+def instructors_missing_legal_name(course):
+    """Return a list of instructor LMSProfiles that have not set a legal name."""
+    return [i for i in course.instructors.all() if not i.has_legal_name]
+
+
 def issue_certificate_if_eligible(course, student_profile):
     if not student_profile or not is_course_completed(course, student_profile):
+        return None
+
+    if not student_profile.has_legal_name:
+        logger.info(
+            "Skipping certificate for %s in %s: student has no legal name set.",
+            student_profile.user.username, course.title,
+        )
+        return None
+
+    if instructors_missing_legal_name(course):
+        logger.info(
+            "Skipping certificate for %s in %s: one or more instructors have no legal name.",
+            student_profile.user.username, course.title,
+        )
         return None
 
     template = CertificateTemplate.objects.filter(course=course, status='active').first()
@@ -230,14 +350,18 @@ def issue_certificate_if_eligible(course, student_profile):
         template = CertificateTemplate.objects.filter(course=course).order_by('-updated_at').first()
 
     if not template:
+        instructor_names = ', '.join(
+            instructor.display_legal_name or instructor.user.get_full_name() or instructor.user.username
+            for instructor in course.instructors.all()[:2]
+        ) or 'Course Instructor'
         template = CertificateTemplate.objects.create(
             course=course,
             title='Certificate of Completion',
             organization_name='ChuoSmart Academy',
-            instructor_name=', '.join(
-                instructor.user.get_full_name() or instructor.user.username
-                for instructor in course.instructors.all()[:2]
-            ),
+            primary_color='#0d6efd',
+            secondary_color='#111827',
+            accent_color='#1FAA59',
+            instructor_name=instructor_names,
             status='active',
         )
 

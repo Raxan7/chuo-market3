@@ -1,5 +1,6 @@
 {% extends 'app/base.html' %}
 {% load static %}
+{% load sanitize_tags %}
 {% block title %}Edit Talent: {{ talent.title }}{% endblock title %}
 
 {% block extra_head %}
@@ -86,7 +87,7 @@
                                 {% elif talent.media.url|lower|slice:"-3:" in 'jpg,jpeg,png,gif,webp' %}
                                     <img src="{{ talent.media.url }}" alt="{{ talent.title }}" class="preview-media">
                                 {% else %}
-                                    <a href="{{ talent.media.url }}" target="_blank">View current media</a>
+                                    <a href="{{ talent.media.url |safe_href }}" target="_blank">View current media</a>
                                 {% endif %}
                             </div>
                         </div>

@@ -1,6 +1,8 @@
 {% extends 'app/base.html' %}
 {% load static %}
+{% load sanitize_tags %}
 {% load markdown_deux_tags %}
+{% load sanitize_tags %}
 {% block title %}Marketplace - ChuoSmart Student Marketplace Tanzania{% endblock title %}
 
 {% block meta_description %}Shop at ChuoSmart student marketplace in Tanzania. Buy and sell products from college and university students.{% endblock meta_description %}
@@ -121,6 +123,7 @@
           {% for banner in banners %}
             <div class="carousel-item {% if forloop.first %}active{% endif %}">
               {% load image_tags %}
+{% load sanitize_tags %}
               {% if banner.image %}
                 {% picture webp_src=banner.image_webp|safe_url fallback_src=banner.image.url alt=banner.title css_class="d-block w-100" lazy=True %}
               {% else %}
@@ -300,6 +303,7 @@
           <a href="{% url 'product-detail' slug=product.slug %}" class="text-decoration-none">
             <div class="card text-center shadow-sm product-card h-100">
               {% load image_tags %}
+{% load sanitize_tags %}
               <div class="product-image-wrapper">
                 {% picture webp_src=product.image_webp|safe_url fallback_src=product.image.url alt=product.title css_class="card-img-top product-image" lazy=True %}
               </div>
@@ -339,11 +343,11 @@
       <nav class="mt-4" aria-label="Marketplace pagination">
         <ul class="pagination justify-content-center">
           {% if page_obj.has_previous %}
-            <li class="page-item"><a class="page-link" href="{{ prev_page_url }}">Previous</a></li>
+            <li class="page-item"><a class="page-link" href="{{ prev_page_url |safe_href }}">Previous</a></li>
           {% endif %}
           <li class="page-item active"><span class="page-link">{{ page_obj.number }}</span></li>
           {% if page_obj.has_next %}
-            <li class="page-item"><a class="page-link" href="{{ next_page_url }}">Next</a></li>
+            <li class="page-item"><a class="page-link" href="{{ next_page_url |safe_href }}">Next</a></li>
           {% endif %}
         </ul>
       </nav>
@@ -358,6 +362,8 @@
     </div>
   {% endif %}
 </div>
+
+{{ next_page_url|default_if_none:''|json_script:"marketplace-next-page" }}
 
 <script>
   // Show products when they're loaded
@@ -378,7 +384,11 @@
     const listContainer = document.getElementById('products-grid');
     const sentinel = document.getElementById('marketplace-infinite-scroll-sentinel');
     const loadingIndicator = document.getElementById('marketplace-loading-more');
-    let nextUrl = {% if page_obj and page_obj.has_next %}'{{ next_page_url }}'{% else %}null{% endif %};
+    let nextUrl = (function() {
+      const el = document.getElementById('marketplace-next-page');
+      const val = el ? el.textContent : '';
+      return val && val.length > 0 ? val : null;
+    })();
     let isLoading = false;
 
     if (!listContainer || !sentinel || !nextUrl) {

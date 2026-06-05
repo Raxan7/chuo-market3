@@ -1,6 +1,8 @@
 {% extends "app/base.html" %}
 {% load static %}
+{% load sanitize_tags %}
 {% load lms_form_tags %}
+{% load sanitize_tags %}
 
 {% block extra_head %}
 {{ form.media }}
@@ -119,7 +121,7 @@
                                     <div class="d-flex align-items-center">
                                         <i class="fas fa-file-alt text-primary me-2"></i>
                                         <span>Current file: </span>
-                                        <a href="{{ form.instance.document.url }}" target="_blank" class="ms-2 btn btn-sm btn-outline-primary">
+                                        <a href="{{ form.instance.document.url |safe_href }}" target="_blank" class="ms-2 btn btn-sm btn-outline-primary">
                                             <i class="fas fa-download me-1"></i>
                                             {{ form.instance.document.name }}
                                         </a>

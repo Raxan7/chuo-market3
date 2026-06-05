@@ -1,5 +1,6 @@
 {% extends "jobs/base.html" %}
 {% load static %}
+{% load sanitize_tags %}
 
 {% block job_content %}
 <div class="card mb-4">
@@ -26,7 +27,7 @@
                             </span>
                         </div>
                         <p class="mb-0 text-truncate-3">
-                            {{ saved_job.job.description|safe|truncatewords:30 }}
+                            {{ saved_job.job.description|sanitize|truncatewords:30 }}
                         </p>
                     </div>
                     {% if saved_job.job.company.logo %}
@@ -82,7 +83,7 @@
                             </a>
                         </h5>
                         <h6 class="card-subtitle mb-2 text-muted">{{ job.company.name }}</h6>
-                        <p class="card-text">{{ job.description|safe|truncatewords:15 }}</p>
+                        <p class="card-text">{{ job.description|sanitize|truncatewords:15 }}</p>
                         <div class="d-flex justify-content-between align-items-center mt-auto">
                             <small class="text-muted">{{ job.created_at|timesince }} ago</small>
                             <a href="{% url 'jobs:job_detail' job.id %}" class="btn btn-sm btn-outline-primary">View</a>

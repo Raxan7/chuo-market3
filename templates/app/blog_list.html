@@ -1,5 +1,6 @@
 {% extends 'app/base.html' %}
 {% load static %}
+{% load sanitize_tags %}
 {% block title %}Chuo Blog - Latest Articles and Insights{% endblock title %}
 
 {% block meta_description %}Read the latest articles, tips, and insights from Chuo Blog. Stay updated with educational content, market trends, and student life.{% endblock %}
@@ -24,6 +25,7 @@
                     <a href="{% url 'blog_detail' slug=blog.slug %}" class="text-decoration-none">
                         {% if blog.thumbnail %}
                             {% load image_tags %}
+{% load sanitize_tags %}
                             <div class="blog-thumbnail-container">
                                 {% picture webp_src=blog.thumbnail_webp|safe_url fallback_src=blog.thumbnail.url alt=blog.title css_class="card-img-top rounded-top" lazy=True width="100%" height="200" style="height: 200px; object-fit: cover;" %}
                             </div>
@@ -71,11 +73,11 @@
     <nav class="mt-4" aria-label="Blog pagination">
         <ul class="pagination justify-content-center">
             {% if page_obj.has_previous %}
-                <li class="page-item"><a class="page-link" href="{{ prev_page_url }}">Previous</a></li>
+                <li class="page-item"><a class="page-link" href="{{ prev_page_url |safe_href }}">Previous</a></li>
             {% endif %}
             <li class="page-item active"><span class="page-link">{{ page_obj.number }}</span></li>
             {% if page_obj.has_next %}
-                <li class="page-item"><a class="page-link" href="{{ next_page_url }}">Next</a></li>
+                <li class="page-item"><a class="page-link" href="{{ next_page_url |safe_href }}">Next</a></li>
             {% endif %}
         </ul>
     </nav>
@@ -121,12 +123,18 @@
     }
 </style>
 
+{{ next_page_url|default_if_none:''|json_script:"blog-next-page" }}
+
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         const listContainer = document.getElementById('blog-list-grid');
         const sentinel = document.getElementById('blog-infinite-scroll-sentinel');
         const loadingIndicator = document.getElementById('blog-loading-more');
-        let nextUrl = {% if page_obj and page_obj.has_next %}'{{ next_page_url }}'{% else %}null{% endif %};
+        let nextUrl = (function() {
+          const el = document.getElementById('blog-next-page');
+          const val = el ? el.textContent : '';
+          return val && val.length > 0 ? val : null;
+        })();
         let isLoading = false;
 
         if (!listContainer || !sentinel || !nextUrl) {

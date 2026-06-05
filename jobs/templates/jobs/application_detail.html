@@ -1,5 +1,6 @@
 {% extends "jobs/base.html" %}
 {% load static %}
+{% load sanitize_tags %}
 
 {% block job_content %}
 <div class="card mb-4">
@@ -47,7 +48,7 @@
                             {% if application.portfolio_url %}
                             <div class="col-md-6 mb-3">
                                 <h6>Portfolio URL</h6>
-                                <p><a href="{{ application.portfolio_url }}" target="_blank">{{ application.portfolio_url }}</a></p>
+                                <p><a href="{{ application.portfolio_url |safe_href }}" target="_blank">{{ application.portfolio_url }}</a></p>
                             </div>
                             {% endif %}
                             
@@ -89,7 +90,7 @@
                     <div class="card-body">
                         <div class="mb-3">
                             <h6>Resume/CV</h6>
-                            <a href="{{ application.resume.url }}" class="btn btn-outline-primary btn-sm" target="_blank">
+                            <a href="{{ application.resume.url |safe_href }}" class="btn btn-outline-primary btn-sm" target="_blank">
                                 <i class="bi bi-file-earmark-pdf me-1"></i> View Resume
                             </a>
                         </div>
@@ -97,7 +98,7 @@
                         {% if application.additional_documents %}
                         <div>
                             <h6>Additional Documents</h6>
-                            <a href="{{ application.additional_documents.url }}" class="btn btn-outline-secondary btn-sm" target="_blank">
+                            <a href="{{ application.additional_documents.url |safe_href }}" class="btn btn-outline-secondary btn-sm" target="_blank">
                                 <i class="bi bi-file-earmark me-1"></i> View Documents
                             </a>
                         </div>

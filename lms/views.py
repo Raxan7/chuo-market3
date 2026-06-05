@@ -17,6 +17,7 @@ from django.views.generic import (
 from django.db.models import Q, Count, Avg
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
+from django.conf import settings
 import time
 
 from .models import (
@@ -29,7 +30,8 @@ from .forms import (
     LMSProfileForm, CourseForm, CourseModuleForm, CourseContentForm,
     QuizForm, MCQuestionForm, ChoiceForm, TFQuestionForm, EssayQuestionForm,
     GradeForm, CourseEnrollForm, EssayAnswerForm, InstructorRequestForm,
-    ProgramForm, CertificateTemplateForm, MCAnswerForm, TFAnswerForm
+    ProgramForm, CertificateTemplateForm, MCAnswerForm, TFAnswerForm,
+    LegalNameForm
 )
 
 from .forms import PaymentMethodForm
@@ -178,6 +180,115 @@ def get_question_kind(question):
 
 def can_manage_course(user, course):
     return is_course_instructor(user, course)
+
+
+def _resolve_student_name(user):
+    """Prefer the user's saved legal name, then full name, then username."""
+    if not user:
+        return ''
+    profile = getattr(user, 'lms_profile', None)
+    if profile and profile.has_legal_name:
+        return profile.display_legal_name
+    return (user.get_full_name() or user.username or '').strip()
+
+
+def _resolve_instructor_name(course, template=None):
+    """Build the instructor name shown on a certificate."""
+    instructors = list(course.instructors.all()[:2]) if course else []
+    names = []
+    for instructor in instructors:
+        if instructor.has_legal_name:
+            names.append(instructor.display_legal_name)
+        else:
+            full = instructor.user.get_full_name() or instructor.user.username
+            if full:
+                names.append(full)
+    if names:
+        return ', '.join(names)
+    if template and template.instructor_name:
+        return template.instructor_name
+    return 'Course Instructor'
+
+
+def _resolve_safe_next(request, fallback):
+    """Return a safe relative URL for redirect-after-post.
+
+    Only allow same-site paths to prevent open-redirect issues when the
+    `next` query parameter is supplied by the user.
+    """
+    from django.urls import reverse
+    next_url = request.POST.get('next') or request.GET.get('next') or ''
+    if next_url and next_url.startswith('/') and not next_url.startswith('//'):
+        return next_url
+    try:
+        return reverse(fallback)
+    except Exception:
+        return '/'
+
+
+def legal_name_required(view_func):
+    """Block the wrapped view until the user has saved their legal name.
+
+    Used to gate certificate-related actions: when a student tries to
+    download/issue a certificate or an instructor tries to act as a course
+    instructor, they must first provide their full legal name.
+    """
+    from functools import wraps
+
+    @wraps(view_func)
+    def _wrapped(request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return view_func(request, *args, **kwargs)
+        profile = getattr(request.user, 'lms_profile', None)
+        if profile is None:
+            return view_func(request, *args, **kwargs)
+        if profile.has_legal_name:
+            return view_func(request, *args, **kwargs)
+
+        from django.urls import reverse
+        from urllib.parse import urlencode
+        next_url = request.get_full_path()
+        params = urlencode({'next': next_url, 'reason': 'certificate'})
+        return redirect(f"{reverse('lms:set_legal_name')}?{params}")
+
+    return _wrapped
+
+
+@login_required(login_url='login')
+def set_legal_name(request):
+    """Prompt the user to enter their full legal name (one-time).
+
+    After saving, the user is redirected to ``next`` (if safe) or to the
+    appropriate dashboard based on their role.
+    """
+    profile, _ = LMSProfile.objects.get_or_create(user=request.user)
+
+    fallback = 'lms:student_dashboard'
+    if profile.role == 'instructor':
+        fallback = 'lms:instructor_dashboard'
+    elif profile.role == 'admin':
+        fallback = 'lms:lms_home'
+
+    if request.method == 'POST':
+        form = LegalNameForm(request.POST, instance=profile)
+        if form.is_valid():
+            form.save()
+            messages.success(
+                request,
+                _("Thanks! Your legal name has been saved and will appear on your certificate."),
+            )
+            return redirect(_resolve_safe_next(request, fallback))
+    else:
+        form = LegalNameForm(instance=profile)
+
+    context = {
+        'form': form,
+        'profile': profile,
+        'reason': request.GET.get('reason', 'general'),
+        'next': _resolve_safe_next(request, fallback),
+        'already_set': profile.has_legal_name,
+    }
+    return render(request, 'lms/legal_name_prompt.html', context)
 
 
 class InstructorRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
@@ -379,6 +490,12 @@ class CourseListView(ListView):
             'course_type': self.request.GET.get('course_type', ''),
             'q': self.request.GET.get('q', ''),
         }
+        context['course_listing_json_ld'] = {
+            '@context': 'https://schema.org',
+            '@type': 'CollectionPage',
+            'name': 'Course List',
+            'description': 'Browse free and paid courses for students in Tanzania.',
+        }
         return context
 
 
@@ -395,8 +512,9 @@ class CourseDetailView(DetailView):
         # Get course modules with contents - accessible to everyone
         modules = CourseModule.objects.filter(course=course).prefetch_related('contents')
         
-        # Get quizzes for this course
-        quizzes = Quiz.objects.filter(course=course)
+        # Get quizzes for this course. Personalized AI quizzes must not leak
+        # into another learner's course list.
+        quizzes = Quiz.objects.filter(course=course, draft=False, generated_for__isnull=True)
         
         # Check if user is enrolled and get enrollment status
         is_enrolled = False
@@ -433,7 +551,18 @@ class CourseDetailView(DetailView):
         module_states = []
         issued_certificate = None
         if is_enrolled and student_profile and has_access:
-            from .utils import calculate_course_progress, get_module_progress_states, issue_certificate_if_eligible
+            from .utils import (
+                calculate_course_progress,
+                ensure_course_learning_records,
+                get_module_progress_states,
+                issue_certificate_if_eligible,
+            )
+            ensure_course_learning_records(course, student_profile)
+            quizzes = Quiz.objects.filter(
+                Q(course=course),
+                Q(draft=False),
+                Q(generated_for=student_profile) | Q(generated_for__isnull=True),
+            ).order_by('module__order', 'module__id', 'title', 'id')
             course_progress = calculate_course_progress(course, student_profile)
             module_states = get_module_progress_states(course, student_profile)
             if course_progress.get('course_completed'):
@@ -449,6 +578,11 @@ class CourseDetailView(DetailView):
             students_progress = get_all_enrolled_students_progress(course)
             from .utils import get_module_progress_states
             module_states = get_module_progress_states(course, self.request.user.lms_profile)
+            quizzes = Quiz.objects.filter(
+                course=course,
+                draft=False,
+                generated_for__isnull=True,
+            ).order_by('module__order', 'module__id', 'title', 'id')
         
         # Get payment methods for premium courses
         payment_methods = None
@@ -470,8 +604,58 @@ class CourseDetailView(DetailView):
             'payment_status': payment_status,
             'enrollment': enrollment,
             'payment_methods': payment_methods,
+            'certificate_downloads_enabled': bool(getattr(settings, 'CERTIFICATE_DOWNLOADS_ENABLED', False)),
         })
-        
+
+        from django.utils.html import strip_tags
+        from django.template.defaultfilters import truncatechars
+        from django.templatetags.static import static
+        from django.conf import settings
+        domain = getattr(settings, 'SITE_DOMAIN', 'chuosmart.com')
+        base_url = f"https://{domain}"
+        course_url = self.request.build_absolute_uri(course.get_absolute_url() if hasattr(course, 'get_absolute_url') else f'/lms/courses/{course.slug}/')
+        course_description_plain = truncatechars(
+            strip_tags(course.summary or course.content or ''), 200
+        )
+        context['course_json_ld'] = {
+            '@context': 'https://schema.org',
+            '@type': 'Course',
+            'name': course.title or '',
+            'description': course_description_plain,
+            'provider': {
+                '@type': 'Organization',
+                'name': 'ChuoSmart',
+                'sameAs': base_url,
+            },
+            'url': course_url,
+            'inLanguage': 'en',
+            'educationalCredentialAwarded': 'Certificate',
+        }
+        context['course_breadcrumb_json_ld'] = {
+            '@context': 'https://schema.org',
+            '@type': 'BreadcrumbList',
+            'itemListElement': [
+                {
+                    '@type': 'ListItem',
+                    'position': 1,
+                    'name': 'Home',
+                    'item': f"{base_url}/",
+                },
+                {
+                    '@type': 'ListItem',
+                    'position': 2,
+                    'name': 'Courses',
+                    'item': f"{base_url}{reverse('lms:course_list')}",
+                },
+                {
+                    '@type': 'ListItem',
+                    'position': 3,
+                    'name': course.title or '',
+                    'item': course_url,
+                },
+            ],
+        }
+
         return context
 
 
@@ -764,7 +948,7 @@ def quiz_question(request, quiz_id, quiz_taker_id, question_number):
                     defaults={
                         'essay_text_answer': form.cleaned_data.get('answer_text', ''),
                         'essay_file_answer': form.cleaned_data.get('answer_file', None),
-                        'is_correct': None  # Essay questions need manual grading
+                        'is_correct': None
                     }
                 )
         
@@ -847,7 +1031,6 @@ def complete_quiz(request, quiz_taker_id):
     next_module = None
     unlock_message = None
     
-    pass_threshold = quiz.pass_mark or ModuleProgress.PASSING_PERCENTAGE
     from django.db import transaction
     with transaction.atomic():
         if quiz.module:
@@ -869,7 +1052,7 @@ def complete_quiz(request, quiz_taker_id):
             message=_(f"User {request.user.username} completed quiz '{quiz.title}' with score {score_percentage:.1f}%.")
         )
 
-        if score_percentage >= pass_threshold:
+        if quiz_taker.passed:
             if unlock_message:
                 messages.success(request, unlock_message)
             if issued_certificate:
@@ -877,7 +1060,7 @@ def complete_quiz(request, quiz_taker_id):
             if next_module:
                 return redirect(f"{reverse('lms:course_detail', kwargs={'slug': quiz.course.slug})}#collapse{next_module.id}")
         else:
-            messages.warning(request, _("You need at least %(score)s%% to unlock the next module. Review this module and try again.") % {'score': pass_threshold})
+            messages.warning(request, _("You need at least 70% to unlock the next module. Review this module and try again."))
         
         return redirect('lms:quiz_results', quiz_taker_id=quiz_taker.id)
 
@@ -894,14 +1077,23 @@ def quiz_results(request, quiz_taker_id):
     # Check if passed
     passed = quiz_taker.score >= quiz.pass_mark
     
+    # Issue certificate if course is now fully completed
+    issued_certificate = None
+    if passed and quiz.module and hasattr(request.user, 'lms_profile'):
+        from .utils import is_course_completed, issue_certificate_if_eligible
+        if is_course_completed(quiz.course, request.user.lms_profile):
+            issued_certificate = issue_certificate_if_eligible(quiz.course, request.user.lms_profile)
+    
     context = {
         'quiz_taker': quiz_taker,
         'quiz': quiz,
         'answers': answers,
         'passed': passed,
-        'show_answers': quiz.answers_at_end or not quiz.exam_paper
+        'issued_certificate': issued_certificate,
+        'show_answers': quiz.answers_at_end or not quiz.exam_paper,
+        'certificate_downloads_enabled': bool(getattr(settings, 'CERTIFICATE_DOWNLOADS_ENABLED', False)),
     }
-    
+
     return render(request, 'lms/quiz_results.html', context)
 
 
@@ -1418,7 +1610,11 @@ class CourseContentUpdateView(InstructorRequiredMixin, UpdateView):
 
 
 class QuizCreateView(InstructorRequiredMixin, CreateView):
-    """Create a new quiz"""
+    """Queue an AI-generated module quiz.
+
+    Manual quiz creation is intentionally disabled: all assessments are
+    generated from module content.
+    """
     model = Quiz
     form_class = QuizForm
     template_name = 'lms/quiz_form.html'
@@ -1453,7 +1649,30 @@ class QuizCreateView(InstructorRequiredMixin, CreateView):
             messages.error(request, _("You are not an instructor for this course."))
             return redirect('lms:course_detail', slug=self.course.slug)
         
-        return super().dispatch(request, *args, **kwargs)
+        if not self.module:
+            messages.info(
+                request,
+                _("Quizzes are generated by AI from individual modules. Open a module and use its assessment action."),
+            )
+            return redirect('lms:course_detail', slug=self.course.slug)
+
+        if getattr(self.module, 'skip_assessment', False):
+            messages.info(request, _("This module is configured to skip assessments."))
+            return redirect('lms:course_detail', slug=self.course.slug)
+
+        from .ai_assessments import queue_module_assessment_generation
+
+        quiz = queue_module_assessment_generation(self.module, force=True)
+        ActivityLog.objects.create(
+            message=_(
+                f"Instructor {self.request.user.username} queued AI quiz generation for module "
+                f"'{self.module.title}' in course '{self.course.title}'."
+            )
+        )
+        messages.success(request, _("AI assessment generation has been queued for this module."))
+        if quiz:
+            return redirect('lms:quiz_detail', slug=quiz.slug)
+        return redirect('lms:course_detail', slug=self.course.slug)
     
     def form_valid(self, form):
         form.instance.course = self.course
@@ -1482,96 +1701,39 @@ class QuizCreateView(InstructorRequiredMixin, CreateView):
 
 @login_required(login_url='login')
 def add_mc_question(request, quiz_id):
-    """Add a multiple choice question to a quiz"""
+    """Manual question authoring is disabled. Quizzes are generated by AI from module content."""
     quiz = get_object_or_404(Quiz, id=quiz_id)
-    
-    # Check permissions
-    if not is_admin(request.user) and not quiz.course.instructors.filter(id=request.user.lms_profile.id).exists():
-        messages.error(request, _("You are not authorized to add questions to this quiz."))
-        return redirect('lms:quiz_detail', slug=quiz.slug)
-    
-    if request.method == 'POST':
-        form = MCQuestionForm(request.POST, request.FILES)
-        if form.is_valid():
-            question = form.save(commit=False)
-            question.quiz = quiz
-            question.save()
-            
-            # Get choices
-            num_choices = int(request.POST.get('num_choices', 4))
-            for i in range(num_choices):
-                content = request.POST.get(f'choice_{i}_content', '')
-                correct = request.POST.get(f'choice_{i}_correct', '') == 'on'
-                
-                if content.strip():
-                    Choice.objects.create(
-                        question=question,
-                        content=content,
-                        correct=correct
-                    )
-            
-            messages.success(request, _("Multiple choice question added successfully."))
-            return redirect('lms:quiz_detail', slug=quiz.slug)
-    else:
-        form = MCQuestionForm()
-    
-    context = {
-        'form': form,
-        'quiz': quiz,
-        'question_type': 'MC'
-    }
-    
-    return render(request, 'lms/mc_question_form.html', context)
+    messages.info(request, _("Manual question authoring is disabled. Quizzes are generated by AI from module content."))
+    return redirect('lms:quiz_detail', slug=quiz.slug)
 
 
 @login_required(login_url='login')
 def add_tf_question(request, quiz_id):
-    """Add a true/false question to a quiz"""
+    """Manual question authoring is disabled. Quizzes are generated by AI from module content."""
     quiz = get_object_or_404(Quiz, id=quiz_id)
-    
-    # Check permissions
-    if not is_admin(request.user) and not quiz.course.instructors.filter(id=request.user.lms_profile.id).exists():
-        messages.error(request, _("You are not authorized to add questions to this quiz."))
-        return redirect('lms:quiz_detail', slug=quiz.slug)
-    
-    if request.method == 'POST':
-        form = TFQuestionForm(request.POST, request.FILES)
-        if form.is_valid():
-            question = form.save(commit=False)
-            question.quiz = quiz
-            question.save()
-            
-            messages.success(request, _("True/False question added successfully."))
-            return redirect('lms:quiz_detail', slug=quiz.slug)
-    else:
-        form = TFQuestionForm()
-    
-    context = {
-        'form': form,
-        'quiz': quiz,
-        'question_type': 'TF'
-    }
-    
-    return render(request, 'lms/tf_question_form.html', context)
+    messages.info(request, _("Manual question authoring is disabled. Quizzes are generated by AI from module content."))
+    return redirect('lms:quiz_detail', slug=quiz.slug)
 
 
 @login_required(login_url='login')
 def add_essay_question(request, quiz_id):
-    """Add an essay question to a quiz"""
+    """Manual question authoring is disabled. Quizzes are generated by AI from module content."""
     quiz = get_object_or_404(Quiz, id=quiz_id)
-    
+    messages.info(request, _("Manual question authoring is disabled. Quizzes are generated by AI from module content."))
+    return redirect('lms:quiz_detail', slug=quiz.slug)
+
     # Check permissions
     if not is_admin(request.user) and not quiz.course.instructors.filter(id=request.user.lms_profile.id).exists():
         messages.error(request, _("You are not authorized to add questions to this quiz."))
         return redirect('lms:quiz_detail', slug=quiz.slug)
-    
+
     if request.method == 'POST':
         form = EssayQuestionForm(request.POST, request.FILES)
         if form.is_valid():
             question = form.save(commit=False)
             question.quiz = quiz
             question.save()
-            
+
             messages.success(request, _("Essay question added successfully."))
             return redirect('lms:quiz_detail', slug=quiz.slug)
     else:
@@ -1725,11 +1887,46 @@ def verify_certificate(request, certificate_id):
         StudentCertificate.objects.select_related('student', 'course', 'template'),
         certificate_id=certificate_id,
     )
-    return render(request, 'lms/certificates/verify.html', {'certificate': certificate})
+    context = {
+        'certificate': certificate,
+        'student_legal_name': _resolve_student_name(certificate.student),
+        'instructor_legal_name': _resolve_instructor_name(certificate.course, certificate.template),
+    }
+    return render(request, 'lms/certificates/verify.html', context)
 
 
 @login_required(login_url='login')
+@legal_name_required
+def certificate_detail(request, certificate_id):
+    """Beautiful 'Certificate ready' landing page before the actual download."""
+    certificate = get_object_or_404(
+        StudentCertificate.objects.select_related('student', 'course', 'template'),
+        certificate_id=certificate_id,
+    )
+    is_owner = certificate.student_id == request.user.id
+    if not is_owner and not can_manage_course(request.user, certificate.course):
+        messages.error(request, _("You can only view certificates you earned."))
+        return redirect('lms:student_dashboard')
+
+    from .certificates import certificate_context
+    from django.conf import settings as django_settings
+    downloads_enabled = bool(getattr(django_settings, 'CERTIFICATE_DOWNLOADS_ENABLED', False))
+
+    ctx = certificate_context(certificate, request=request)
+    ctx.update({
+        'is_owner': is_owner,
+        'downloads_enabled': downloads_enabled,
+        'download_url': reverse('lms:certificate_download', kwargs={'certificate_id': certificate.certificate_id}),
+        'verify_url': ctx.get('verification_url'),
+        'page_title': _("Your Certificate is Ready"),
+    })
+    return render(request, 'lms/certificates/certificate_detail.html', ctx)
+
+
+@login_required(login_url='login')
+@legal_name_required
 def download_certificate(request, certificate_id):
+    from django.conf import settings as django_settings
     certificate = get_object_or_404(
         StudentCertificate.objects.select_related('student', 'course', 'template'),
         certificate_id=certificate_id,
@@ -1737,6 +1934,13 @@ def download_certificate(request, certificate_id):
     if certificate.student != request.user and not can_manage_course(request.user, certificate.course):
         messages.error(request, _("You can only download certificates you earned."))
         return redirect('lms:student_dashboard')
+
+    if not getattr(django_settings, 'CERTIFICATE_DOWNLOADS_ENABLED', False):
+        messages.info(
+            request,
+            _("Certificate downloads are not available yet. You can still preview your certificate."),
+        )
+        return redirect('lms:certificate_detail', certificate_id=certificate.certificate_id)
 
     from .certificates import certificate_pdf_response
     return certificate_pdf_response(certificate, request=request)
@@ -1810,9 +2014,9 @@ def student_dashboard(request):
     if not hasattr(request.user, 'lms_profile') or not is_student(request.user):
         messages.error(request, _("You are not registered as a student."))
         return redirect('lms:lms_home')
-    
+
     profile = request.user.lms_profile
-    
+
     # Get current semester
     current_semester = Semester.objects.filter(is_current_semester=True).first()
     
@@ -1836,12 +2040,18 @@ def student_dashboard(request):
         module__course__in=courses
     ).order_by('-date_added')[:10]
     
-    # Calculate progress for each course
-    from .utils import calculate_course_progress
+    # Calculate progress for each course and auto-issue certificates for completed ones
+    from .utils import calculate_course_progress, issue_certificate_if_eligible
     course_progress = {}
     for course in courses:
-        course_progress[course.id] = calculate_course_progress(course, profile)
+        progress = calculate_course_progress(course, profile)
+        course_progress[course.id] = progress
+        if progress.get('course_completed'):
+            issue_certificate_if_eligible(course, profile)
     
+    # Re-fetch certificates after any auto-issuance
+    certificates = StudentCertificate.objects.filter(student=request.user).select_related('course')
+
     context = {
         'profile': profile,
         'current_semester': current_semester,
@@ -1851,8 +2061,10 @@ def student_dashboard(request):
         'recent_contents': recent_contents,
         'course_progress': course_progress,
         'certificates': certificates,
+        'needs_legal_name': not profile.has_legal_name,
+        'certificate_downloads_enabled': bool(getattr(settings, 'CERTIFICATE_DOWNLOADS_ENABLED', False)),
     }
-    
+
     return render(request, 'lms/student_dashboard.html', context)
 
 
@@ -1951,8 +2163,9 @@ def instructor_dashboard(request):
         'active_quizzes': active_quizzes,
         'incomplete_courses': incomplete_courses,
         'payment_methods': payment_methods,
+        'needs_legal_name': not profile.has_legal_name,
     }
-    
+
     return render(request, 'lms/instructor_dashboard.html', context)
 
 
@@ -2016,44 +2229,6 @@ def instructor_request_status(request):
     }
     
     return render(request, 'lms/instructor_request_status.html', context)
-
-
-class CourseAdvertisementView(View):
-    """
-    Display an advertisement before redirecting to the course detail page
-    
-    This view checks site settings to determine whether to show ads,
-    and only shows ads for free courses when the setting is enabled.
-    Also checks if the current user is exempt from seeing ads.
-    """
-    def get(self, request, *args, **kwargs):
-        course_slug = kwargs.get('slug')
-        course = get_object_or_404(Course, slug=course_slug)
-        
-        # Check if the user is exempt from ads
-        user_exempt = False
-        if request.user.is_authenticated:
-            user_exempt = AdExemptUser.objects.filter(user=request.user).exists()
-        
-        # Check if ads are enabled for free courses in site settings
-        settings = SiteSettings.get_settings()
-        show_ads = settings.show_ads_before_free_courses and course.is_free and not user_exempt
-        
-        # Skip the ad page if ads are disabled, course is not free, or user is exempt
-        if not show_ads:
-            # Redirect directly to the course detail page
-            return redirect('lms:course_detail_direct', slug=course_slug)
-            
-        # Generate the URL for the course detail page
-        course_detail_url = reverse('lms:course_detail_direct', kwargs={'slug': course_slug})
-        
-        context = {
-            'course': course,
-            'course_detail_url': course_detail_url,
-            'show_ads': show_ads,
-        }
-        
-        return render(request, 'lms/course_ad.html', context)
 
 
 @login_required

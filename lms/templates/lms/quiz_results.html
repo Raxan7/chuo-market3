@@ -18,6 +18,30 @@
                         <p class="lead mb-0">You need {{ quiz.pass_mark }}% or higher to continue.</p>
                     {% endif %}
                 </div>
+                {% if issued_certificate %}
+                <div class="px-3 px-md-4 pb-3 pb-md-4">
+                    <div class="rounded-3 p-3 p-md-4 d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3" style="background: linear-gradient(135deg, #FFF8E7 0%, #fff 100%); border: 1px solid rgba(245, 193, 72, 0.4);">
+                        <div class="d-flex align-items-center gap-3">
+                            <span class="d-inline-flex align-items-center justify-content-center rounded-circle" style="width:48px;height:48px;background:linear-gradient(135deg,#F5C148 0%,#E0A82E 100%);color:#0B1437;box-shadow:0 4px 10px -4px rgba(224,168,46,0.5);">
+                                <i class="fas fa-award"></i>
+                            </span>
+                            <div>
+                                <div class="fw-semibold">Your certificate is ready</div>
+                                <div class="small text-muted">
+                                    {% if certificate_downloads_enabled %}
+                                        View, download, or share it with one click.
+                                    {% else %}
+                                        Preview your certificate. Downloading and sharing will be enabled soon.
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        <a href="{% url 'lms:certificate_detail' issued_certificate.certificate_id %}" class="btn" style="background: linear-gradient(135deg,#F5C148 0%,#E0A82E 100%); color:#0B1437; font-weight:700; border:1px solid #B8861E;">
+                            <i class="fas fa-arrow-right me-2"></i>{% if certificate_downloads_enabled %}View Certificate{% else %}Preview Certificate{% endif %}
+                        </a>
+                    </div>
+                </div>
+                {% endif %}
                 <div class="card-footer d-flex flex-column flex-sm-row gap-2 justify-content-center">
                     <a href="{% url 'lms:course_detail' quiz.course.slug %}" class="btn btn-primary">Back to Course</a>
                     {% if not passed %}

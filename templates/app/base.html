@@ -1,5 +1,7 @@
 <!doctype html>
 {% load static %}
+{% load webpush_notifications %}
+{% load sanitize_tags %}
 <html lang="en">
   <head>
 
@@ -47,7 +49,7 @@
     <meta name="twitter:image" content="{% block twitter_image %}{{ base_url }}{% static 'app/images/logo.png' %}{% endblock %}">
     
     <!-- Canonical URL -->
-    <link rel="canonical" href="{{ canonical_url }}">
+    <link rel="canonical" href="{{ canonical_url |safe_href }}">
     
     <!-- Preconnect to external domains for faster loading -->
     <link rel="preconnect" href="https://cdn.jsdelivr.net">
@@ -56,398 +58,34 @@
     {% block extra_meta %}{% endblock extra_meta %}
     
     <!-- Structured Data for Organization (JSON-LD) -->
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "Organization",
-      "name": "ChuoSmart",
-      "url": "{{ canonical_url }}",
-      "logo": "{{ canonical_url }}{% static 'app/images/logo.png' %}",
-      "description": "Tanzania's first platform to combine online education and digital commerce into a single ecosystem",
-      "foundingDate": "2024",
-      "address": {
-        "@type": "PostalAddress",
-        "addressLocality": "Dodoma",
-        "addressRegion": "Dodoma",
-        "addressCountry": "Tanzania"
-      },
-      "contactPoint": {
-        "@type": "ContactPoint",
-        "contactType": "customer service",
-        "email": "support@chuosmart.com"
-      },
-      "sameAs": [
-        "https://instagram.com/chuosmart",
-        "https://linkedin.com/company/chuosmart",
-        "https://twitter.com/chuosmart"
-      ]
-    }
-    </script>
-    
+    {{ organization_json_ld|json_script:"org-schema" }}
+
     <!-- Website Structured Data -->
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "WebSite",
-      "url": "{{ canonical_url }}",
-      "name": "ChuoSmart",
-      "potentialAction": {
-        "@type": "SearchAction",
-        "target": "{{ canonical_url }}/search/?q={search_term}",
-        "query-input": "required name=search_term"
-      }
-    }
-    </script>
-    
+    {{ website_json_ld|json_script:"website-schema" }}
+
     {% block structured_data %}{% endblock structured_data %}
 
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-giJF6kkoqNQ00vy+HMDP7azOuL0xtbfIcaT9wjKHr8RbDVddVHyTfAAsrekwKmP1" crossorigin="anonymous">
 
-    <!--Owl Carousel CSS-->
-    <link rel="stylesheet" href="{% static 'app/css/owl.carousel.min.css' %}">
-
-    <!--FontAwesome CSS-->
-    <link rel="stylesheet" href="{% static 'app/css/all.min.css' %}">
-
-    <!--Custom CSS-->
-    <link rel="stylesheet" href="{% static 'app/css/style.css' %}">
-    
-    {% block extra_head %}{% endblock %}
-
+    <!-- Font Awesome 5 (CDN - single reference) -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
 
-    <link rel="icon" href="{% static 'app/images/icon/favicon.ico' %}" type="image/x-icon">
+    <!--Owl Carousel CSS (local with CDN fallback)-->
+    <link rel="stylesheet" href="{% static 'app/css/owl.carousel.min.css' %}">
 
-    <style>
-      /* Ensure the footer always sticks to the bottom */
-      html, body {
-        height: 100%;
-        margin: 0;
-        padding: 0;
-      }
-      body {
-        display: flex;
-        flex-direction: column;
-        min-height: 100vh; /* Minimum height of 100% of the viewport height */
-        padding-bottom: 0; /* Remove any bottom padding */
-        overflow-x: hidden;
-      }
-      .content {
-        flex: 1 0 auto; /* Flex-grow, flex-shrink, flex-basis */
-        width: 100%;
-        padding-bottom: 80px; /* Space for footer and mobile bottom nav */
-        position: relative;
-        min-height: calc(100vh - 130px); /* Viewport height minus header and footer height */
-      }
-      footer {
-        flex-shrink: 0;
-        margin-top: auto; /* Push to bottom */
-        position: relative;
-        bottom: 0;
-        left: 0; 
-        width: 100%;
-        z-index: 900; /* Below mobile nav but above regular content */
-        clear: both; /* Clear any floats */
-      }
-      img,
-      video,
-      canvas,
-      svg,
-      iframe {
-        max-width: 100%;
-      }
-      iframe {
-        width: 100%;
-      }
-      pre,
-      code {
-        white-space: pre-wrap;
-        word-break: break-word;
-      }
-      .table-responsive {
-        -webkit-overflow-scrolling: touch;
-      }
-      .navbar-search-form {
-        width: 100%;
-        max-width: 320px;
-      }
-      .navbar-search-form .input-group,
-      .navbar-search-input {
-        min-width: 0;
-      }
-      .mobile-search-form {
-        display: flex;
-        gap: 0.75rem;
-        margin-top: 70px;
-      }
-      
-      /* Mobile Bottom Navigation */
-      .mobile-bottom-nav {
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        z-index: 1000;
-        background-color: #fff;
-        box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
-        display: none;
-        padding: 10px 0;
-        justify-content: space-around;
-        align-items: center;
-        height: 60px;
-        width: 100%;
-        max-width: 100vw;
-      }
-      
-      .mobile-nav-item {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        color: #555;
-        text-decoration: none;
-        font-size: 0.75rem;
-      }
-      
-      .mobile-nav-item i {
-        font-size: 1.25rem;
-        margin-bottom: 4px;
-      }
-      
-      .mobile-nav-item.active {
-        color: #007bff;
-      }
-      
-      /* Cart badge styling for mobile nav */
-      .cart-badge {
-        position: absolute;
-        top: -5px;
-        right: -5px;
-        font-size: 0.65rem;
-        padding: 2px 5px;
-      }
-      
-      /* Hide desktop navbar on mobile and show bottom nav instead */
-      @media (max-width: 768px) {
-        .mobile-bottom-nav {
-          display: flex;
-        }
-        .navbar-search-form {
-          max-width: none;
-        }
-        
-        .navbar {
-          padding-bottom: 0;
-        }
-        
-        /* Let Bootstrap handle the show/hide behavior for mobile navbar content */
-        /* Just ensure proper styling when navbar is collapsed */
-        
-        /* Style the collapsed navbar content */
-        .navbar-collapse {
-          background-color: #343a40;
-          margin-top: 10px;
-          padding: 15px;
-          border-radius: 5px;
-        }
-        
-        /* Make sure navbar items stack vertically on mobile */
-        .navbar-collapse .navbar-nav {
-          flex-direction: column !important;
-          width: 100%;
-        }
-        
-        .navbar-collapse .navbar-nav .nav-item {
-          margin: 5px 0;
-          width: 100%;
-        }
-        
-        /* Style the search form on mobile */
-        .navbar-collapse .d-flex {
-          flex-direction: column !important;
-          width: 100%;
-          margin: 10px 0;
-        }
-        
-        .navbar-collapse .d-flex input {
-          margin-bottom: 10px;
-          margin-right: 0 !important;
-        }
-        
-        /* Adjust positioning for chatbot to be above the bottom nav */
-        #chatbot-toggle {
-          bottom: 140px; /* Increased from 100px to 140px to move it higher */
-          right: 15px;
-          z-index: 1001; /* Higher than mobile-bottom-nav */
-          box-shadow: 0 0 15px rgba(0, 0, 0, 0.2); /* More visible shadow */
-          width: 55px;  /* Slightly larger on mobile */
-          height: 55px;
-          animation: pulse 2s infinite; /* Add pulsing effect for visibility */
-        }
-        
-        /* Display chat label on mobile */
-        .chat-label {
-          display: block !important;
-        }
-        
-        /* Add a pulsing animation to draw attention to the chat button */
-        @keyframes pulse {
-          0% {
-            box-shadow: 0 0 0 0 rgba(0, 123, 255, 0.7);
-          }
-          70% {
-            box-shadow: 0 0 0 10px rgba(0, 123, 255, 0);
-          }
-          100% {
-            box-shadow: 0 0 0 0 rgba(0, 123, 255, 0);
-          }
-        }
-        
-        #chatbot-toggle i {
-          font-size: 1.5rem;
-          margin-top: -5px; /* Adjust to make room for the label */
-        }
-        
-        /* Adjust chatbot position too */
-        #chatbot {
-          bottom: 140px; /* Increased from 100px to 140px to match button position */
-          right: 15px;
-          z-index: 1001;
-        }
-        
-        /* Add extra margin to the footer to ensure content isn't hidden behind nav bar */
-        footer.footer {
-          margin-bottom: 60px;
-          padding-bottom: 5px !important;
-        }
-        
-        /* Ensure content has enough padding to prevent overlap with mobile nav */
-        .content {
-          padding-bottom: 120px !important;
-        }
-        .mobile-search-form {
-          flex-direction: column;
-        }
-        .mobile-search-form .btn {
-          width: 100%;
-        }
-      }
-      
-      /* Chatbot styles */
-      #chatbot {
-        position: fixed;
-        bottom: 20px;
-        right: 20px;
-        width: min(320px, calc(100vw - 30px));
-        max-width: calc(100vw - 30px);
-        height: min(400px, calc(100vh - 180px));
-        max-height: calc(100vh - 180px);
-        border: 1px solid #ccc;
-        border-radius: 10px;
-        display: none;
-        flex-direction: column;
-        background-color: white;
-        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-      }
-      @media (max-width: 768px) {
-        #chatbot {
-          left: 15px;
-          right: 15px;
-          width: auto;
-          max-width: none;
-        }
-      }
-      #chatbot-header {
-        background-color: #007bff;
-        color: white;
-        padding: 10px;
-        border-top-left-radius: 10px;
-        border-top-right-radius: 10px;
-        cursor: pointer;
-      }
-      #chatbot-body {
-        flex: 1;
-        padding: 10px;
-        overflow-y: auto;
-      }
-      #chatbot-input {
-        display: flex;
-        padding: 10px;
-        border-top: 1px solid #ccc;
-      }
-      #chatbot-input input {
-        flex: 1;
-        padding: 5px;
-        border: 1px solid #ccc;
-        border-radius: 5px;
-      }
-      #chatbot-input button {
-        margin-left: 5px;
-        padding: 5px 10px;
-        border: none;
-        background-color: #007bff;
-        color: white;
-        border-radius: 5px;
-      }
-      /* Chat button style */
-      #chatbot-toggle {
-        position: fixed;
-        bottom: 20px;
-        right: 20px;
-        background-color: #007bff;
-        color: white;
-        border: none;
-        border-radius: 50%;
-        width: 50px;
-        height: 50px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-        z-index: 1001; /* Ensure it's above other elements */
-        transition: all 0.3s ease; /* Smooth transition for hover effects */
-      }
-      
-      /* Chat label styling */
-      .chat-label {
-        font-size: 10px;
-        position: absolute;
-        bottom: 6px;
-        left: 0;
-        right: 0;
-        text-align: center;
-      }
-      
-      /* Add hover effect to make it more interactive */
-      #chatbot-toggle:hover {
-        transform: scale(1.1);
-        background-color: #0069d9;
-        box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
-      }
-      #scroll-down {
-        position: absolute;
-        bottom: 60px;
-        right: 20px;
-        background-color: #007bff;
-        color: white;
-        border: none;
-        border-radius: 50%;
-        width: 30px;
-        height: 30px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-        display: none;
-      }
-    </style>
+    <!--Base CSS (layout, nav, chatbot, notifications, utilities)-->
+    <link rel="stylesheet" href="{% static 'app/css/base.css' %}">
+
+    <!--Custom Site CSS-->
+    <link rel="stylesheet" href="{% static 'app/css/style.css' %}">
+
+    {% block extra_head %}{% endblock %}
+
+    <link rel="icon" href="{% static 'app/images/icon/favicon.ico' %}" type="image/x-icon">
+    {% webpush_header %}
 
     <title>ChuoSmart | {% block title %} {% endblock title %} </title>
-    
-    <!-- Remove the duplicate script that was previously added at the top -->
   </head>
   <body class="d-flex flex-column min-vh-100">
     <!-- Professional Modern Navbar -->
@@ -565,70 +203,6 @@
         </div>
       </div>
     </nav>
-    <style>
-      /* Navbar Styling */
-      .navbar {
-        padding: 0.5rem 0;
-        transition: all 0.3s ease;
-      }
-      .navbar-brand {
-        font-size: 1.25rem;
-      }
-      .nav-link {
-        padding: 0.5rem 1rem;
-        border-radius: 0.25rem;
-        transition: all 0.2s ease;
-      }
-      .nav-link:hover, .nav-link:focus {
-        background-color: rgba(255,255,255,0.1);
-      }
-      .nav-link.active {
-        background-color: rgba(255,255,255,0.15);
-      }
-      .dropdown-menu {
-        border: none;
-        box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.15);
-      }
-      .dropdown-item {
-        padding: 0.5rem 1rem;
-        transition: all 0.2s ease;
-      }
-      .dropdown-item:hover, .dropdown-item:focus {
-        background-color: #f8f9fa;
-        color: #0d6efd;
-      }
-      /* Search input styling */
-      .input-group .form-control {
-        border-radius: 0.25rem 0 0 0.25rem;
-      }
-      .input-group .btn {
-        border-radius: 0 0.25rem 0.25rem 0;
-      }
-      /* Cart badge styling */
-      #cart-count {
-        font-size: 0.65rem;
-        padding: 0.25rem 0.4rem;
-      }
-      /* Mobile menu adjustments */
-      @media (max-width: 992px) {
-        .navbar-collapse {
-          padding: 1rem;
-          background-color: rgba(13, 110, 253, 0.98);
-          border-radius: 0 0 0.5rem 0.5rem;
-          margin-top: 0.5rem;
-        }
-        .nav-item {
-          margin: 0.25rem 0;
-        }
-        .nav-link {
-          padding: 0.75rem 1rem;
-        }
-        .dropdown-menu {
-          margin-left: 1rem;
-          width: calc(100% - 2rem);
-        }
-      }
-    </style>
     <!-- Message container for standard messages -->
     <div class="container mt-3">
       {% if messages %}
@@ -636,7 +210,7 @@
           {% for message in messages %}
             {% if not message.extra_tags == "chatbot" %}
               <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
-                {{ message|safe }}
+                {{ message|sanitize }}
                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
               </div>
             {% endif %}
@@ -644,56 +218,6 @@
         </div>
       {% endif %}
     </div>
-    
-    <!-- Feature notification modal -->
-    {% if show_dashboard_modal %}
-    <div class="modal fade" id="dashboardFeatureModal" tabindex="-1" aria-labelledby="dashboardFeatureModalLabel" aria-hidden="true">
-      <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-          <div class="modal-header bg-primary text-white">
-            <h5 class="modal-title" id="dashboardFeatureModalLabel">
-              <i class="fas fa-star me-2"></i> New Feature Available!
-            </h5>
-            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-          </div>
-          <div class="modal-body">
-            <div class="text-center mb-4">
-              <i class="fas fa-th-large fa-4x text-primary mb-3"></i>
-              <h4>Unified Dashboard</h4>
-              <p class="lead">We've created a new dashboard where you can manage all your content in one place!</p>
-            </div>
-            <div class="row">
-              <div class="col-md-4 text-center mb-3">
-                <i class="fas fa-shopping-bag fa-2x text-success mb-2"></i>
-                <h6>Products</h6>
-              </div>
-              <div class="col-md-4 text-center mb-3">
-                <i class="fas fa-blog fa-2x text-info mb-2"></i>
-                <h6>Blogs</h6>
-              </div>
-              <div class="col-md-4 text-center mb-3">
-                <i class="fas fa-star fa-2x text-warning mb-2"></i>
-                <h6>Talents</h6>
-              </div>
-            </div>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Later</button>
-            <a href="{% url 'user_dashboard' %}" class="btn btn-primary">
-              <i class="fas fa-external-link-alt me-2"></i>Check it out now
-            </a>
-          </div>
-        </div>
-      </div>
-    </div>
-    
-    <script>
-      document.addEventListener('DOMContentLoaded', function() {
-        var dashboardModal = new bootstrap.Modal(document.getElementById('dashboardFeatureModal'));
-        dashboardModal.show();
-      });
-    </script>
-    {% endif %}
     
     <div class="content flex-grow-1">
       {% block banner_slider %} {% endblock banner_slider %}
@@ -748,7 +272,7 @@
             </div>
             <hr class="my-3">
             <div class="text-center">
-                <small>Copyright &copy; 2024 ChuoSmart. All rights reserved.</small>
+                <small>Copyright &copy; {% now "Y" %} ChuoSmart. All rights reserved.</small>
             </div>
         </div>
     </footer> <!-- End Footer -->
@@ -806,331 +330,50 @@
     <!-- Bootstrap Bundle with Popper -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/js/bootstrap.bundle.min.js" integrity="sha384-ygbV9kiqUc6oa4msXn9868pTtWMgiQaeYH7/t7LECLbyPA2x65Kgf80OJFdroafW" crossorigin="anonymous"></script>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/OwlCarousel2/2.3.4/owl.carousel.min.js" onerror="this.onerror=null;this.src='{% static 'app/js/owl.carousel.min.js' %}';"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/js/all.min.js" onerror="this.onerror=null;this.src='{% static 'app/js/all.min.js' %}';"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/OwlCarousel2/2.3.4/owl.carousel.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/js/all.min.js">    </script>
+
+    <!-- Pass Django template variables to JavaScript -->
+    <script id="csrf-token-global" type="application/json">"{{ csrf_token|escapejs }}"</script>
+    <script>
+      window.CSRF_TOKEN = JSON.parse(document.getElementById('csrf-token-global').textContent);
+    </script>
+
+    <!-- Site-specific JS -->
     <script src="{% static 'app/js/myscript.js' %}"></script>
-    <script>
-      window.initializeListAds = function(container) {
-        if (!container || typeof window.adsbygoogle === 'undefined') {
-          return;
-        }
-
-        const adSlots = container.querySelectorAll('ins.adsbygoogle:not([data-adsbygoogle-status])');
-        adSlots.forEach(function(slot) {
-          try {
-            (adsbygoogle = window.adsbygoogle || []).push({});
-          } catch (e) {
-            // Ad providers can reject duplicate initialization; ignore safely.
-          }
-        });
-      };
-
-      document.addEventListener('DOMContentLoaded', function() {
-        window.initializeListAds(document);
-      });
-    </script>
-    <script>
-      $(document).ready(function() {
-    // Function to fetch cart count via AJAX
-    function updateCartCount() {
-        $.ajax({
-            url: '/get_cart_count/', 
-            type: 'GET',
-            dataType: 'json',
-            success: function(response) {
-                $('#cart-count').text(response.cart_count);
-            },
-            error: function(xhr, status, error) {
-                console.error('Error fetching cart count:', error);
-            }
-        });
-    }
-
-    updateCartCount();
-
-    // Chatbot logic
-    $('#chatbot-header, #chatbot-toggle').click(function() {
-      $('#chatbot').toggle();
-      scrollToBottom();
-    });
-
-    $('#chatbot-send').click(function() {
-      const message = $('#chatbot-message').val();
-      if (message.trim() !== '') {
-        $('#chatbot-body').append('<div><strong>You:</strong> ' + message + '</div>');
-        $('#chatbot-message').val('');
-        // Send message to chatbot API
-        $.ajax({
-          url: '{% url "chatbot_api" %}',
-          type: 'POST',
-          data: JSON.stringify({ message: message }),
-          contentType: 'application/json',
-          headers: {
-            'X-CSRFToken': '{{ csrf_token }}'
-          },
-          success: function(response) {
-            $('#chatbot-body').append('<div><strong>Bot:</strong> ' + response.reply + '</div>');
-            scrollToBottom();
-          },
-          error: function(xhr, status, error) {
-            console.error('Error sending message:', error);
-          }
-        });
-      }
-    });
-
-    function scrollToBottom() {
-      const chatbotBody = $('#chatbot-body');
-      chatbotBody.scrollTop(chatbotBody[0].scrollHeight);
-      $('#scroll-down').hide();
-    }
-
-    $('#chatbot-body').on('scroll', function() {
-      const chatbotBody = $(this);
-      if (chatbotBody.scrollTop() + chatbotBody.innerHeight() >= chatbotBody[0].scrollHeight) {
-        $('#scroll-down').hide();
-      } else {
-        $('#scroll-down').show();
-      }
-    });
-
-    $('#scroll-down').click(function() {
-      scrollToBottom();
-    });
-
-    // Initial scroll to bottom
-    scrollToBottom();
-    
-    // Mobile search toggle
-    $('#mobile-search-toggle').click(function(e) {
-      e.preventDefault();
-      $('#mobile-search-overlay').fadeIn(300);
-    });
-    
-    $('#close-search').click(function() {
-      $('#mobile-search-overlay').fadeOut(300);
-    });
-    
-    // Update mobile cart count
-    function updateMobileCartCount() {
-      const cartCount = $('#cart-count').text();
-      $('#mobile-cart-count').text(cartCount);
-    }
-    
-    updateMobileCartCount();
-    
-    // Bootstrap 5 handles navbar toggle automatically, but add fallback for mobile
-    // Only add custom handlers if Bootstrap's native functionality isn't working
-    if (typeof bootstrap === 'undefined') {
-      // Fallback for when Bootstrap JS isn't loaded
-      $('.navbar-toggler').on('click', function() {
-        const target = $($(this).attr('data-bs-target'));
-        target.toggleClass('show');
-      });
-      
-      // Close navbar when clicking outside
-      $(document).on('click', function(e) {
-        if (!$(e.target).closest('.navbar').length) {
-          $('.navbar-collapse').removeClass('show');
-        }
-      });
-    } else {
-      // Bootstrap is loaded, ensure proper initialization
-      // Close mobile navbar when a nav-link is clicked
-      $('.navbar-nav .nav-link').on('click', function() {
-        $('.navbar-collapse').removeClass('show');
-      });
-    }
-    
-    // Set the active nav item based on current page
-    $(function() {
-      const path = window.location.pathname;
-      $('.mobile-nav-item').removeClass('active');
-      
-      if (path === '/') {
-        $('.mobile-nav-item').eq(0).addClass('active');
-      } else if (path.includes('/marketplace') || path.includes('/product')) {
-        $('.mobile-nav-item').eq(1).addClass('active');
-      } else if (path.includes('/blog')) {
-        $('.mobile-nav-item').eq(2).addClass('active');
-      } else if (path.includes('/jobs')) {
-        $('.mobile-nav-item').eq(3).addClass('active');
-      } else if (path.includes('/cart')) {
-        $('.mobile-nav-item').eq(4).addClass('active');
-      }
-    });
-  });
-
-      document.addEventListener("DOMContentLoaded", function() {
-        const messageContainer = document.getElementById("message-container");
-        if (messageContainer) {
-          setTimeout(() => {
-            messageContainer.style.display = "none";
-          }, 3000); // 3 seconds
-        }
-      });
-    </script>
+    <!-- Base JS (cart count, chatbot, mobile nav, etc.) -->
+    <script src="{% static 'app/js/base.js' %}"></script>
     {% block extra_scripts %}{% endblock extra_scripts %}
     
     {% if user.is_authenticated %}
     <!-- Session keep-alive script for logged-in users -->
     <!-- Session keep-alive is handled by the LMS endpoint via app JS; no static file needed here. -->
     {% endif %}
-    
-    {% load webpush_notifications %}
-    <!-- Push Notification Support -->
-    <script>
-        // Register service worker for push notifications
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', function() {
-                navigator.serviceWorker.register('{% static "js/service-worker.min.js" %}')
-                    .then(function(registration) {
-                        console.log('Service Worker registered with scope:', registration.scope);
-                        {# {% webpush_button with_class="d-none" %} #}
-                    })
-                    .catch(function(error) {
-                        console.error('Service Worker registration failed:', error);
-                    });
-            });
-        }
-        
-        // Function to request notification permission
-        function requestNotificationPermission() {
-            Notification.requestPermission().then(function(permission) {
-                if (permission === 'granted') {
-                    console.log('Notification permission granted.');
-                    document.getElementById('notification-permission').style.display = 'none';
-                    
-                    // Show a success message
-                    showNotificationSuccess();
-                } else if (permission === 'denied') {
-                    document.getElementById('notification-permission').style.display = 'none';
-                }
-            });
-        }
-        
-        // Function to show a success message after enabling notifications
-        function showNotificationSuccess() {
-            const successToast = document.createElement('div');
-            successToast.className = 'position-fixed top-0 end-0 p-3';
-            successToast.style.zIndex = '9999';
-            successToast.innerHTML = `
-                <div class="toast show bg-success text-white" role="alert" aria-live="assertive" aria-atomic="true">
-                    <div class="toast-header bg-success text-white">
-                        <strong class="me-auto">Success</strong>
-                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
-                    </div>
-                    <div class="toast-body">
-                        Notifications enabled successfully!
-                    </div>
-                </div>
-            `;
-            document.body.appendChild(successToast);
-            
-            setTimeout(() => {
-                successToast.remove();
-            }, 3000);
-        }
-        
-        // Check if notification permission button should be shown
-        document.addEventListener('DOMContentLoaded', function() {
-            if ('Notification' in window) {
-                if (Notification.permission !== 'granted' && Notification.permission !== 'denied') {
-                    // Show notification permission dialog after a short delay
-                    setTimeout(() => {
-                        document.getElementById('notification-permission').style.display = 'block';
-                    }, 2000);
-                }
-            }
-        });
-    </script>
 
-    <!-- Notification Permission Request UI -->
-    <style>
-        #notification-permission {
-            position: fixed;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            max-width: 90%;
-            width: 450px;
-            z-index: 9999 !important; /* Ensure it's above all other elements */
-            display: none;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-            border-radius: 8px;
-            overflow: hidden;
-            animation: notification-slide-in 0.5s ease-out;
-        }
-        
-        @keyframes notification-slide-in {
-            from {
-                transform: translate(-50%, -100px);
-                opacity: 0;
-            }
-            to {
-                transform: translate(-50%, 0);
-                opacity: 1;
-            }
-        }
-        
-        @media (max-width: 576px) {
-            #notification-permission {
-                width: 90%;
-                top: 10px;
-            }
-        }
-        
-        .notification-card {
-            background-color: #fff;
-            border: 1px solid rgba(0,0,0,0.1);
-            border-radius: 8px;
-        }
-        
-        .notification-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px 16px;
-            background-color: #f8f9fa;
-            border-bottom: 1px solid rgba(0,0,0,0.1);
-        }
-        
-        .notification-body {
-            padding: 16px;
-        }
-        
-        .notification-actions {
-            display: flex;
-            justify-content: flex-end;
-            gap: 8px;
-            margin-top: 10px;
-            padding-top: 10px;
-            border-top: 1px solid rgba(0,0,0,0.1);
-        }
-    </style>
-    
-    <div id="notification-permission">
-        <div class="notification-card">
-            <div class="notification-header">
-                <div class="d-flex align-items-center">
-                    <img src="{% static 'app/images/logo.png' %}" alt="ChuoSmart" style="height: 24px; margin-right: 8px;">
-                    <strong>ChuoSmart Notifications</strong>
-                </div>
-                <button type="button" class="btn-close" onclick="document.getElementById('notification-permission').style.display='none'" aria-label="Close"></button>
-            </div>
-            <div class="notification-body">
-                <p>Stay updated with the latest products, courses, and messages by enabling notifications.</p>
-                <div class="notification-actions">
-                    <button onclick="document.getElementById('notification-permission').style.display='none'" class="btn btn-outline-secondary">Later</button>
-                    <button onclick="requestNotificationPermission()" class="btn btn-primary">Enable Notifications</button>
-                </div>
-            </div>
-        </div>
-    </div>
-    
     {% block postloadjs %}
     <!-- Custom JavaScript that can be overridden by child templates -->
     {% endblock postloadjs %}
+
+    {% if user.is_authenticated %}
+    <div id="notification-permission" style="display:none;">
+      <div class="notification-card">
+        <div class="notification-header">
+          <div class="d-flex align-items-center gap-2">
+            <img src="{% static 'app/images/logo.png' %}" alt="ChuoSmart" style="height: 24px;">
+            <strong>ChuoSmart Notifications</strong>
+          </div>
+          <button type="button" class="btn-close" onclick="document.getElementById('notification-permission').style.display='none'" aria-label="Close"></button>
+        </div>
+        <div class="notification-body">
+          <p class="mb-3">Stay updated with the latest products, courses, and messages by enabling notifications.</p>
+          <div class="notification-actions">
+            <button onclick="document.getElementById('notification-permission').style.display='none'" class="btn btn-outline-secondary">Later</button>
+            {% webpush_button with_class="btn btn-primary" %}
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
     
   </body>
 </html>

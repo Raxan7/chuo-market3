@@ -1,5 +1,6 @@
 {% extends 'app/base.html' %}
 {% load static %}
+{% load sanitize_tags %}
 {% block title %}Delete Talent: {{ talent.title }}{% endblock title %}
 
 {% block extra_head %}
@@ -66,7 +67,7 @@
                             {% elif talent.media.url|lower|slice:"-3:" in 'jpg,jpeg,png,gif,webp' %}
                                 <img src="{{ talent.media.url }}" alt="{{ talent.title }}" class="talent-media">
                             {% else %}
-                                <a href="{{ talent.media.url }}" target="_blank">View media</a>
+                                <a href="{{ talent.media.url |safe_href }}" target="_blank">View media</a>
                             {% endif %}
                         {% endif %}
                         <p class="card-text">Created: {{ talent.created_at|date:"F j, Y" }}</p>

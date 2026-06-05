@@ -206,7 +206,7 @@ class CourseModule(models.Model):
     order = models.PositiveIntegerField(default=0)
     
     class Meta:
-        ordering = ['order']
+        ordering = ['order', 'id']
         
     def __str__(self):
         return f"{self.title} - {self.course.title}"

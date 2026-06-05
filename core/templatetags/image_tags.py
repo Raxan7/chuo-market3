@@ -4,6 +4,7 @@ Template tags for image optimization and accessibility.
 import re
 import html
 from django import template
+from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 
 register = template.Library()
@@ -58,11 +59,18 @@ def optimized_img(src, alt, css_class='', lazy=True, width=None, height=None, st
     else:
         attrs['fetchpriority'] = 'high'
     
-    # Build the HTML tag
-    attrs_str = ' '.join([f'{k}="{v}"' for k, v in attrs.items() if v])
-    html = f'<img {attrs_str}>'
-    
-    return mark_safe(html)
+    # Build the HTML tag using format_html so values are auto-escaped
+    return format_html(
+        '<img{attrs}>',
+        attrs=_format_attrs(attrs),
+    )
+
+
+def _format_attrs(attrs):
+    """Return a SafeString of HTML attributes built with format_html_join."""
+    from django.utils.html import format_html_join
+    items = [(k, v) for k, v in attrs.items() if v]
+    return format_html_join('', ' {}="{}"', items)
     
 @register.simple_tag
 def picture(webp_src=None, fallback_src=None, alt='', css_class='', lazy=True, width=None, height=None, style=None):
@@ -112,63 +120,60 @@ def picture(webp_src=None, fallback_src=None, alt='', css_class='', lazy=True, w
     else:
         img_attrs['fetchpriority'] = 'high'
     
-    # Build the image attributes string
-    img_attrs_str = ' '.join([f'{k}="{v}"' for k, v in img_attrs.items() if v])
-    
     # If we have a WebP version, use <picture> element
     # The webp_src can be None in cases where the ImageField has no file
     # or when template passes product.image_webp.url but image_webp is None/empty
     if webp_src:
-        html = f'''
-        <picture>
-            <source srcset="{webp_src}" type="image/webp">
-            <img {img_attrs_str}>
-        </picture>
-        '''
-    else:
-        html = f'<img {img_attrs_str}>'
-    
-    return mark_safe(html)
+        return format_html(
+            '<picture><source srcset="{}" type="image/webp"><img{}></picture>',
+            webp_src,
+            _format_attrs(img_attrs),
+        )
+    return format_html('<img{}>', _format_attrs(img_attrs))
 
 @register.filter
-def ensure_alt(html, default_alt="ChuoSmart image"):
+def ensure_alt(value, default_alt="ChuoSmart image"):
     """
     Ensure all img tags in the given HTML have alt attributes.
-    
+
     Usage: {{ content_with_images|ensure_alt:"Product image" }}
-    
+
     Args:
-        html: HTML string containing img tags
+        value: HTML string containing img tags
         default_alt: Default alt text to use if none is present
-    
+
     Returns:
         str: HTML with all img tags having alt attributes
     """
     import re
-    
-    # Find all img tags without alt attributes
-    pattern = r'<img([^>]*?)(?:alt=(["\'])([^\2]*?)\2)?([^>]*?)>'
-    
+
+    if not value:
+        return value
+
     def replace_img(match):
         attrs_before = match.group(1) or ''
         alt_quote = match.group(2)
         alt_text = match.group(3)
         attrs_after = match.group(4) or ''
-        
-        # If no alt attribute was found
+
         if not alt_quote:
-            # Add default alt attribute
-            return f'<img{attrs_before} alt="{default_alt}"{attrs_after}>'
-        # If empty alt attribute was found
-        elif not alt_text:
-            # Replace with default alt
-            return f'<img{attrs_before} alt="{default_alt}"{attrs_after}>'
-        # Alt attribute exists and has content
-        else:
-            return match.group(0)
-    
-    # Replace all matches
-    result = re.sub(pattern, replace_img, html)
+            return format_html(
+                '<img{} alt="{}"{}>',
+                format_html(attrs_before) if attrs_before else '',
+                default_alt,
+                format_html(attrs_after) if attrs_after else '',
+            )
+        if not alt_text:
+            return format_html(
+                '<img{} alt="{}"{}>',
+                format_html(attrs_before) if attrs_before else '',
+                default_alt,
+                format_html(attrs_after) if attrs_after else '',
+            )
+        return match.group(0)
+
+    pattern = r'<img([^>]*?)(?:alt=(["\'])([^\2]*?)\2)?([^>]*?)>'
+    result = re.sub(pattern, replace_img, value)
     return mark_safe(result)
 
 @register.filter
@@ -205,47 +210,13 @@ def clean_html(value):
     Cleans HTML content from TinyMCE or other rich text editors.
     Removes problematic data attributes and unwanted styling.
     Handles content wrapped in curly braces and with data attributes.
-    
-    Usage: {{ blog.content|clean_html|safe }}
+
+    Usage: {{ blog.content|clean_html }}
+
+    The output is already sanitized through bleach and marked safe, so do
+    not pipe it through ``|safe`` after this filter.
     """
-    if not value:
-        return value
-    
-    # Handle JSON-like wrapped content
-    if isinstance(value, str):
-        content = value
-        
-        # Remove JSON-like wrapping if present
-        if content.startswith('{') and '<' in content:
-            if content.endswith('}'):
-                content = content[1:-1].strip()
-            else:
-                # Try to find the matching closing brace
-                content = content[1:].strip()
-        
-        # Remove all data-* attributes - more aggressive pattern
-        content = re.sub(r'\s*data-[a-zA-Z0-9_-]+=["|\'][^"|\']*["|\']', '', content)
-        
-        # Remove problematic class attributes for tables and divs
-        content = re.sub(r'\s+class=["|\']_[^"|\']*["|\']', '', content)
-        content = re.sub(r'\s+class=["|\'](?:_tableContainer_[^"\']*|_tableWrapper_[^"\']*|group\s+flex\s+w-fit\s+flex-col-reverse)["|\']', '', content)
-        
-        # Remove table-specific problematic attributes
-        content = re.sub(r'\s+tabindex=["|\'][^"|\']*["|\']', '', content)
-        content = re.sub(r'\s+data-col-size=["|\'][^"|\']*["|\']', '', content)
-        
-        # Handle escaped HTML entities
-        content = html.unescape(content)
-        
-        # Special handling for nested data attributes that might be missed
-        # This catches patterns like <blockquote data-start="184" data-end="273">
-        content = re.sub(r'<([a-zA-Z][a-zA-Z0-9]*)([^>]*?)\s+data-[a-zA-Z0-9_-]+=["|\'][^"|\']*["|\']([^>]*?)>', 
-                         r'<\1\2\3>', content)
-        
-        # Second pass to catch any remaining data attributes
-        content = re.sub(r'<([a-zA-Z][a-zA-Z0-9]*)([^>]*?)\s+data-[a-zA-Z0-9_-]+=["|\'][^"|\']*["|\']([^>]*?)>', 
-                         r'<\1\2\3>', content)
-        
-        return mark_safe(content)
-    
-    return value
+    # Delegate to the central sanitization utility so we have a single
+    # allowlist for the whole project.
+    from core.utils.sanitize import clean_html as _clean_html
+    return _clean_html(value)

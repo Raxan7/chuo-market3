@@ -71,9 +71,14 @@ def referral_link(request, username=None, product_id=None):
             if product_id:
                 request.session['referred_product'] = product_id
                 
-            # Redirect to product page if product_id is provided
+            # Redirect to product page if product_id is provided (using slug lookup)
             if product_id:
-                return redirect('lms:course_detail', pk=product_id)
+                from lms.models import Course
+                try:
+                    course = Course.objects.get(pk=product_id)
+                    return redirect('lms:course_detail', slug=course.slug)
+                except Course.DoesNotExist:
+                    pass
             
             # Otherwise redirect to homepage
             return redirect('core:home')

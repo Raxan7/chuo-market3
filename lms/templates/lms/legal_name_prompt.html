@@ -1,0 +1,79 @@
+{% extends "app/base.html" %}
+{% load static %}
+
+{% block title %}{% if already_set %}Update Your Legal Name{% else %}Set Your Legal Name{% endif %}{% endblock title %}
+
+{% block main-content %}
+<div class="container my-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="text-center mb-4">
+                <span class="d-inline-flex align-items-center justify-content-center bg-primary text-white rounded-circle mb-3" style="width:72px;height:72px;">
+                    <i class="fas fa-id-card fa-2x"></i>
+                </span>
+                <h1 class="h3 mb-2">
+                    {% if already_set %}
+                        Update your legal name
+                    {% else %}
+                        Before we issue your certificate&hellip;
+                    {% endif %}
+                </h1>
+                <p class="text-muted mb-0">
+                    {% if reason == 'certificate' %}
+                        Please provide the name you would like printed on your certificate. This will be saved to your profile so you will not be asked again.
+                    {% else %}
+                        Please provide your full legal name. It will be used on any certificates you earn and will only be asked once.
+                    {% endif %}
+                </p>
+            </div>
+
+            <div class="card shadow-sm">
+                <div class="card-body p-4 p-md-5">
+                    <form method="post" novalidate>
+                        {% csrf_token %}
+                        <input type="hidden" name="next" value="{{ next }}">
+
+                        <div class="mb-3">
+                            <label for="{{ form.legal_name.id_for_label }}" class="form-label fw-semibold">
+                                {{ form.legal_name.label }}
+                            </label>
+                            {{ form.legal_name }}
+                            {% if form.legal_name.help_text %}
+                                <div class="form-text">{{ form.legal_name.help_text }}</div>
+                            {% endif %}
+                            {% if form.legal_name.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.legal_name.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="alert alert-info d-flex align-items-start" role="alert">
+                            <i class="fas fa-info-circle me-2 mt-1"></i>
+                            <div>
+                                <strong>Heads up:</strong>
+                                This name will appear verbatim on every certificate you receive.
+                                Please double-check the spelling before saving &mdash; it is the name we will print.
+                            </div>
+                        </div>
+
+                        <div class="d-flex flex-column flex-sm-row gap-2 mt-4">
+                            <button type="submit" class="btn btn-primary btn-lg flex-grow-1">
+                                <i class="fas fa-save me-2"></i>
+                                {% if already_set %}Update name{% else %}Save and continue{% endif %}
+                            </button>
+                            {% if already_set %}
+                                <a href="{{ next }}" class="btn btn-outline-secondary btn-lg">Cancel</a>
+                            {% endif %}
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <p class="text-center text-muted small mt-4 mb-0">
+                Need to update this later? You can change it anytime from your profile settings.
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock main-content %}

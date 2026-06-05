@@ -51,13 +51,54 @@ class LMSProfileForm(forms.ModelForm):
         required=False,
         help_text=_("Enter phone number with country code (e.g., +255123456789)")
     )
-    
+
     class Meta:
         model = LMSProfile
-        fields = ['bio', 'profile_picture', 'phone_number']
+        fields = ['bio', 'profile_picture', 'phone_number', 'legal_name']
         widgets = {
             'bio': forms.Textarea(attrs={'rows': 4}),
+            'legal_name': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': _('Full legal name as it should appear on your certificate'),
+            }),
         }
+        help_texts = {
+            'legal_name': _(
+                'This name will be printed on your certificate. It will only be asked once.'
+            ),
+        }
+
+
+class LegalNameForm(forms.ModelForm):
+    """Form used to collect a user's full legal name before issuing a certificate."""
+
+    class Meta:
+        model = LMSProfile
+        fields = ['legal_name']
+        widgets = {
+            'legal_name': forms.TextInput(attrs={
+                'class': 'form-control form-control-lg',
+                'autocomplete': 'name',
+                'placeholder': _('e.g. Jane Mary Doe'),
+            }),
+        }
+        labels = {
+            'legal_name': _('Full legal name'),
+        }
+        help_texts = {
+            'legal_name': _(
+                'Enter the name exactly as it should appear on your certificate. '
+                'This is asked only once and will be used on every certificate you earn.'
+            ),
+        }
+
+    def clean_legal_name(self):
+        value = (self.cleaned_data.get('legal_name') or '').strip()
+        if not value:
+            raise forms.ValidationError(_('Please enter your full legal name.'))
+        if len(value) < 2:
+            raise forms.ValidationError(_('Please enter a valid full name.'))
+        return value
 
 
 class CourseForm(forms.ModelForm):
@@ -207,7 +248,11 @@ class CourseContentForm(forms.ModelForm):
 
 
 class QuizForm(forms.ModelForm):
-    """Form for creating and updating quizzes"""
+    """Legacy quiz metadata form.
+
+    Instructor-facing quiz creation is AI-only; keep this form only for older
+    internal views that may still bind quiz metadata.
+    """
     class Meta:
         model = Quiz
         fields = ['title', 'description', 'category', 'random_order',

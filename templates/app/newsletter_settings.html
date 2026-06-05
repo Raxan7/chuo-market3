@@ -25,8 +25,7 @@
             {% endif %}
           </div>
 
-          <form method="post" class="d-flex flex-wrap gap-2">
-            {% csrf_token %}
+          <form method="post" enctype="multipart/form-data" class="d-flex flex-wrap gap-2">{% csrf_token %}
             {% if newsletter_enabled %}
               <button type="submit" name="newsletter_action" value="unsubscribe" class="btn btn-outline-danger">
                 Send unsubscribe confirmation

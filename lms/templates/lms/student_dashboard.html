@@ -33,6 +33,19 @@
         </div>
     </div>
 
+    {% if needs_legal_name %}
+    <div class="alert alert-warning d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2 mb-4" role="alert">
+        <div>
+            <i class="fas fa-id-card me-2"></i>
+            <strong>Set your legal name to unlock your certificate.</strong>
+            Once a course is complete, we need the name that should be printed on your certificate. It will only be asked once.
+        </div>
+        <a href="{% url 'lms:set_legal_name' %}?next={{ request.path|urlencode }}&amp;reason=certificate" class="btn btn-warning text-dark fw-semibold">
+            Set legal name
+        </a>
+    </div>
+    {% endif %}
+
     <!-- Profile and Current Semester -->
     <div class="row mb-4">
         <div class="col-12 col-lg-4">
@@ -177,21 +190,32 @@
     <div class="row mb-4">
         <div class="col">
             <div class="card shadow-sm">
-                <div class="card-header bg-light">
-                    <h4 class="mb-0">Certificates</h4>
+                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0"><i class="fas fa-award text-warning me-2"></i>Your Certificates</h4>
+                    <span class="badge bg-warning text-dark">{{ certificates|length }} earned</span>
                 </div>
-                <div class="card-body">
-                    <div class="list-group">
-                        {% for certificate in certificates %}
-                        <div class="list-group-item d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
+                <div class="list-group list-group-flush">
+                    {% for certificate in certificates %}
+                    <a href="{% url 'lms:certificate_detail' certificate.certificate_id %}" class="list-group-item list-group-item-action d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 p-3">
+                        <div class="d-flex align-items-center gap-3">
+                            <span class="d-inline-flex align-items-center justify-content-center rounded-circle text-white" style="width:48px;height:48px;background:linear-gradient(135deg,#F5C148 0%,#E0A82E 100%);box-shadow:0 4px 10px -4px rgba(224,168,46,0.5);">
+                                <i class="fas fa-award"></i>
+                            </span>
                             <div>
-                                <strong>{{ certificate.course.title }}</strong>
-                                <div class="small text-muted">{{ certificate.certificate_id }} issued {{ certificate.issued_at|date:"M d, Y" }}</div>
+                                <div class="fw-semibold">{{ certificate.course.title }}</div>
+                                <div class="small text-muted">
+                                    <i class="fas fa-fingerprint me-1"></i>{{ certificate.certificate_id }}
+                                    <span class="mx-1">•</span>
+                                    <i class="fas fa-calendar me-1"></i>Issued {{ certificate.issued_at|date:"M d, Y" }}
+                                </div>
                             </div>
-                            <a href="{% url 'lms:certificate_download' certificate.certificate_id %}" class="btn btn-sm btn-success">Download</a>
                         </div>
-                        {% endfor %}
-                    </div>
+                        <span class="btn btn-sm btn-outline-primary align-self-md-center">
+                            {% if certificate_downloads_enabled %}View &amp; Download{% else %}Preview Certificate{% endif %}
+                            <i class="fas fa-arrow-right ms-1"></i>
+                        </span>
+                    </a>
+                    {% endfor %}
                 </div>
             </div>
         </div>

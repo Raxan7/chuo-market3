@@ -12,7 +12,20 @@
             <p class="lead">Manage your courses and teaching responsibilities</p>
         </div>
     </div>
-    
+
+    {% if needs_legal_name %}
+    <div class="alert alert-warning d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2 mb-4" role="alert">
+        <div>
+            <i class="fas fa-id-card me-2"></i>
+            <strong>Set your legal name to sign your students' certificates.</strong>
+            Your name will appear on every certificate issued for your courses. It is asked only once.
+        </div>
+        <a href="{% url 'lms:set_legal_name' %}?next={{ request.path|urlencode }}&amp;reason=certificate" class="btn btn-warning text-dark fw-semibold">
+            Set legal name
+        </a>
+    </div>
+    {% endif %}
+
     <div class="row">
         <div class="col-md-3">
             <div class="card shadow-sm mb-4">

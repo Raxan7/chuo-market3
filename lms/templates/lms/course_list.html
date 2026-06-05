@@ -25,15 +25,7 @@ View free and paid courses for students in Tanzania. Browse programs, levels, an
 {% block meta_keywords %}view course, free view course, students free, view course weeks, course weeks kozi, online courses tanzania{% endblock meta_keywords %}
 
 {% block structured_data %}
-<script type="application/ld+json">
-{
-    "@context": "https://schema.org",
-    "@type": "CollectionPage",
-    "name": "Course List",
-    "description": "Browse free and paid courses for students in Tanzania.",
-    "url": "{{ canonical_url }}"
-}
-</script>
+{{ course_listing_json_ld|json_script:"course-listing-schema" }}
 {% endblock structured_data %}
 
 {% block extra_css %}

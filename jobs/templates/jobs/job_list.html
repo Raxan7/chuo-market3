@@ -22,15 +22,7 @@ View the latest jobs, internships, and graduate opportunities in Tanzania. Filte
 {% block meta_keywords %}jobs tanzania, internships tanzania, student jobs, graduate jobs, view jobs, career opportunities{% endblock %}
 
 {% block structured_data %}
-<script type="application/ld+json">
-{
-    "@context": "https://schema.org",
-    "@type": "CollectionPage",
-    "name": "Jobs in Tanzania",
-    "description": "Browse job opportunities, internships, and graduate roles in Tanzania.",
-    "url": "{{ canonical_url }}"
-}
-</script>
+{{ jobs_listing_json_ld|json_script:"jobs-listing-schema" }}
 {% endblock structured_data %}
 
 {% block job_sidebar %}

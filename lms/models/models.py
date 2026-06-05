@@ -104,9 +104,23 @@ class LMSProfile(models.Model):
     bio = models.TextField(blank=True, null=True)
     profile_picture = models.ImageField(upload_to='lms/profile_pictures/', blank=True, null=True)
     phone_number = models.CharField(max_length=15, blank=True, null=True)
-    
+    legal_name = models.CharField(
+        max_length=255,
+        blank=True,
+        default='',
+        help_text=_("Full legal name as it should appear on certificates."),
+    )
+
     def __str__(self):
         return f"{self.user.username} - {self.get_role_display()}"
+
+    @property
+    def display_legal_name(self):
+        return (self.legal_name or '').strip()
+
+    @property
+    def has_legal_name(self):
+        return bool((self.legal_name or '').strip())
 
 
 class Program(models.Model):
@@ -516,6 +530,18 @@ class Quiz(models.Model):
         verbose_name = _("Quiz")
         verbose_name_plural = _("Quizzes")
         ordering = ['course', 'title']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['module', 'generated_for'],
+                condition=Q(module__isnull=False, generated_for__isnull=False, draft=False),
+                name='unique_personal_ai_quiz_per_module_student',
+            ),
+            models.UniqueConstraint(
+                fields=['module'],
+                condition=Q(module__isnull=False, generated_for__isnull=True, draft=False),
+                name='unique_shared_ai_quiz_per_module',
+            ),
+        ]
     
     def __str__(self):
         return self.title
@@ -751,9 +777,9 @@ class CertificateTemplate(models.Model):
     description = models.TextField(blank=True)
     template_style = models.CharField(max_length=50, choices=TEMPLATE_STYLE_CHOICES, default="modern")
     orientation = models.CharField(max_length=20, choices=ORIENTATION_CHOICES, default="landscape")
-    primary_color = models.CharField(max_length=20, default="#1E40AF")
+    primary_color = models.CharField(max_length=20, default="#0d6efd")
     secondary_color = models.CharField(max_length=20, default="#111827")
-    accent_color = models.CharField(max_length=20, default="#D97706")
+    accent_color = models.CharField(max_length=20, default="#1FAA59")
     background_style = models.CharField(max_length=50, choices=BACKGROUND_STYLE_CHOICES, default="plain")
     border_style = models.CharField(max_length=50, choices=BORDER_STYLE_CHOICES, default="premium")
     font_style = models.CharField(max_length=50, choices=FONT_STYLE_CHOICES, default="serif")

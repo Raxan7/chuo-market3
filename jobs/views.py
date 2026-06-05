@@ -130,6 +130,12 @@ def job_list(request):
         'industries': industries,
         'total_jobs': jobs.count(),
         'today': timezone.now(),
+        'jobs_listing_json_ld': {
+            '@context': 'https://schema.org',
+            '@type': 'CollectionPage',
+            'name': 'Jobs in Tanzania',
+            'description': 'Browse job opportunities, internships, and graduate roles in Tanzania.',
+        },
     }
     return render(request, 'jobs/job_list.html', context)
 
@@ -173,6 +179,60 @@ def job_detail(request, job_id):
         'is_owner_or_admin': is_owner_or_admin,
         'visibility_label': job.visibility_label,
     }
+    from django.utils.html import strip_tags
+    from django.template.defaultfilters import truncatechars
+    from django.conf import settings
+    domain = getattr(settings, 'SITE_DOMAIN', 'chuosmart.com')
+    base_url = f"https://{domain}"
+    job_url = request.build_absolute_uri()
+    job_json_ld = {
+        '@context': 'https://schema.org',
+        '@type': 'JobPosting',
+        'title': job.title or '',
+        'description': truncatechars(strip_tags(job.description or ''), 400),
+        'datePosted': job.posted_date.isoformat() if job.posted_date else None,
+        'employmentType': job.get_job_type_display(),
+        'hiringOrganization': {
+            '@type': 'Organization',
+            'name': job.company.name if job.company else '',
+            'sameAs': job.company.website if getattr(job.company, 'website', None) else base_url,
+        },
+        'jobLocation': {
+            '@type': 'Place',
+            'address': {
+                '@type': 'PostalAddress',
+                'addressLocality': job.location or '',
+                'addressCountry': 'TZ',
+            },
+        },
+        'url': job_url,
+    }
+    job_breadcrumb_json_ld = {
+        '@context': 'https://schema.org',
+        '@type': 'BreadcrumbList',
+        'itemListElement': [
+            {
+                '@type': 'ListItem',
+                'position': 1,
+                'name': 'Home',
+                'item': f"{base_url}/",
+            },
+            {
+                '@type': 'ListItem',
+                'position': 2,
+                'name': 'Jobs',
+                'item': f"{base_url}{reverse('jobs:job_list')}",
+            },
+            {
+                '@type': 'ListItem',
+                'position': 3,
+                'name': job.title or '',
+                'item': job_url,
+            },
+        ],
+    }
+    context['job_json_ld'] = job_json_ld
+    context['job_breadcrumb_json_ld'] = job_breadcrumb_json_ld
     return render(request, 'jobs/job_detail.html', context)
 
 # Apply for job view

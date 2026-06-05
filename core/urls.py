@@ -44,10 +44,9 @@ urlpatterns = [
     path('registration/', views.customerregistration, name='customerregistration'),
     path('checkout/', views.checkout, name='checkout'),
     path('checkout/<int:product_id>/<int:quantity>/', views.checkout, name='checkout_with_product'),
-    path('plus_cart/', views.plus_cart, name='plus_cart'),  
-    path('minus_cart/', views.minus_cart, name='minus_cart'),
-    path('order_placed/', views.order_placed, name='order_placed'),
-    path('orders/', views.orders, name='orders'),
+    path('plus-cart/', views.plus_cart, name='plus_cart'),
+    path('minus-cart/', views.minus_cart, name='minus_cart'),
+    path('order-placed/', views.order_placed, name='order_placed'),
     path('search/', views.search_bar, name='search'),
     path('get_cart_count/', views.get_cart_count, name='get_cart_count'),
     path('changepassword/', views.change_password, name='changepassword'),
@@ -63,7 +62,6 @@ urlpatterns = [
         {'product': 'potea_pata'},
         name='account_deletion_request_potea_pata'
     ),
-    path('buynow/', views.buy_now, name='buy_now'),
     
     # Password reset URLs
     path('password_reset/', auth_views.PasswordResetView.as_view(template_name='app/password_reset.html'), name='password_reset'),
