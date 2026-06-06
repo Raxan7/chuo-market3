@@ -3,7 +3,7 @@ import time
 
 from django.core.management.base import BaseCommand
 from django.db import transaction, close_old_connections
-from django.db.models import Count
+from django.db.models import Count, F
 from django.utils import timezone
 
 from lms.models import QuizGenerationJob, Quiz
@@ -13,35 +13,28 @@ logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
-    help = "Processes queued AI quiz generation jobs with visible progress output."
+    help = "Processes queued AI quiz generation jobs with detailed progress logs."
 
     def add_arguments(self, parser):
-        parser.add_argument(
-            "--limit",
-            type=int,
-            default=3,
-            help="Maximum number of pending jobs to process in this run.",
-        )
-        parser.add_argument(
-            "--retry-stuck-after-minutes",
-            type=int,
-            default=30,
-            help="Reset processing jobs that have been stuck longer than this.",
-        )
-        parser.add_argument(
-            "--show-summary-only",
-            action="store_true",
-            help="Only show queue summary without processing jobs.",
-        )
+        parser.add_argument("--limit", type=int, default=3)
+        parser.add_argument("--sleep", type=float, default=3.0)
+        parser.add_argument("--retry-stuck-after-minutes", type=int, default=10)
+        parser.add_argument("--show-summary-only", action="store_true")
+        parser.add_argument("--reset-all-processing", action="store_true")
 
     def handle(self, *args, **options):
-        started_at = time.time()
+        run_started = time.time()
+
         limit = options["limit"]
+        sleep_seconds = options["sleep"]
         retry_stuck_after_minutes = options["retry_stuck_after_minutes"]
 
         self.stdout.write("")
         self.stdout.write(self.style.MIGRATE_HEADING("AI Quiz Generation Queue"))
-        self.stdout.write("=" * 60)
+        self.stdout.write("=" * 70)
+
+        if options["reset_all_processing"]:
+            self._reset_all_processing_jobs()
 
         self._reset_stuck_jobs(retry_stuck_after_minutes)
         self._print_queue_summary()
@@ -63,7 +56,8 @@ class Command(BaseCommand):
 
         self.stdout.write("")
         self.stdout.write(self.style.NOTICE(f"Selected {total_selected} job(s) for this run."))
-        self.stdout.write("-" * 60)
+        self.stdout.write(f"Sleep between jobs: {sleep_seconds}s")
+        self.stdout.write("-" * 70)
 
         completed_count = 0
         failed_count = 0
@@ -72,24 +66,36 @@ class Command(BaseCommand):
         for index, job in enumerate(jobs, start=1):
             close_old_connections()
 
-            progress_percent = round((index / total_selected) * 100, 1)
+            job_started = time.time()
             module = job.module
-            course_title = getattr(module.course, "title", "Unknown course")
+            course = module.course
+
+            progress = round((index / total_selected) * 100, 1)
 
             self.stdout.write("")
-            self.stdout.write(
-                self.style.MIGRATE_LABEL(
-                    f"[{index}/{total_selected}] {progress_percent}% - Processing job #{job.id}"
-                )
-            )
-            self.stdout.write(f"Course: {course_title}")
-            self.stdout.write(f"Module: {module.title}")
+            self.stdout.write(self.style.MIGRATE_LABEL(
+                f"[{index}/{total_selected}] {progress}% | Job #{job.id}"
+            ))
+            self.stdout.write(f"Course ID: {course.id}")
+            self.stdout.write(f"Course: {course.title}")
             self.stdout.write(f"Module ID: {module.id}")
+            self.stdout.write(f"Module: {module.title}")
             self.stdout.write(f"Question count: {job.question_count}")
             self.stdout.write(f"Force regenerate: {job.force}")
             self.stdout.write(f"Attempt: {job.attempts + 1}/{job.max_attempts}")
+            self.stdout.write(f"Job created: {job.created_at}")
+            self.stdout.write(f"Job locked at: {job.locked_at}")
+            self.stdout.write("Status: calling AI generation...")
 
-            job_start = time.time()
+            logger.info(
+                "Starting quiz job id=%s module_id=%s course_id=%s attempt=%s/%s force=%s",
+                job.id,
+                module.id,
+                course.id,
+                job.attempts + 1,
+                job.max_attempts,
+                job.force,
+            )
 
             try:
                 quiz = ensure_module_assessment(
@@ -105,19 +111,47 @@ class Command(BaseCommand):
                 job.error = ""
                 job.save(update_fields=["status", "completed_at", "error", "updated_at"])
 
+                elapsed = round(time.time() - job_started, 2)
                 completed_count += 1
-                elapsed = round(time.time() - job_start, 2)
 
-                self.stdout.write(
-                    self.style.SUCCESS(
-                        f"SUCCESS: Generated quiz for module '{module.title}' "
-                        f"with {question_total} question(s) in {elapsed}s."
-                    )
+                self.stdout.write(self.style.SUCCESS(
+                    f"SUCCESS: Job #{job.id} completed in {elapsed}s. "
+                    f"Quiz #{quiz.id if quiz else 'N/A'} has {question_total} question(s)."
+                ))
+
+                logger.info(
+                    "Completed quiz job id=%s module_id=%s quiz_id=%s questions=%s elapsed=%ss",
+                    job.id,
+                    module.id,
+                    quiz.id if quiz else None,
+                    question_total,
+                    elapsed,
                 )
 
+            except KeyboardInterrupt:
+                self.stdout.write("")
+                self.stdout.write(self.style.WARNING(
+                    "KeyboardInterrupt detected. Returning current job to pending before exit..."
+                ))
+
+                job.status = "pending"
+                job.locked_at = None
+                job.started_at = None
+                job.error = "Interrupted by user; returned to pending."
+                job.save(update_fields=["status", "locked_at", "started_at", "error", "updated_at"])
+
+                raise
+
             except Exception as exc:
+                elapsed = round(time.time() - job_started, 2)
+
                 job.attempts += 1
                 job.error = str(exc)
+
+                self.stdout.write(self.style.ERROR(
+                    f"ERROR: Job #{job.id} failed after {elapsed}s."
+                ))
+                self.stdout.write(f"Reason: {str(exc)[:1000]}")
 
                 if job.attempts >= job.max_attempts:
                     job.status = "failed"
@@ -137,45 +171,61 @@ class Command(BaseCommand):
 
                     failed_count += 1
 
-                    self.stdout.write(
-                        self.style.ERROR(
-                            f"FAILED: Job #{job.id} failed permanently after "
-                            f"{job.attempts}/{job.max_attempts} attempts."
-                        )
+                    self.stdout.write(self.style.ERROR(
+                        f"FAILED PERMANENTLY: Job #{job.id} reached "
+                        f"{job.attempts}/{job.max_attempts} attempts."
+                    ))
+
+                    logger.exception(
+                        "Quiz job permanently failed id=%s module_id=%s attempts=%s error=%s",
+                        job.id,
+                        module.id,
+                        job.attempts,
+                        exc,
                     )
+
                 else:
                     job.status = "pending"
                     job.locked_at = None
+                    job.started_at = None
 
                     retried_count += 1
 
-                    self.stdout.write(
-                        self.style.WARNING(
-                            f"RETRY: Job #{job.id} failed, but will be retried. "
-                            f"Attempts: {job.attempts}/{job.max_attempts}"
-                        )
+                    self.stdout.write(self.style.WARNING(
+                        f"RETRY: Job #{job.id} returned to pending. "
+                        f"Attempts: {job.attempts}/{job.max_attempts}"
+                    ))
+
+                    logger.exception(
+                        "Quiz job will retry id=%s module_id=%s attempts=%s/%s error=%s",
+                        job.id,
+                        module.id,
+                        job.attempts,
+                        job.max_attempts,
+                        exc,
                     )
 
-                job.save(
-                    update_fields=[
-                        "status",
-                        "attempts",
-                        "error",
-                        "locked_at",
-                        "completed_at",
-                        "updated_at",
-                    ]
-                )
-
-                logger.exception("Error processing quiz generation job %s", job.id)
+                job.save(update_fields=[
+                    "status",
+                    "attempts",
+                    "error",
+                    "locked_at",
+                    "started_at",
+                    "completed_at",
+                    "updated_at",
+                ])
 
             finally:
                 close_old_connections()
 
-        total_elapsed = round(time.time() - started_at, 2)
+            if index < total_selected and sleep_seconds > 0:
+                self.stdout.write(f"Waiting {sleep_seconds}s before next job...")
+                time.sleep(sleep_seconds)
+
+        total_elapsed = round(time.time() - run_started, 2)
 
         self.stdout.write("")
-        self.stdout.write("=" * 60)
+        self.stdout.write("=" * 70)
         self.stdout.write(self.style.MIGRATE_HEADING("Run finished"))
         self.stdout.write(f"Processed this run: {total_selected}")
         self.stdout.write(self.style.SUCCESS(f"Completed: {completed_count}"))
@@ -183,22 +233,14 @@ class Command(BaseCommand):
         self.stdout.write(self.style.ERROR(f"Failed permanently: {failed_count}"))
         self.stdout.write(f"Elapsed time: {total_elapsed}s")
 
-        self.stdout.write("")
         self._print_queue_summary()
 
     def _lock_pending_jobs(self, limit):
-        """
-        Select pending jobs and mark them processing in one short transaction.
-        The heavy AI generation happens outside this transaction.
-        """
         with transaction.atomic():
             jobs = list(
                 QuizGenerationJob.objects.select_for_update(skip_locked=True)
                 .select_related("module", "module__course")
-                .filter(
-                    status="pending",
-                    attempts__lt=models_f_max_attempts_safe(),
-                )
+                .filter(status="pending", attempts__lt=F("max_attempts"))
                 .order_by("-force", "created_at")[:limit]
             )
 
@@ -208,43 +250,49 @@ class Command(BaseCommand):
                 job.status = "processing"
                 job.started_at = now
                 job.locked_at = now
-                job.save(
-                    update_fields=[
-                        "status",
-                        "started_at",
-                        "locked_at",
-                        "updated_at",
-                    ]
-                )
+                job.save(update_fields=[
+                    "status",
+                    "started_at",
+                    "locked_at",
+                    "updated_at",
+                ])
 
         return jobs
 
     def _reset_stuck_jobs(self, minutes):
-        """
-        If a cron run dies halfway, some jobs may remain stuck as processing.
-        This safely returns old processing jobs back to pending.
-        """
         cutoff = timezone.now() - timezone.timedelta(minutes=minutes)
 
         stuck_jobs = QuizGenerationJob.objects.filter(
             status="processing",
             locked_at__lt=cutoff,
-            attempts__lt=models_f_max_attempts_safe(),
+            attempts__lt=F("max_attempts"),
         )
 
         count = stuck_jobs.update(
             status="pending",
             locked_at=None,
-            error="Reset because job was stuck in processing.",
+            started_at=None,
+            error=f"Reset because job was stuck in processing for more than {minutes} minute(s).",
             updated_at=timezone.now(),
         )
 
         if count:
-            self.stdout.write(
-                self.style.WARNING(
-                    f"Reset {count} stuck processing job(s) back to pending."
-                )
-            )
+            self.stdout.write(self.style.WARNING(
+                f"Reset {count} stuck processing job(s) back to pending."
+            ))
+
+    def _reset_all_processing_jobs(self):
+        count = QuizGenerationJob.objects.filter(status="processing").update(
+            status="pending",
+            locked_at=None,
+            started_at=None,
+            error="Manually reset from processing to pending.",
+            updated_at=timezone.now(),
+        )
+
+        self.stdout.write(self.style.WARNING(
+            f"Manually reset {count} processing job(s) back to pending."
+        ))
 
     def _print_queue_summary(self):
         summary = {
@@ -258,10 +306,7 @@ class Command(BaseCommand):
         failed = summary.get("failed", 0)
         total = pending + processing + completed + failed
 
-        if total:
-            done_percent = round(((completed + failed) / total) * 100, 1)
-        else:
-            done_percent = 100
+        done_percent = round(((completed + failed) / total) * 100, 1) if total else 100
 
         self.stdout.write("")
         self.stdout.write("Queue summary:")
@@ -271,12 +316,3 @@ class Command(BaseCommand):
         self.stdout.write(f"Failed: {failed}")
         self.stdout.write(f"Total jobs: {total}")
         self.stdout.write(f"Overall progress: {done_percent}%")
-
-
-def models_f_max_attempts_safe():
-    """
-    Import F lazily so this command stays simple and avoids top-level confusion.
-    """
-    from django.db.models import F
-
-    return F("max_attempts")

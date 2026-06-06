@@ -155,7 +155,16 @@ def _call_cerebras_for_questions(module, context, question_count):
 
     status is one of: 'success', 'missing_api_key', 'sdk_error', 'api_error', 'invalid_json'
     """
+    logger.info(
+        "Cerebras request starting module_id=%s attempt=%s model=%s context_chars=%s max_tokens=%s",
+        getattr(module, 'id', '?'),
+        attempt + 1,
+        getattr(settings, 'CEREBRAS_ASSESSMENT_MODEL', 'zai-glm-4.7'),
+        len(context or ''),
+        1400,
+    )
     api_key = getattr(settings, 'CEREBRAS_API_KEY', None)
+    
     if not api_key:
         msg = f"Module {getattr(module, 'id', '?')}: missing CEREBRAS_API_KEY"
         logger.warning(msg)
@@ -231,8 +240,20 @@ def _call_cerebras_for_questions(module, context, question_count):
                 max_tokens=3000,
             )
             payload = response.choices[0].message.content
+            logger.info(
+                "Cerebras response received module_id=%s attempt=%s payload_chars=%s",
+                getattr(module, 'id', '?'),
+                attempt + 1,
+                len(str(payload or '')),
+            )
             try:
                 parsed = parse_payload(payload)
+                logger.info(
+                    "Cerebras response received module_id=%s attempt=%s payload_chars=%s",
+                    getattr(module, 'id', '?'),
+                    attempt + 1,
+                    len(str(payload or '')),
+                )
                 return parsed, 'success', 'ok'
             except Exception as exc:
                 msg = f"Module {getattr(module, 'id', '?')}: invalid JSON from Cerebras: {exc}"
@@ -324,6 +345,10 @@ def _normalise_questions(raw_payload, question_count):
 
 def ensure_module_assessment(module, student=None, question_count=DEFAULT_QUESTION_COUNT, force=False):
     """Primary worker function. Generates shared questions from API and updates the DB."""
+    _log_assessment_event(
+        f"AI generation started for module {module.id} ({module.title}), "
+        f"question_count={question_count}, force={force}."
+    )
     if getattr(module, 'skip_assessment', False):
         _log_assessment_event(
             "Skipped AI quiz generation for module %s (%s) because skip_assessment is enabled." % (
@@ -352,8 +377,16 @@ def ensure_module_assessment(module, student=None, question_count=DEFAULT_QUESTI
         ])
 
     context = collect_module_learning_context(module, student=student)
+    _log_assessment_event(
+        f"Collected AI context for module {module.id}: {len(context)} characters."
+    )
+    _log_assessment_event(
+        f"Collected AI context for module {module.id}: {len(context)} characters."
+    )
     raw_payload, status, msg = _call_cerebras_for_questions(module, context, question_count)
-
+    _log_assessment_event(
+        f"Cerebras returned for module {module.id}: status={status}, message={str(msg)[:300]}."
+    )
     if status != 'success' or not raw_payload:
         error_message = (
             f"AI quiz generation failed for module {getattr(module, 'id', '?')} "
@@ -373,6 +406,9 @@ def ensure_module_assessment(module, student=None, question_count=DEFAULT_QUESTI
         raise RuntimeError(error_message)
 
     questions = _normalise_questions(raw_payload, question_count)
+    _log_assessment_event(
+        f"Normalised {len(questions)} question(s) for module {module.id}; expected {question_count}."
+    )
 
     if not questions:
         error_message = (
