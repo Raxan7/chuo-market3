@@ -339,20 +339,43 @@ def ensure_module_assessment(module, student=None, question_count=DEFAULT_QUESTI
 
     context = collect_module_learning_context(module, student=student)
     raw_payload, status, msg = _call_cerebras_for_questions(module, context, question_count)
+
     if status != 'success' or not raw_payload:
-        logger.warning(
-            f"Module {getattr(module, 'id', '?')}: AI generation failed ({status}), using fallback questions: {msg}"
+        error_message = (
+            f"AI quiz generation failed for module {getattr(module, 'id', '?')} "
+            f"with status '{status}': {msg}"
         )
-        fallback_payload = _fallback_questions(module, context, question_count)
-        questions = _normalise_questions(fallback_payload, question_count)
-    else:
-        questions = _normalise_questions(raw_payload, question_count)
+        logger.warning(error_message)
+
+        existing.generation_status = 'failed'
+        existing.generation_message = error_message[:500]
+        existing.generation_completed_at = timezone.now()
+        existing.save(update_fields=[
+            'generation_status',
+            'generation_message',
+            'generation_completed_at',
+        ])
+
+        raise RuntimeError(error_message)
+
+    questions = _normalise_questions(raw_payload, question_count)
 
     if not questions:
-        logger.warning(
-            f"Module {getattr(module, 'id', '?')}: no valid questions generated, using fallback questions"
+        error_message = (
+            f"AI quiz generation produced no valid questions for module {getattr(module, 'id', '?')}."
         )
-        questions = _normalise_questions(_fallback_questions(module, context, question_count), question_count)
+        logger.warning(error_message)
+
+        existing.generation_status = 'failed'
+        existing.generation_message = error_message[:500]
+        existing.generation_completed_at = timezone.now()
+        existing.save(update_fields=[
+            'generation_status',
+            'generation_message',
+            'generation_completed_at',
+        ])
+
+        raise RuntimeError(error_message)
 
     quiz = existing
 
