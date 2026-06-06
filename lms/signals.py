@@ -86,12 +86,8 @@ def notify_new_course_content(sender, instance, created, **kwargs):
         if getattr(instance.module, 'skip_assessment', False):
             return
 
-        for enrollment in enrollments:
-            queue_module_assessment_generation(
-                instance.module,
-                student=enrollment.student,
-                force=True,
-            )
+        # Trigger shared regeneration when content changes
+        queue_module_assessment_generation(instance.module, force=True)
 
     transaction.on_commit(dispatch_assessment_regeneration)
 
@@ -102,13 +98,8 @@ def ensure_learning_records_on_module_save(sender, instance, created, **kwargs):
     def dispatch_learning_records():
         from .utils import ensure_course_learning_records
 
-        for enrollment in _enrollments_with_course_access(instance.course):
-            ensure_course_learning_records(
-                instance.course,
-                enrollment.student,
-                queue_assessments=True,
-                force_assessment_regeneration=False,
-            )
+        # Queue assessment for the new module
+        queue_module_assessment_generation(instance)
 
     transaction.on_commit(dispatch_learning_records)
 

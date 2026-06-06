@@ -1088,3 +1088,33 @@ def enrollment_payment_status_change(sender, instance, **kwargs):
                 ActivityLog.objects.create(
                     message=_(f"Payment for '{instance.course}' by {instance.student.user.username} has been rejected.")
                 )
+class QuizGenerationJob(models.Model):
+    """
+    Database-backed queue for AI quiz generation, cPanel friendly.
+    """
+    STATUS_CHOICES = (
+        ('pending', _('Pending')),
+        ('processing', _('Processing')),
+        ('completed', _('Completed')),
+        ('failed', _('Failed')),
+    )
+    module = models.ForeignKey(CourseModule, on_delete=models.CASCADE, related_name='quiz_jobs')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    force = models.BooleanField(default=False)
+    question_count = models.PositiveIntegerField(default=5)
+    attempts = models.PositiveIntegerField(default=0)
+    max_attempts = models.PositiveIntegerField(default=3)
+    error = models.TextField(blank=True, null=True)
+    locked_at = models.DateTimeField(blank=True, null=True)
+    started_at = models.DateTimeField(blank=True, null=True)
+    completed_at = models.DateTimeField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-force', 'created_at']
+        verbose_name = _("Quiz Generation Job")
+        verbose_name_plural = _("Quiz Generation Jobs")
+
+    def __str__(self):
+        return f"Job for {self.module.title} ({self.status})"

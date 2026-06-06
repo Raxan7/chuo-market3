@@ -4,11 +4,10 @@ import json
 import logging
 import re
 import sys
-import threading
 
 from django.conf import settings
 from django.db import IntegrityError, close_old_connections, transaction
-from django.utils import timezone
+from django.utils import timezone as django_timezone
 from django.utils.html import strip_tags
 from django.utils.text import Truncator
 
@@ -20,72 +19,22 @@ logger = logging.getLogger(__name__)
 DEFAULT_QUESTION_COUNT = 5
 
 
-def _personal_assessment_quizzes(module, student):
-    if not student:
-        return Quiz.objects.none()
-
-    return Quiz.objects.filter(
-        module=module,
-        generated_for=student,
-        draft=False,
-    ).order_by('id')
-
-
 def _log_assessment_event(message, level='info'):
     log_method = getattr(logger, level, logger.info)
     log_method(message)
     try:
-        ActivityLog.objects.create(message=message)
+        from .models import ActivityLog
+        ActivityLog.objects.create(message=Truncator(message).chars(500))
     except Exception:
         logger.exception("Could not write LMS assessment activity log: %s", message)
 
-
-def _dedupe_personal_assessments(module, student, keep=None):
-    if not student:
-        return keep
-
-    personal_quizzes = _personal_assessment_quizzes(module, student)
-    keep = keep or personal_quizzes.first()
-    if keep is None:
-        return None
-
-    duplicates = personal_quizzes.exclude(pk=keep.pk)
-    if duplicates.exists():
-        duplicate_count = duplicates.count()
-        duplicates.update(
-            draft=True,
-            generation_message='Archived duplicate AI module quiz during runtime cleanup.',
-        )
-        _log_assessment_event(
-            "Archived %s duplicate personalized quiz(es) for module %s and student %s." % (
-                duplicate_count,
-                module.id,
-                student.id,
-            )
-        )
-
-    return keep
-
-
-def _personalization_lines(student):
-    if not student:
-        return []
-
-    display_name = student.user.get_full_name() or student.user.username
-    return [
-        f"Learner: {display_name}",
-        f"Learner role: {getattr(student, 'role', 'student')}",
-        f"Learner username: {student.user.username}",
-    ]
-
-
 def collect_module_learning_context(module, student=None):
+    """Collect content only. Student/personalization data removed for shared quizzes."""
     parts = [
         f"Course: {module.course.title}",
         f"Module: {module.title}",
         f"Module description: {strip_tags(module.description or '')}",
     ]
-    parts.extend(_personalization_lines(student))
     for content in module.contents.order_by('order', 'id'):
         body = ''
         if content.content_type == 'text':
@@ -104,9 +53,7 @@ def collect_module_learning_context(module, student=None):
 
 
 def _get_existing_assessment_quiz(module, student=None):
-    if student:
-        return _personal_assessment_quizzes(module, student).first()
-
+    """Always returns the shared (non-personalized) quiz for this module."""
     return Quiz.objects.filter(
         module=module,
         generated_for__isnull=True,
@@ -114,22 +61,12 @@ def _get_existing_assessment_quiz(module, student=None):
     ).order_by('id').first()
 
 
-def _get_personal_assessment_quiz(module, student):
-    if not student:
-        return None
-
-    return Quiz.objects.filter(
-        module=module,
-        generated_for=student,
-        draft=False,
-    ).order_by('-id').first()
-
-
 def _create_assessment_quiz(module, student=None):
+    """Creates a shared quiz shell."""
     return Quiz.objects.create(
         course=module.course,
         module=module,
-        generated_for=student,
+        generated_for=None,
         title=f"{module.title} Mastery Check",
         description=(
             "AI-generated assessment based on this module's content. "
@@ -141,13 +78,13 @@ def _create_assessment_quiz(module, student=None):
         exam_paper=True,
         draft=False,
         generation_status='processing',
-        generation_message='Quiz is being prepared.',
-        generation_started_at=timezone.now(),
+        generation_message='Preparation queued.',
+        generation_started_at=django_timezone.now(),
     )
 
 
 def _get_or_create_assessment_quiz(module, student=None):
-    existing = _dedupe_personal_assessments(module, student) if student else _get_existing_assessment_quiz(module)
+    existing = _get_existing_assessment_quiz(module)
     if existing:
         return existing, False
 
@@ -164,30 +101,25 @@ def _get_or_create_assessment_quiz(module, student=None):
         'exam_paper': True,
         'generation_status': 'processing',
         'generation_message': 'Quiz is being prepared.',
-        'generation_started_at': timezone.now(),
+        'generation_started_at': django_timezone.now(),
     }
 
     try:
         quiz, created = Quiz.objects.get_or_create(
             module=module,
-            generated_for=student,
+            generated_for=None,
             draft=False,
             defaults=defaults,
         )
     except IntegrityError:
-        quiz = _dedupe_personal_assessments(module, student) if student else _get_existing_assessment_quiz(module)
-        if quiz is None:
-            raise
+        quiz = _get_existing_assessment_quiz(module)
         created = False
 
+    # Archive potential duplicates
+    Quiz.objects.filter(module=module, generated_for__isnull=True, draft=False).exclude(pk=quiz.pk).update(draft=True)
+
     if created:
-        _log_assessment_event(
-            "Queued AI quiz shell for module %s (%s), student %s." % (
-                module.id,
-                module.title,
-                student.id if student else 'shared',
-            )
-        )
+        _log_assessment_event(f"Created shared AI quiz shell for module {module.id}.")
 
     return quiz, created
 
@@ -196,9 +128,9 @@ def _mark_quiz_generation_state(quiz, status, message=''):
     quiz.generation_status = status
     quiz.generation_message = message or ''
     if status == 'processing' and not quiz.generation_started_at:
-        quiz.generation_started_at = timezone.now()
+        quiz.generation_started_at = django_timezone.now()
     if status in {'ready', 'failed'}:
-        quiz.generation_completed_at = timezone.now()
+        quiz.generation_completed_at = django_timezone.now()
     quiz.save(update_fields=[
         'generation_status',
         'generation_message',
@@ -313,10 +245,10 @@ MODULE CONTENT:
 
 
 def _fallback_questions(module, context, question_count):
-    clean_context = re.sub(r'\s+', ' ', strip_tags(context)).strip()
+    clean_context = re.sub(r'\s+', ' ', strip_tags(context or '')).strip()
     summary = Truncator(clean_context or module.description or module.title).chars(180)
     key_terms = [
-        term.strip('.,;:()[]{}"\'')
+        term.strip('.,;:()[]{}"\'') 
         for term in re.findall(r'\b[A-Za-z][A-Za-z0-9-]{5,}\b', clean_context)
     ]
     unique_terms = []
@@ -376,8 +308,8 @@ def _normalise_questions(raw_payload, question_count):
     return [item for item in normalised if item['question'] and all(item['choices'])]
 
 
-@transaction.atomic
 def ensure_module_assessment(module, student=None, question_count=DEFAULT_QUESTION_COUNT, force=False):
+    """Primary worker function. Generates shared questions from API and updates the DB."""
     if getattr(module, 'skip_assessment', False):
         _log_assessment_event(
             "Skipped AI quiz generation for module %s (%s) because skip_assessment is enabled." % (
@@ -387,25 +319,16 @@ def ensure_module_assessment(module, student=None, question_count=DEFAULT_QUESTI
         )
         return None
 
-    existing = _dedupe_personal_assessments(module, student) if student else _get_existing_assessment_quiz(module)
+    existing = _get_existing_assessment_quiz(module)
     if existing and existing.questions.exists() and not force and existing.generation_status == 'ready':
-        _log_assessment_event(
-            "AI quiz already ready for module %s (%s), student %s; reused quiz %s." % (
-                module.id,
-                module.title,
-                student.id if student else 'shared',
-                existing.id,
-            )
-        )
         return existing
 
     if existing is None:
         existing, _ = _get_or_create_assessment_quiz(module, student=student)
     elif force:
-        existing.questions.all().delete()
         existing.generation_status = 'processing'
         existing.generation_message = 'Quiz is being prepared.'
-        existing.generation_started_at = timezone.now()
+        existing.generation_started_at = django_timezone.now()
         existing.generation_completed_at = None
         existing.save(update_fields=[
             'generation_status',
@@ -413,14 +336,6 @@ def ensure_module_assessment(module, student=None, question_count=DEFAULT_QUESTI
             'generation_started_at',
             'generation_completed_at',
         ])
-        _log_assessment_event(
-            "Regenerating AI quiz %s for module %s (%s), student %s." % (
-                existing.id,
-                module.id,
-                module.title,
-                student.id if student else 'shared',
-            )
-        )
 
     context = collect_module_learning_context(module, student=student)
     raw_payload, status, msg = _call_cerebras_for_questions(module, context, question_count)
@@ -441,31 +356,24 @@ def ensure_module_assessment(module, student=None, question_count=DEFAULT_QUESTI
 
     quiz = existing
 
-    if force or quiz.generation_status != 'ready':
+    with transaction.atomic():
         quiz.questions.all().delete()
-
-    for order, item in enumerate(questions, start=1):
-        question = MCQuestion.objects.create(
-            quiz=quiz,
-            content=item['question'],
-            explanation=item['explanation'],
-            order=order,
-        )
-        for choice_index, choice_text in enumerate(item['choices']):
-            Choice.objects.create(
-                question=question,
-                content=choice_text,
-                correct=choice_index == item['correct_index'],
+        for order, item in enumerate(questions, start=1):
+            question = MCQuestion.objects.create(
+                quiz=quiz, content=item['question'], explanation=item['explanation'], order=order
             )
+            for choice_index, choice_text in enumerate(item['choices']):
+                Choice.objects.create(
+                    question=question, content=choice_text,
+                    correct=choice_index == item['correct_index']
+                )
 
     _mark_quiz_generation_state(quiz, 'ready', 'Quiz is ready.')
-    _dedupe_personal_assessments(module, student, keep=quiz)
     _log_assessment_event(
-        "AI quiz %s is ready for module %s (%s), student %s with %s question(s)." % (
+        "AI quiz %s is ready for module %s (%s) with %s question(s)." % (
             quiz.id,
             module.id,
             module.title,
-            student.id if student else 'shared',
             quiz.questions.count(),
         )
     )
@@ -483,97 +391,36 @@ def ensure_course_module_assessments(course, student=None, question_count=DEFAUL
 
 
 def queue_module_assessment_generation(module, student=None, question_count=DEFAULT_QUESTION_COUNT, force=False):
+    """Creates a QuizGenerationJob to be processed by cron. Request returns immediately."""
+    from .models import QuizGenerationJob
+    
     if getattr(module, 'skip_assessment', False):
-        _log_assessment_event(
-            "Did not queue AI quiz for module %s (%s) because skip_assessment is enabled." % (
-                module.id,
-                module.title,
-            )
-        )
         return None
 
-    quiz = _dedupe_personal_assessments(module, student) if student else _get_existing_assessment_quiz(module)
-    if quiz and quiz.generation_status in {'pending', 'processing'} and not force:
-        _log_assessment_event(
-            "AI quiz %s is already %s for module %s, student %s." % (
-                quiz.id,
-                quiz.generation_status,
-                module.id,
-                student.id if student else 'shared',
-            )
-        )
-        return quiz
-
+    quiz = _get_existing_assessment_quiz(module)
     if quiz and quiz.generation_status == 'ready' and quiz.questions.exists() and not force:
-        _log_assessment_event(
-            "AI quiz %s already ready for module %s, student %s." % (
-                quiz.id,
-                module.id,
-                student.id if student else 'shared',
-            )
-        )
         return quiz
 
-    if quiz is None:
-        quiz, _ = _get_or_create_assessment_quiz(module, student=student)
-    else:
-        quiz.generation_status = 'processing'
-        quiz.generation_message = 'Quiz is being prepared.'
-        quiz.generation_started_at = timezone.now()
-        quiz.generation_completed_at = None
-        quiz.save(update_fields=['generation_status', 'generation_message', 'generation_started_at', 'generation_completed_at'])
+    if not quiz:
+        quiz, _ = _get_or_create_assessment_quiz(module)
 
-    module_id = module.id
-    student_id = student.id if student else None
-
-    if 'test' in sys.argv:
-        from .models import CourseModule, LMSProfile
-
-        module_obj = CourseModule.objects.get(pk=module_id)
-        student_obj = LMSProfile.objects.filter(pk=student_id).first() if student_id else None
-        return ensure_module_assessment(module_obj, student=student_obj, question_count=question_count, force=force)
-
-    def worker():
-        close_old_connections()
-        try:
-            from .models import CourseModule, LMSProfile
-
-            module_obj = CourseModule.objects.get(pk=module_id)
-            student_obj = LMSProfile.objects.filter(pk=student_id).first() if student_id else None
-            ensure_module_assessment(module_obj, student=student_obj, question_count=question_count, force=force)
-        except Exception as exc:
-            logger.exception(
-                "Module %s: background assessment generation failed for student %s: %s",
-                module_id,
-                student_id,
-                exc,
-            )
-            if quiz.pk:
-                Quiz.objects.filter(pk=quiz.pk).update(
-                    generation_status='failed',
-                    generation_message=str(exc),
-                    generation_completed_at=timezone.now(),
-                )
-                _log_assessment_event(
-                    "AI quiz generation failed for quiz %s, module %s, student %s: %s" % (
-                        quiz.pk,
-                        module_id,
-                        student_id or 'shared',
-                        exc,
-                    ),
-                    level='error',
-                )
-        finally:
-            close_old_connections()
-
-    _log_assessment_event(
-        "Queued AI quiz generation for module %s (%s), student %s, force=%s." % (
-            module.id,
-            module.title,
-            student_id or 'shared',
-            force,
-        )
+    # Create or update the job
+    job, created = QuizGenerationJob.objects.update_or_create(
+        module=module,
+        status__in=['pending', 'processing'],
+        defaults={
+            'force': force,
+            'question_count': question_count,
+            'status': 'pending',
+            'attempts': 0,
+            'error': None
+        }
     )
-    thread = threading.Thread(target=worker, daemon=True)
-    thread.start()
+    
+    # Sync Quiz status to shell
+    quiz.generation_status = 'pending'
+    quiz.generation_message = 'Scheduled for AI generation.'
+    quiz.save(update_fields=['generation_status', 'generation_message'])
+    
+    _log_assessment_event(f"Job queued for module {module.id}. Force={force}.")
     return quiz
