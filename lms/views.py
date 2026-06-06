@@ -627,6 +627,12 @@ class CourseDetailView(DetailView):
             module_states = get_module_progress_states(course, student_profile)
             if course_progress.get('course_completed'):
                 issued_certificate = issue_certificate_if_eligible(course, student_profile)
+                if not issued_certificate:
+                    # Fallback: Fetch existing certificate if already issued
+                    issued_certificate = StudentCertificate.objects.filter(
+                        student=request.user,
+                        course=course
+                    ).first()
             
         # Add is_free status to context
         context['is_free'] = course.is_free
@@ -1144,6 +1150,12 @@ def quiz_results(request, quiz_taker_id):
         from .utils import is_course_completed, issue_certificate_if_eligible
         if is_course_completed(quiz.course, request.user.lms_profile):
             issued_certificate = issue_certificate_if_eligible(quiz.course, request.user.lms_profile)
+            if not issued_certificate:
+                # Fallback: Fetch existing certificate if already issued
+                issued_certificate = StudentCertificate.objects.filter(
+                    student=request.user,
+                    course=quiz.course
+                ).first()
     
     context = {
         'quiz_taker': quiz_taker,

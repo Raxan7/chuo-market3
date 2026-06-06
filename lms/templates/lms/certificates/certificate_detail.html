@@ -693,6 +693,9 @@
 
 {% block extra_scripts %}
 {{ block.super }}
+{# JSON payload consumed by the preview modal JS #}
+<script id="csCertPreviewsData" type="application/json">{{ certificate_previews|safe }}</script>
+{% include "lms/certificates/_preview_modal.html" %}
 <script>
     // Slight delay to draw attention to the download button on arrival
     (function () {

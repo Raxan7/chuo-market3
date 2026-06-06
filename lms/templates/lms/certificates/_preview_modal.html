@@ -1,11 +1,3 @@
-{# Reusable certificate preview modal. Slides up from the bottom (hover-up), shows a rendered certificate preview, and fires confetti on open.
-
-   Required page context:
-     - certificate_previews: list of dicts with keys:
-         id, course_title, student_name, instructor_name, issue_date, organization_name, detail_url
-     - certificate_downloads_enabled: bool
-#}
-
 <style>
     /* ============================================================
        Certificate preview modal — slide-up (hover-up) animation
@@ -310,24 +302,18 @@
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.4.0/dist/confetti.browser.min.js"></script>
 <script>
 (function () {
-    var modalEl = document.getElementById('csCertPreviewModal');
-    if (!modalEl) return;
-
-    // Parse the previews list out of the data-attribute set on the container.
+    function getPreviewDataEl() {
+        return document.getElementById('csCertPreviewsData');
+    }
     function readPreviews() {
-        var raw = document.getElementById('csCertPreviewsData');
+        var raw = getPreviewDataEl();
         if (!raw) return [];
         try { return JSON.parse(raw.textContent || '[]'); } catch (e) { return []; }
     }
-    var previews = readPreviews();
 
     function setText(id, value) {
         var el = document.getElementById(id);
         if (el) el.textContent = value || '';
-    }
-    function setHtml(id, value) {
-        var el = document.getElementById(id);
-        if (el) el.innerHTML = value || '';
     }
 
     function fireConfetti() {
@@ -352,15 +338,21 @@
     }
 
     function openPreview(idx) {
+        var modalEl = document.getElementById('csCertPreviewModal');
+        if (!modalEl) return;
+        var previews = readPreviews();
         var p = previews[idx];
-        if (!p) return;
+        if (!p) {
+            return;
+        }
+
         setText('csPreviewHeaderText', p.course_title || 'Certificate');
         setText('csPreviewOrg', p.organization_name || 'ChuoSmart Academy');
         setText('csPreviewSealOrg', (p.organization_name || 'ChuoSmart').split(' ')[0] || 'ChuoSmart');
         setText('csPreviewTitle', p.certificate_title || 'Certificate of Completion');
         setText('csPreviewName', p.student_name || '');
         setText('csPreviewCourse', p.course_title || '');
-        setText('csPreviewDate', 'Issued on ' + (p.issue_date || '—'));
+        setText('csPreviewDate', 'Issued on ' + (p.issue_date || '\u2014'));
         setText('csPreviewInstructor', p.instructor_name || 'Course Instructor');
         setText('csPreviewInstructorLabel', p.instructor_name || 'Course Instructor');
         setText('csPreviewIdPill', p.id || '');
@@ -372,21 +364,49 @@
         var dl = document.getElementById('csPreviewDownload');
         if (dl && p.download_url) dl.setAttribute('href', p.download_url);
 
-        // Use Bootstrap's modal API so focus and backdrop are handled correctly.
-        var bsModal = bootstrap.Modal.getOrCreateInstance(modalEl);
-        bsModal.show();
+        // Show the modal. Bootstrap is preferred (handles focus + backdrop);
+        // fall back to the jQuery plugin or a manual toggle if not available.
+        if (window.bootstrap && typeof window.bootstrap.Modal === 'function') {
+            var bsModal = window.bootstrap.Modal.getOrCreateInstance(modalEl);
+            bsModal.show();
+        } else if (window.jQuery) {
+            window.jQuery(modalEl).modal('show');
+        } else {
+            modalEl.classList.add('show');
+            modalEl.style.display = 'block';
+            modalEl.removeAttribute('aria-hidden');
+        }
     }
 
-    // Wire up any element with [data-cs-preview-index].
-    document.addEventListener('click', function (ev) {
-        var trigger = ev.target.closest('[data-cs-preview-index]');
+    function onPreviewClick(ev) {
+        var trigger = ev.target && ev.target.closest
+            ? ev.target.closest('[data-cs-preview-index]')
+            : null;
         if (!trigger) return;
         ev.preventDefault();
+        ev.stopPropagation();
         var idx = parseInt(trigger.getAttribute('data-cs-preview-index'), 10);
-        if (!isNaN(idx)) openPreview(idx);
-    });
+        if (isNaN(idx)) return;
+        openPreview(idx);
+    }
 
-    // Fire confetti on every modal show.
-    modalEl.addEventListener('shown.bs.modal', function () { fireConfetti(); });
+    // Bind to BOTH document and the modal element so we catch clicks even if a
+    // parent handler stopped propagation. Re-bind on DOMContentLoaded too in
+    // case this script was injected before the document was fully parsed.
+    function bindClicks() {
+        document.removeEventListener('click', onPreviewClick, true);
+        document.removeEventListener('click', onPreviewClick, false);
+        document.addEventListener('click', onPreviewClick, false);
+    }
+    bindClicks();
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', bindClicks);
+    }
+
+    // Fire confetti on every modal show, regardless of how it was opened.
+    var modalEl = document.getElementById('csCertPreviewModal');
+    if (modalEl) {
+        modalEl.addEventListener('shown.bs.modal', function () { fireConfetti(); });
+    }
 })();
 </script>
