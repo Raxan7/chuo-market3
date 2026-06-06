@@ -241,7 +241,7 @@ class Command(BaseCommand):
                 QuizGenerationJob.objects.select_for_update(skip_locked=True)
                 .select_related("module", "module__course")
                 .filter(status="pending", attempts__lt=F("max_attempts"))
-                .order_by("-force", "created_at")[:limit]
+                .order_by("-force", "attempts", "created_at")[:limit]
             )
 
             now = timezone.now()
