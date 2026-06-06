@@ -169,20 +169,34 @@ def _call_cerebras_for_questions(module, context, question_count):
         return None, 'sdk_error', msg
 
     prompt = f"""
-You are creating a mastery check for an online course module.
-Use ONLY the module content below. Generate exactly {question_count} multiple choice questions.
-Each question must:
-- Test deep understanding of the module content
-- Have 4 distinct choices
-- Have exactly one correct answer
-- Include a brief learning explanation tied to the module content
+    You are generating a quiz for an online course module.
 
-Return ONLY valid JSON in this exact shape (no Markdown, no code fences):
-{{"questions":[{{"question":"...","choices":["...","...","...","..."],"correct_index":0,"explanation":"..."}}]}}
+    Return ONLY valid minified JSON.
+    Do not use Markdown.
+    Do not use code fences.
+    Do not add explanations outside JSON.
+    Do not use trailing commas.
+    Do not use newline characters inside string values.
+    Do not include quotation marks inside question, choice, or explanation text unless escaped properly.
 
-MODULE CONTENT:
-{context}
-""".strip()
+    Generate exactly {question_count} multiple choice questions.
+
+    Rules:
+    - Use ONLY the module content provided.
+    - Each question must test useful understanding.
+    - Each question must have exactly 4 choices.
+    - Only one choice must be correct.
+    - correct_index must be 0, 1, 2, or 3.
+    - Keep each question under 160 characters.
+    - Keep each choice under 100 characters.
+    - Keep each explanation under 180 characters.
+
+    Return exactly this JSON shape:
+    {{"questions":[{{"question":"Question text","choices":["Choice A","Choice B","Choice C","Choice D"],"correct_index":0,"explanation":"Brief explanation"}}]}}
+
+    MODULE CONTENT:
+    {context}
+    """.strip()
 
     def parse_payload(payload_text):
         if not payload_text:
