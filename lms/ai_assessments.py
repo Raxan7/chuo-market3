@@ -349,7 +349,7 @@ def ensure_module_assessment(module, student=None, question_count=DEFAULT_QUESTI
 
         existing.generation_status = 'failed'
         existing.generation_message = error_message[:500]
-        existing.generation_completed_at = timezone.now()
+        existing.generation_completed_at = django_timezone.now()
         existing.save(update_fields=[
             'generation_status',
             'generation_message',
@@ -368,7 +368,7 @@ def ensure_module_assessment(module, student=None, question_count=DEFAULT_QUESTI
 
         existing.generation_status = 'failed'
         existing.generation_message = error_message[:500]
-        existing.generation_completed_at = timezone.now()
+        existing.generation_completed_at = django_timezone.now()
         existing.save(update_fields=[
             'generation_status',
             'generation_message',
