@@ -103,76 +103,41 @@
     <div class="row mb-4">
         <div class="col">
             <div class="card shadow-sm">
-                <div class="card-header bg-light">
+                <div class="card-header bg-light d-flex flex-column flex-md-row justify-content-between align-items-md-center">
                     <h4 class="mb-0">Enrolled Courses</h4>
+                    <small class="text-muted">Progress is based on module quizzes passed (70% to pass)</small>
                 </div>
                 <div class="card-body">
                     {% if courses %}
-                    <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead>
-                                <tr>
-                                    <th>Course</th>
-                                    <th>Code</th>
-                                    <th>Credits</th>
-                                    <th>Semester</th>
-                                    <th>Grade</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for course in courses %}
-                                <tr>
-                                    <td>
-                                        <a href="{% url 'lms:course_detail' slug=course.slug %}">{{ course.title }}</a>
-                                    </td>
-                                    <td>{{ course.code }}</td>
-                                    <td>{{ course.credit }}</td>
-                                    <td>{{ course.get_semester_display }}</td>
-                                    <td>
+                    <div class="row g-3">
+                        {% for course in courses %}
+                            {% with progress=course_progress|get_item:course.id %}
+                            <div class="col-12 col-md-6 col-xl-4">
+                                <div class="position-relative">
+                                    {% include "lms/partials/_course_card.html" with progress_pct=progress.percentage show_progress=True %}
+                                    <div class="d-flex justify-content-between align-items-center mt-2 px-1">
+                                        <small class="text-muted">
+                                            <i class="fas fa-tasks me-1"></i>{{ progress.completed_count }}/{{ progress.total_count }} modules passed
+                                        </small>
                                         {% for grade in grades %}
                                             {% if grade.course == course %}
                                                 {% if grade.grade %}
-                                                    <span class="badge 
+                                                    <span class="badge
                                                     {% if grade.grade == 'A' %}bg-success
                                                     {% elif grade.grade == 'B' %}bg-primary
                                                     {% elif grade.grade == 'C' %}bg-info
                                                     {% elif grade.grade == 'D' %}bg-warning
                                                     {% else %}bg-danger{% endif %}">
-                                                        {{ grade.grade }}
+                                                        Grade: {{ grade.grade }}
                                                     </span>
-                                                {% else %}
-                                                    <span class="badge bg-secondary">Not Graded</span>
                                                 {% endif %}
                                             {% endif %}
                                         {% endfor %}
-                                    </td>
-                                    <td>
-                                        <div class="d-flex flex-column flex-md-row align-items-start align-items-md-center gap-2">
-                                            <div>
-                                                <a href="{% url 'lms:course_detail' slug=course.slug %}" class="btn btn-sm btn-outline-primary">View</a>
-                                            </div>
-                                            <div class="course-progress-wrap">
-                                                {% with progress=course_progress|get_item:course.id %}
-                                                <div class="progress" style="height: 15px;">
-                                                    <div class="progress-bar bg-success" role="progressbar" 
-                                                         style="width: {{ progress.percentage }}%;" 
-                                                         aria-valuenow="{{ progress.percentage }}" 
-                                                         aria-valuemin="0" aria-valuemax="100">
-                                                        {{ progress.percentage }}%
-                                                    </div>
-                                                </div>
-                                                <div class="small text-muted text-center">
-                                                    {{ progress.completed_count }}/{{ progress.total_count }} completed
-                                                </div>
-                                                {% endwith %}
-                                            </div>
-                                        </div>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endwith %}
+                        {% endfor %}
                     </div>
                     {% else %}
                     <div class="alert alert-info">

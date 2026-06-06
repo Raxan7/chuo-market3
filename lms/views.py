@@ -306,7 +306,7 @@ def set_legal_name(request):
     After saving, the user is redirected to ``next`` (if safe) or to the
     appropriate dashboard based on their role.
     """
-    profile, _ = LMSProfile.objects.get_or_create(user=request.user)
+    profile, created = LMSProfile.objects.get_or_create(user=request.user)
 
     fallback = 'lms:student_dashboard'
     if profile.role == 'instructor':
@@ -332,6 +332,8 @@ def set_legal_name(request):
         'reason': request.GET.get('reason', 'general'),
         'next': _resolve_safe_next(request, fallback),
         'already_set': profile.has_legal_name,
+        'is_instructor': profile.role == 'instructor',
+        'is_student': profile.role == 'student',
     }
     return render(request, 'lms/legal_name_prompt.html', context)
 
@@ -395,8 +397,20 @@ def lms_home(request):
                 role='student'  # Default role
             )
             messages.info(request, _("Welcome to the Learning Management System! Your student profile has been created."))
-        
+
         user_profile = request.user.lms_profile
+
+        # Force every LMS user (student or instructor) to provide their legal
+        # name the first time they reach the LMS so that certificates can be
+        # issued as soon as a course is completed.
+        if not user_profile.has_legal_name:
+            from django.urls import reverse
+            from urllib.parse import urlencode
+            params = urlencode({
+                'next': request.get_full_path() or 'lms/',
+                'reason': 'certificate',
+            })
+            return redirect(f"{reverse('lms:set_legal_name')}?{params}")
     
     # Get current semester
     current_semester = Semester.objects.filter(is_current_semester=True).first()
@@ -601,6 +615,7 @@ class CourseDetailView(DetailView):
                 ensure_course_learning_records,
                 get_module_progress_states,
                 issue_certificate_if_eligible,
+                instructors_missing_legal_name,
             )
             ensure_course_learning_records(course, student_profile)
             quizzes = Quiz.objects.filter(
@@ -642,6 +657,7 @@ class CourseDetailView(DetailView):
             'course_progress': course_progress,
             'module_states': module_states,
             'issued_certificate': issued_certificate,
+            'instructors_missing_names': instructors_missing_legal_name(course) if is_enrolled else [],
             'students_progress': students_progress,
             'has_access': has_access,
             'can_view_content': can_view_content,  # Allow unauthenticated preview
@@ -1101,7 +1117,7 @@ def complete_quiz(request, quiz_taker_id):
             if unlock_message:
                 messages.success(request, unlock_message)
             if issued_certificate:
-                messages.success(request, _("Congratulations! Your course certificate has been issued."))
+                messages.success(request, _("Congratulations! You have completed all modules in this course. Click below to preview the certificate you earned."))
             if next_module:
                 return redirect(f"{reverse('lms:course_detail', kwargs={'slug': quiz.course.slug})}#collapse{next_module.id}")
         else:
@@ -2158,7 +2174,7 @@ def instructor_dashboard(request):
     for course in teaching_courses:
         courses_student_progress[course.id] = get_all_enrolled_students_progress(course)
     
-    # Calculate course completion statistics
+    # Calculate course completion statistics (quiz-completion based)
     course_completion_stats = {}
     for course in teaching_courses:
         if course.id in courses_student_progress:
@@ -2167,13 +2183,17 @@ def instructor_dashboard(request):
                 completion_rates = [data['progress']['percentage'] for data in progress_data.values()]
                 if completion_rates:
                     avg_completion = sum(completion_rates) / len(completion_rates)
+                    best_scores = [data['best_score'] for data in progress_data.values() if data.get('best_score')]
+                    avg_best_score = round(sum(best_scores) / len(best_scores), 1) if best_scores else 0
                     course_completion_stats[course.id] = {
                         'avg_completion': round(avg_completion, 1),
+                        'avg_best_score': avg_best_score,
                         'student_count': len(completion_rates),
                         'completed_25': len([r for r in completion_rates if r >= 25]),
                         'completed_50': len([r for r in completion_rates if r >= 50]),
                         'completed_75': len([r for r in completion_rates if r >= 75]),
-                        'completed_100': len([r for r in completion_rates if r >= 100])
+                        'completed_100': len([r for r in completion_rates if r >= 100]),
+                        'started_count': len([r for r in completion_rates if r > 0]),
                     }
     
     # Calculate the total number of students

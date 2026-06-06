@@ -39,7 +39,17 @@
             </div>
         </div>
     </div>
-    
+
+    <div class="alert alert-info d-flex align-items-start mb-4" role="alert">
+        <i class="fas fa-magic me-2 mt-1"></i>
+        <div>
+            <strong>Quizzes are auto-generated.</strong>
+            As soon as this module has content, an AI-built mastery check is generated for it.
+            You don't need to author any questions. Use the <em>Skip assessment</em> switch below
+            to mark overview or introductory modules that don't need a quiz.
+        </div>
+    </div>
+
     <div class="row">
         <div class="col-md-8">
             <div class="card shadow border-0 rounded-3">
@@ -55,7 +65,7 @@
                 <div class="card-body p-4">
                     <form method="post">
                         {% csrf_token %}
-                        
+
                         {% if form.non_field_errors %}
                             <div class="alert alert-danger">
                                 {% for error in form.non_field_errors %}
@@ -63,7 +73,7 @@
                                 {% endfor %}
                             </div>
                         {% endif %}
-                        
+
                         <div class="mb-4">
                             <label for="{{ form.title.id_for_label }}" class="form-label fw-bold">
                                 <i class="fas fa-heading me-2 text-primary"></i>{{ form.title.label }}
@@ -78,7 +88,7 @@
                                 <div class="form-text">{{ form.title.help_text }}</div>
                             {% endif %}
                         </div>
-                        
+
                         <div class="mb-4">
                             <label for="{{ form.description.id_for_label }}" class="form-label fw-bold">
                                 <i class="fas fa-align-left me-2 text-primary"></i>{{ form.description.label }}
@@ -90,7 +100,7 @@
                                 </div>
                             {% endif %}
                         </div>
-                        
+
                         <div class="mb-4">
                             <label for="{{ form.order.id_for_label }}" class="form-label fw-bold">
                                 <i class="fas fa-sort-numeric-down me-2 text-primary"></i>{{ form.order.label }}
@@ -106,11 +116,30 @@
                                 Determines the display order of this module in the course.
                             </div>
                         </div>
-                        
+
+                        <div class="mb-4 form-check form-switch">
+                            {{ form.skip_assessment|add_class:"form-check-input" }}
+                            <label class="form-check-label fw-semibold" for="{{ form.skip_assessment.id_for_label }}">
+                                <i class="fas fa-forward me-1 text-secondary"></i>Skip assessment for this module
+                            </label>
+                            {% if form.skip_assessment.help_text %}
+                                <div class="form-text">{{ form.skip_assessment.help_text }}</div>
+                            {% endif %}
+                            <div class="form-text">
+                                Enable for overview or introductory modules that don't need a quiz.
+                                Students will not be asked to pass a quiz to unlock the next module.
+                            </div>
+                            {% if form.skip_assessment.errors %}
+                                <div class="text-danger small mt-1">
+                                    <i class="fas fa-exclamation-circle me-1"></i>{{ form.skip_assessment.errors }}
+                                </div>
+                            {% endif %}
+                        </div>
+
                         <div class="d-grid gap-2 d-md-flex justify-content-md-between mt-4">
                             <div>
                                 {% if form.instance.id %}
-                                <a href="{% url 'lms:module_delete' course_slug=course.slug module_id=form.instance.id %}" 
+                                <a href="{% url 'lms:module_delete' course_slug=course.slug module_id=form.instance.id %}"
                                    class="btn btn-danger"
                                    onclick="return confirm('Are you sure you want to delete this module? This action cannot be undone.');">
                                     <i class="fas fa-trash me-1"></i>Delete Module
@@ -130,7 +159,7 @@
                 </div>
             </div>
         </div>
-        
+
         <div class="col-md-4">
             <div class="card shadow border-0 rounded-3">
                 <div class="card-header bg-primary bg-gradient text-white py-3">
@@ -152,11 +181,11 @@
                         <li class="list-group-item bg-transparent border-bottom py-3">
                             <div class="d-flex">
                                 <div class="me-3">
-                                    <i class="fas fa-clipboard-list fa-lg text-primary"></i>
+                                    <i class="fas fa-magic fa-lg text-info"></i>
                                 </div>
                                 <div>
-                                    <strong>Naming Examples</strong>
-                                    <p class="mb-0 text-muted">"Week 1: Introduction", "Chapter 3: Advanced Topics", etc.</p>
+                                    <strong>Auto-Generated Quizzes</strong>
+                                    <p class="mb-0 text-muted">No need to write questions &mdash; the quiz is generated for you from the module's content.</p>
                                 </div>
                             </div>
                         </li>
@@ -167,7 +196,7 @@
                                 </div>
                                 <div>
                                     <strong>Next Steps</strong>
-                                    <p class="mb-0 text-muted">After creating a module, you can add content and quizzes to it.</p>
+                                    <p class="mb-0 text-muted">After creating a module, add content to it and the mastery check will be generated automatically.</p>
                                 </div>
                             </div>
                         </li>

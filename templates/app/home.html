@@ -470,62 +470,16 @@
     <div class="row g-4" id="home-courses-grid" data-list-items>
       {% for course in courses %}
         <div class="col-lg-4 col-md-6 mb-4">
-          <div class="card course-card h-100 shadow-sm border-0">
-            {% if course.image %}
-              <img src="{{ course.image.url }}" class="card-img-top course-image" alt="{{ course.title }}" loading="lazy" decoding="async">
-            {% else %}
-              <div class="card-img-top course-image-placeholder d-flex align-items-center justify-content-center bg-light">
-                <i class="fas fa-book fa-3x text-muted"></i>
-              </div>
-            {% endif %}
-            
-            <div class="card-body d-flex flex-column">
-              <div class="d-flex justify-content-between align-items-start mb-2">
-                <span class="badge bg-primary">{{ course.category }}</span>
-                <span class="text-muted small">
-                  <i class="fas fa-clock"></i> {{ course.duration_weeks }} weeks
-                </span>
-              </div>
-              
-              <h5 class="card-title fw-bold">{{ course.title }}</h5>
-              <p class="card-text text-muted">{{ course.description|truncatewords:20 }}</p>
-              
-              <div class="mt-auto">
-                <div class="row align-items-center mb-3">
-                  <div class="col-6">
-                    <small class="text-muted">
-                      <i class="fas fa-user"></i> {{ course.instructor.user.first_name }} {{ course.instructor.user.last_name }}
-                    </small>
-                  </div>
-                  <div class="col-6 text-end">
-                    <small class="text-muted">
-                      <i class="fas fa-users"></i> {{ course.enrolled_students.count }} students
-                    </small>
-                  </div>
-                </div>
-                
-                <div class="d-flex justify-content-between align-items-center">
-                  {% if course.price > 0 %}
-                    <span class="fw-bold text-success h5 mb-0">TSh {{ course.price }}</span>
-                  {% else %}
-                    <span class="badge bg-success">Free</span>
-                  {% endif %}
-                  <a href="{% url 'lms:course_detail' course.slug %}" class="btn btn-primary">
-                    View Course
-                  </a>
-                </div>
-              </div>
-            </div>
-          </div>
+          {% include "lms/partials/_course_card.html" %}
         </div>
-        
+
         <!-- Horizontal Ad Card (Every 5 items) -->
         {% if show_list_ads and forloop.counter|divisibleby:5 %}
           <div class="col-12 mb-2">
             {% include 'app/partials/list_ad_card.html' %}
           </div>
         {% endif %}
-        
+
         <!-- Vertical Ad Card (Every 6 items, offset for variety) -->
         {% if forloop.counter|divisibleby:6 %}
           <div class="col-lg-4 col-md-6 mb-4 d-none d-md-block">

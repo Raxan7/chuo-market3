@@ -24,19 +24,7 @@
             {% if courses %}
                 {% for course in courses %}
                     <div class="col-md-6 col-lg-4 mb-4">
-                        <div class="card shadow-sm h-100">
-                            <div class="card-body">
-                                <h5 class="card-title">{{ course.title }} ({{ course.code }})</h5>
-                                <p class="text-muted small">
-                                    Level {{ course.level }} | {{ course.get_semester_display }} Semester
-                                    {% if course.is_elective %}
-                                        | <span class="badge bg-info">Elective</span>
-                                    {% endif %}
-                                </p>
-                                <p class="card-text">{{ course.summary|striptags|truncatewords:20 }}</p>
-                                <a href="{% url 'lms:course_detail' course.slug %}" class="btn btn-sm btn-primary">View Course</a>
-                            </div>
-                        </div>
+                        {% include "lms/partials/_course_card.html" %}
                     </div>
                 {% endfor %}
             {% else %}

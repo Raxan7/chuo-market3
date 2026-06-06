@@ -508,6 +508,24 @@ def user_login(request):
                 if not hasattr(user, 'customer') or not user.customer:
                     messages.info(request, 'Please complete your profile information.')
                     return redirect('profile')
+                # Force legal name capture before they can use the LMS so
+                # instructors can sign certificates and students can receive
+                # them on completion.
+                from django.urls import reverse
+                from urllib.parse import urlencode
+                profile = getattr(user, 'lms_profile', None)
+                if profile is not None and not profile.has_legal_name:
+                    reason = 'certificate'
+                    messages.info(
+                        request,
+                        "Please add your legal name now so your students "
+                        "(or your own certificates) can be issued without delay."
+                    )
+                    params = urlencode({
+                        'next': 'lms/',
+                        'reason': reason,
+                    })
+                    return redirect(f"{reverse('lms:set_legal_name')}?{params}")
                 messages.success(request, 'You have successfully logged in.')
                 return redirect('home')  # Redirect to the desired page after login
             else:

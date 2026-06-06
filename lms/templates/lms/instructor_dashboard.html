@@ -4,12 +4,27 @@
 
 {% block title %}Instructor Dashboard{% endblock title %}
 
+{% block extra_head %}
+<style>
+    .instructor-course-card {
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .instructor-course-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.08) !important;
+    }
+    .progress {
+        background-color: #e9ecef;
+    }
+</style>
+{% endblock extra_head %}
+
 {% block main-content %}
 <div class="container my-5">
     <div class="row mb-4">
         <div class="col">
             <h1>Instructor Dashboard</h1>
-            <p class="lead">Manage your courses and teaching responsibilities</p>
+            <p class="lead">Manage your courses and track student quiz progress.</p>
         </div>
     </div>
 
@@ -40,7 +55,7 @@
                     <a href="{% url 'lms:instructor_payment_methods' %}" class="list-group-item list-group-item-action">Payment Methods</a>
                 </div>
             </div>
-            
+
             <div class="card shadow-sm">
                 <div class="card-header bg-light">
                     <h5 class="mb-0">Quick Stats</h5>
@@ -55,50 +70,53 @@
                         <span class="badge bg-info rounded-pill">{{ total_students }}</span>
                     </div>
                     <div class="d-flex justify-content-between align-items-center">
-                        <div>Active Quizzes</div>
+                        <div>Auto-Generated Quizzes</div>
                         <span class="badge bg-warning text-dark rounded-pill">{{ active_quizzes }}</span>
                     </div>
                 </div>
             </div>
         </div>
-        
+
         <div class="col-md-9">
+            {# Auto-generated quiz notice - clean, single place #}
+            <div class="alert alert-info d-flex align-items-start mb-4" role="alert">
+                <i class="fas fa-magic me-2 mt-1"></i>
+                <div>
+                    <strong>Quizzes are auto-generated.</strong>
+                    Every module in your courses gets an AI-built mastery check automatically.
+                    You don't need to author any quiz questions &mdash; just add the module
+                    content and the assessment is ready once students reach it.
+                    <a href="{% url 'lms:course_list' %}" class="alert-link ms-1">Review your courses &rarr;</a>
+                </div>
+            </div>
+
             <div class="card shadow-sm mb-4">
-                <div class="card-header bg-light">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Your Courses</h5>
+                    <small class="text-muted">Progress is based on module quizzes passed</small>
                 </div>
                 <div class="card-body">
                     {% if teaching_courses %}
-                        <div class="table-responsive">
-                            <table class="table table-hover">
-                                <thead>
-                                    <tr>
-                                        <th>Course</th>
-                                        <th>Code</th>
-                                        <th>Semester</th>
-                                        <th>Students</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for course in teaching_courses %}
-                                        <tr>
-                                            <td>
-                                                <a href="{% url 'lms:course_detail' course.slug %}">{{ course.title }}</a>
-                                            </td>
-                                            <td>{{ course.code }}</td>
-                                            <td>{{ course.get_semester_display }} {{ course.year }}</td>
-                                            <td>{{ course.students.count }}</td>
-                                            <td>
-                                                <div class="btn-group btn-group-sm">
-                                                    <a href="{% url 'lms:course_detail' course.slug %}" class="btn btn-outline-primary">View</a>
-                                                    <a href="{% url 'lms:course_update' course.slug %}" class="btn btn-outline-secondary">Edit</a>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
+                        <div class="row g-3">
+                            {% for course in teaching_courses %}
+                                {% with stats=course_completion_stats|get_item:course.id %}
+                                <div class="col-12 col-md-6 col-xl-4">
+                                    <div class="position-relative">
+                                        {% include "lms/partials/_course_card.html" with show_enrolled=False show_progress=True progress_pct=stats.avg_completion|default:0 %}
+                                        <div class="d-flex justify-content-between align-items-center mt-2 px-1 small text-muted">
+                                            <span><i class="fas fa-users me-1"></i>{{ course.students.count }} students</span>
+                                            {% if stats %}
+                                                <span class="fw-semibold text-dark">Avg best score: {{ stats.avg_best_score }}%</span>
+                                            {% endif %}
+                                        </div>
+                                        <div class="d-flex gap-1 mt-2">
+                                            <a href="{% url 'lms:course_detail' course.slug %}" class="btn btn-sm btn-outline-primary flex-grow-1">View</a>
+                                            <a href="{% url 'lms:course_update' course.slug %}" class="btn btn-sm btn-outline-secondary flex-grow-1">Edit</a>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endwith %}
+                            {% endfor %}
                         </div>
                     {% else %}
                         <div class="alert alert-info">
@@ -110,8 +128,82 @@
                     {% endif %}
                 </div>
             </div> <!-- end Your Courses card -->
-            
-            <!-- Payment Methods Card -->
+
+            {# Course progress statistics - per course, quiz-based #}
+            {% if teaching_courses %}
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Student Progress (Quiz-Based)</h5>
+                    <small class="text-muted">A module counts as complete when its quiz is passed</small>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% for course in teaching_courses %}
+                            {% with stats=course_completion_stats|get_item:course.id %}
+                            {% if stats %}
+                            <div class="col-md-6 mb-3">
+                                <div class="card h-100 instructor-course-card border">
+                                    <div class="card-body">
+                                        <h5 class="card-title">{{ course.title }}</h5>
+                                        <p class="text-muted small mb-3">{{ course.code }}</p>
+
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <span>Average completion:</span>
+                                            <span class="fw-bold">{{ stats.avg_completion }}%</span>
+                                        </div>
+
+                                        <div class="progress mb-3" style="height: 20px;">
+                                            <div class="progress-bar bg-success" role="progressbar"
+                                                 style="width: {{ stats.avg_completion }}%;"
+                                                 aria-valuenow="{{ stats.avg_completion }}"
+                                                 aria-valuemin="0" aria-valuemax="100">
+                                                {{ stats.avg_completion }}%
+                                            </div>
+                                        </div>
+
+                                        <div class="row text-center g-1">
+                                            <div class="col">
+                                                <div class="small text-muted">Started</div>
+                                                <div class="h6 mb-0">{{ stats.started_count }}</div>
+                                            </div>
+                                            <div class="col">
+                                                <div class="small text-muted">25%+</div>
+                                                <div class="h6 mb-0">{{ stats.completed_25 }}</div>
+                                            </div>
+                                            <div class="col">
+                                                <div class="small text-muted">50%+</div>
+                                                <div class="h6 mb-0">{{ stats.completed_50 }}</div>
+                                            </div>
+                                            <div class="col">
+                                                <div class="small text-muted">75%+</div>
+                                                <div class="h6 mb-0">{{ stats.completed_75 }}</div>
+                                            </div>
+                                            <div class="col">
+                                                <div class="small text-muted">100%</div>
+                                                <div class="h6 mb-0">{{ stats.completed_100 }}</div>
+                                            </div>
+                                        </div>
+
+                                        <p class="mt-3 text-muted text-center small mb-2">
+                                            {{ stats.student_count }} student{{ stats.student_count|pluralize }}
+                                            &middot; avg best score <strong>{{ stats.avg_best_score }}%</strong>
+                                        </p>
+
+                                        <a href="#" class="btn btn-sm btn-primary w-100" data-bs-toggle="modal" data-bs-target="#courseProgressModal-{{ course.id }}">
+                                            <i class="fas fa-users me-1"></i> View Student Details
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                            {% endwith %}
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            {# Payment Methods #}
             <div class="card shadow-sm mb-4">
                 <div class="card-header bg-light">
                     <h5 class="mb-0">Payment Methods</h5>
@@ -130,166 +222,19 @@
                             {% endfor %}
                         </ul>
                     {% else %}
-                        <p class="text-muted">No payment methods set up yet.</p>
+                        <p class="text-muted mb-0">No payment methods set up yet.</p>
                     {% endif %}
                 </div>
                 <div class="card-footer bg-transparent">
                     <a href="{% url 'lms:add_payment_method' %}" class="btn btn-primary btn-sm">Add Payment Method</a>
                 </div>
             </div>
-            <!-- End Payment Methods Card -->
-
-            <div class="row">
-                <div class="col-md-6">
-                    <div class="card shadow-sm mb-4">
-                        <div class="card-header bg-light">
-                            <h5 class="mb-0">Recent Quizzes</h5>
-                        </div>
-                        <div class="card-body">
-                            {% if recent_quizzes %}
-                                <ul class="list-group list-group-flush">
-                                    {% for quiz in recent_quizzes %}
-                                        <li class="list-group-item">
-                                            <div class="d-flex w-100 justify-content-between">
-                                                <h6 class="mb-1">{{ quiz.title }}</h6>
-                                                <small class="text-muted">{{ quiz.timestamp|date:"M d" }}</small>
-                                            </div>
-                                            <small class="text-muted">{{ quiz.course.title }} ({{ quiz.get_category_display }})</small>
-                                            <div class="mt-2">
-                                                <a href="{% url 'lms:quiz_detail' quiz.slug %}" class="btn btn-sm btn-outline-primary">View</a>
-                                                {% if quiz.draft %}
-                                                    <span class="badge bg-secondary">Draft</span>
-                                                {% endif %}
-                                            </div>
-                                        </li>
-                                    {% endfor %}
-                                </ul>
-                            {% else %}
-                                <p class="text-muted">No quizzes created yet.</p>
-                            {% endif %}
-                        </div>
-                        <div class="card-footer bg-transparent">
-                            <a href="#" class="btn btn-sm btn-outline-secondary">View All Quizzes</a>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="col-md-6">
-                    <div class="card shadow-sm mb-4">
-                        <div class="card-header bg-light">
-                            <h5 class="mb-0">Things To Do</h5>
-                        </div>
-                        <div class="card-body">
-                            <ul class="list-group list-group-flush">
-                                {% if pending_quizzes %}
-                                    <li class="list-group-item">
-                                        <i class="fas fa-clipboard-list text-warning me-2"></i>
-                                        <span class="badge bg-warning text-dark">{{ pending_quizzes }}</span>
-                                        Quizzes need grading
-                                    </li>
-                                {% endif %}
-                                
-                                {% if draft_quizzes %}
-                                    <li class="list-group-item">
-                                        <i class="fas fa-edit text-info me-2"></i>
-                                        <span class="badge bg-info text-dark">{{ draft_quizzes }}</span>
-                                        Draft quizzes awaiting publication
-                                    </li>
-                                {% endif %}
-                                
-                                {% if incomplete_courses %}
-                                    <li class="list-group-item">
-                                        <i class="fas fa-exclamation-circle text-danger me-2"></i>
-                                        <span class="badge bg-danger">{{ incomplete_courses }}</span>
-                                        Courses without any content
-                                    </li>
-                                {% endif %}
-                            </ul>
-                            
-                            {% if not pending_quizzes and not draft_quizzes and not incomplete_courses %}
-                                <div class="text-center py-3">
-                                    <i class="fas fa-check-circle text-success fa-3x mb-3"></i>
-                                    <p>All caught up! No pending tasks.</p>
-                                </div>
-                            {% endif %}
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            {% if teaching_courses %}
-            <!-- Course Completion Statistics -->
-            <div class="card shadow-sm mb-4">
-                <div class="card-header bg-light">
-                    <h5 class="mb-0">Course Progress Statistics</h5>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        {% for course in teaching_courses %}
-                            {% with stats=course_completion_stats|get_item:course.id %}
-                            {% if stats %}
-                            <div class="col-md-6 mb-3">
-                                <div class="card h-100">
-                                    <div class="card-body">
-                                        <h5 class="card-title">{{ course.title }}</h5>
-                                        <p class="text-muted">{{ course.code }}</p>
-                                        
-                                        <div class="d-flex justify-content-between align-items-center mb-2">
-                                            <span>Average completion:</span>
-                                            <span class="fw-bold">{{ stats.avg_completion }}%</span>
-                                        </div>
-                                        
-                                        <div class="progress mb-3" style="height: 20px;">
-                                            <div class="progress-bar bg-success" role="progressbar" 
-                                                 style="width: {{ stats.avg_completion }}%;" 
-                                                 aria-valuenow="{{ stats.avg_completion }}" 
-                                                 aria-valuemin="0" aria-valuemax="100">
-                                                {{ stats.avg_completion }}%
-                                            </div>
-                                        </div>
-                                        
-                                        <div class="row text-center">
-                                            <div class="col-3">
-                                                <div class="small text-muted">25%+</div>
-                                                <div class="h5">{{ stats.completed_25 }}</div>
-                                            </div>
-                                            <div class="col-3">
-                                                <div class="small text-muted">50%+</div>
-                                                <div class="h5">{{ stats.completed_50 }}</div>
-                                            </div>
-                                            <div class="col-3">
-                                                <div class="small text-muted">75%+</div>
-                                                <div class="h5">{{ stats.completed_75 }}</div>
-                                            </div>
-                                            <div class="col-3">
-                                                <div class="small text-muted">100%</div>
-                                                <div class="h5">{{ stats.completed_100 }}</div>
-                                            </div>
-                                        </div>
-                                        
-                                        <p class="mt-3 text-muted text-center">
-                                            {{ stats.student_count }} student{{ stats.student_count|pluralize }}
-                                        </p>
-                                        
-                                        <a href="#" class="btn btn-sm btn-primary w-100 mt-2" data-bs-toggle="modal" data-bs-target="#courseProgressModal-{{ course.id }}">
-                                            View Student Details
-                                        </a>
-                                    </div>
-                                </div>
-                            </div>
-                            {% endif %}
-                            {% endwith %}
-                        {% endfor %}
-                    </div>
-                </div>
-            </div>
-            {% endif %}
         </div>
     </div>
 </div>
 
 {% if teaching_courses %}
-    <!-- Student Progress Detail Modals -->
+    {# Per-course student detail modal - quiz-based progress #}
     {% for course in teaching_courses %}
     <div class="modal fade" id="courseProgressModal-{{ course.id }}" tabindex="-1" aria-labelledby="courseProgressModalLabel-{{ course.id }}" aria-hidden="true">
         <div class="modal-dialog modal-lg">
@@ -301,39 +246,58 @@
                 <div class="modal-body">
                     {% with students_progress=courses_student_progress|get_item:course.id %}
                     {% if students_progress %}
+                    <p class="small text-muted mb-3">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Progress is based on module quizzes passed. "Best score" is the highest score
+                        the student has achieved across every module's assessment.
+                    </p>
                     <div class="table-responsive">
-                        <table class="table table-hover">
+                        <table class="table table-hover align-middle">
                             <thead>
                                 <tr>
                                     <th>Student</th>
+                                    <th>Modules Passed</th>
+                                    <th>Best Score</th>
                                     <th>Progress</th>
-                                    <th>Completed</th>
                                     <th>Last Activity</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for student_id, data in students_progress.items %}
                                 <tr>
-                                    <td>{{ data.student.user.get_full_name|default:data.student.user.username }}</td>
                                     <td>
-                                        <div class="progress" style="height: 15px;">
-                                            <div class="progress-bar bg-success" role="progressbar" 
-                                                style="width: {{ data.progress.percentage }}%;" 
-                                                aria-valuenow="{{ data.progress.percentage }}" 
-                                                aria-valuemin="0" aria-valuemax="100">
-                                                {{ data.progress.percentage }}%
-                                            </div>
-                                        </div>
+                                        <a href="#" class="fw-semibold text-decoration-none">
+                                            {{ data.student.user.get_full_name|default:data.student.user.username }}
+                                        </a>
                                     </td>
-                                    <td>{{ data.progress.completed_count }}/{{ data.progress.total_count }}</td>
                                     <td>
-                                        {% with access=data.student.contentaccess_set.filter.first %}
-                                            {% if access %}
-                                                {{ access.accessed_at|date:"M d, Y H:i" }}
-                                            {% else %}
-                                                No activity yet
-                                            {% endif %}
-                                        {% endwith %}
+                                        <span class="badge bg-light text-dark border">
+                                            {{ data.progress.completed_count }}/{{ data.progress.total_count }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% if data.best_score %}
+                                            <span class="fw-semibold">{{ data.best_score }}%</span>
+                                        {% else %}
+                                            <span class="text-muted small">No attempts</span>
+                                        {% endif %}
+                                    </td>
+                                    <td style="min-width: 160px;">
+                                        <div class="progress" style="height: 10px;">
+                                            <div class="progress-bar {% if data.progress.course_completed %}bg-success{% elif data.progress.percentage > 0 %}bg-info{% else %}bg-secondary{% endif %}"
+                                                 role="progressbar"
+                                                 style="width: {{ data.progress.percentage }}%;"
+                                                 aria-valuenow="{{ data.progress.percentage }}"
+                                                 aria-valuemin="0" aria-valuemax="100"></div>
+                                        </div>
+                                        <small class="text-muted">{{ data.progress.percentage }}%</small>
+                                    </td>
+                                    <td>
+                                        {% if data.progress.last_activity %}
+                                            {{ data.progress.last_activity|date:"M d, Y H:i" }}
+                                        {% else %}
+                                            <span class="text-muted small">No activity yet</span>
+                                        {% endif %}
                                     </td>
                                 </tr>
                                 {% endfor %}
@@ -342,7 +306,7 @@
                     </div>
                     {% else %}
                     <div class="alert alert-info">
-                        <p>No student progress data available for this course yet.</p>
+                        <p class="mb-0">No student progress data available for this course yet.</p>
                     </div>
                     {% endif %}
                     {% endwith %}

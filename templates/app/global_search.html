@@ -53,15 +53,7 @@
         <div class="row g-3">
           {% for course in courses %}
           <div class="col-12 col-md-6 col-lg-4">
-            <a href="{% url 'lms:course_detail' course.slug %}" class="text-decoration-none text-reset">
-              <div class="card h-100 border-0 shadow-sm">
-                <div class="card-body">
-                  <h3 class="h6 mb-1">{{ course.title }}</h3>
-                  {% if course.code %}<div class="small text-muted mb-2">{{ course.code }}</div>{% endif %}
-                  {% if course.summary %}<p class="small text-muted mb-0">{{ course.summary|striptags|truncatewords:18 }}</p>{% endif %}
-                </div>
-              </div>
-            </a>
+            {% include "lms/partials/_course_card.html" %}
           </div>
           {% endfor %}
         </div>

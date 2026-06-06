@@ -146,6 +146,114 @@
         width: 100%;
         min-height: 250px;
     }
+
+    /* Certificate completion CTA - strong visible button state */
+    .course-complete-card {
+        background: linear-gradient(135deg, #071331 0%, #12225A 55%, #193B91 100%);
+        color: #fff;
+        overflow: hidden;
+        border-radius: 24px;
+        position: relative;
+        box-shadow: 0 24px 55px -30px rgba(7, 19, 49, 0.85);
+    }
+
+    .course-complete-card::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        background-image: radial-gradient(circle at 1px 1px, rgba(255,255,255,0.11) 1px, transparent 0);
+        background-size: 22px 22px;
+        opacity: 0.5;
+    }
+
+    .course-complete-inner {
+        position: relative;
+        z-index: 1;
+    }
+
+    .course-complete-trophy {
+        width: 82px;
+        height: 82px;
+        border-radius: 50%;
+        margin: 0 auto 1rem;
+        background: linear-gradient(135deg, #FFE083 0%, #FFC439 55%, #E7A823 100%);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 0 0 9px rgba(255,255,255,0.08), 0 18px 30px -14px rgba(255,196,57,0.9);
+    }
+
+    .course-complete-trophy i {
+        color: #071331;
+        font-size: 30px;
+    }
+
+    .certificate-button-row {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 0.85rem;
+        margin-top: 1.35rem;
+    }
+
+    .certificate-main-btn {
+        border: 0;
+        border-radius: 999px;
+        padding: 1rem 1.65rem;
+        min-width: 270px;
+        background: linear-gradient(135deg, #FFE083 0%, #FFC439 48%, #E7A823 100%);
+        color: #071331 !important;
+        font-weight: 900;
+        font-size: 1.05rem;
+        letter-spacing: 0.01em;
+        text-decoration: none !important;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.65rem;
+        box-shadow: 0 18px 35px -16px rgba(255,196,57,1), inset 0 1px 0 rgba(255,255,255,0.55);
+        cursor: pointer;
+        transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
+    }
+
+    .certificate-main-btn:hover,
+    .certificate-main-btn:focus {
+        transform: translateY(-3px) scale(1.02);
+        box-shadow: 0 24px 45px -16px rgba(255,196,57,1), 0 0 0 5px rgba(255,255,255,0.14);
+        filter: brightness(1.04);
+        outline: none;
+    }
+
+    .certificate-main-btn i {
+        font-size: 1.15rem;
+    }
+
+    .certificate-secondary-btn {
+        border-radius: 999px;
+        padding: 1rem 1.45rem;
+        font-weight: 800;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.55rem;
+    }
+
+    .certificate-pending-note {
+        max-width: 580px;
+        margin: 0.9rem auto 0;
+        color: rgba(255,255,255,0.72);
+        font-size: 0.95rem;
+    }
+
+    @media (max-width: 575px) {
+        .certificate-main-btn,
+        .certificate-secondary-btn {
+            width: 100%;
+            min-width: 0;
+        }
+    }
+
 </style>
 {% endblock extra_head %}
 
@@ -302,25 +410,54 @@
                 </div>
                 <div class="card-body">
             {% if course_progress and course_progress.course_completed %}
-            <div class="position-relative text-center rounded-3 p-4 p-md-5 mb-4" style="background: linear-gradient(135deg, #0B1437 0%, #131E4F 50%, #1B2A6B 100%); color: #fff; overflow: hidden;">
-                <div style="position:absolute; inset:0; pointer-events:none; background-image: radial-gradient(circle at 1px 1px, rgba(255,255,255,0.08) 1px, transparent 0); background-size: 22px 22px; opacity: 0.5;"></div>
-                <div class="position-relative">
-                    <span class="d-inline-flex align-items-center justify-content-center mb-3" style="width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,#F5C148 0%,#E0A82E 100%);box-shadow:0 0 0 6px rgba(255,255,255,0.08), 0 8px 20px -6px rgba(224,168,46,0.6);">
-                        <i class="fas fa-trophy" style="color:#0B1437; font-size: 28px;"></i>
+            <div class="course-complete-card text-center p-4 p-md-5 mb-4">
+                <div class="course-complete-inner">
+                    <span class="course-complete-trophy">
+                        <i class="fas fa-trophy"></i>
                     </span>
-                    <h3 class="fw-bold mb-1">Congratulations!</h3>
-                    <p class="mb-3" style="color: rgba(255,255,255,0.78);">
-                        You have completed all modules in this course. Click below to preview the certificate you earned.
+
+                    <h3 class="fw-bold mb-2">Congratulations!</h3>
+                    <p class="mb-0" style="color: rgba(255,255,255,0.82);">
+                        You have completed all modules in this course. Your certificate is ready when issued.
                     </p>
-                    {% if issued_certificate %}
-                    <div class="d-flex flex-wrap justify-content-center gap-2">
-                        <button type="button" class="btn btn-lg px-4" data-cs-preview-index="0" style="background: linear-gradient(135deg,#FFD66B 0%,#F5C148 50%,#E0A82E 100%); color:#0B1437; font-weight:700; border:1px solid #B8861E; box-shadow: 0 10px 24px -8px rgba(224,168,46,0.6);">
-                            <i class="fas fa-eye me-2"></i>Preview Certificate
+
+                    <div class="certificate-button-row">
+                        {% if issued_certificate %}
+                        <button type="button" class="certificate-main-btn" data-cs-preview-index="0" aria-label="Preview your certificate">
+                            <i class="fas fa-award"></i>
+                            <span>Preview Your Certificate</span>
+                            <i class="fas fa-arrow-right"></i>
                         </button>
-                        <a href="{% url 'lms:certificate_detail' issued_certificate.certificate_id %}" class="btn btn-lg btn-outline-light px-4">
-                            <i class="fas fa-up-right-from-square me-2"></i>Open full page
+
+                        <a href="{% url 'lms:certificate_detail' issued_certificate.certificate_id %}" class="btn btn-outline-light certificate-secondary-btn">
+                            <i class="fas fa-up-right-from-square"></i>
+                            <span>Open Full Page</span>
                         </a>
+                        {% else %}
+                            {% if not user.lms_profile.has_legal_name %}
+                            <a href="{% url 'lms:set_legal_name' %}?next={{ request.path|urlencode }}&reason=certificate" class="certificate-main-btn">
+                                <i class="fas fa-user-edit"></i>
+                                <span>Set Legal Name to Claim Certificate</span>
+                            </a>
+                            {% else %}
+                            <button type="button" class="certificate-main-btn" onclick="window.location.reload();" aria-label="Check certificate status">
+                                <i class="fas fa-rotate-right"></i>
+                                <span>Check Certificate Status</span>
+                            </button>
+                            {% endif %}
+                        {% endif %}
                     </div>
+
+                    {% if not issued_certificate %}
+                    <p class="certificate-pending-note">
+                        {% if not user.lms_profile.has_legal_name %}
+                            Your certificate is ready! We just need your <strong>legal name</strong> to print on the document before we can issue it.
+                        {% elif instructors_missing_names %}
+                            The course is complete, but we are waiting for the instructor to verify their signature details. Please check back shortly.
+                        {% else %}
+                            Your course is complete. The system is currently generating your certificate. Please refresh the page in a moment.
+                        {% endif %}
+                    </p>
                     {% endif %}
                 </div>
             </div>
@@ -414,13 +551,20 @@
                                     {% endif %}
 
                                     <div class="border rounded p-3 bg-light">
-                                        <div class="d-flex flex-column flex-md-row justify-content-between gap-2">
-                                            <div>
+                                        <div class="d-flex align-items-start gap-2 mb-2">
+                                            <i class="fas fa-magic text-info mt-1" title="Auto-generated"></i>
+                                            <div class="flex-grow-1">
                                                 <strong>Mastery check</strong>
                                                 {% if state.skip_assessment %}
                                                 <div class="small text-muted">This overview module does not require a quiz.</div>
                                                 {% else %}
-                                                <div class="small text-muted">AI-generated from this module. Passing score: 70%.</div>
+                                                <div class="small text-muted">
+                                                    Quiz is <strong>auto-generated</strong> from this module.
+                                                    Passing score: 70%.
+                                                    {% if is_course_instructor %}
+                                                        You can regenerate it any time using the button below.
+                                                    {% endif %}
+                                                </div>
                                                 {% if state.best_score %}<div class="small">Best score: {{ state.best_score }}%</div>{% endif %}
                                                 {% endif %}
                                             </div>
@@ -429,23 +573,26 @@
                                             {% elif state.assessment_status == 'ready' and state.assessment %}
                                                 <a href="{% url 'lms:quiz_detail' state.assessment.slug %}" class="btn btn-outline-primary btn-sm">Open Assessment</a>
                                             {% elif state.assessment_status == 'processing' %}
-                                                <span class="badge bg-info text-dark align-self-start">Assessment is being prepared</span>
+                                                <span class="badge bg-info text-dark align-self-start"><i class="fas fa-spinner fa-spin me-1"></i>Being prepared</span>
                                             {% elif state.assessment_status == 'failed' %}
                                                 <span class="badge bg-danger align-self-start">Retry required</span>
                                             {% else %}
-                                                <span class="badge bg-secondary align-self-start">Assessment is being prepared</span>
+                                                <span class="badge bg-secondary align-self-start">Being prepared</span>
                                             {% endif %}
                                         </div>
                                     </div>
 
                                     {% if is_course_instructor %}
-                                    <div class="mt-3">
+                                    <div class="mt-3 d-flex flex-wrap gap-2">
                                         <a href="{% url 'lms:content_create' course_slug=course.slug module_id=module.id %}" class="btn btn-sm btn-outline-primary">
-                                            <i class="fas fa-plus"></i> Add Content
+                                            <i class="fas fa-plus me-1"></i> Add Content
                                         </a>
                                         {% if not state.skip_assessment %}
-                                        <a href="{% url 'lms:quiz_create_in_module' course_slug=course.slug module_id=module.id %}" class="btn btn-sm btn-outline-info ms-2">
-                                            <i class="fas fa-magic"></i> Regenerate AI Assessment
+                                        <a href="{% url 'lms:quiz_create_in_module' course_slug=course.slug module_id=module.id %}" class="btn btn-sm btn-outline-info">
+                                            <i class="fas fa-magic me-1"></i> Regenerate AI Assessment
+                                        </a>
+                                        <a href="{% url 'lms:module_update' course_slug=course.slug module_id=module.id %}" class="btn btn-sm btn-outline-secondary">
+                                            <i class="fas fa-cog me-1"></i> Module Settings
                                         </a>
                                         {% endif %}
                                     </div>
@@ -474,143 +621,44 @@
                 </div>
             </div>
             
-            <!-- Course Quizzes -->
+            <!-- Course Assessment Summary (replaces the duplicate quizzes table) -->
             <div class="card shadow-sm">
                 <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                    <h3 class="card-title mb-0">Quizzes & Assessments</h3>
+                    <h3 class="card-title mb-0"><i class="fas fa-magic me-2 text-info"></i>Quizzes &amp; Assessments</h3>
+                    <span class="badge bg-info">Auto-generated</span>
                 </div>
                 <div class="card-body">
-                    {% if not is_enrolled and not is_course_instructor %}
-                    <!-- Quiz Summary for Non-enrolled Students -->
-                    {% if quizzes %}
-                    <div class="alert alert-info mb-4">
-                        <div class="d-flex">
-                            <div class="me-3">
-                                <i class="fas fa-info-circle fa-2x"></i>
-                            </div>
-                            <div>
-                                <h5 class="alert-heading">Assessment Information</h5>
-                                <p>This course includes {{ quizzes|length }} assessment{% if quizzes|length != 1 %}s{% endif %}. 
-                                Enroll to attempt quizzes and track your progress.</p>
-                            </div>
+                    <div class="alert alert-info mb-3 d-flex align-items-start" role="alert">
+                        <i class="fas fa-info-circle me-2 mt-1"></i>
+                        <div>
+                            {% if is_course_instructor %}
+                                <strong>Quizzes are auto-generated per module.</strong>
+                                You don't need to author any questions &mdash; each module's mastery check
+                                is generated from its content. The status of every assessment is shown
+                                right inside the module above. Use the <em>Regenerate</em> button on a
+                                module to refresh its quiz, or <em>Module Settings</em> to mark a module
+                                as overview-only and skip the quiz.
+                            {% else %}
+                                <strong>Every module has an auto-generated mastery check.</strong>
+                                The quiz is built from the module's content and you need 70% to
+                                pass and unlock the next module. Your best score and current status
+                                are shown inside each module above.
+                            {% endif %}
                         </div>
                     </div>
-                    
-                    <!-- Preview of quiz categories for non-enrolled students -->
-                    <div class="row">
-                        {% with assignment_count=0 exam_count=0 practice_count=0 other_count=0 %}
-                            {% for quiz in quizzes %}
-                                {% if quiz.category == 'assignment' %}
-                                    {% with assignment_count=assignment_count|add:1 %}{% endwith %}
-                                {% elif quiz.category == 'exam' %}
-                                    {% with exam_count=exam_count|add:1 %}{% endwith %}
-                                {% elif quiz.category == 'practice' %}
-                                    {% with practice_count=practice_count|add:1 %}{% endwith %}
-                                {% else %}
-                                    {% with other_count=other_count|add:1 %}{% endwith %}
-                                {% endif %}
-                            {% endfor %}
-                            
-                            <div class="col-md-3 mb-3">
-                                <div class="card h-100 bg-light">
-                                    <div class="card-body text-center">
-                                        <i class="fas fa-clipboard-list fa-2x text-primary mb-3"></i>
-                                        <h5 class="card-title">Assignments</h5>
-                                        <h3>{{ assignment_count }}</h3>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="col-md-3 mb-3">
-                                <div class="card h-100 bg-light">
-                                    <div class="card-body text-center">
-                                        <i class="fas fa-file-alt fa-2x text-danger mb-3"></i>
-                                        <h5 class="card-title">Exams</h5>
-                                        <h3>{{ exam_count }}</h3>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="col-md-3 mb-3">
-                                <div class="card h-100 bg-light">
-                                    <div class="card-body text-center">
-                                        <i class="fas fa-chess-pawn fa-2x text-success mb-3"></i>
-                                        <h5 class="card-title">Practice</h5>
-                                        <h3>{{ practice_count }}</h3>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="col-md-3 mb-3">
-                                <div class="card h-100 bg-light">
-                                    <div class="card-body text-center">
-                                        <i class="fas fa-question-circle fa-2x text-secondary mb-3"></i>
-                                        <h5 class="card-title">Other</h5>
-                                        <h3>{{ other_count }}</h3>
-                                    </div>
-                                </div>
-                            </div>
-                        {% endwith %}
-                    </div>
-                    {% else %}
-                    <p class="text-muted">No assessments have been created for this course yet.</p>
-                    {% endif %}
-                    
-                    {% else %}
-                    <!-- Full quiz list for enrolled students -->
-                    {% if quizzes %}
-                    <div class="table-responsive">
-                        <table class="table">
-                            <thead>
-                                <tr>
-                                    <th>Title</th>
-                                    <th>Category</th>
-                                    <th>Due Date</th>
-                                    <th>Status</th>
-                                    <th>Action</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for quiz in quizzes %}
-                                <tr>
-                                    <td>{{ quiz.title }}</td>
-                                    <td>
-                                        {% if quiz.category %}
-                                        <span class="badge 
-                                        {% if quiz.category == 'assignment' %}bg-primary
-                                        {% elif quiz.category == 'exam' %}bg-danger
-                                        {% else %}bg-success{% endif %}">
-                                            {{ quiz.get_category_display }}
-                                        </span>
-                                        {% else %}
-                                        <span class="badge bg-secondary">Quiz</span>
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        {% if quiz.due_date %}
-                                        {{ quiz.due_date|date:"M d, Y H:i" }}
-                                        {% else %}
-                                        <span class="text-muted">No due date</span>
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        {% if quiz.draft %}
-                                        <span class="badge bg-warning">Draft</span>
-                                        {% else %}
-                                        <span class="badge bg-success">Published</span>
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        <a href="{% url 'lms:quiz_detail' slug=quiz.slug %}" class="btn btn-sm btn-outline-primary">View</a>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                    {% else %}
-                    <p class="text-muted">No AI assessments are ready for this course yet.</p>
-                    {% endif %}
+
+                    {% if not is_enrolled and not is_course_instructor %}
+                        {% if quizzes %}
+                        <p class="text-muted small mb-0">
+                            This course currently has <strong>{{ quizzes|length }}</strong>
+                            assessment{% if quizzes|length != 1 %}s{% endif %} ready.
+                            Enroll to attempt them and track your progress.
+                        </p>
+                        {% else %}
+                        <p class="text-muted small mb-0">
+                            Assessments are being generated. Check back in a few minutes.
+                        </p>
+                        {% endif %}
                     {% endif %}
                 </div>
             </div>
@@ -682,18 +730,25 @@
             
             <!-- Student Progress Tracking (For Instructors) -->
             <div class="card shadow-sm mb-4">
-                <div class="card-header bg-light">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center">
                     <h4 class="mb-0">Student Progress</h4>
+                    <small class="text-muted">Quiz-based</small>
                 </div>
                 <div class="card-body">
+                    <p class="small text-muted mb-3">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Progress is based on module quizzes passed.
+                        "Best score" is the highest score across every module's assessment.
+                    </p>
                     {% if students_progress %}
                         <div class="table-responsive">
-                            <table class="table table-sm">
+                            <table class="table table-sm align-middle">
                                 <thead>
                                     <tr>
                                         <th>Student</th>
+                                        <th>Modules Passed</th>
+                                        <th>Best Score</th>
                                         <th>Progress</th>
-                                        <th>Completed</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -701,22 +756,35 @@
                                     <tr>
                                         <td>{{ data.student.user.get_full_name|default:data.student.user.username }}</td>
                                         <td>
+                                            <span class="badge bg-light text-dark border">
+                                                {{ data.progress.completed_count }}/{{ data.progress.total_count }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            {% if data.best_score %}
+                                                <span class="fw-semibold">{{ data.best_score }}%</span>
+                                            {% else %}
+                                                <span class="text-muted small">No attempts</span>
+                                            {% endif %}
+                                        </td>
+                                        <td style="min-width: 160px;">
                                             <div class="progress" style="height: 10px;">
-                                                <div class="progress-bar bg-success" role="progressbar" 
-                                                    style="width: {{ data.progress.percentage }}%;" 
-                                                    aria-valuenow="{{ data.progress.percentage }}" 
-                                                    aria-valuemin="0" aria-valuemax="100">
+                                                <div class="progress-bar {% if data.progress.course_completed %}bg-success{% elif data.progress.percentage > 0 %}bg-info{% else %}bg-secondary{% endif %}"
+                                                     role="progressbar"
+                                                     style="width: {{ data.progress.percentage }}%;"
+                                                     aria-valuenow="{{ data.progress.percentage }}"
+                                                     aria-valuemin="0" aria-valuemax="100">
                                                 </div>
                                             </div>
+                                            <small class="text-muted">{{ data.progress.percentage }}%</small>
                                         </td>
-                                        <td>{{ data.progress.percentage }}%</td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>
                             </table>
                         </div>
                     {% else %}
-                        <p class="text-muted">No students enrolled yet.</p>
+                        <p class="text-muted mb-0">No students enrolled yet.</p>
                     {% endif %}
                 </div>
             </div>

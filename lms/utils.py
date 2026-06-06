@@ -23,84 +23,123 @@ def _log_learning_record_event(message):
 
 def calculate_course_progress(course, student):
     """
-    Calculate a student's progress in a course
-    
+    Calculate a student's progress in a course.
+
+    Progress is now quiz-completion-based: a module is "complete" only when
+    the student passes its assessment at or above the pass mark. The
+    content-view-based numbers are still returned for backward compatibility
+    but ``percentage`` and ``module_percentage`` both reflect the same
+    quiz-completion metric so dashboards show consistent data.
+
     Args:
         course: Course object
         student: LMSProfile object
-    
+
     Returns:
         dict with:
-            - percentage: float - percentage of content completed
-            - completed_count: int - number of content items completed
-            - total_count: int - total number of content items
+            - percentage: float - quiz-completion based progress (0-100)
+            - completed_count: int - number of modules with quiz passed
+            - total_count: int - total number of modules
+            - completed_contents: int - number of content items completed
+            - total_contents: int - total number of content items
+            - module_percentage: float - same as ``percentage`` (kept for back-compat)
+            - completed_modules: int - same as ``completed_count``
+            - total_modules: int - same as ``total_count``
+            - course_completed: bool - all modules have quiz passed
+            - last_activity: datetime - last quiz attempt or content access
     """
-    # Get all content items for the course
-    course_contents = CourseContent.objects.filter(module__course=course)
-    total_count = course_contents.count()
-    
-    if total_count == 0:
-        module_states = get_module_progress_states(course, student)
-        total_modules = len(module_states)
-        completed_modules = len([state for state in module_states if state['completed']])
-        module_percentage = (completed_modules / total_modules) * 100 if total_modules else 0
-        return {
-            'percentage': 0,
-            'completed_count': 0,
-            'total_count': 0,
-            'module_percentage': round(module_percentage, 1),
-            'completed_modules': completed_modules,
-            'total_modules': total_modules,
-            'course_completed': total_modules > 0 and completed_modules == total_modules,
-        }
-    
-    # Get completed content items
-    completed_contents = ContentAccess.objects.filter(
-        student=student,
-        content__module__course=course,
-        completed=True
-    ).count()
-    
-    # Calculate percentage
-    percentage = (completed_contents / total_count) * 100 if total_count > 0 else 0
-    
     module_states = get_module_progress_states(course, student)
     total_modules = len(module_states)
     completed_modules = len([state for state in module_states if state['completed']])
     module_percentage = (completed_modules / total_modules) * 100 if total_modules else 0
 
+    course_contents = CourseContent.objects.filter(module__course=course)
+    total_contents = course_contents.count()
+    completed_contents = ContentAccess.objects.filter(
+        student=student,
+        content__module__course=course,
+        completed=True,
+    ).count() if student else 0
+
+    last_quiz_at = None
+    last_content_at = None
+    if student:
+        last_quiz = (
+            QuizTaker.objects
+            .filter(user=student, quiz__module__course=course, completed=True)
+            .order_by('-date_completed')
+            .values_list('date_completed', flat=True)
+            .first()
+        )
+        last_content_at = (
+            ContentAccess.objects
+            .filter(student=student, content__module__course=course)
+            .order_by('-accessed_at')
+            .values_list('accessed_at', flat=True)
+            .first()
+        )
+        last_quiz_at = last_quiz
+
+    candidates = [t for t in (last_quiz_at, last_content_at) if t is not None]
+    last_activity = max(candidates) if candidates else None
+
     return {
-        'percentage': round(percentage, 1),
-        'completed_count': completed_contents,
-        'total_count': total_count,
+        'percentage': round(module_percentage, 1),
+        'completed_count': completed_modules,
+        'total_count': total_modules,
+        'completed_contents': completed_contents,
+        'total_contents': total_contents,
         'module_percentage': round(module_percentage, 1),
         'completed_modules': completed_modules,
         'total_modules': total_modules,
         'course_completed': total_modules > 0 and completed_modules == total_modules,
+        'last_activity': last_activity,
     }
 
 
 def get_all_enrolled_students_progress(course):
     """
-    Get progress data for all students enrolled in a course
-    
+    Get progress data for all students enrolled in a course.
+
+    Each entry also carries per-student best quiz score and a flag for
+    whether the student has passed at least one module, so instructor
+    dashboards can show accurate quiz-completion based progress.
+
     Args:
         course: Course object
-    
+
     Returns:
         dict mapping student_id to progress data
     """
     progress_data = {}
-    
-    # Get all enrolled students
-    for enrollment in course.courseenrollment_set.all():
+
+    enrollments = list(course.courseenrollment_set.select_related('student__user'))
+    student_ids = [e.student_id for e in enrollments]
+    module_ids = list(course.modules.values_list('id', flat=True))
+
+    best_scores = {}
+    if module_ids and student_ids:
+        rows = (
+            ModuleProgress.objects
+            .filter(student_id__in=student_ids, module_id__in=module_ids)
+            .values('student_id', 'best_score')
+        )
+        for row in rows:
+            sid = row['student_id']
+            current = best_scores.get(sid, 0)
+            score = float(row['best_score'] or 0)
+            if score > current:
+                best_scores[sid] = score
+
+    for enrollment in enrollments:
         student = enrollment.student
         progress = calculate_course_progress(course, student)
         progress_data[student.id] = {
             'student': student,
-            'progress': progress
+            'progress': progress,
+            'best_score': best_scores.get(student.id, 0),
         }
-    
+
     return progress_data
 
 
