@@ -147,6 +147,7 @@ class Command(BaseCommand):
                         )
 
                 quiz.generation_status = "ready"
+                quiz.ai_generated = False
                 quiz.generation_message = (
                     "Emergency fallback quiz is ready. Regenerate later with AI for higher quality."
                 )
@@ -155,6 +156,7 @@ class Command(BaseCommand):
                     "generation_status",
                     "generation_message",
                     "generation_completed_at",
+                    "ai_generated",
                 ])
 
                 job.status = "completed"

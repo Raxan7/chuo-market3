@@ -27,6 +27,14 @@ def _log_assessment_event(message, level='info'):
         logger.exception("Could not write LMS assessment activity log: %s", message)
 
 
+def _clean_text(text):
+    """Strip HTML, collapse whitespace, remove empty lines."""
+    text = strip_tags(text or '')
+    text = re.sub(r'[ \t]+', ' ', text)
+    text = re.sub(r'\n\s*\n', '\n', text)
+    return text.strip()
+
+
 def collect_module_learning_context(module, student=None):
     """
     Collect course/module content only.
@@ -35,18 +43,18 @@ def collect_module_learning_context(module, student=None):
     parts = [
         f"Course: {module.course.title}",
         f"Module: {module.title}",
-        f"Module description: {strip_tags(module.description or '')}",
+        f"Module description: {_clean_text(module.description or '')}",
     ]
 
     for content in module.contents.order_by('order', 'id'):
         body = ''
 
         if content.content_type == 'text':
-            body = strip_tags(content.text_content or '')
+            body = _clean_text(content.text_content or '')
         elif content.content_type == 'link':
-            body = content.external_link or ''
+            body = (content.external_link or '').strip()
         elif content.content_type == 'video':
-            body = content.video_url or ''
+            body = (content.video_url or '').strip()
         elif content.document:
             body = f"Document resource: {content.document.name}"
 
@@ -219,6 +227,7 @@ MODULE CONTENT:
 def _extract_json_object(text):
     """
     Try to extract a valid JSON object from model output.
+    Attempts basic repair for common LLM JSON errors.
     """
     if not text:
         raise ValueError('empty response from AI provider')
@@ -229,17 +238,65 @@ def _extract_json_object(text):
         text = re.sub(r'^```(?:json)?\s*', '', text, flags=re.IGNORECASE)
         text = re.sub(r'\s*```$', '', text)
 
-    try:
-        return json.loads(text)
-    except json.JSONDecodeError:
-        start = text.find('{')
-        end = text.rfind('}')
+    def _attempt_parse(raw):
+        raw = raw.strip()
+        try:
+            return json.loads(raw)
+        except json.JSONDecodeError:
+            return None
 
-        if start != -1 and end != -1 and end > start:
-            candidate = text[start:end + 1]
-            return json.loads(candidate)
+    # Try raw text
+    result = _attempt_parse(text)
+    if result is not None:
+        return result
 
-        raise
+    # Extract outermost { ... } block
+    start = text.find('{')
+    end = text.rfind('}')
+    if start != -1 and end != -1 and end > start:
+        candidate = text[start:end + 1]
+        result = _attempt_parse(candidate)
+        if result is not None:
+            return result
+
+        # Try basic repair: escape unescaped quotes inside strings
+        repaired = _repair_json_strings(candidate)
+        result = _attempt_parse(repaired)
+        if result is not None:
+            return result
+
+    raise ValueError(f'invalid JSON from AI provider: {text[:200]}')
+
+
+def _repair_json_strings(text):
+    """
+    Attempt basic repair of common JSON issues from LLM output:
+    - Unescaped quotes inside string values
+    """
+    result = []
+    in_string = False
+    escape = False
+    for ch in text:
+        if escape:
+            result.append(ch)
+            escape = False
+            continue
+        if ch == '\\':
+            result.append(ch)
+            escape = True
+            continue
+        if ch == '"':
+            in_string = not in_string
+            result.append(ch)
+            continue
+        if in_string and ch == "'":
+            result.append("'")
+            continue
+        if in_string and ch == '\n':
+            result.append('\\n')
+            continue
+        result.append(ch)
+    return ''.join(result)
 
 
 def _normalise_questions(raw_payload, question_count):
@@ -383,14 +440,22 @@ def _call_cerebras_for_questions(module, context, question_count):
             )
 
             payload = response.choices[0].message.content
+            finish_reason = response.choices[0].finish_reason
 
             logger.info(
-                "Cerebras response received module_id=%s attempt=%s/2 payload_chars=%s payload_preview=%s",
+                "Cerebras response received module_id=%s attempt=%s/2 payload_chars=%s finish_reason=%s payload_preview=%s",
                 getattr(module, 'id', '?'),
                 attempt,
                 len(str(payload or '')),
+                finish_reason,
                 str(payload or '')[:250],
             )
+
+            if payload is None:
+                raise ValueError(
+                    f"empty response from AI provider (finish_reason={finish_reason}). "
+                    "Try increasing CEREBRAS_ASSESSMENT_MAX_TOKENS."
+                )
 
             parsed = _extract_json_object(payload)
 
@@ -594,6 +659,8 @@ def ensure_module_assessment(module, student=None, question_count=DEFAULT_QUESTI
                 )
 
     _mark_quiz_generation_state(quiz, 'ready', 'Quiz is ready.')
+    quiz.ai_generated = True
+    quiz.save(update_fields=['ai_generated'])
 
     _log_assessment_event(
         f"AI quiz {quiz.id} is ready for module {module.id} ({module.title}) "

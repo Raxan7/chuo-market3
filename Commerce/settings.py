@@ -20,15 +20,13 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-# DEBUG = os.getenv('DEBUG', 'False').strip().lower() in {'1', 'true', 'yes', 'on'}
-DEBUG = True  # Set to True for development; ensure this is False in production
+DEBUG = os.getenv('DJANGO_DEBUG', 'True').strip().lower() in {'1', 'true', 'yes', 'on'}
 # Define the canonical domain (without www)
 CANONICAL_DOMAIN = 'chuosmart.com'
 
 ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'chuosmart.com', 'www.chuosmart.com']
 # CSRF_TRUSTED_ORIGINS = ['https://chuo-market3.onrender.com', 'http://localhost:8000']
 CSRF_TRUSTED_ORIGINS = [
-    'https://chuo-market3.onrender.com',
     'http://localhost:8000',
     'https://www.chuosmart.com',
     'https://chuosmart.com'
@@ -91,6 +89,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'core.middleware.SecurityHeadersMiddleware',  # Add CSP/Referrer/Permissions headers
     'core.middleware.SessionIdleTimeoutMiddleware',  # Custom middleware for session idle timeout
 ]
 
@@ -126,6 +125,9 @@ WSGI_APPLICATION = 'Commerce.wsgi.application'
 #     'default': {
 #         'ENGINE': 'django.db.backends.sqlite3',
 #         'NAME': BASE_DIR / 'db.sqlite3',
+#         'OPTIONS': {
+#             'timeout': 20,
+#         },
 #     }
 # }
 
@@ -192,6 +194,11 @@ LANGUAGE_CODE = 'en-us'
 
 TIME_ZONE = 'UTC'
 
+# Toggle certificate downloads/sharing. While False, students can still
+# preview their earned certificates, but the file download and share links
+# are disabled. Flip this to True when the paid certificate module ships.
+CERTIFICATE_DOWNLOADS_ENABLED = False
+
 USE_I18N = True
 
 USE_TZ = True
@@ -250,6 +257,7 @@ CEREBRAS_API_KEY = os.getenv('CEREBRAS_API_KEY')
 
 # Cerebras / assessment generation settings
 CEREBRAS_ASSESSMENT_MODEL = os.getenv('CEREBRAS_ASSESSMENT_MODEL', 'zai-glm-4.7')
+CEREBRAS_ASSESSMENT_MAX_TOKENS = int(os.getenv('CEREBRAS_ASSESSMENT_MAX_TOKENS', '4000'))
 CEREBRAS_CONTEXT_LIMIT = int(os.getenv('CEREBRAS_CONTEXT_LIMIT', '12000'))
 # When True, do not fall back to generic static questions; require AI-generated assessments only
 CEREBRAS_STRICT_ASSESSMENTS = os.getenv('CEREBRAS_STRICT_ASSESSMENTS', 'True').lower() in ('1', 'true', 'yes')
@@ -290,3 +298,20 @@ NEWSLETTER_LOG_EMAIL = os.getenv('NEWSLETTER_LOG_EMAIL', 'manyerere201@gmail.com
 PASSWORD_RESET_TIMEOUT = 86400  # 24 hours in seconds
 
 JOBS_MAINTENANCE_TOKEN = os.getenv('JOBS_MAINTENANCE_TOKEN', 'default_token_for_dev')
+
+# Custom error handlers
+CSRF_FAILURE_VIEW = 'core.views.csrf_failure'
+
+# Security headers (enabled when DEBUG=False)
+if not DEBUG:
+    SECURE_HSTS_SECONDS = 31536000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    SECURE_BROWSER_XSS_FILTER = True
+    SECURE_SSL_REDIRECT = True
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    CSRF_COOKIE_HTTPONLY = True
+    X_FRAME_OPTIONS = 'DENY'
