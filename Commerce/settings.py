@@ -222,7 +222,7 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'
 
 TINYMCE_JS_URL = 'https://cdnjs.cloudflare.com/ajax/libs/tinymce/5.10.7/tinymce.min.js'
 TINYMCE_JS_ROOT = 'https://cdnjs.cloudflare.com/ajax/libs/tinymce/5.10.7/'

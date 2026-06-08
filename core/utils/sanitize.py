@@ -10,8 +10,13 @@ from __future__ import annotations
 import re
 from urllib.parse import urlparse
 
-import bleach
+from django.utils.html import escape, strip_tags
 from django.utils.safestring import mark_safe
+
+try:
+    import bleach
+except ImportError:
+    bleach = None
 
 
 # Bleach allowlists ---------------------------------------------------------
@@ -87,22 +92,23 @@ def clean_html(value) -> str:
     if not isinstance(value, str):
         value = str(value)
 
-    cleaned = bleach.clean(
-        value,
-        tags=ALLOWED_TAGS,
-        attributes=ALLOWED_ATTRIBUTES,
-        protocols=ALLOWED_PROTOCOLS,
-        strip=True,
-        strip_comments=True,
-    )
-    # bleach leaves href/src values as-is for allowed protocols, but defence
-    # in depth never hurts for content that came from a database.
-    cleaned = bleach.linkify(
-        cleaned,
-        callbacks=[_normalize_hrefs],
-        skip_tags=["pre", "code"],
-    )
-    return mark_safe(cleaned)
+    if bleach is not None:
+        cleaned = bleach.clean(
+            value,
+            tags=ALLOWED_TAGS,
+            attributes=ALLOWED_ATTRIBUTES,
+            protocols=ALLOWED_PROTOCOLS,
+            strip=True,
+            strip_comments=True,
+        )
+        cleaned = bleach.linkify(
+            cleaned,
+            callbacks=[_normalize_hrefs],
+            skip_tags=["pre", "code"],
+        )
+        return mark_safe(cleaned)
+
+    return mark_safe(strip_tags(value))
 
 
 def _normalize_hrefs(attrs, new=False):
