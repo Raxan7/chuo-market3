@@ -134,6 +134,15 @@
     background: linear-gradient(135deg, #f1f3f5 0%, #e9ecef 100%);
 }
 
+/* Course detail hero image */
+.course-detail-image {
+    width: 100%;
+    height: auto;
+    max-height: 420px;
+    object-fit: cover;
+    display: block;
+}
+
 .course-card-title {
     font-size: 1rem;
     font-weight: 600;

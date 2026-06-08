@@ -18,6 +18,8 @@ import uuid
 from django.dispatch import receiver
 from django.db.models.signals import pre_save, post_save, post_delete
 
+from core.image_utils import optimize_image
+
 # Constants for choices
 LEVEL_CHOICES = (
     ('1', _('Level 1')),
@@ -215,6 +217,19 @@ class Course(models.Model):
             return enrollment.payment_status == 'approved'
         except CourseEnrollment.DoesNotExist:
             return False
+
+    def save(self, *args, **kwargs):
+        if self.image:
+            if not self.pk:
+                self.image = optimize_image(self.image, max_size=(1200, 1200), quality=85, format='WEBP')
+            else:
+                try:
+                    old = Course.objects.only('image').get(pk=self.pk)
+                    if old.image != self.image:
+                        self.image = optimize_image(self.image, max_size=(1200, 1200), quality=85, format='WEBP')
+                except Course.DoesNotExist:
+                    pass
+        super().save(*args, **kwargs)
 
 
 class PaymentMethod(models.Model):
