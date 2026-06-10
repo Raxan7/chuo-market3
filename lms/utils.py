@@ -25,6 +25,9 @@ def calculate_course_progress(course, student):
     """
     Calculate a student's progress in a course.
 
+    The first module (intro/overview) is always open and never counts
+    toward the progress bar or course-completion gate.
+
     Progress is now quiz-completion-based: a module is "complete" only when
     the student passes its assessment at or above the pass mark. The
     content-view-based numbers are still returned for backward compatibility
@@ -49,9 +52,13 @@ def calculate_course_progress(course, student):
             - last_activity: datetime - last quiz attempt or content access
     """
     module_states = get_module_progress_states(course, student)
-    total_modules = len(module_states)
-    completed_modules = len([state for state in module_states if state['completed']])
-    module_percentage = (completed_modules / total_modules) * 100 if total_modules else 0
+    countable = [s for s in module_states if not s['is_first_module']]
+    total_modules = len(countable)
+    completed_modules = len([s for s in countable if s['completed']])
+    if total_modules == 0:
+        module_percentage = 100.0
+    else:
+        module_percentage = (completed_modules / total_modules) * 100
 
     course_contents = CourseContent.objects.filter(module__course=course)
     total_contents = course_contents.count()
@@ -92,7 +99,7 @@ def calculate_course_progress(course, student):
         'module_percentage': round(module_percentage, 1),
         'completed_modules': completed_modules,
         'total_modules': total_modules,
-        'course_completed': total_modules > 0 and completed_modules == total_modules,
+        'course_completed': (total_modules > 0 and completed_modules == total_modules) or (total_modules == 0 and len(module_states) > 0),
         'last_activity': last_activity,
     }
 
@@ -347,6 +354,7 @@ def get_module_progress_states(course, student):
             'best_score': progress.best_score if progress else 0,
             'previous_module': modules[index-1] if index > 0 else None,
             'lock_message': module.lock_message_for(student) if student else '',
+            'is_first_module': index == 0,
         })
         
         # Update previously_completed for the next iteration in the sequence
@@ -358,7 +366,12 @@ def get_module_progress_states(course, student):
 
 def is_course_completed(course, student):
     states = get_module_progress_states(course, student)
-    return bool(states) and all(state['completed'] for state in states)
+    if not states:
+        return False
+    countable = [s for s in states if not s['is_first_module']]
+    if not countable:
+        return True
+    return all(s['completed'] for s in countable)
 
 
 def instructors_missing_legal_name(course):
