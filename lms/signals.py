@@ -61,7 +61,12 @@ def notify_new_course(sender, instance, created, **kwargs):
         related_courses = related_courses.order_by('-id')[:3]
         send_course_newsletter(instance, related_courses)
 
+    def dispatch_quiz_generation():
+        for module in instance.modules.exclude(skip_assessment=True):
+            queue_module_assessment_generation(module)
+
     transaction.on_commit(dispatch_newsletter)
+    transaction.on_commit(dispatch_quiz_generation)
 
 
 @receiver(post_save, sender=CourseContent)
