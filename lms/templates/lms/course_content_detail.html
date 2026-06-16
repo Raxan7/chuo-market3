@@ -5,7 +5,17 @@
 {% block title %}{{ content.title }}{% endblock title %}
 
 {% block extra_head %}
-<link rel="stylesheet" href="{% static 'lms/css/lms.css' %}">
+<style>
+    .content-text img,
+    .course-content img {
+        max-width: 100% !important;
+        height: auto !important;
+        max-height: 500px;
+        width: auto !important;
+        object-fit: contain;
+        border-radius: 8px;
+    }
+</style>
 {% endblock extra_head %}
 
 {% block main-content %}
