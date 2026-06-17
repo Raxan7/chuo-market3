@@ -15,6 +15,20 @@
         object-fit: contain;
         border-radius: 8px;
     }
+    @media (max-width: 768px) {
+        .content-header {
+            flex-direction: column;
+            align-items: flex-start !important;
+            gap: 0.5rem;
+        }
+        .content-header .btn {
+            width: 100%;
+            justify-content: center;
+        }
+        .module-sidebar {
+            margin-top: 1.5rem;
+        }
+    }
 </style>
 {% endblock extra_head %}
 
@@ -30,7 +44,7 @@
                 </ol>
             </nav>
             
-            <div class="d-flex justify-content-between align-items-center mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-4 content-header">
                 <h1>{{ content.title }}</h1>
                 <a href="{% url 'lms:course_detail' course.slug %}" class="btn btn-outline-secondary">
                     <i class="fas fa-arrow-left"></i> Back to Course
@@ -146,7 +160,7 @@
             </div>
         </div>
         
-        <div class="col-md-3">
+        <div class="col-md-3 module-sidebar">
             <div class="card shadow-sm mb-4">
                 <div class="card-header bg-light">
                     <h5 class="mb-0">Module Contents</h5>

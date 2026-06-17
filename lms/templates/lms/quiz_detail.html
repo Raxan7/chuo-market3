@@ -4,6 +4,14 @@
 
 {% block title %}{{ quiz.title }}{% endblock title %}
 
+{% block extra_head %}
+<style>
+  @media (max-width: 576px) {
+    .quiz-sidebar { margin-top: 1.5rem; }
+  }
+</style>
+{% endblock extra_head %}
+
 {% block main-content %}
 <div class="container my-5">
     {% if is_generating %}
@@ -86,7 +94,7 @@
                 </div>
                 
                 <div class="d-grid gap-2">
-                    <a href="{% url 'lms:start_quiz' quiz.slug %}" class="btn btn-primary btn-lg">
+                    <a href="{% url 'lms:start_quiz' quiz.slug %}" class="btn btn-primary btn-lg start-quiz-btn" role="button">
                         <i class="fas fa-play-circle me-2"></i> Start Quiz
                     </a>
                 </div>
@@ -182,7 +190,7 @@
             {% endif %}
         </div>
         
-        <div class="col-md-4">
+        <div class="col-md-4 quiz-sidebar">
             <div class="card shadow-sm">
                 <div class="card-header bg-light">
                     <h5 class="mb-0">Quiz Details</h5>

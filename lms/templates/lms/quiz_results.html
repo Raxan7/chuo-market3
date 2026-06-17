@@ -2,6 +2,19 @@
 
 {% block title %}Quiz Results{% endblock title %}
 
+{% block extra_head %}
+<style>
+  @media (max-width: 576px) {
+    .results-score {
+      font-size: 2.5rem !important;
+    }
+    .results-actions .btn {
+      width: 100%;
+    }
+  }
+</style>
+{% endblock extra_head %}
+
 {% block main-content %}
 <div class="container my-5">
     <div class="row justify-content-center">
@@ -49,10 +62,10 @@
                 <script id="csCertPreviewsData" type="application/json">{{ certificate_previews|safe }}</script>
                 {% include "lms/certificates/_preview_modal.html" %}
                 {% endif %}
-                <div class="card-footer d-flex flex-column flex-sm-row gap-2 justify-content-center">
+                <div class="card-footer d-flex flex-column flex-sm-row gap-2 justify-content-center results-actions">
                     <a href="{% url 'lms:course_detail' quiz.course.slug %}" class="btn btn-primary">Back to Course</a>
                     {% if not passed %}
-                    <a href="{% url 'lms:start_quiz' quiz.slug %}" class="btn btn-outline-primary">Try Again</a>
+                    <a href="{% url 'lms:start_quiz' quiz.slug %}" class="btn btn-outline-primary start-quiz-btn">Try Again</a>
                     {% endif %}
                 </div>
             </div>
