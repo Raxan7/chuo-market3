@@ -121,7 +121,7 @@ View the latest jobs, internships, and graduate opportunities in Tanzania. Filte
             {% else %}
             Available Jobs
             {% endif %}
-            <span class="badge bg-primary ms-2">{{ total_jobs|default:page_obj.paginator.count }}</span>
+            <span class="badge bg-primary ms-2">{{ total_jobs }}</span>
         </h1>
     </div>
     <div class="d-flex">
@@ -171,280 +171,37 @@ View the latest jobs, internships, and graduate opportunities in Tanzania. Filte
 <!-- Jobs List View -->
 <div id="listView" class="job-view">
     <div class="card mb-4">
-        <div class="card-body p-0">
-            {% if page_obj.object_list %}
-                {% for job in page_obj.object_list %}
-                <div class="job-item p-3 border-bottom" data-source="{{ job.source|default:'internal' }}">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <h5 class="mb-1">
-                                <a href="{% url 'jobs:job_detail' job.id %}" class="text-decoration-none">
-                                    {{ job.title }}
-                                    {% if job.is_featured %}<span class="badge bg-warning text-dark ms-2">Featured</span>{% endif %}
-                                    {% if job.posted_date|date:'Y-m-d' >= today|date:'Y-m-d' %}<span class="badge bg-success ms-2">New</span>{% endif %}
-                                </a>
-                            </h5>
-                            <div class="mb-2">
-                                <span class="text-muted">{{ job.company.name }}</span> • 
-                                <span class="text-muted">{{ job.location }}</span>
-                                {% if job.is_remote %}<span class="badge bg-success ms-1">Remote</span>{% endif %} •
-                                <span class="badge bg-light text-dark">
-                                    {{ job.get_job_type_display }}
-                                </span>
-                            </div>
-                            <p class="mb-0 text-truncate-3">
-                                {{ job.description|striptags|truncatewords:30 }}
-                            </p>
-                        </div>
-                        {% if job.company.logo %}
-                        <div class="ms-3">
-                            <img src="{{ job.company.logo.url }}" alt="{{ job.company.name }}" 
-                                class="company-logo" style="width: 60px; height: 60px; object-fit: contain;">
-                        </div>
-                        {% endif %}
-                    </div>
-                    <div class="d-flex justify-content-between align-items-center mt-3">
-                        <div>
-                            {% if job.salary_min %}
-                            <span class="text-success">
-                                TZS {{ job.salary_min|floatformat:0 }}
-                                {% if job.salary_max %}
-                                - {{ job.salary_max|floatformat:0 }}
-                                {% endif %}
-                            </span>
-                            {% endif %}
-                            
-                            <small class="text-muted ms-3">Posted {{ job.posted_date|timesince }} ago</small>
-                        </div>
-                        <div>
-                            {% if job.source != 'internal' %}
-                            <span class="badge bg-secondary">{{ job.get_source_display }}</span>
-                            {% endif %}
-                            
-                            {% if user.is_authenticated %}
-                            <button class="btn btn-sm btn-outline-secondary ms-2 toggle-saved-job" 
-                                data-job-id="{{ job.id }}" data-csrf="{{ csrf_token }}">
-                                <i class="bi {% if job.is_saved %}bi-bookmark-fill{% else %}bi-bookmark{% endif %}"></i>
-                            </button>
-                            {% endif %}
-                            
-                            <a href="{% url 'jobs:job_detail' job.id %}" class="btn btn-sm btn-primary ms-2">View Details</a>
-                        </div>
-                    </div>
-                </div>
-                {% endfor %}
-            {% else %}
-                <div class="p-5 text-center">
-                    <div class="mb-4">
-                        <i class="bi bi-search fs-1 text-muted"></i>
-                    </div>
-                    <h4>No jobs found</h4>
-                    <p class="text-muted mb-4">We couldn't find any jobs matching your search criteria. Try adjusting your filters or search terms.</p>
-                    <a href="{% url 'jobs:job_list' %}" class="btn btn-primary">View All Jobs</a>
-                </div>
-            {% endif %}
+        <div class="card-body p-0" id="jobListContainer">
+            {% include "jobs/_job_items.html" %}
         </div>
     </div>
-    
-    <!-- Pagination -->
-    {% if is_paginated %}
-    <nav aria-label="Job pagination">
-        <ul class="pagination justify-content-center">
-            {% if page_obj.has_previous %}
-            <li class="page-item">
-                <a class="page-link" href="?page=1{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
-                    <i class="bi bi-chevron-double-left"></i>
-                </a>
-            </li>
-            <li class="page-item">
-                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
-                    <i class="bi bi-chevron-left"></i>
-                </a>
-            </li>
-            {% else %}
-            <li class="page-item disabled">
-                <span class="page-link"><i class="bi bi-chevron-double-left"></i></span>
-            </li>
-            <li class="page-item disabled">
-                <span class="page-link"><i class="bi bi-chevron-left"></i></span>
-            </li>
-            {% endif %}
-            
-            {% for num in paginator.page_range %}
-                {% if page_obj.number == num %}
-                <li class="page-item active"><span class="page-link">{{ num }}</span></li>
-                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
-                <li class="page-item">
-                    <a class="page-link" href="?page={{ num }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">{{ num }}</a>
-                </li>
-                {% endif %}
-            {% endfor %}
-            
-            {% if page_obj.has_next %}
-            <li class="page-item">
-                <a class="page-link" href="?page={{ page_obj.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
-                    <i class="bi bi-chevron-right"></i>
-                </a>
-            </li>
-            <li class="page-item">
-                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
-                    <i class="bi bi-chevron-double-right"></i>
-                </a>
-            </li>
-            {% else %}
-            <li class="page-item disabled">
-                <span class="page-link"><i class="bi bi-chevron-right"></i></span>
-            </li>
-            <li class="page-item disabled">
-                <span class="page-link"><i class="bi bi-chevron-double-right"></i></span>
-            </li>
-            {% endif %}
-        </ul>
-    </nav>
-    {% endif %}
+    <!-- Loading indicator for infinite scroll -->
+    <div id="listLoading" class="text-center py-4" style="display: none;">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading more jobs...</span>
+        </div>
+        <p class="text-muted mt-2">Loading more jobs...</p>
+    </div>
+    <!-- End of results marker -->
+    <div id="listEnd" class="text-center py-4" style="display: none;">
+        <p class="text-muted"><i class="bi bi-check-circle me-1"></i> All jobs loaded</p>
+    </div>
 </div>
 
 <!-- Jobs Grid View (Hidden by default) -->
 <div id="gridView" class="job-view" style="display: none;">
-    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4 mb-4">
-        {% if page_obj.object_list %}
-            {% for job in page_obj.object_list %}
-            <div class="col" data-source="{{ job.source|default:'internal' }}">
-                <div class="card h-100">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between">
-                            {% if job.company.logo %}
-                            <img src="{{ job.company.logo.url }}" alt="{{ job.company.name }}" 
-                                class="company-logo mb-3" style="width: 50px; height: 50px; object-fit: contain;">
-                            {% else %}
-                            <div class="company-placeholder bg-light d-flex align-items-center justify-content-center rounded mb-3" 
-                                style="width: 50px; height: 50px;">
-                                <i class="bi bi-building text-muted"></i>
-                            </div>
-                            {% endif %}
-                            
-                            <div>
-                                <span class="badge bg-light text-dark">
-                                    {{ job.get_job_type_display }}
-                                </span>
-                                {% if job.posted_date|date:'Y-m-d' >= today|date:'Y-m-d' %}<span class="badge bg-success ms-1">New</span>{% endif %}
-                            </div>
-                        </div>
-                        
-                        <h5 class="card-title">
-                            <a href="{% url 'jobs:job_detail' job.id %}" class="text-decoration-none">
-                                {{ job.title }}
-                            </a>
-                        </h5>
-                        <h6 class="card-subtitle mb-2 text-muted">{{ job.company.name }}</h6>
-                        
-                        <div class="mb-2">
-                            <small class="text-muted">
-                                <i class="bi bi-geo-alt me-1"></i> {{ job.location }}
-                                {% if job.is_remote %}<span class="badge bg-success ms-1">Remote</span>{% endif %}
-                            </small>
-                        </div>
-                        
-                        <p class="card-text text-truncate-3">{{ job.description|striptags|truncatewords:20 }}</p>
-                        
-                        {% if job.salary_min %}
-                        <div class="mb-2">
-                            <span class="text-success">
-                                TZS {{ job.salary_min|floatformat:0 }}
-                                {% if job.salary_max %}
-                                - {{ job.salary_max|floatformat:0 }}
-                                {% endif %}
-                            </span>
-                        </div>
-                        {% endif %}
-                    </div>
-                    <div class="card-footer bg-transparent">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <small class="text-muted">{{ job.posted_date|timesince }} ago</small>
-                            <div>
-                                {% if user.is_authenticated %}
-                                <button class="btn btn-sm btn-outline-secondary toggle-saved-job" 
-                                    data-job-id="{{ job.id }}" data-csrf="{{ csrf_token }}">
-                                    <i class="bi {% if job.is_saved %}bi-bookmark-fill{% else %}bi-bookmark{% endif %}"></i>
-                                </button>
-                                {% endif %}
-                                <a href="{% url 'jobs:job_detail' job.id %}" class="btn btn-sm btn-primary ms-1">View</a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            {% endfor %}
-        {% else %}
-            <div class="col-12">
-                <div class="p-5 text-center">
-                    <div class="mb-4">
-                        <i class="bi bi-search fs-1 text-muted"></i>
-                    </div>
-                    <h4>No jobs found</h4>
-                    <p class="text-muted mb-4">We couldn't find any jobs matching your search criteria. Try adjusting your filters or search terms.</p>
-                    <a href="{% url 'jobs:job_list' %}" class="btn btn-primary">View All Jobs</a>
-                </div>
-            </div>
-        {% endif %}
+    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4 mb-4" id="jobGridContainer">
+        {% include "jobs/_job_grid_items.html" %}
     </div>
-    
-    <!-- Pagination (Grid View) -->
-    {% if is_paginated %}
-    <nav aria-label="Job pagination">
-        <ul class="pagination justify-content-center">
-            {% if page_obj.has_previous %}
-            <li class="page-item">
-                <a class="page-link" href="?page=1{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
-                    <i class="bi bi-chevron-double-left"></i>
-                </a>
-            </li>
-            <li class="page-item">
-                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
-                    <i class="bi bi-chevron-left"></i>
-                </a>
-            </li>
-            {% else %}
-            <li class="page-item disabled">
-                <span class="page-link"><i class="bi bi-chevron-double-left"></i></span>
-            </li>
-            <li class="page-item disabled">
-                <span class="page-link"><i class="bi bi-chevron-left"></i></span>
-            </li>
-            {% endif %}
-            
-            {% for num in paginator.page_range %}
-                {% if page_obj.number == num %}
-                <li class="page-item active"><span class="page-link">{{ num }}</span></li>
-                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
-                <li class="page-item">
-                    <a class="page-link" href="?page={{ num }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">{{ num }}</a>
-                </li>
-                {% endif %}
-            {% endfor %}
-            
-            {% if page_obj.has_next %}
-            <li class="page-item">
-                <a class="page-link" href="?page={{ page_obj.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
-                    <i class="bi bi-chevron-right"></i>
-                </a>
-            </li>
-            <li class="page-item">
-                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
-                    <i class="bi bi-chevron-double-right"></i>
-                </a>
-            </li>
-            {% else %}
-            <li class="page-item disabled">
-                <span class="page-link"><i class="bi bi-chevron-right"></i></span>
-            </li>
-            <li class="page-item disabled">
-                <span class="page-link"><i class="bi bi-chevron-double-right"></i></span>
-            </li>
-            {% endif %}
-        </ul>
-    </nav>
-    {% endif %}
+    <div id="gridLoading" class="text-center py-4" style="display: none;">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading more jobs...</span>
+        </div>
+        <p class="text-muted mt-2">Loading more jobs...</p>
+    </div>
+    <div id="gridEnd" class="text-center py-4" style="display: none;">
+        <p class="text-muted"><i class="bi bi-check-circle me-1"></i> All jobs loaded</p>
+    </div>
 </div>
 
 <!-- Job Alert Box -->
@@ -465,103 +222,173 @@ View the latest jobs, internships, and graduate opportunities in Tanzania. Filte
 
 {% endblock %}
 
+{% block extra_css %}
+{{ block.super }}
+<style>
+  .job-item.lazy-hidden,
+  #jobGridContainer .col.lazy-hidden {
+    display: none;
+  }
+</style>
+<noscript>
+  <style>
+    .job-item.lazy-hidden,
+    #jobGridContainer .col.lazy-hidden {
+      display: block;
+    }
+  </style>
+</noscript>
+{% endblock %}
+
 {% block extra_js %}
 {{ block.super }}
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // List/Grid View Toggle
-        const listViewBtn = document.getElementById('listViewBtn');
-        const gridViewBtn = document.getElementById('gridViewBtn');
-        const listView = document.getElementById('listView');
-        const gridView = document.getElementById('gridView');
-        
-        listViewBtn.addEventListener('click', function() {
-            listView.style.display = 'block';
-            gridView.style.display = 'none';
-            listViewBtn.classList.add('active');
-            gridViewBtn.classList.remove('active');
-            localStorage.setItem('jobViewPreference', 'list');
-        });
-        
-        gridViewBtn.addEventListener('click', function() {
-            listView.style.display = 'none';
-            gridView.style.display = 'block';
-            gridViewBtn.classList.add('active');
-            listViewBtn.classList.remove('active');
-            localStorage.setItem('jobViewPreference', 'grid');
-        });
-        
-        // Load user preference if set
-        const viewPreference = localStorage.getItem('jobViewPreference');
-        if (viewPreference === 'grid') {
-            gridViewBtn.click();
+  document.addEventListener('DOMContentLoaded', function() {
+    var CHUNK_SIZE = 50;
+    var listItems = document.querySelectorAll('#jobListContainer .job-item');
+    var gridItems = document.querySelectorAll('#jobGridContainer .col');
+    var total = listItems.length;
+    var visibleCount = 0;
+
+    if (total === 0) return;
+
+    function showChunk(count) {
+      var upTo = count > total ? total : count;
+      for (var i = visibleCount; i < upTo; i++) {
+        listItems[i].classList.remove('lazy-hidden');
+        if (gridItems[i]) gridItems[i].classList.remove('lazy-hidden');
+      }
+      visibleCount = upTo;
+      document.getElementById('listLoading').style.display = 'none';
+      document.getElementById('gridLoading').style.display = 'none';
+      if (visibleCount >= total) {
+        document.getElementById('listEnd').style.display = 'block';
+        document.getElementById('gridEnd').style.display = 'block';
+      }
+    }
+
+    // Show first chunk instantly
+    showChunk(CHUNK_SIZE);
+
+    // Create sentinel for IntersectionObserver (before loading indicator)
+    var sentinel = document.createElement('div');
+    sentinel.id = 'scroll-sentinel';
+    sentinel.style.height = '1px';
+    var listView = document.getElementById('listView');
+    var listLoading = document.getElementById('listLoading');
+    listView.insertBefore(sentinel, listLoading);
+
+    function loadNextChunk() {
+      if (visibleCount < total) {
+        document.getElementById('listLoading').style.display = 'block';
+        document.getElementById('gridLoading').style.display = 'block';
+        showChunk(visibleCount + CHUNK_SIZE);
+      }
+    }
+
+    if (window.IntersectionObserver) {
+      var observer = new IntersectionObserver(function(entries) {
+        if (entries[0].isIntersecting && visibleCount < total) {
+          loadNextChunk();
         }
-        
-        // Toggle saved job functionality
-        const saveButtons = document.querySelectorAll('.toggle-saved-job');
-        if (saveButtons.length > 0) {
-            saveButtons.forEach(button => {
-                button.addEventListener('click', function() {
-                    const jobId = this.getAttribute('data-job-id');
-                    const csrf = this.getAttribute('data-csrf');
-                    
-                    fetch(`/jobs/job/${jobId}/save/`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRFToken': csrf
-                        }
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.status === 'success') {
-                            // Update all instances of the save button for this job
-                            document.querySelectorAll(`.toggle-saved-job[data-job-id="${jobId}"]`).forEach(btn => {
-                                const icon = btn.querySelector('i');
-                                if (data.created) {
-                                    icon.classList.remove('bi-bookmark');
-                                    icon.classList.add('bi-bookmark-fill');
-                                    btn.classList.remove('btn-outline-secondary');
-                                    btn.classList.add('btn-outline-danger');
-                                } else {
-                                    icon.classList.remove('bi-bookmark-fill');
-                                    icon.classList.add('bi-bookmark');
-                                    btn.classList.remove('btn-outline-danger');
-                                    btn.classList.add('btn-outline-secondary');
-                                }
-                            });
-                        }
-                    })
-                    .catch(error => console.error('Error:', error));
-                });
-            });
+      }, { rootMargin: '300px' });
+      observer.observe(sentinel);
+    } else {
+      window.addEventListener('scroll', function() {
+        if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 500) {
+          loadNextChunk();
         }
-        
-        // Job source filtering
-        const sourceCheckboxes = document.querySelectorAll('[id^="source_"]');
-        if (sourceCheckboxes.length > 0) {
-            sourceCheckboxes.forEach(checkbox => {
-                checkbox.addEventListener('change', function() {
-                    filterJobsBySource();
-                });
-            });
-            
-            function filterJobsBySource() {
-                const selectedSources = Array.from(sourceCheckboxes)
-                    .filter(cb => cb.checked)
-                    .map(cb => cb.id.replace('source_', ''));
-                
-                document.querySelectorAll('[data-source]').forEach(item => {
-                    const source = item.getAttribute('data-source');
-                    
-                    if (selectedSources.includes(source)) {
-                        item.classList.remove('d-none');
-                    } else {
-                        item.classList.add('d-none');
-                    }
-                });
-            }
-        }
+      });
+    }
+
+    // List/Grid View Toggle
+    var listViewBtn = document.getElementById('listViewBtn');
+    var gridViewBtn = document.getElementById('gridViewBtn');
+    var listViewEl = document.getElementById('listView');
+    var gridViewEl = document.getElementById('gridView');
+
+    listViewBtn.addEventListener('click', function() {
+      listViewEl.style.display = 'block';
+      gridViewEl.style.display = 'none';
+      listViewBtn.classList.add('active');
+      gridViewBtn.classList.remove('active');
+      localStorage.setItem('jobViewPreference', 'list');
     });
+
+    gridViewBtn.addEventListener('click', function() {
+      listViewEl.style.display = 'none';
+      gridViewEl.style.display = 'block';
+      gridViewBtn.classList.add('active');
+      listViewBtn.classList.remove('active');
+      localStorage.setItem('jobViewPreference', 'grid');
+    });
+
+    var viewPreference = localStorage.getItem('jobViewPreference');
+    if (viewPreference === 'grid') {
+      gridViewBtn.click();
+    }
+
+    // Toggle saved job functionality (uses event delegation)
+    document.addEventListener('click', function(e) {
+      var button = e.target.closest('.toggle-saved-job');
+      if (!button) return;
+
+      var jobId = button.getAttribute('data-job-id');
+      var csrf = button.getAttribute('data-csrf');
+
+      fetch('/jobs/job/' + jobId + '/save/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrf
+        }
+      })
+      .then(function(response) { return response.json(); })
+      .then(function(data) {
+        if (data.status === 'success') {
+          document.querySelectorAll('.toggle-saved-job[data-job-id="' + jobId + '"]').forEach(function(btn) {
+            var icon = btn.querySelector('i');
+            if (data.created) {
+              icon.classList.remove('bi-bookmark');
+              icon.classList.add('bi-bookmark-fill');
+              btn.classList.remove('btn-outline-secondary');
+              btn.classList.add('btn-outline-danger');
+            } else {
+              icon.classList.remove('bi-bookmark-fill');
+              icon.classList.add('bi-bookmark');
+              btn.classList.remove('btn-outline-danger');
+              btn.classList.add('btn-outline-secondary');
+            }
+          });
+        }
+      })
+      .catch(function(error) { console.error('Error:', error); });
+    });
+
+    // Job source filtering
+    var sourceCheckboxes = document.querySelectorAll('[id^="source_"]');
+    if (sourceCheckboxes.length > 0) {
+      sourceCheckboxes.forEach(function(checkbox) {
+        checkbox.addEventListener('change', function() {
+          filterJobsBySource();
+        });
+      });
+
+      function filterJobsBySource() {
+        var selectedSources = Array.from(sourceCheckboxes)
+          .filter(function(cb) { return cb.checked; })
+          .map(function(cb) { return cb.id.replace('source_', ''); });
+
+        document.querySelectorAll('[data-source]').forEach(function(item) {
+          var source = item.getAttribute('data-source');
+          if (selectedSources.includes(source)) {
+            item.classList.remove('d-none');
+          } else {
+            item.classList.add('d-none');
+          }
+        });
+      }
+    }
+  });
 </script>
 {% endblock %}

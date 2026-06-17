@@ -1,0 +1,67 @@
+{% load static %}
+{% for job in jobs %}
+<div class="job-item p-3 border-bottom{% if forloop.counter > 50 %} lazy-hidden{% endif %}" data-source="{{ job.source|default:'internal' }}">
+    <div class="d-flex justify-content-between align-items-start">
+        <div>
+            <h5 class="mb-1">
+                <a href="{% url 'jobs:job_detail' job.id %}" class="text-decoration-none">
+                    {{ job.title }}
+                    {% if job.is_featured %}<span class="badge bg-warning text-dark ms-2">Featured</span>{% endif %}
+                    {% if job.posted_date|date:'Y-m-d' >= today|date:'Y-m-d' %}<span class="badge bg-success ms-2">New</span>{% endif %}
+                </a>
+            </h5>
+            <div class="mb-2">
+                <span class="text-muted">{{ job.company.name }}</span> •
+                <span class="text-muted">{{ job.location }}</span>
+                {% if job.is_remote %}<span class="badge bg-success ms-1">Remote</span>{% endif %} •
+                <span class="badge bg-light text-dark">
+                    {{ job.get_job_type_display }}
+                </span>
+            </div>
+            <p class="mb-0 text-truncate-3">
+                {{ job.description|striptags|truncatewords:30 }}
+            </p>
+        </div>
+        {% if job.company.logo %}
+        <div class="ms-3 d-none d-sm-block">
+            <img src="{{ job.company.logo.url }}" alt="{{ job.company.name }}"
+                class="company-logo" style="width: 60px; height: 60px; object-fit: contain;">
+        </div>
+        {% endif %}
+    </div>
+    <div class="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center mt-3 gap-2">
+        <div>
+            {% if job.salary_min %}
+            <span class="text-success">
+                TZS {{ job.salary_min|floatformat:0 }}
+                {% if job.salary_max %}
+                - {{ job.salary_max|floatformat:0 }}
+                {% endif %}
+            </span>
+            {% endif %}
+            <small class="text-muted ms-0 ms-sm-3 d-block d-sm-inline mt-1 mt-sm-0">Posted {{ job.posted_date|timesince }} ago</small>
+        </div>
+        <div class="d-flex gap-2">
+            {% if job.source != 'internal' %}
+            <span class="badge bg-secondary align-self-center">{{ job.get_source_display }}</span>
+            {% endif %}
+            {% if user.is_authenticated %}
+            <button class="btn btn-sm btn-outline-secondary toggle-saved-job"
+                data-job-id="{{ job.id }}" data-csrf="{{ csrf_token }}">
+                <i class="bi {% if job.is_saved %}bi-bookmark-fill{% else %}bi-bookmark{% endif %}"></i>
+            </button>
+            {% endif %}
+            <a href="{% url 'jobs:job_detail' job.id %}" class="btn btn-sm btn-primary">View Details</a>
+        </div>
+    </div>
+</div>
+{% empty %}
+<div class="p-5 text-center">
+    <div class="mb-4">
+        <i class="bi bi-search fs-1 text-muted"></i>
+    </div>
+    <h4>No jobs found</h4>
+    <p class="text-muted mb-4">We couldn't find any jobs matching your search criteria. Try adjusting your filters or search terms.</p>
+    <a href="{% url 'jobs:job_list' %}" class="btn btn-primary">View All Jobs</a>
+</div>
+{% endfor %}

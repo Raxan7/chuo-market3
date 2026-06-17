@@ -111,10 +111,22 @@ def job_list(request):
             since_date = timezone.now() - timezone.timedelta(days=days)
             jobs = jobs.filter(posted_date__gte=since_date)
     
-    # Pagination
-    paginator = Paginator(jobs.order_by('-is_featured', '-posted_date'), 10)  # 10 jobs per page
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
+    # Apply ordering
+    jobs = jobs.order_by('-is_featured', '-posted_date')
+    
+    # Offset-based pagination for infinite scroll:
+    #   - Initial page load: load all jobs
+    #   - AJAX scroll loads: 10 jobs  (offset=N, limit=10)
+    total_jobs_count = jobs.count()
+    offset = int(request.GET.get('offset', 0))
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+    if is_ajax:
+        limit = int(request.GET.get('limit', 10))
+    else:
+        limit = total_jobs_count or 1
+    page_jobs = jobs[offset:offset + limit]
+    has_next = (offset + limit) < total_jobs_count
+    next_offset = offset + limit if has_next else None
     
     # Get industries and job types for sidebar filters
     industry_public_filter = (
@@ -124,11 +136,36 @@ def job_list(request):
     )
     industries = Industry.objects.annotate(job_count=Count('jobs', filter=industry_public_filter, distinct=True)).filter(job_count__gt=0)
     
+    # AJAX request: return only the job items as HTML fragment for infinite scroll
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        from django.template.loader import render_to_string
+        from django.middleware.csrf import get_token
+        list_html = render_to_string('jobs/_job_items.html', {
+            'jobs': page_jobs,
+            'user': request.user,
+            'today': timezone.now(),
+            'csrf_token': get_token(request),
+        })
+        grid_html = render_to_string('jobs/_job_grid_items.html', {
+            'jobs': page_jobs,
+            'user': request.user,
+            'today': timezone.now(),
+        })
+        return JsonResponse({
+            'list_html': list_html,
+            'grid_html': grid_html,
+            'has_next': has_next,
+            'next_offset': next_offset,
+            'total': total_jobs_count,
+        })
+    
     context = {
-        'page_obj': page_obj,
+        'jobs': page_jobs,
+        'total_jobs': total_jobs_count,
+        'has_next': has_next,
+        'next_offset': next_offset,
         'search_form': search_form,
         'industries': industries,
-        'total_jobs': jobs.count(),
         'today': timezone.now(),
         'jobs_listing_json_ld': {
             '@context': 'https://schema.org',

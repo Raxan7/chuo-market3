@@ -2084,10 +2084,9 @@ def grade_students(request, course_slug):
 
 @login_required(login_url='login')
 def student_dashboard(request):
-    """Dashboard for students"""
-    # Check if user is a student
-    if not hasattr(request.user, 'lms_profile') or not is_student(request.user):
-        messages.error(request, _("You are not registered as a student."))
+    """Dashboard for students (also available to instructors enrolled in courses)"""
+    if not hasattr(request.user, 'lms_profile'):
+        messages.error(request, _("You don't have an LMS profile."))
         return redirect('lms:lms_home')
 
     profile = request.user.lms_profile
@@ -2118,11 +2117,16 @@ def student_dashboard(request):
     # Calculate progress for each course and auto-issue certificates for completed ones
     from .utils import calculate_course_progress, issue_certificate_if_eligible
     course_progress = {}
+    in_progress_courses = []
+    completed_courses = []
     for course in courses:
         progress = calculate_course_progress(course, profile)
         course_progress[course.id] = progress
         if progress.get('course_completed'):
+            completed_courses.append(course)
             issue_certificate_if_eligible(course, profile)
+        else:
+            in_progress_courses.append(course)
     
     # Re-fetch certificates after any auto-issuance
     certificates = StudentCertificate.objects.filter(student=request.user).select_related('course', 'template', 'template__course')
@@ -2131,6 +2135,8 @@ def student_dashboard(request):
         'profile': profile,
         'current_semester': current_semester,
         'courses': courses,
+        'in_progress_courses': in_progress_courses,
+        'completed_courses': completed_courses,
         'grades': grades,
         'upcoming_quizzes': upcoming_quizzes,
         'recent_contents': recent_contents,
