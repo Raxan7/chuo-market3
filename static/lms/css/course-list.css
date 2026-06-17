@@ -1,0 +1,17 @@
+/* Course list page - relies on lms.css for the unified course card styles. */
+@import url("../lms/css/lms.css");
+
+.course-filter-panel {
+    /* Filter sidebar stays visible while scrolling on wide viewports */
+}
+
+@media (min-width: 992px) {
+    .course-filter-panel {
+        position: sticky;
+        top: 20px;
+    }
+
+    .course-list-title {
+        font-size: 3rem;
+    }
+}
