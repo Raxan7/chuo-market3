@@ -227,6 +227,7 @@
                     <h4 class="mb-0"><i class="fas fa-award text-warning me-2"></i>Your Certificates</h4>
                     <span class="badge bg-warning text-dark">{{ certificates|length }} earned</span>
                 </div>
+                <div class="card-body">
                     <div class="list-group list-group-flush">
                         {% for certificate in certificates %}
                         <div class="list-group-item d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 p-3 certificate-item">
@@ -251,10 +252,15 @@
                             <a href="{% url 'lms:certificate_download' certificate.certificate_id %}" class="btn btn-sm" style="background: linear-gradient(135deg,#FFD66B 0%,#F5C148 50%,#E0A82E 100%); color:#0B1437; font-weight:700; border:1px solid #B8861E;">
                                 <i class="fas fa-download me-1"></i> Download
                             </a>
+                            {% elif certificate_notice_active %}
+                            <span class="btn btn-sm btn-secondary disabled" style="opacity:0.65;cursor:not-allowed;">
+                                <i class="fas fa-clock me-1"></i> Available from 24 June 2026
+                            </span>
                             {% endif %}
                         </div>
                     </div>
                     {% endfor %}
+                </div>
                 </div>
             </div>
         </div>

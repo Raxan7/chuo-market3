@@ -41,8 +41,10 @@
                             <div>
                                 <div class="fw-semibold">Your certificate is ready</div>
                                 <div class="small text-muted">
-                                    {% if certificate_downloads_enabled %}
+                                    {% if certificate_downloads_enabled and not certificate_notice_active %}
                                         View, download, or share it with one click.
+                                    {% elif certificate_notice_active %}
+                                        Preview your certificate. Downloads will be available from <strong>24 June 2026</strong>.
                                     {% else %}
                                         Preview your certificate. Downloading and sharing will be enabled soon.
                                     {% endif %}

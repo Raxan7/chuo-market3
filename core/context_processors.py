@@ -1,9 +1,19 @@
+from datetime import date
+
+from django.conf import settings as django_settings
 from django.contrib.auth.models import AnonymousUser
+
 
 def auth_status(request):
     return {
         'is_authenticated': not isinstance(request.user, AnonymousUser)
     }
+
+
+def certificate_notice(request):
+    release = getattr(django_settings, 'CERTIFICATE_RELEASE_DATE', None)
+    active = release is not None and date.today() < release
+    return {'certificate_notice_active': active}
 
 def dashboard_notification(request):
     """

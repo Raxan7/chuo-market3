@@ -1,4 +1,5 @@
 import os
+from datetime import date
 from pathlib import Path
 from dotenv import load_dotenv
 import pymysql
@@ -110,6 +111,7 @@ TEMPLATES = [
                 'core.seo_context.seo_context',  # SEO context data
                 'core.context_processors.dashboard_notification',  # Dashboard notification
                 'core.context_processors.site_ad_settings',  # Site ad toggles
+                'core.context_processors.certificate_notice',  # Certificate notice banner
             ],
         },
     },
@@ -198,6 +200,12 @@ TIME_ZONE = 'UTC'
 # preview their earned certificates, but the file download and share links
 # are disabled. Flip this to True when the paid certificate module ships.
 CERTIFICATE_DOWNLOADS_ENABLED = False
+
+# Scheduled release date for certificate downloads. Before this date the
+# certificate notice banner is shown on dashboards and certificate pages.
+# On/after this date the banner is hidden and (when CERTIFICATE_DOWNLOADS_ENABLED
+# is also True) students can download normally.
+CERTIFICATE_RELEASE_DATE = date(2026, 6, 24)
 
 USE_I18N = True
 

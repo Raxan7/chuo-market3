@@ -462,17 +462,23 @@
             <h1>Your certificate is ready</h1>
             <p class="lead">
                 Congratulations on completing <strong>{{ course_title }}</strong>.
-                {% if downloads_enabled %}
+                {% if downloads_enabled and not certificate_notice_active %}
                     Your official certificate is generated, signed, and ready to download.
+                {% elif certificate_notice_active %}
+                    Your certificate is ready to preview. Certificate downloads will be available from <strong>24 June 2026</strong>.
                 {% else %}
                     Your certificate is ready to preview. Downloading and sharing will be available once the paid certificate module is enabled.
                 {% endif %}
             </p>
             <div class="mt-4 d-flex flex-wrap justify-content-center gap-2">
-                {% if downloads_enabled %}
+                {% if downloads_enabled and not certificate_notice_active %}
                 <a href="{{ download_url }}" class="cs-btn-hero-download" id="csHeroDownloadBtn">
                     <i class="fas fa-download"></i> Download Certificate (PDF)
                 </a>
+                {% elif certificate_notice_active %}
+                <span class="cs-btn-locked" aria-disabled="true">
+                    <i class="fas fa-clock"></i> Available from 24 June 2026
+                </span>
                 {% else %}
                 <span class="cs-btn-locked" aria-disabled="true">
                     <i class="fas fa-lock"></i> Download unlocks soon
@@ -495,11 +501,16 @@
 
                     <!-- Primary actions (right under the medal, before the preview) -->
                     <div class="cs-cert-actions">
-                        {% if downloads_enabled %}
+                        {% if downloads_enabled and not certificate_notice_active %}
                         <a href="{{ download_url }}" class="cs-btn-gold" id="csDownloadBtn" data-testid="download-pdf">
                             <i class="fas fa-download"></i>
                             Download PDF
                         </a>
+                        {% elif certificate_notice_active %}
+                        <span class="cs-btn-locked" aria-disabled="true" data-testid="download-pdf">
+                            <i class="fas fa-clock"></i>
+                            Available from 24 June 2026
+                        </span>
                         {% else %}
                         <span class="cs-btn-locked" aria-disabled="true" data-testid="download-pdf">
                             <i class="fas fa-lock"></i>
@@ -579,11 +590,16 @@
             <!-- Side column -->
             <div class="col-lg-4">
                 <div class="cs-side-card">
-                    {% if downloads_enabled %}
+                    {% if downloads_enabled and not certificate_notice_active %}
                     <a href="{{ download_url }}" class="cs-btn-gold mb-3" style="width: 100%;">
                         <i class="fas fa-download"></i>
                         Download PDF
                     </a>
+                    {% elif certificate_notice_active %}
+                    <span class="cs-btn-locked mb-3" aria-disabled="true" style="width: 100%;">
+                        <i class="fas fa-clock"></i>
+                        Available from 24 June 2026
+                    </span>
                     {% else %}
                     <span class="cs-btn-locked mb-3" aria-disabled="true" style="width: 100%;">
                         <i class="fas fa-lock"></i>
@@ -613,7 +629,7 @@
                     <h6>Certificate ID</h6>
                     <span class="cs-cert-id-pill">{{ certificate.certificate_id }}</span>
 
-                    {% if verify_url and downloads_enabled %}
+                    {% if verify_url and downloads_enabled and not certificate_notice_active %}
                     <div class="cs-divider"></div>
                     <h6>Share</h6>
                     <div class="cs-share-row">
@@ -629,6 +645,13 @@
                         <button type="button" onclick="navigator.clipboard.writeText('{{ verify_url|escapejs }}'); this.innerHTML='<i class=\'fas fa-check\'></i> Copied';">
                             <i class="fas fa-link"></i> Copy link
                         </button>
+                    </div>
+                    {% elif verify_url and certificate_notice_active %}
+                    <div class="cs-divider"></div>
+                    <h6>Share</h6>
+                    <div class="text-muted small d-flex align-items-center gap-2">
+                        <i class="fas fa-clock text-warning"></i>
+                        Sharing will be available from 24 June 2026.
                     </div>
                     {% elif verify_url %}
                     <div class="cs-divider"></div>
@@ -649,13 +672,15 @@
                 <div class="cs-side-card mt-3" style="background: linear-gradient(135deg, #FFF8E7 0%, #fff 100%); border-color: rgba(245, 193, 72, 0.4);">
                     <div class="d-flex align-items-start gap-3">
                         <div class="cs-medal" style="width:48px; height:48px; margin: 0; box-shadow: 0 6px 16px -6px rgba(11, 20, 55, 0.3), 0 0 0 4px #fff inset;">
-                            <i class="fas {% if downloads_enabled %}fa-lightbulb{% else %}fa-hourglass-half{% endif %}" style="font-size: 18px;"></i>
+                            <i class="fas {% if downloads_enabled and not certificate_notice_active %}fa-lightbulb{% else %}fa-hourglass-half{% endif %}" style="font-size: 18px;"></i>
                         </div>
                         <div>
-                            <p class="title mb-1" style="color:#111827; font-weight:700; font-size:14px;">{% if downloads_enabled %}Tip{% else %}Coming soon{% endif %}</p>
+                            <p class="title mb-1" style="color:#111827; font-weight:700; font-size:14px;">{% if downloads_enabled and not certificate_notice_active %}Tip{% elif certificate_notice_active %}Coming soon{% else %}Coming soon{% endif %}</p>
                             <p class="mb-0" style="color:#6b7280; font-size:13px; line-height:1.5;">
-                                {% if downloads_enabled %}
+                                {% if downloads_enabled and not certificate_notice_active %}
                                     Download the PDF and add it to your LinkedIn profile or share it directly with employers using the verification link.
+                                {% elif certificate_notice_active %}
+                                    You can already preview your certificate. Downloads and sharing will be available from <strong>24 June 2026</strong>.
                                 {% else %}
                                     You can already see what your certificate will look like. Downloading the PDF and sharing it online will be available once the paid certificate module is enabled.
                                 {% endif %}
@@ -676,11 +701,16 @@
 
     <!-- Sticky mobile download bar -->
     <div class="cs-mobile-download-bar">
-        {% if downloads_enabled %}
+        {% if downloads_enabled and not certificate_notice_active %}
         <a href="{{ download_url }}" class="cs-btn-gold">
             <i class="fas fa-download"></i>
             Download PDF
         </a>
+        {% elif certificate_notice_active %}
+        <span class="cs-btn-locked" aria-disabled="true">
+            <i class="fas fa-clock"></i>
+            Available from 24 June 2026
+        </span>
         {% else %}
         <span class="cs-btn-locked" aria-disabled="true">
             <i class="fas fa-lock"></i>

@@ -4,7 +4,11 @@ Utility functions for the LMS application
 
 import logging
 
+from datetime import date
+
+from django.conf import settings as django_settings
 from django.db.models import Count, Q
+from django.utils import timezone
 from .models import (
     Course, CourseModule, CourseContent, ContentAccess, ModuleProgress,
     Quiz, QuizTaker, StudentCertificate, CertificateTemplate, ActivityLog
@@ -428,3 +432,11 @@ def issue_certificate_if_eligible(course, student_profile):
         certificate.save(update_fields=['template'])
 
     return certificate
+
+
+def certificate_notice_active():
+    release = getattr(django_settings, 'CERTIFICATE_RELEASE_DATE', None)
+    if release is None:
+        return False
+    today = timezone.localdate()
+    return today < release

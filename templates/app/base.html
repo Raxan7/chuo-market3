@@ -203,6 +203,127 @@
         </div>
       </div>
     </nav>
+    <!-- Certificate notice banner -->
+    <div id="cs-cert-banner" class="cs-cert-banner">
+      <div class="cs-cert-banner-inner">
+        <div class="cs-cert-banner-icon">
+          <i class="fas fa-info-circle"></i>
+        </div>
+        <div class="cs-cert-banner-text">
+          <strong>Certificate Downloads Notice:</strong>
+          Certificate downloads are being finalized and will be available from <strong>24 June 2026</strong>.
+          If you have completed your course and passed successfully, your certificate will be ready for download once the certificate release is opened.
+          Thank you for your patience and for learning with ChuoSmart.
+        </div>
+        <button type="button" class="cs-cert-banner-close" onclick="dismissCertBanner()" aria-label="Dismiss notice">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+    </div>
+    <style>
+      .cs-cert-banner {
+        display: none;
+        background: linear-gradient(135deg, #0F4C5C 0%, #1E6F5C 100%);
+        border-bottom: 3px solid #F5C148;
+        padding: 0;
+        position: relative;
+        z-index: 1020;
+      }
+      .cs-cert-banner-inner {
+        max-width: 1320px;
+        margin: 0 auto;
+        padding: 12px 16px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .cs-cert-banner-icon {
+        flex: 0 0 36px;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(245, 193, 72, 0.2);
+        color: #F5C148;
+        font-size: 16px;
+      }
+      .cs-cert-banner-text {
+        flex: 1;
+        font-size: 14px;
+        line-height: 1.5;
+        color: rgba(255, 255, 255, 0.92);
+      }
+      .cs-cert-banner-text strong {
+        color: #F5C148;
+      }
+      .cs-cert-banner-close {
+        flex: 0 0 32px;
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        border: none;
+        background: rgba(255, 255, 255, 0.12);
+        color: rgba(255, 255, 255, 0.7);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        font-size: 15px;
+        transition: background 0.15s ease, color 0.15s ease;
+        padding: 0;
+      }
+      .cs-cert-banner-close:hover {
+        background: rgba(255, 255, 255, 0.22);
+        color: #fff;
+      }
+      @media (max-width: 767.98px) {
+        .cs-cert-banner-inner {
+          padding: 10px 12px;
+          gap: 10px;
+        }
+        .cs-cert-banner-icon {
+          flex: 0 0 28px;
+          width: 28px;
+          height: 28px;
+          font-size: 13px;
+        }
+        .cs-cert-banner-text {
+          font-size: 13px;
+        }
+      }
+      @media (max-width: 575.98px) {
+        .cs-cert-banner-text {
+          font-size: 12px;
+        }
+        .cs-cert-banner-inner {
+          flex-wrap: wrap;
+        }
+        .cs-cert-banner-close {
+          position: absolute;
+          top: 6px;
+          right: 6px;
+        }
+        .cs-cert-banner-inner {
+          padding-top: 14px;
+          padding-bottom: 10px;
+        }
+      }
+    </style>
+    <script>
+      (function() {
+        var active = {{ certificate_notice_active|lower }};
+        var dismissed = localStorage.getItem('csCertNoticeDismissed');
+        if (active && !dismissed) {
+          document.getElementById('cs-cert-banner').style.display = 'block';
+        }
+      })();
+      function dismissCertBanner() {
+        document.getElementById('cs-cert-banner').style.display = 'none';
+        localStorage.setItem('csCertNoticeDismissed', '1');
+      }
+    </script>
     <!-- Message container for standard messages -->
     <div class="container mt-3">
       {% if messages %}
