@@ -297,6 +297,38 @@ EMAIL_USE_SSL = True
 EMAIL_USE_TLS = False
 DEFAULT_FROM_EMAIL = 'ChuoSmart <support@chuosmart.com>'
 
+# Ensure the logs directory exists for the email audit logger
+os.makedirs(BASE_DIR / 'logs', exist_ok=True)
+
+# Email sending audit logging (writes to logs/email.log, no console output)
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'email_detail': {
+            'format': '[{asctime}] {levelname} [{name}.{funcName}:{lineno}] {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'email_file': {
+            'level': 'DEBUG',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': BASE_DIR / 'logs' / 'email.log',
+            'maxBytes': 10_485_760,  # 10 MB
+            'backupCount': 5,
+            'formatter': 'email_detail',
+        },
+    },
+    'loggers': {
+        'core.email': {
+            'handlers': ['email_file'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+    },
+}
+
 # Newsletter delivery safety controls
 NEWSLETTER_DEBUG = os.getenv('NEWSLETTER_DEBUG', 'false').strip().lower() in {'1', 'true', 'yes', 'on'}
 NEWSLETTER_TEST_EMAIL = os.getenv('NEWSLETTER_TEST_EMAIL', '').strip()

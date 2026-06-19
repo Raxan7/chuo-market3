@@ -1,3 +1,8 @@
+import logging
+import traceback
+from datetime import datetime, timezone as dt_timezone
+
+from django.conf import settings
 from django.contrib import admin
 from django.contrib.auth.models import User
 from django.core.mail import send_mail, BadHeaderError
@@ -7,6 +12,8 @@ from django.template.response import TemplateResponse
 from django.urls import path, reverse
 from django.utils import timezone
 from django.utils.html import strip_tags
+
+email_logger = logging.getLogger('core.email')
 
 from .forms import ComposeEmailForm
 from .models import (
@@ -100,49 +107,119 @@ class SentEmailAdmin(admin.ModelAdmin):
         return custom_urls + urls
 
     def compose_email_view(self, request):
+        timestamp = datetime.now(dt_timezone.utc).isoformat()
+        ip = request.META.get('REMOTE_ADDR', 'unknown')
+        admin_user = request.user.get_username() if request.user.is_authenticated else 'anonymous'
+
+        email_logger.info('=== Compose email view loaded [%s] by %s from %s ===', timestamp, admin_user, ip)
+
         form = ComposeEmailForm(request.POST or None)
-        if request.method == 'POST' and form.is_valid():
-            recipient_email = form.cleaned_data['recipient_email']
-            recipient_name = form.cleaned_data['recipient_name']
-            subject = form.cleaned_data['subject']
-            body = form.cleaned_data['body']
-            cc_self = form.cleaned_data['cc_self']
 
-            from_email = 'ChuoSmart <support@chuosmart.com>'
-            plain_body = strip_tags(body)
-            recipient_list = [recipient_email]
-            if cc_self and request.user.email:
-                recipient_list.append(request.user.email)
+        if request.method == 'POST':
+            email_logger.info('POST received from %s — validating form', admin_user)
+            if form.is_valid():
+                recipient_email = form.cleaned_data['recipient_email']
+                recipient_name = form.cleaned_data['recipient_name']
+                subject = form.cleaned_data['subject']
+                body = form.cleaned_data['body']
+                cc_self = form.cleaned_data['cc_self']
 
-            try:
-                send_mail(
-                    subject=subject,
-                    message=plain_body,
-                    from_email=from_email,
-                    recipient_list=recipient_list,
-                    html_message=body,
-                    fail_silently=False,
+                email_logger.info(
+                    'Form valid — to="%s" name="%s" subject="%s" cc_self=%s body_length=%d',
+                    recipient_email, recipient_name, subject, cc_self, len(body),
                 )
-                SentEmail.objects.create(
-                    recipient_email=recipient_email,
-                    recipient_name=recipient_name,
-                    subject=subject,
-                    body=body,
-                    sent_by=request.user,
-                    status='sent',
+
+                from_email = 'ChuoSmart <support@chuosmart.com>'
+                plain_body = strip_tags(body)
+                recipient_list = [recipient_email]
+                if cc_self and request.user.email:
+                    recipient_list.append(request.user.email)
+                    email_logger.info('CC-ing sender at %s', request.user.email)
+
+                smtp_settings = {
+                    'host': getattr(settings, 'EMAIL_HOST', 'NOT SET'),
+                    'port': getattr(settings, 'EMAIL_PORT', 'NOT SET'),
+                    'user': getattr(settings, 'EMAIL_HOST_USER', 'NOT SET'),
+                    'use_ssl': getattr(settings, 'EMAIL_USE_SSL', 'NOT SET'),
+                    'backend': getattr(settings, 'EMAIL_BACKEND', 'NOT SET'),
+                }
+                email_logger.info('SMTP config: %s', smtp_settings)
+                email_logger.info('Attempting send_mail to %s ...', recipient_list)
+
+                send_start = datetime.now(dt_timezone.utc)
+                try:
+                    send_mail(
+                        subject=subject,
+                        message=plain_body,
+                        from_email=from_email,
+                        recipient_list=recipient_list,
+                        html_message=body,
+                        fail_silently=False,
+                    )
+                    send_end = datetime.now(dt_timezone.utc)
+                    duration = (send_end - send_start).total_seconds()
+                    email_logger.info(
+                        'EMAIL SENT SUCCESSFULLY to %s — subject="%s" duration=%.2fs',
+                        recipient_list, subject, duration,
+                    )
+
+                    SentEmail.objects.create(
+                        recipient_email=recipient_email,
+                        recipient_name=recipient_name,
+                        subject=subject,
+                        body=body,
+                        sent_by=request.user,
+                        status='sent',
+                    )
+                    email_logger.info('SentEmail record created (status=sent)')
+                    self.message_user(request, f'Email sent successfully to {recipient_email}.')
+                    return HttpResponseRedirect(reverse('admin:core_sentemail_changelist'))
+
+                except BadHeaderError as e:
+                    send_end = datetime.now(dt_timezone.utc)
+                    duration = (send_end - send_start).total_seconds()
+                    email_logger.error(
+                        'BADHEADER ERROR — to=%s subject="%s" duration=%.2fs error=%s',
+                        recipient_list, subject, duration, e,
+                    )
+                    SentEmail.objects.create(
+                        recipient_email=recipient_email,
+                        recipient_name=recipient_name,
+                        subject=subject,
+                        body=body,
+                        sent_by=request.user,
+                        status='failed',
+                    )
+                    email_logger.info('SentEmail record created (status=failed — BadHeaderError)')
+                    self.message_user(request, f'Failed to send email: {e}', level='ERROR')
+
+                except Exception as e:
+                    send_end = datetime.now(dt_timezone.utc)
+                    duration = (send_end - send_start).total_seconds()
+                    tb = traceback.format_exc()
+                    email_logger.error(
+                        'EMAIL SEND FAILURE — to=%s subject="%s" duration=%.2fs\n'
+                        '  Exception type: %s\n'
+                        '  Exception args: %s\n'
+                        '  Traceback:\n%s',
+                        recipient_list, subject, duration,
+                        type(e).__name__, e.args, tb,
+                    )
+                    SentEmail.objects.create(
+                        recipient_email=recipient_email,
+                        recipient_name=recipient_name,
+                        subject=subject,
+                        body=body,
+                        sent_by=request.user,
+                        status='failed',
+                    )
+                    email_logger.info('SentEmail record created (status=failed — %s)', type(e).__name__)
+                    self.message_user(request, f'Failed to send email: {e}', level='ERROR')
+            else:
+                email_logger.warning(
+                    'Form invalid — errors: %s, submitted data: %s',
+                    dict(form.errors), form.cleaned_data if hasattr(form, 'cleaned_data') else 'N/A',
                 )
-                self.message_user(request, f'Email sent successfully to {recipient_email}.')
-                return HttpResponseRedirect(reverse('admin:core_sentemail_changelist'))
-            except (BadHeaderError, Exception) as e:
-                SentEmail.objects.create(
-                    recipient_email=recipient_email,
-                    recipient_name=recipient_name,
-                    subject=subject,
-                    body=body,
-                    sent_by=request.user,
-                    status='failed',
-                )
-                self.message_user(request, f'Failed to send email: {e}', level='ERROR')
 
         context = {
             'title': 'Compose Email',
@@ -158,4 +235,5 @@ class SentEmailAdmin(admin.ModelAdmin):
             'has_delete_permission': self.has_delete_permission(request),
             'has_editable_inline_admin_formsets': False,
         }
+        email_logger.debug('Rendering compose email template')
         return TemplateResponse(request, 'admin/core/sent_email/compose_email.html', context)
