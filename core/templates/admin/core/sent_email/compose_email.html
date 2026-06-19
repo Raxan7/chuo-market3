@@ -1,0 +1,64 @@
+{% extends "admin/base_site.html" %}
+{% load i18n static %}
+
+{% block extrastyle %}
+{{ block.super }}
+<style>
+  #compose-form { max-width: 780px; }
+  #compose-form .form-row { padding: 8px 0; }
+  #compose-form .form-row label {
+    display: block; font-weight: 600; margin-bottom: 4px; font-size: 13px;
+  }
+  #compose-form .form-row input,
+  #compose-form .form-row textarea {
+    width: 100%; box-sizing: border-box;
+  }
+  #compose-form .form-row textarea { font-family: inherit; line-height: 1.6; }
+  #compose-form .checkbox-row { display: flex; align-items: center; gap: 8px; padding: 8px 0; }
+  #compose-form .checkbox-row label { margin-bottom: 0; font-weight: 400; }
+  #compose-form .checkbox-row input { width: auto; }
+  .submit-row { margin-top: 16px; }
+  .errornote { margin-bottom: 12px; }
+  .field-errors { color: #ba2121; font-size: 12px; margin-top: 2px; }
+</style>
+{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+  <a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+  &rsaquo; <a href="{% url 'admin:app_list' app_label='core' %}">Core</a>
+  &rsaquo; <a href="{% url 'admin:core_sentemail_changelist' %}">{% trans 'Sent Emails' %}</a>
+  &rsaquo; {% trans 'Compose Email' %}
+</div>
+{% endblock %}
+
+{% block content %}
+<div id="content-main">
+  <h1>{{ title }}</h1>
+
+  <form id="compose-form" method="post">
+    {% csrf_token %}
+
+    {% if form.non_field_errors %}
+    <p class="errornote">{{ form.non_field_errors }}</p>
+    {% endif %}
+
+    {% for field in form %}
+    <div class="form-row">
+      {{ field.label_tag }}
+      {{ field }}
+      {% if field.help_text %}
+      <div class="help" style="font-size:12px;color:#666;margin-top:2px;">{{ field.help_text }}</div>
+      {% endif %}
+      {% if field.errors %}
+      <div class="field-errors">{{ field.errors|striptags }}</div>
+      {% endif %}
+    </div>
+    {% endfor %}
+
+    <div class="submit-row">
+      <input type="submit" value="Send Email" class="default" style="padding:10px 24px;font-size:14px;">
+    </div>
+  </form>
+</div>
+{% endblock %}

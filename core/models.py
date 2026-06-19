@@ -368,6 +368,24 @@ def _set_user_newsletter(self, value):
 User.add_to_class('newsletter', property(_get_user_newsletter, _set_user_newsletter))
 
 
+class SentEmail(models.Model):
+    recipient_email = models.EmailField()
+    recipient_name = models.CharField(max_length=200, blank=True)
+    subject = models.CharField(max_length=300)
+    body = models.TextField(help_text="HTML content of the email")
+    sent_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='sent_emails')
+    sent_at = models.DateTimeField(auto_now_add=True)
+    status = models.CharField(max_length=20, choices=[('sent', 'Sent'), ('failed', 'Failed')], default='sent')
+
+    class Meta:
+        ordering = ['-sent_at']
+        verbose_name = 'Sent Email'
+        verbose_name_plural = 'Sent Emails'
+
+    def __str__(self):
+        return f"To: {self.recipient_email} - {self.subject}"
+
+
 class AccountDeletionRequest(models.Model):
     PRODUCT_CHOICES = [
         ('chuosmart', 'ChuoSmart'),

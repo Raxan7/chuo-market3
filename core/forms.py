@@ -220,3 +220,27 @@ class AccountDeletionRequestForm(forms.ModelForm):
             raise forms.ValidationError('Email is required when you are not logged in.')
 
         return cleaned_data
+
+
+class ComposeEmailForm(forms.Form):
+    recipient_email = forms.EmailField(
+        label='To',
+        widget=forms.EmailInput(attrs={'class': 'vTextField', 'placeholder': 'recipient@example.com'})
+    )
+    recipient_name = forms.CharField(
+        label='Recipient name (optional)',
+        required=False,
+        widget=forms.TextInput(attrs={'class': 'vTextField', 'placeholder': 'e.g. John Doe'})
+    )
+    subject = forms.CharField(
+        widget=forms.TextInput(attrs={'class': 'vTextField', 'placeholder': 'Email subject'})
+    )
+    body = forms.CharField(
+        label='Message',
+        widget=forms.Textarea(attrs={'class': 'vLargeTextField', 'rows': 15, 'placeholder': 'Write your email message here...'})
+    )
+    cc_self = forms.BooleanField(
+        label='Send a copy to myself',
+        required=False,
+        initial=True
+    )
