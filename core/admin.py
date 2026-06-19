@@ -84,6 +84,7 @@ class SentEmailAdmin(admin.ModelAdmin):
     search_fields = ('recipient_email', 'recipient_name', 'subject')
     readonly_fields = ('sent_at', 'sent_by', 'recipient_email', 'recipient_name', 'subject', 'body', 'status')
     date_hierarchy = 'sent_at'
+    change_list_template = 'admin/core/sent_email/change_list.html'
 
     def has_add_permission(self, request):
         return False
