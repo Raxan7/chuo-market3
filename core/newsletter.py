@@ -84,22 +84,22 @@ CATEGORY_CONFIG = OrderedDict([
 
 def _get_model(config):
     from django.apps import apps
-    from django.db import models
 
-    # Interpret model_path: 'talents.models.Talent' -> app 'talents', model 'Talent'
-    # 'lms.models.models.Course' -> app 'lms', model 'Course'
     module_path = config['model_path']
     parts = module_path.split('.')
     app_label = parts[0]
     model_name = parts[-1]
 
-    try:
-        return apps.get_model(app_label, model_name)
-    except LookupError:
-        for model in apps.get_models():
-            if model.__name__ == model_name:
-                return model
-        raise
+    model = apps.get_model(app_label, model_name)
+    if model is not None:
+        return model
+
+    for model in apps.get_models():
+        if model.__name__ == model_name:
+            return model
+
+    logger.error('Newsletter model not found: app=%s model=%s path=%s', app_label, model_name, module_path)
+    return None
 
 
 def _build_item_dict(item, config):
@@ -128,9 +128,12 @@ def _build_item_dict(item, config):
         url = item.get_absolute_url()
         d['url'] = build_absolute_url(url)
     except Exception:
-        url_kwarg_name = config.get('url_kwarg', 'pk')
-        url_kwarg_value = getattr(item, url_kwarg_name, item.pk)
-        d['url'] = build_absolute_url(reverse(config['url_name'], kwargs={url_kwarg_name: url_kwarg_value}))
+        try:
+            url_kwarg_name = config.get('url_kwarg', 'pk')
+            url_kwarg_value = getattr(item, url_kwarg_name, item.pk)
+            d['url'] = build_absolute_url(reverse(config['url_name'], kwargs={url_kwarg_name: url_kwarg_value}))
+        except Exception:
+            d['url'] = '#'
 
     # Extra fields per category
     if config['label'] == 'Talents':
@@ -143,7 +146,11 @@ def _build_item_dict(item, config):
         d['job_type'] = getattr(item, 'job_type', '')
         d['deadline'] = getattr(item, 'application_deadline', None)
     elif config['label'] == 'Courses':
-        instructors = list(getattr(item, 'instructors', []).all()[:2])
+        try:
+            instructors_mgr = getattr(item, 'instructors', None)
+            instructors = list(instructors_mgr.all()[:2]) if instructors_mgr is not None else []
+        except Exception:
+            instructors = []
         d['instructor'] = instructors[0].user.get_full_name() or instructors[0].user.username if instructors else ''
         d['price'] = str(getattr(item, 'price', '0.00'))
         d['is_free'] = getattr(item, 'is_free', True)
@@ -188,7 +195,7 @@ def get_daily_digest_data(target_date=None, selected_categories=None):
         model = _get_model(config)
         date_field = config['date_field']
 
-        if not date_field:
+        if model is None or not date_field:
             continue
 
         # Base queryset

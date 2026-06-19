@@ -307,37 +307,48 @@ class SentEmailAdmin(admin.ModelAdmin):
                 recipient_email = form.cleaned_data['recipient_email']
                 email_logger.info('Categories: %s, Recipient: %s', selected_categories, recipient_email)
 
-                # Build digest data using the selected categories
-                digest_data = get_daily_digest_data(selected_categories=selected_categories)
+                try:
+                    # Build digest data using the selected categories
+                    digest_data = get_daily_digest_data(selected_categories=selected_categories)
+                except Exception as e:
+                    email_logger.error('Error building digest data: %s', e, exc_info=True)
+                    self.message_user(request, f'Error building digest data: {e}', level='ERROR')
+                    return HttpResponseRedirect(reverse('admin:core_sentemail_newsletter_digest_test'))
+
+                if not digest_data['categories']:
+                    email_logger.warning('No content found for selected categories: %s', selected_categories)
+                    self.message_user(request, 'No content found for the selected categories.', level='WARNING')
+                    return HttpResponseRedirect(reverse('admin:core_sentemail_newsletter_digest_test'))
 
                 if '_preview' in request.POST:
-                    # Preview mode: render HTML and show it
-                    from django.template.loader import render_to_string
-                    from django.utils.html import strip_tags
+                    try:
+                        cat_count = len(digest_data['categories'])
+                        if cat_count == 1:
+                            cat_label = digest_data['categories'][0]['label']
+                            subject = f'[TEST] New {cat_label} on ChuoSmart'
+                        else:
+                            subject = "[TEST] Today's ChuoSmart Updates"
 
-                    cat_count = len(digest_data['categories'])
-                    if cat_count == 1:
-                        cat_label = digest_data['categories'][0]['label']
-                        subject = f'[TEST] New {cat_label} on ChuoSmart'
-                    else:
-                        subject = "[TEST] Today's ChuoSmart Updates"
-
-                    site_url = get_site_root_url()
-                    context = {
-                        'subject': subject,
-                        'site_name': 'ChuoSmart',
-                        'site_url': site_url,
-                        'display_name': 'Admin',
-                        'categories': digest_data['categories'],
-                        'has_talents': any(c['key'] == 'talents' for c in digest_data['categories']),
-                        'has_jobs': any(c['key'] == 'jobs' for c in digest_data['categories']),
-                        'has_courses': any(c['key'] == 'courses' for c in digest_data['categories']),
-                        'has_blogs': any(c['key'] == 'blogs' for c in digest_data['categories']),
-                        'has_products': any(c['key'] == 'products' for c in digest_data['categories']),
-                        'date': digest_data['date'],
-                    }
-                    preview_html = render_to_string('emails/newsletter/daily_digest.html', context)
-                    self.message_user(request, 'Preview generated. Scroll down to see it.', level='INFO')
+                        site_url = get_site_root_url()
+                        context = {
+                            'subject': subject,
+                            'site_name': 'ChuoSmart',
+                            'site_url': site_url,
+                            'display_name': 'Admin',
+                            'categories': digest_data['categories'],
+                            'has_talents': any(c['key'] == 'talents' for c in digest_data['categories']),
+                            'has_jobs': any(c['key'] == 'jobs' for c in digest_data['categories']),
+                            'has_courses': any(c['key'] == 'courses' for c in digest_data['categories']),
+                            'has_blogs': any(c['key'] == 'blogs' for c in digest_data['categories']),
+                            'has_products': any(c['key'] == 'products' for c in digest_data['categories']),
+                            'date': digest_data['date'],
+                        }
+                        from django.template.loader import render_to_string
+                        preview_html = render_to_string('emails/newsletter/daily_digest.html', context)
+                        self.message_user(request, 'Preview generated. Scroll down to see it.', level='INFO')
+                    except Exception as e:
+                        email_logger.error('Preview generation failed: %s', e, exc_info=True)
+                        self.message_user(request, f'Preview failed: {e}', level='ERROR')
 
                 elif '_send' in request.POST:
                     # Build context with test prefix
