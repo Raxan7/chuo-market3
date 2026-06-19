@@ -297,7 +297,12 @@ class SentEmailAdmin(admin.ModelAdmin):
         admin_user = request.user.get_username() if request.user.is_authenticated else 'anonymous'
         email_logger.info('=== Newsletter digest test view loaded [%s] by %s ===', timestamp, admin_user)
 
-        form = NewsletterDigestTestForm(request.POST or None)
+        initial_data = {}
+        if request.method == 'GET':
+            test_email = getattr(settings, 'NEWSLETTER_TEST_EMAIL', '')
+            if test_email:
+                initial_data['recipient_email'] = test_email
+        form = NewsletterDigestTestForm(request.POST or None, initial=initial_data)
         preview_html = None
 
         if request.method == 'POST':
