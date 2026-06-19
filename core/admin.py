@@ -1,11 +1,13 @@
 import logging
+import socket
 import traceback
 from datetime import datetime, timezone as dt_timezone
 
 from django.conf import settings
 from django.contrib import admin
 from django.contrib.auth.models import User
-from django.core.mail import send_mail, BadHeaderError
+from django.core.mail import BadHeaderError, EmailMultiAlternatives
+from django.core.mail.backends.smtp import EmailBackend
 from django.http import HttpResponseRedirect
 from django.shortcuts import render
 from django.template.response import TemplateResponse
@@ -136,31 +138,71 @@ class SentEmailAdmin(admin.ModelAdmin):
                     recipient_list.append(request.user.email)
                     email_logger.info('CC-ing sender at %s', request.user.email)
 
-                smtp_settings = {
-                    'host': getattr(settings, 'EMAIL_HOST', 'NOT SET'),
-                    'port': getattr(settings, 'EMAIL_PORT', 'NOT SET'),
-                    'user': getattr(settings, 'EMAIL_HOST_USER', 'NOT SET'),
-                    'use_ssl': getattr(settings, 'EMAIL_USE_SSL', 'NOT SET'),
-                    'backend': getattr(settings, 'EMAIL_BACKEND', 'NOT SET'),
-                }
-                email_logger.info('SMTP config: %s', smtp_settings)
-                email_logger.info('Attempting send_mail to %s ...', recipient_list)
+                smtp_host = settings.EMAIL_HOST
+                smtp_port = settings.EMAIL_PORT
+
+                email_logger.info('SMTP config — host=%s port=%s user=%s use_ssl=%s timeout=%s',
+                                  smtp_host, smtp_port, settings.EMAIL_HOST_USER,
+                                  settings.EMAIL_USE_SSL, settings.EMAIL_TIMEOUT)
+
+                # Phase 1: DNS resolution
+                email_logger.info('PHASE 1 — DNS resolution of %s ...', smtp_host)
+                try:
+                    dns_start = datetime.now(dt_timezone.utc)
+                    addrs = socket.getaddrinfo(smtp_host, smtp_port)
+                    dns_duration = (datetime.now(dt_timezone.utc) - dns_start).total_seconds()
+                    ips = sorted(set(addr[4][0] for addr in addrs))
+                    email_logger.info('DNS OK — %s resolves to %s in %.2fs', smtp_host, ips, dns_duration)
+                except Exception as e:
+                    email_logger.error('DNS FAILED — %s: %s', smtp_host, e)
+
+                # Build the email message (HTML with plain-text fallback)
+                msg = EmailMultiAlternatives(
+                    subject=subject,
+                    body=plain_body,
+                    from_email=from_email,
+                    to=[recipient_email],
+                    cc=[request.user.email] if cc_self and request.user.email else [],
+                )
+                msg.attach_alternative(body, 'text/html')
+
+                # Phase 2-5: connect, auth, send, close — all via the SMTP backend
+                backend = EmailBackend(
+                    host=smtp_host,
+                    port=smtp_port,
+                    username=settings.EMAIL_HOST_USER,
+                    password=settings.EMAIL_HOST_PASSWORD,
+                    use_ssl=settings.EMAIL_USE_SSL,
+                    use_tls=settings.EMAIL_USE_TLS,
+                    timeout=getattr(settings, 'EMAIL_TIMEOUT', 30),
+                    fail_silently=False,
+                )
 
                 send_start = datetime.now(dt_timezone.utc)
                 try:
-                    send_mail(
-                        subject=subject,
-                        message=plain_body,
-                        from_email=from_email,
-                        recipient_list=recipient_list,
-                        html_message=body,
-                        fail_silently=False,
-                    )
-                    send_end = datetime.now(dt_timezone.utc)
-                    duration = (send_end - send_start).total_seconds()
+                    # Phase 2 & 3: TCP connect + SSL handshake + SMTP login
+                    email_logger.info('PHASE 2/3 — TCP connect + SSL handshake + login ...')
+                    conn_start = datetime.now(dt_timezone.utc)
+                    backend.open()
+                    conn_duration = (datetime.now(dt_timezone.utc) - conn_start).total_seconds()
+                    email_logger.info('CONNECTION OK — connected and authenticated in %.2fs', conn_duration)
+
+                    # Phase 4: send
+                    email_logger.info('PHASE 4 — sending message ...')
+                    send_start_inner = datetime.now(dt_timezone.utc)
+                    sent = backend.send_messages([msg])
+                    send_duration = (datetime.now(dt_timezone.utc) - send_start_inner).total_seconds()
+                    email_logger.info('SEND OK — message dispatched in %.2fs (result=%s)', send_duration, sent)
+
+                    # Phase 5: close
+                    email_logger.info('PHASE 5 — closing connection ...')
+                    backend.close()
+                    email_logger.info('CONNECTION CLOSED')
+
+                    total_duration = (datetime.now(dt_timezone.utc) - send_start).total_seconds()
                     email_logger.info(
-                        'EMAIL SENT SUCCESSFULLY to %s — subject="%s" duration=%.2fs',
-                        recipient_list, subject, duration,
+                        'EMAIL SENT SUCCESSFULLY — to=%s subject="%s" total_duration=%.2fs',
+                        recipient_list, subject, total_duration,
                     )
 
                     SentEmail.objects.create(
@@ -175,36 +217,22 @@ class SentEmailAdmin(admin.ModelAdmin):
                     self.message_user(request, f'Email sent successfully to {recipient_email}.')
                     return HttpResponseRedirect(reverse('admin:core_sentemail_changelist'))
 
-                except BadHeaderError as e:
-                    send_end = datetime.now(dt_timezone.utc)
-                    duration = (send_end - send_start).total_seconds()
-                    email_logger.error(
-                        'BADHEADER ERROR — to=%s subject="%s" duration=%.2fs error=%s',
-                        recipient_list, subject, duration, e,
-                    )
-                    SentEmail.objects.create(
-                        recipient_email=recipient_email,
-                        recipient_name=recipient_name,
-                        subject=subject,
-                        body=body,
-                        sent_by=request.user,
-                        status='failed',
-                    )
-                    email_logger.info('SentEmail record created (status=failed — BadHeaderError)')
-                    self.message_user(request, f'Failed to send email: {e}', level='ERROR')
-
-                except Exception as e:
-                    send_end = datetime.now(dt_timezone.utc)
-                    duration = (send_end - send_start).total_seconds()
+                except (BadHeaderError, Exception) as e:
+                    total_duration = (datetime.now(dt_timezone.utc) - send_start).total_seconds()
                     tb = traceback.format_exc()
+                    exc_name = type(e).__name__
                     email_logger.error(
-                        'EMAIL SEND FAILURE — to=%s subject="%s" duration=%.2fs\n'
+                        'EMAIL SEND FAILURE — to=%s subject="%s" total_duration=%.2fs\n'
                         '  Exception type: %s\n'
                         '  Exception args: %s\n'
                         '  Traceback:\n%s',
-                        recipient_list, subject, duration,
-                        type(e).__name__, e.args, tb,
+                        recipient_list, subject, total_duration,
+                        exc_name, e.args, tb,
                     )
+                    try:
+                        backend.close()
+                    except Exception:
+                        pass
                     SentEmail.objects.create(
                         recipient_email=recipient_email,
                         recipient_name=recipient_name,
@@ -213,7 +241,7 @@ class SentEmailAdmin(admin.ModelAdmin):
                         sent_by=request.user,
                         status='failed',
                     )
-                    email_logger.info('SentEmail record created (status=failed — %s)', type(e).__name__)
+                    email_logger.info('SentEmail record created (status=failed — %s)', exc_name)
                     self.message_user(request, f'Failed to send email: {e}', level='ERROR')
             else:
                 email_logger.warning(

@@ -296,6 +296,7 @@ EMAIL_HOST_PASSWORD = os.getenv('SUPPORT_EMAIL_HOST_PASSWORD')  # Set this in yo
 EMAIL_USE_SSL = True
 EMAIL_USE_TLS = False
 DEFAULT_FROM_EMAIL = 'ChuoSmart <support@chuosmart.com>'
+EMAIL_TIMEOUT = 30
 
 # Ensure the logs directory exists for the email audit logger
 os.makedirs(BASE_DIR / 'logs', exist_ok=True)
