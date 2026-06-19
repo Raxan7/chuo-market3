@@ -3,11 +3,14 @@
 
 {% block object-tools %}
   <ul class="object-tools">
+    {% url 'admin:core_sentemail_newsletter_digest_test' as test_url %}
+    {% if test_url %}
     <li>
-      <a href="{% url 'admin:core_sentemail_newsletter_digest_test' %}" class="addlink" style="background:#0f766e;">
+      <a href="{{ test_url }}" class="addlink" style="background:#0f766e;">
         &#9993; {% trans "Newsletter Digest Test" %}
       </a>
     </li>
+    {% endif %}
     <li>
       <a href="{% url 'admin:core_sentemail_compose' %}" class="addlink" style="background:#1FAA59;">
         &#9993; {% trans "Compose Email" %}
