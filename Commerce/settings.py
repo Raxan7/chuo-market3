@@ -25,7 +25,7 @@ DEBUG = os.getenv('DJANGO_DEBUG', 'True').strip().lower() in {'1', 'true', 'yes'
 # Define the canonical domain (without www)
 CANONICAL_DOMAIN = 'chuosmart.com'
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'chuosmart.com', 'www.chuosmart.com']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'chuosmart.com', 'www.chuosmart.com', 'mail.chuosmart.com']
 # CSRF_TRUSTED_ORIGINS = ['https://chuo-market3.onrender.com', 'http://localhost:8000']
 CSRF_TRUSTED_ORIGINS = [
     'http://localhost:8000',
