@@ -244,3 +244,31 @@ class ComposeEmailForm(forms.Form):
         required=False,
         initial=True
     )
+
+
+class NewsletterDigestTestForm(forms.Form):
+    CATEGORY_CHOICES = [
+        ('talents', 'Talents'),
+        ('jobs', 'Jobs'),
+        ('courses', 'Courses'),
+        ('blogs', 'Blogs'),
+        ('products', 'Products'),
+    ]
+
+    categories = forms.MultipleChoiceField(
+        choices=CATEGORY_CHOICES,
+        widget=forms.CheckboxSelectMultiple(attrs={'class': 'checkbox-group'}),
+        label='Select categories to include',
+        help_text='The test email will contain ONLY the selected categories.',
+    )
+    recipient_email = forms.EmailField(
+        label='Test recipient email',
+        widget=forms.EmailInput(attrs={'class': 'vTextField', 'placeholder': 'admin@example.com'}),
+        help_text='The test email will be sent ONLY to this address.',
+    )
+
+    def clean_categories(self):
+        categories = self.cleaned_data.get('categories', [])
+        if not categories:
+            raise forms.ValidationError('You must select at least one category.')
+        return categories

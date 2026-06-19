@@ -17,12 +17,14 @@ from django.utils.html import strip_tags
 
 email_logger = logging.getLogger('core.email')
 
-from .forms import ComposeEmailForm
+from .forms import ComposeEmailForm, NewsletterDigestTestForm
 from .models import (
     AccountDeletionRequest, Banners, Blog, Cart, Customer, NewsletterSubscriber,
+    NewsletterSendLog, NewsletterTestSend,
     OrderPlaced, Product, SentEmail, Subscription, SubscriptionPayment,
     UserNewsletterPreference,
 )
+from .newsletter import get_daily_digest_data, get_site_root_url, send_daily_digest
 
 
 class OrderPlacedAdmin(admin.ModelAdmin):
@@ -36,6 +38,29 @@ admin.site.register(Banners)
 admin.site.register(Blog)
 admin.site.register(Subscription)
 admin.site.register(UserNewsletterPreference)
+admin.site.register(NewsletterSubscriber)
+
+
+@admin.register(NewsletterSendLog)
+class NewsletterSendLogAdmin(admin.ModelAdmin):
+    list_display = ('subscriber_email', 'sent_date', 'categories', 'status', 'sent_at')
+    list_filter = ('status', 'sent_date')
+    search_fields = ('subscriber_email',)
+    date_hierarchy = 'sent_date'
+
+
+@admin.register(NewsletterTestSend)
+class NewsletterTestSendAdmin(admin.ModelAdmin):
+    list_display = ('recipient_email', 'categories', 'sent_by', 'sent_at', 'status')
+    list_filter = ('status', 'sent_at')
+    search_fields = ('recipient_email',)
+    readonly_fields = ('sent_at', 'sent_by', 'recipient_email', 'categories', 'status')
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
 
 
 @admin.register(SubscriptionPayment)
@@ -105,6 +130,7 @@ class SentEmailAdmin(admin.ModelAdmin):
         urls = super().get_urls()
         custom_urls = [
             path('compose/', self.admin_site.admin_view(self.compose_email_view), name='core_sentemail_compose'),
+            path('newsletter-digest-test/', self.admin_site.admin_view(self.newsletter_digest_test_view), name='core_sentemail_newsletter_digest_test'),
         ]
         return custom_urls + urls
 
@@ -265,3 +291,153 @@ class SentEmailAdmin(admin.ModelAdmin):
         }
         email_logger.debug('Rendering compose email template')
         return TemplateResponse(request, 'admin/core/sent_email/compose_email.html', context)
+
+    def newsletter_digest_test_view(self, request):
+        timestamp = datetime.now(dt_timezone.utc).isoformat()
+        admin_user = request.user.get_username() if request.user.is_authenticated else 'anonymous'
+        email_logger.info('=== Newsletter digest test view loaded [%s] by %s ===', timestamp, admin_user)
+
+        form = NewsletterDigestTestForm(request.POST or None)
+        preview_html = None
+
+        if request.method == 'POST':
+            email_logger.info('Newsletter digest test POST from %s', admin_user)
+            if form.is_valid():
+                selected_categories = form.cleaned_data['categories']
+                recipient_email = form.cleaned_data['recipient_email']
+                email_logger.info('Categories: %s, Recipient: %s', selected_categories, recipient_email)
+
+                # Build digest data using the selected categories
+                digest_data = get_daily_digest_data(selected_categories=selected_categories)
+
+                if '_preview' in request.POST:
+                    # Preview mode: render HTML and show it
+                    from django.template.loader import render_to_string
+                    from django.utils.html import strip_tags
+
+                    cat_count = len(digest_data['categories'])
+                    if cat_count == 1:
+                        cat_label = digest_data['categories'][0]['label']
+                        subject = f'[TEST] New {cat_label} on ChuoSmart'
+                    else:
+                        subject = "[TEST] Today's ChuoSmart Updates"
+
+                    site_url = get_site_root_url()
+                    context = {
+                        'subject': subject,
+                        'site_name': 'ChuoSmart',
+                        'site_url': site_url,
+                        'display_name': 'Admin',
+                        'categories': digest_data['categories'],
+                        'has_talents': any(c['key'] == 'talents' for c in digest_data['categories']),
+                        'has_jobs': any(c['key'] == 'jobs' for c in digest_data['categories']),
+                        'has_courses': any(c['key'] == 'courses' for c in digest_data['categories']),
+                        'has_blogs': any(c['key'] == 'blogs' for c in digest_data['categories']),
+                        'has_products': any(c['key'] == 'products' for c in digest_data['categories']),
+                        'date': digest_data['date'],
+                    }
+                    preview_html = render_to_string('emails/newsletter/daily_digest.html', context)
+                    self.message_user(request, 'Preview generated. Scroll down to see it.', level='INFO')
+
+                elif '_send' in request.POST:
+                    # Build context with test prefix
+                    cat_count = len(digest_data['categories'])
+                    if cat_count == 1:
+                        cat_label = digest_data['categories'][0]['label']
+                        subject = f'[TEST] New {cat_label} on ChuoSmart'
+                    else:
+                        subject = "[TEST] Today's ChuoSmart Updates"
+
+                    from django.template.loader import render_to_string
+                    from django.utils.html import strip_tags
+                    from django.core.mail import EmailMultiAlternatives
+
+                    site_url = get_site_root_url()
+
+                    context = {
+                        'subject': subject,
+                        'site_name': 'ChuoSmart',
+                        'site_url': site_url,
+                        'display_name': 'Admin',
+                        'categories': digest_data['categories'],
+                        'has_talents': any(c['key'] == 'talents' for c in digest_data['categories']),
+                        'has_jobs': any(c['key'] == 'jobs' for c in digest_data['categories']),
+                        'has_courses': any(c['key'] == 'courses' for c in digest_data['categories']),
+                        'has_blogs': any(c['key'] == 'blogs' for c in digest_data['categories']),
+                        'has_products': any(c['key'] == 'products' for c in digest_data['categories']),
+                        'date': digest_data['date'],
+                    }
+
+                    try:
+                        html_message = render_to_string('emails/newsletter/daily_digest.html', context)
+                        plain_message = strip_tags(html_message)
+
+                        msg = EmailMultiAlternatives(
+                            subject=subject,
+                            body=plain_message,
+                            from_email=settings.DEFAULT_FROM_EMAIL,
+                            to=[recipient_email],
+                        )
+                        msg.attach_alternative(html_message, 'text/html')
+                        msg.send(fail_silently=False)
+
+                        # Log the test send
+                        NewsletterTestSend.objects.create(
+                            recipient_email=recipient_email,
+                            categories=','.join(selected_categories),
+                            sent_by=request.user,
+                            status='sent',
+                        )
+
+                        email_logger.info(
+                            'Newsletter test digest sent to %s (categories: %s)',
+                            recipient_email, selected_categories,
+                        )
+                        self.message_user(
+                            request,
+                            f'Test newsletter sent successfully to {recipient_email}.',
+                            level='SUCCESS',
+                        )
+                        return HttpResponseRedirect(
+                            reverse('admin:core_sentemail_newsletter_digest_test')
+                        )
+
+                    except Exception as e:
+                        email_logger.error(
+                            'Newsletter test digest failed for %s: %s',
+                            recipient_email, e,
+                        )
+                        NewsletterTestSend.objects.create(
+                            recipient_email=recipient_email,
+                            categories=','.join(selected_categories),
+                            sent_by=request.user,
+                            status='failed',
+                        )
+                        self.message_user(
+                            request,
+                            f'Failed to send test email: {e}',
+                            level='ERROR',
+                        )
+            else:
+                email_logger.warning(
+                    'Newsletter digest test form invalid: %s',
+                    dict(form.errors),
+                )
+
+        context = {
+            'title': 'Newsletter Digest Test',
+            'form': form,
+            'preview_html': preview_html,
+            'opts': self.model._meta,
+            'has_view_permission': True,
+            'add': False,
+            'change': False,
+            'is_popup': False,
+            'save_as': False,
+            'has_add_permission': self.has_add_permission(request),
+            'has_change_permission': self.has_change_permission(request),
+            'has_delete_permission': self.has_delete_permission(request),
+            'has_editable_inline_admin_formsets': False,
+        }
+        email_logger.debug('Rendering newsletter digest test template')
+        return TemplateResponse(request, 'admin/core/sent_email/newsletter_digest_test.html', context)

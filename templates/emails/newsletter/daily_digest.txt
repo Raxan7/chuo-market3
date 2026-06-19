@@ -1,0 +1,23 @@
+{{ subject }}
+
+Hi {{ display_name }},
+
+{% if categories|length == 1 %}Check out the latest {{ categories.0.label|lower }} on ChuoSmart.{% else %}Here is a roundup of what is new across ChuoSmart today.{% endif %}
+
+Date: {{ date }}
+---
+{% for category in categories %}
+{{ category.label }}
+{% if category.has_new_today %}** New today **{% endif %}
+{% for item in category.items %}
+- {{ item.title }}
+{% if item.description %}  {{ item.description }}{% endif %}
+  {{ item.url }}
+{% endfor %}
+
+{% endfor %}
+---
+You are receiving this email because newsletters are enabled on your ChuoSmart account.
+Manage your preferences: {{ site_url }}/newsletter-settings/
+
+{{ site_name }} - Tanzania

@@ -386,6 +386,39 @@ class SentEmail(models.Model):
         return f"To: {self.recipient_email} - {self.subject}"
 
 
+class NewsletterSendLog(models.Model):
+    """Tracks daily newsletter digest sends to prevent duplicate sends."""
+    subscriber_email = models.EmailField()
+    sent_date = models.DateField()
+    categories = models.CharField(max_length=255, blank=True, help_text="Comma-separated list of categories included")
+    sent_at = models.DateTimeField(auto_now_add=True)
+    status = models.CharField(max_length=20, choices=[('sent', 'Sent'), ('failed', 'Failed')], default='sent')
+
+    class Meta:
+        unique_together = ('subscriber_email', 'sent_date')
+        verbose_name = 'Newsletter Send Log'
+        verbose_name_plural = 'Newsletter Send Logs'
+
+    def __str__(self):
+        return f"{self.subscriber_email} - {self.sent_date} ({self.status})"
+
+
+class NewsletterTestSend(models.Model):
+    """Logs admin test/debug newsletter sends."""
+    recipient_email = models.EmailField()
+    categories = models.CharField(max_length=255, help_text="Comma-separated categories selected")
+    sent_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    sent_at = models.DateTimeField(auto_now_add=True)
+    status = models.CharField(max_length=20, default='sent')
+
+    class Meta:
+        verbose_name = 'Newsletter Test Send'
+        verbose_name_plural = 'Newsletter Test Sends'
+
+    def __str__(self):
+        return f"Test to {self.recipient_email} - {self.categories} ({self.status})"
+
+
 class AccountDeletionRequest(models.Model):
     PRODUCT_CHOICES = [
         ('chuosmart', 'ChuoSmart'),

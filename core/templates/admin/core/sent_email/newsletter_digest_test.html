@@ -1,0 +1,89 @@
+{% extends "admin/base_site.html" %}
+{% load i18n static %}
+
+{% block extrastyle %}
+{{ block.super }}
+<style>
+  #digest-test-form { max-width: 780px; }
+  #digest-test-form .form-row { padding: 8px 0; }
+  #digest-test-form .form-row label {
+    display: block; font-weight: 600; margin-bottom: 4px; font-size: 13px;
+  }
+  #digest-test-form .form-row input,
+  #digest-test-form .form-row textarea {
+    width: 100%; box-sizing: border-box;
+  }
+  #digest-test-form .form-row input[type="checkbox"] { width: auto; }
+  #digest-test-form .checkbox-group { display: flex; flex-wrap: wrap; gap: 12px; padding: 8px 0; }
+  #digest-test-form .checkbox-group label {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-weight: 400; font-size: 14px; cursor: pointer;
+    background: #f8fafc; border: 1px solid #e5e7eb;
+    border-radius: 8px; padding: 8px 14px; margin: 0;
+  }
+  #digest-test-form .checkbox-group input[type="checkbox"] { margin: 0; }
+  .submit-row { margin-top: 16px; }
+  .errornote { margin-bottom: 12px; }
+  .field-errors { color: #ba2121; font-size: 12px; margin-top: 2px; }
+  .success-note { background: #d1fae5; border: 1px solid #6ee7b7; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; color: #065f46; }
+  .warning-note { background: #fef3c7; border: 1px solid #fcd34d; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; color: #92400e; }
+  .preview-box { background: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px; margin-top: 16px; max-height: 600px; overflow-y: auto; }
+  .preview-box iframe { width: 100%; border: none; }
+</style>
+{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+  <a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+  &rsaquo; <a href="{% url 'admin:app_list' app_label='core' %}">Core</a>
+  &rsaquo; <a href="{% url 'admin:core_sentemail_changelist' %}">{% trans 'Sent Emails' %}</a>
+  &rsaquo; {% trans 'Newsletter Digest Test' %}
+</div>
+{% endblock %}
+
+{% block content %}
+<div id="content-main">
+  <h1>{{ title }}</h1>
+
+  {% if messages %}
+    {% for message in messages %}
+      <div class="{% if message.tags == 'success' %}success-note{% else %}warning-note{% endif %}">
+        {{ message }}
+      </div>
+    {% endfor %}
+  {% endif %}
+
+  <form id="digest-test-form" method="post">
+    {% csrf_token %}
+
+    {% if form.non_field_errors %}
+    <p class="errornote">{{ form.non_field_errors }}</p>
+    {% endif %}
+
+    {% for field in form %}
+    <div class="form-row">
+      {{ field.label_tag }}
+      {{ field }}
+      {% if field.help_text %}
+      <div class="help" style="font-size:12px;color:#666;margin-top:2px;">{{ field.help_text }}</div>
+      {% endif %}
+      {% if field.errors %}
+      <div class="field-errors">{{ field.errors|striptags }}</div>
+      {% endif %}
+    </div>
+    {% endfor %}
+
+    <div class="submit-row" style="display:flex;gap:12px;">
+      <input type="submit" name="_send" value="Send Test Email" class="default" style="padding:10px 24px;font-size:14px;">
+      <input type="submit" name="_preview" value="Preview Email" style="padding:10px 24px;font-size:14px;background:#374151;color:white;border:none;border-radius:4px;cursor:pointer;">
+    </div>
+  </form>
+
+  {% if preview_html %}
+  <div class="preview-box">
+    <h3>Email Preview</h3>
+    <iframe srcdoc="{{ preview_html|escape }}" style="width:100%;min-height:500px;border:1px solid #e5e7eb;border-radius:8px;"></iframe>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

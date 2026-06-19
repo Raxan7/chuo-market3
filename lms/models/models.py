@@ -181,6 +181,7 @@ class Course(models.Model):
     is_elective = models.BooleanField(default=False, help_text=_("Applies to university courses only"))
     is_pinned = models.BooleanField(default=False, help_text=_("Pin this course at the top of listings"))
     price = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, help_text=_('Price for paid course'))
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True, help_text=_("Date the course was created"))
     
     def __str__(self):
         if self.course_type == 'university' and self.code:
