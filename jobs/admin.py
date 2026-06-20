@@ -1,4 +1,6 @@
+import logging
 from django.contrib import admin
+from django.shortcuts import get_object_or_404
 from django.utils.translation import gettext_lazy as _
 from django.contrib import messages
 from django.http import HttpResponseRedirect
@@ -6,9 +8,13 @@ from django.urls import path, reverse
 from django.template.response import TemplateResponse
 from .models import (
     Company, Industry, Skill, Job, JobApplication, 
-    SavedJob, JobSearchPreference, ApiConfiguration, ApiRequestLog, UserJobApproval
+    SavedJob, JobSearchPreference, ApiConfiguration, ApiRequestLog, UserJobApproval,
+    JobCourseRecommendation,
 )
 from .api_integration import fetch_jobs_from_api
+from .recommendations import get_recommendations
+
+admin_logger = logging.getLogger('jobs.admin')
 
 @admin.register(Company)
 class CompanyAdmin(admin.ModelAdmin):
@@ -96,6 +102,66 @@ class JobAdmin(admin.ModelAdmin):
     
     def get_queryset(self, request):
         return super().get_queryset(request).select_related('company', 'created_by')
+
+    actions = ['view_course_recommendations']
+
+    def view_course_recommendations(self, request, queryset):
+        selected = queryset[:1]
+        if not selected:
+            self.message_user(request, 'No jobs selected.', level='WARNING')
+            return
+        job = selected[0]
+        return HttpResponseRedirect(
+            reverse('admin:jobs_job_recommendations', args=[job.id])
+        )
+    view_course_recommendations.short_description = _('View course recommendations for selected job')
+
+    def get_urls(self):
+        urls = super().get_urls()
+        custom_urls = [
+            path(
+                '<int:job_id>/recommendations/',
+                self.admin_site.admin_view(self.recommendations_view),
+                name='jobs_job_recommendations',
+            ),
+        ]
+        return custom_urls + urls
+
+    def recommendations_view(self, request, job_id):
+        job = get_object_or_404(Job, id=job_id)
+
+        if request.method == 'POST' and '_regenerate' in request.POST:
+            JobCourseRecommendation.objects.filter(job=job).delete()
+            messages.success(request, 'Recommendations cache cleared. Regenerating...')
+
+        rec_data = {'items': [], 'cached': False}
+        try:
+            items = get_recommendations(job)
+            cached = JobCourseRecommendation.objects.filter(job=job).exists()
+            rec_data = {'items': items, 'cached': cached}
+        except Exception as e:
+            admin_logger.error('Recommendation admin error: %s', e, exc_info=True)
+            messages.error(request, f'Error generating recommendations: {e}')
+
+        context = {
+            'title': f'Course Recommendations - {job.title}',
+            'job': job,
+            'recommendations': rec_data['items'],
+            'cached': rec_data['cached'],
+            'opts': self.model._meta,
+            'has_view_permission': True,
+            'add': False,
+            'change': False,
+            'is_popup': False,
+            'save_as': False,
+            'has_add_permission': self.has_add_permission(request),
+            'has_change_permission': self.has_change_permission(request),
+            'has_delete_permission': self.has_delete_permission(request),
+            'has_editable_inline_admin_formsets': False,
+        }
+        return TemplateResponse(
+            request, 'admin/jobs/job_recommendations.html', context
+        )
 class JobApplicationAdmin(admin.ModelAdmin):
     list_display = ('job', 'applicant', 'status', 'applied_date')
     list_filter = ('status', 'applied_date')
@@ -224,4 +290,19 @@ class ApiRequestLogAdmin(admin.ModelAdmin):
         return False
     
     def has_change_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(JobCourseRecommendation)
+class JobCourseRecommendationAdmin(admin.ModelAdmin):
+    list_display = ('job', 'source', 'course_count', 'updated_at')
+    list_filter = ('source', 'updated_at')
+    search_fields = ('job__title',)
+    readonly_fields = ('created_at', 'updated_at')
+
+    def course_count(self, obj):
+        return obj.courses.count()
+    course_count.short_description = _('Courses')
+
+    def has_add_permission(self, request):
         return False

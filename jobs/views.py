@@ -270,6 +270,14 @@ def job_detail(request, job_id):
     }
     context['job_json_ld'] = job_json_ld
     context['job_breadcrumb_json_ld'] = job_breadcrumb_json_ld
+
+    if request.user.is_authenticated and not user_has_applied:
+        try:
+            from .recommendations import get_recommendations
+            context['course_recommendations'] = get_recommendations(job)
+        except Exception as e:
+            logger.error('Failed to get course recommendations for job %s: %s', job.id, e)
+
     return render(request, 'jobs/job_detail.html', context)
 
 # Apply for job view
@@ -327,9 +335,17 @@ def apply_for_job(request, job_id):
     else:
         form = JobApplicationForm(job=job, user=request.user)
     
+    recommendations = []
+    try:
+        from .recommendations import get_recommendations
+        recommendations = get_recommendations(job)
+    except Exception as e:
+        logger.error('Failed to get course recommendations for job %s: %s', job.id, e)
+
     context = {
         'form': form,
         'job': job,
+        'course_recommendations': recommendations,
     }
     return render(request, 'jobs/job_apply.html', context)
 @login_required

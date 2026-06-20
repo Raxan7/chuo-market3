@@ -374,3 +374,23 @@ class UserJobApproval(models.Model):
     def __str__(self):
         status = "Approved" if self.is_approved else "Not Approved"
         return f"{self.user.username} - {status}"
+
+
+class JobCourseRecommendation(models.Model):
+    """Cached course recommendations for a job."""
+    job = models.OneToOneField(Job, on_delete=models.CASCADE, related_name='course_recommendations')
+    courses = models.ManyToManyField('lms.Course', blank=True, related_name='job_recommendations')
+    reasons = models.JSONField(_('Recommendation reasons'), default=dict, blank=True,
+                               help_text='Mapping of course_id to reason string')
+    source = models.CharField(_('Recommendation source'), max_length=20, default='',
+                              choices=[('cerebras', 'Cerebras AI'), ('fallback', 'Fallback')])
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = _('Job Course Recommendation')
+        verbose_name_plural = _('Job Course Recommendations')
+        ordering = ['-updated_at']
+
+    def __str__(self):
+        return f"Recommendations for {self.job.title} ({self.source})"
