@@ -460,6 +460,21 @@
       window.CSRF_TOKEN = JSON.parse(document.getElementById('csrf-token-global').textContent);
     </script>
 
+    <!-- Password visibility toggle -->
+    <script>
+    function togglePasswordVisibility(inputId, iconId) {
+        var input = document.getElementById(inputId);
+        var icon = document.getElementById(iconId);
+        if (input.type === 'password') {
+            input.type = 'text';
+            icon.className = 'fas fa-eye-slash';
+        } else {
+            input.type = 'password';
+            icon.className = 'fas fa-eye';
+        }
+    }
+    </script>
+
     <!-- Site-specific JS -->
     <script src="{% static 'app/js/myscript.js' %}"></script>
     <!-- Base JS (cart count, chatbot, mobile nav, etc.) -->

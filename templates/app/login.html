@@ -17,13 +17,18 @@
         <div class="text-danger small">{{ form.username.errors.0 }}</div>
      {% endif %}
     </div>
-    <div class="mb-3">
-     <label for="exampleInputPassword1" class="form-label">Password</label>
-     <input type="password" class="form-control" id="exampleInputPassword1" name="password" required>
-     {% if form.password.errors %}
-        <div class="text-danger small">{{ form.password.errors.0 }}</div>
-     {% endif %}
-    </div>
+     <div class="mb-3">
+      <label for="exampleInputPassword1" class="form-label">Password</label>
+      <div class="input-group">
+       <input type="password" class="form-control" id="exampleInputPassword1" name="password" required>
+       <button class="btn btn-outline-secondary" type="button" onclick="togglePasswordVisibility('exampleInputPassword1', 'loginPasswordIcon')">
+        <i class="fas fa-eye" id="loginPasswordIcon"></i>
+       </button>
+      </div>
+      {% if form.password.errors %}
+         <div class="text-danger small">{{ form.password.errors.0 }}</div>
+      {% endif %}
+     </div>
     {% if form.errors %}
     <div class="alert alert-danger" role="alert">
       <ul class="mb-0">
