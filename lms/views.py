@@ -2161,48 +2161,68 @@ def certificate_payment_init(request, certificate_id):
 @require_POST
 def snippe_webhook(request):
     """Handle Snippe webhook events (payment.completed, etc.)."""
-    signing_key = getattr(settings, 'SNIPPE_WEBHOOK_SECRET', '')
+    import logging
+    logger = logging.getLogger(__name__)
 
+    signing_key = getattr(settings, 'SNIPPE_WEBHOOK_SECRET', '')
     signature = request.headers.get('X-Webhook-Signature', '')
     timestamp = request.headers.get('X-Webhook-Timestamp', '')
-    raw_body = request.body.decode('utf-8')
+    raw_body = request.body
 
-    # Verify webhook signature using snippe SDK
+    # --- Signature verification ---
+    verified = False
     if signing_key and signature:
         try:
             from snippe import verify_webhook, WebhookVerificationError
             verify_webhook(
-                body=raw_body,
+                body=raw_body.decode('utf-8'),
                 signature=signature,
                 timestamp=timestamp,
                 signing_key=signing_key,
             )
+            verified = True
+        except (ImportError, AttributeError):
+            logger.warning("snippe SDK verify_webhook not available; falling back to manual verification")
         except WebhookVerificationError:
+            logger.warning("Snippe webhook signature verification failed")
             return HttpResponse(status=400)
-    elif signing_key:
-        # Fallback manual verification
+    elif signing_key and not signature:
+        logger.warning("Snippe webhook missing signature header")
+        return HttpResponse(status=400)
+
+    if not verified and signing_key and signature:
         import hashlib
         import hmac
-        message = f"{timestamp}.{raw_body}"
+        body_str = raw_body.decode('utf-8')
+        message = f"{timestamp}.{body_str}"
         expected_sig = hmac.new(
             signing_key.encode(), message.encode(), hashlib.sha256,
         ).hexdigest()
         if not hmac.compare_digest(signature, expected_sig):
+            logger.warning("Snippe webhook manual signature verification failed")
             return HttpResponse(status=400)
 
+    # --- Parse payload ---
     try:
-        payload = json.loads(raw_body)
-    except json.JSONDecodeError:
+        body_str = raw_body.decode('utf-8')
+        payload = json.loads(body_str)
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        logger.error("Snippe webhook invalid body: %s", exc)
         return HttpResponse(status=400)
 
     event_type = payload.get('type', '')
     event_data = payload.get('data', {})
 
     if event_type == 'payment.completed':
-        metadata = event_data.get('metadata', {})
+        metadata = event_data.get('metadata', {}) or {}
         certificate_id = metadata.get('certificate_id')
         user_id = metadata.get('user_id')
         session_reference = event_data.get('reference', '')
+        amount_value = None
+        try:
+            amount_value = event_data['amount']['value']
+        except (KeyError, TypeError):
+            pass
 
         if certificate_id and user_id:
             try:
@@ -2214,9 +2234,33 @@ def snippe_webhook(request):
 
                 payment.status = 'completed'
                 payment.snippe_reference = session_reference
+                if amount_value is not None:
+                    payment.amount = amount_value
                 payment.save()
+                logger.info(
+                    "Certificate payment completed: cert=%s user=%s ref=%s",
+                    certificate_id, user_id, session_reference,
+                )
             except CertificatePayment.DoesNotExist:
-                pass
+                logger.warning(
+                    "No pending payment found for cert=%s user=%s — may already be processed",
+                    certificate_id, user_id,
+                )
+            except CertificatePayment.MultipleObjectsReturned:
+                logger.warning(
+                    "Multiple pending payments for cert=%s user=%s — processing most recent",
+                    certificate_id, user_id,
+                )
+                payment = CertificatePayment.objects.filter(
+                    certificate__certificate_id=certificate_id,
+                    user_id=user_id,
+                    status='pending',
+                ).latest('created_at')
+                payment.status = 'completed'
+                payment.snippe_reference = session_reference
+                if amount_value is not None:
+                    payment.amount = amount_value
+                payment.save()
 
     return HttpResponse(status=200)
 
