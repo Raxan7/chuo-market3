@@ -1,5 +1,8 @@
 """Certificate rendering and issuing helpers."""
 
+import os
+import tempfile
+
 from django.http import HttpResponse
 from django.template.loader import render_to_string
 from django.urls import reverse
@@ -89,9 +92,64 @@ def certificate_html(certificate, request=None):
 
 
 def certificate_pdf_response(certificate, request=None):
+    """Generate and return a high-quality PDF certificate download.
+
+    Tries multiple strategies in order:
+    1. Chrome/Chromium headless print-to-pdf (best quality, needs Chrome installed)
+    2. pdfkit / wkhtmltopdf (production server with wkhtmltopdf)
+    3. fpdf2 (pure-Python fallback, basic but functional)
+    """
+    import subprocess
+
     html = certificate_html(certificate, request=request)
     filename = f"{certificate.certificate_id}.pdf"
 
+    # --- Strategy 1: Chrome headless print-to-pdf ---
+    chrome_candidates = [
+        r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+        r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+        os.path.expanduser(r"~\AppData\Local\Google\Chrome\Application\chrome.exe"),
+        r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
+        "/usr/bin/chromium-browser",
+        "/usr/bin/chromium",
+        "/usr/bin/google-chrome",
+        "/usr/bin/google-chrome-stable",
+    ]
+    chrome_path = None
+    for candidate in chrome_candidates:
+        if os.path.exists(candidate):
+            chrome_path = candidate
+            break
+
+    if chrome_path:
+        try:
+            with tempfile.NamedTemporaryFile(suffix='.html', delete=False, mode='w', encoding='utf-8') as f:
+                f.write(html)
+                html_path = f.name
+            pdf_path = tempfile.mktemp(suffix='.pdf')
+            subprocess.run(
+                [
+                    chrome_path, '--headless', '--disable-gpu', '--no-margins',
+                    f'--print-to-pdf={pdf_path}',
+                    f'file:///{html_path.replace(os.sep, "/")}',
+                ],
+                check=True, capture_output=True, timeout=30,
+            )
+            with open(pdf_path, 'rb') as f:
+                pdf_bytes = f.read()
+            os.unlink(html_path)
+            os.unlink(pdf_path)
+            response = HttpResponse(pdf_bytes, content_type='application/pdf')
+            response['Content-Disposition'] = f'attachment; filename="{filename}"'
+            return response
+        except Exception:
+            for p in [html_path, pdf_path]:
+                try:
+                    os.unlink(p)
+                except Exception:
+                    pass
+
+    # --- Strategy 2: pdfkit (needs wkhtmltopdf on PATH) ---
     try:
         import pdfkit
         pdf_bytes = pdfkit.from_string(html, False)
@@ -99,6 +157,75 @@ def certificate_pdf_response(certificate, request=None):
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
         return response
     except Exception:
-        response = HttpResponse(html, content_type='text/html')
-        response['Content-Disposition'] = f'inline; filename="{certificate.certificate_id}.html"'
+        pass
+
+    # --- Strategy 3: fpdf2 pure-Python fallback ---
+    try:
+        from fpdf import FPDF
+        import html as html_mod
+
+        ctx = certificate_context(certificate, request=request)
+        student = html_mod.unescape(ctx.get('student_name', ''))
+        course = html_mod.unescape(ctx.get('course_title', ''))
+        date = ctx.get('completion_date', '')
+        instructor = html_mod.unescape(ctx.get('instructor_name', ''))
+
+        pdf = FPDF(orientation='L', unit='mm', format='A4')
+        pdf.add_page()
+        pdf.set_auto_page_break(auto=False)
+
+        pdf.set_fill_color(11, 20, 55)
+        pdf.rect(0, 0, 297, 6, 'F')
+
+        pdf.ln(10)
+        pdf.set_font('Helvetica', 'B', 24)
+        pdf.set_text_color(13, 110, 253)
+        pdf.cell(0, 14, 'CERTIFICATE OF COMPLETION', align='C', new_x='LMARGIN', new_y='NEXT')
+
+        pdf.set_font('Helvetica', '', 12)
+        pdf.set_text_color(75, 85, 99)
+        pdf.cell(0, 8, 'This certificate is proudly presented to', align='C', new_x='LMARGIN', new_y='NEXT')
+
+        pdf.set_font('Helvetica', 'B', 32)
+        pdf.set_text_color(13, 110, 253)
+        pdf.cell(0, 20, student, align='C', new_x='LMARGIN', new_y='NEXT')
+
+        pdf.set_font('Helvetica', '', 12)
+        pdf.set_text_color(75, 85, 99)
+        pdf.cell(0, 10, 'for successfully completing the course', align='C', new_x='LMARGIN', new_y='NEXT')
+
+        pdf.set_font('Helvetica', 'B', 16)
+        pdf.set_text_color(13, 110, 253)
+        pdf.cell(0, 12, course, align='C', new_x='LMARGIN', new_y='NEXT')
+
+        pdf.set_font('Helvetica', '', 11)
+        pdf.set_text_color(75, 85, 99)
+        pdf.cell(0, 10, f'Issued on {date}', align='C', new_x='LMARGIN', new_y='NEXT')
+
+        pdf.ln(10)
+        pdf.set_font('Helvetica', 'I', 10)
+        pdf.set_text_color(107, 114, 128)
+        pdf.cell(0, 6, f'Signed by: {instructor}', align='C', new_x='LMARGIN', new_y='NEXT')
+
+        pdf.ln(4)
+        pdf.set_font('Courier', '', 8)
+        pdf.set_text_color(107, 114, 128)
+        pdf.cell(0, 6, f'Certificate ID: {certificate.certificate_id}', align='C', new_x='LMARGIN', new_y='NEXT')
+
+        pdf.set_fill_color(245, 193, 72)
+        pdf.rect(0, 204, 297, 6, 'F')
+
+        pdf_bytes = pdf.output()
+        response = HttpResponse(pdf_bytes, content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
         return response
+    except Exception:
+        pass
+
+    # --- Final fallback: download HTML file (save & print-to-PDF manually) ---
+    response = HttpResponse(
+        html + '<script>window.print()</script>',
+        content_type='text/html',
+    )
+    response['Content-Disposition'] = f'attachment; filename="{certificate.certificate_id}.html"'
+    return response

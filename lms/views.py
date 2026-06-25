@@ -2160,107 +2160,170 @@ def certificate_payment_init(request, certificate_id):
 @csrf_exempt
 @require_POST
 def snippe_webhook(request):
-    """Handle Snippe webhook events (payment.completed, etc.)."""
+    """Handle Snippe webhook events.
+
+    Supports both current (2026-01-25) envelope format:
+        { id, type, data: { reference, status, amount, metadata, ... } }
+    and legacy (2026-01-01) flat format:
+        { event, reference, status, amount, metadata, ... }
+
+    Events handled:
+        payment.completed  -> status='completed'
+        payment.failed     -> status='failed'
+        payment.voided     -> status='cancelled'
+        payment.expired    -> status='expired'
+    """
     import logging
+    import time
     logger = logging.getLogger(__name__)
 
     signing_key = getattr(settings, 'SNIPPE_WEBHOOK_SECRET', '')
     signature = request.headers.get('X-Webhook-Signature', '')
-    timestamp = request.headers.get('X-Webhook-Timestamp', '')
+    timestamp_header = request.headers.get('X-Webhook-Timestamp', '')
     raw_body = request.body
 
-    # --- Signature verification ---
-    verified = False
-    if signing_key and signature:
-        try:
-            from snippe import verify_webhook, WebhookVerificationError
-            verify_webhook(
-                body=raw_body.decode('utf-8'),
-                signature=signature,
-                timestamp=timestamp,
-                signing_key=signing_key,
-            )
-            verified = True
-        except (ImportError, AttributeError):
-            logger.warning("snippe SDK verify_webhook not available; falling back to manual verification")
-        except WebhookVerificationError:
-            logger.warning("Snippe webhook signature verification failed")
-            return HttpResponse(status=400)
-    elif signing_key and not signature:
-        logger.warning("Snippe webhook missing signature header")
+    # --- Config checks ---
+    if not signing_key:
+        logger.warning("Snippe webhook secret not configured")
+        return HttpResponse(status=500)
+
+    if not signature:
+        logger.warning("Snippe webhook missing X-Webhook-Signature header")
         return HttpResponse(status=400)
 
-    if not verified and signing_key and signature:
-        import hashlib
-        import hmac
-        body_str = raw_body.decode('utf-8')
-        message = f"{timestamp}.{body_str}"
-        expected_sig = hmac.new(
-            signing_key.encode(), message.encode(), hashlib.sha256,
-        ).hexdigest()
-        if not hmac.compare_digest(signature, expected_sig):
-            logger.warning("Snippe webhook manual signature verification failed")
+    if not timestamp_header:
+        logger.warning("Snippe webhook missing X-Webhook-Timestamp header")
+        return HttpResponse(status=400)
+
+    # --- Replay attack prevention ---
+    try:
+        event_time = int(timestamp_header)
+        if int(time.time()) - event_time > 300:
+            logger.warning("Snippe webhook timestamp too old (replay?)")
             return HttpResponse(status=400)
+    except ValueError:
+        logger.warning("Snippe webhook invalid timestamp header")
+        return HttpResponse(status=400)
+
+    # --- Signature verification ---
+    import hashlib
+    import hmac
+    body_str = raw_body.decode('utf-8')
+    message = f"{timestamp_header}.{body_str}"
+    expected_sig = hmac.new(
+        signing_key.encode(), message.encode(), hashlib.sha256,
+    ).hexdigest()
+    if not hmac.compare_digest(signature, expected_sig):
+        logger.warning("Snippe webhook signature verification failed")
+        return HttpResponse(status=400)
 
     # --- Parse payload ---
     try:
-        body_str = raw_body.decode('utf-8')
         payload = json.loads(body_str)
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
         logger.error("Snippe webhook invalid body: %s", exc)
         return HttpResponse(status=400)
 
-    event_type = payload.get('type', '')
-    event_data = payload.get('data', {})
+    # --- Detect format: current envelope vs legacy flat ---
+    if 'type' in payload and 'data' in payload:
+        # Current format (API version 2026-01-25)
+        event_id = payload.get('id', '')
+        event_type = payload['type']
+        event_data = payload['data']
+    elif 'event' in payload:
+        # Legacy format (API version 2026-01-01)
+        event_id = payload.get('reference', '')
+        event_type = payload['event']
+        event_data = payload
+    else:
+        logger.warning("Snippe webhook unrecognised payload format")
+        return HttpResponse(status=200)
 
-    if event_type == 'payment.completed':
-        metadata = event_data.get('metadata', {}) or {}
-        certificate_id = metadata.get('certificate_id')
-        user_id = metadata.get('user_id')
-        session_reference = event_data.get('reference', '')
-        amount_value = None
-        try:
-            amount_value = event_data['amount']['value']
-        except (KeyError, TypeError):
-            pass
+    # Log every incoming event for audit
+    logger.info(
+        "Snippe webhook received: event=%s id=%s ref=%s",
+        event_type, event_id, event_data.get('reference', ''),
+    )
 
-        if certificate_id and user_id:
-            try:
-                payment = CertificatePayment.objects.filter(
-                    certificate__certificate_id=certificate_id,
-                    user_id=user_id,
-                    status='pending',
-                ).latest('created_at')
+    # --- Extract common fields (works for both formats) ---
+    metadata = event_data.get('metadata', {}) or {}
+    # Support both envelope metadata and url_metadata from payment links
+    if 'url_metadata' in event_data:
+        url_meta = event_data['url_metadata']
+        if isinstance(url_meta, dict):
+            metadata.update(url_meta)
 
-                payment.status = 'completed'
-                payment.snippe_reference = session_reference
-                if amount_value is not None:
-                    payment.amount = amount_value
-                payment.save()
-                logger.info(
-                    "Certificate payment completed: cert=%s user=%s ref=%s",
-                    certificate_id, user_id, session_reference,
-                )
-            except CertificatePayment.DoesNotExist:
-                logger.warning(
-                    "No pending payment found for cert=%s user=%s — may already be processed",
-                    certificate_id, user_id,
-                )
-            except CertificatePayment.MultipleObjectsReturned:
-                logger.warning(
-                    "Multiple pending payments for cert=%s user=%s — processing most recent",
-                    certificate_id, user_id,
-                )
-                payment = CertificatePayment.objects.filter(
-                    certificate__certificate_id=certificate_id,
-                    user_id=user_id,
-                    status='pending',
-                ).latest('created_at')
-                payment.status = 'completed'
-                payment.snippe_reference = session_reference
-                if amount_value is not None:
-                    payment.amount = amount_value
-                payment.save()
+    certificate_id = metadata.get('certificate_id')
+    user_id = metadata.get('user_id')
+    payment_reference = event_data.get('reference', '')
+    amount_value = None
+    try:
+        amount_value = event_data['amount']['value']
+    except (KeyError, TypeError):
+        pass
+
+    if not certificate_id or not user_id:
+        logger.info("Snippe webhook missing certificate_id/user_id in metadata — nothing to update")
+        return HttpResponse(status=200)
+
+    # --- Map event type to payment status ---
+    status_map = {
+        'payment.completed': 'completed',
+        'payment.failed': 'failed',
+        'payment.voided': 'cancelled',
+        'payment.expired': 'expired',
+    }
+    new_status = status_map.get(event_type)
+    if not new_status:
+        logger.info("Snippe webhook unhandled event type: %s", event_type)
+        return HttpResponse(status=200)
+
+    # --- Update or create the payment record (idempotent) ---
+    try:
+        payment = CertificatePayment.objects.filter(
+            certificate__certificate_id=certificate_id,
+            user_id=user_id,
+        ).latest('created_at')
+
+        # Idempotency: skip if already in the target state
+        if payment.status == new_status:
+            logger.info(
+                "Snippe webhook duplicate event: cert=%s user=%s already %s",
+                certificate_id, user_id, new_status,
+            )
+            return HttpResponse(status=200)
+
+        # Only transition from 'pending' to the new status
+        if payment.status != 'pending':
+            logger.warning(
+                "Snippe webhook cannot transition payment from %s to %s: cert=%s user=%s",
+                payment.status, new_status, certificate_id, user_id,
+            )
+            return HttpResponse(status=200)
+
+        payment.status = new_status
+        payment.snippe_reference = payment_reference
+        if amount_value is not None:
+            payment.amount = amount_value
+
+        payment.save()
+
+        if new_status == 'failed':
+            logger.info(
+                "Payment failure reason: cert=%s user=%s reason=%s",
+                certificate_id, user_id, event_data.get('failure_reason', ''),
+            )
+
+        logger.info(
+            "Certificate payment %s: cert=%s user=%s ref=%s",
+            new_status, certificate_id, user_id, payment_reference,
+        )
+
+    except CertificatePayment.DoesNotExist:
+        logger.warning(
+            "Snippe webhook no payment found for cert=%s user=%s — skipping",
+            certificate_id, user_id,
+        )
 
     return HttpResponse(status=200)
 
