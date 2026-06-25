@@ -2026,15 +2026,23 @@ def certificate_detail(request, certificate_id):
 @login_required(login_url='login')
 @legal_name_required
 def download_certificate(request, certificate_id):
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info("download_certificate called: cert=%s user=%s", certificate_id, request.user.id)
+
     certificate = get_object_or_404(
         StudentCertificate.objects.select_related('student', 'course', 'template'),
         certificate_id=certificate_id,
     )
+    logger.info("certificate found: student=%s course=%s", certificate.student.id, certificate.course.id)
+
     if certificate.student != request.user and not can_manage_course(request.user, certificate.course):
+        logger.warning("download denied: not owner and not manager")
         messages.error(request, _("You can only download certificates you earned."))
         return redirect('lms:student_dashboard')
 
     if not getattr(settings, 'CERTIFICATE_DOWNLOADS_ENABLED', False):
+        logger.warning("downloads not enabled")
         messages.info(
             request,
             _("Certificate downloads are not available yet. You can still preview your certificate."),
@@ -2043,9 +2051,15 @@ def download_certificate(request, certificate_id):
 
     # Check if payment is required and has been completed
     if certificate.student == request.user:
-        has_paid = CertificatePayment.objects.filter(
-            certificate=certificate, user=request.user, status='completed'
-        ).exists()
+        try:
+            has_paid = CertificatePayment.objects.filter(
+                certificate=certificate, user=request.user, status='completed'
+            ).exists()
+            logger.info("payment check: has_paid=%s", has_paid)
+        except Exception as exc:
+            logger.error("payment check failed: %s", exc)
+            has_paid = False
+
         if not has_paid:
             messages.info(
                 request,
@@ -2054,6 +2068,7 @@ def download_certificate(request, certificate_id):
             return redirect('lms:certificate_detail', certificate_id=certificate.certificate_id)
 
     from .certificates import certificate_pdf_response
+    logger.info("calling certificate_pdf_response")
     return certificate_pdf_response(certificate, request=request)
 
 

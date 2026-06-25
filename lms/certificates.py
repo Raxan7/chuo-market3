@@ -95,8 +95,10 @@ def certificate_pdf_response(certificate, request=None):
     """Generate and return a PDF certificate download."""
     import logging
     logger = logging.getLogger(__name__)
+    logger.info("Starting PDF generation for cert=%s", certificate.certificate_id)
 
     html = certificate_html(certificate, request=request)
+    logger.info("HTML rendered: %d bytes", len(html))
     filename = f"{certificate.certificate_id}.pdf"
 
     # --- Strategy 1: fpdf2 pure-Python PDF (most reliable, no external deps) ---
@@ -104,11 +106,13 @@ def certificate_pdf_response(certificate, request=None):
         from fpdf import FPDF
         import html as html_mod
 
+        logger.info("fpdf2: building certificate context")
         ctx = certificate_context(certificate, request=request)
         student = html_mod.unescape(ctx.get('student_name', ''))
         course = html_mod.unescape(ctx.get('course_title', ''))
         date = ctx.get('completion_date', '')
         instructor = html_mod.unescape(ctx.get('instructor_name', ''))
+        logger.info("fpdf2: ctx data student=%r course=%r date=%r", student[:30], course[:30], date)
 
         pdf = FPDF(orientation='L', unit='mm', format='A4')
         pdf.add_page()
