@@ -1,5 +1,6 @@
 """Certificate rendering and issuing helpers."""
 
+import logging
 import os
 import tempfile
 
@@ -122,23 +123,67 @@ def _pdf_link_callback(uri, rel):
     return uri
 
 
+def _pdf_via_playwright(html, filename):
+    """Generate PDF using Playwright with Chrome channel."""
+    from playwright.sync_api import sync_playwright
+
+    with tempfile.NamedTemporaryFile(suffix='.html', delete=False, mode='w', encoding='utf-8') as f:
+        f.write(html)
+        html_path = f.name
+
+    try:
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True, channel='chrome')
+            page = browser.new_page()
+            page.goto('file:///' + html_path.replace(os.sep, '/'))
+            page.wait_for_load_state('networkidle')
+            pdf_bytes = page.pdf(
+                format='A4',
+                landscape=True,
+                margin={'top': '0', 'right': '0', 'bottom': '0', 'left': '0'},
+                print_background=True,
+            )
+            browser.close()
+        return pdf_bytes
+    finally:
+        try:
+            os.unlink(html_path)
+        except Exception:
+            pass
+
+
 def certificate_pdf_response(certificate, request=None):
     """Generate and return a high-quality PDF certificate download.
 
-    Uses xhtml2pdf (pure Python, no system deps) to render the full
-    CSS-designed certificate template. Falls back to fpdf2 and HTML
-    download if unavailable.
+    Strategies (in order):
+    1. Playwright + Chrome (full CSS support: grid, gradients, pseudo-elements, flexbox)
+    2. xhtml2pdf (pure Python, limited CSS)
+    3. fpdf2 (pure Python, programmatic layout)
+    4. HTML download fallback
     """
-    import logging
-    from io import BytesIO
-
     logger = logging.getLogger(__name__)
     html = certificate_html(certificate, request=request)
     filename = f"{certificate.certificate_id}.pdf"
 
-    # --- Strategy 1: xhtml2pdf (pure Python, renders HTML+CSS) ---
+    # --- Strategy 1: Playwright with Chrome (best fidelity) ---
+    try:
+        pdf_bytes = _pdf_via_playwright(html, filename)
+        if pdf_bytes and pdf_bytes[:5] == b'%PDF-':
+            logger.info(
+                "Playwright OK: cert=%s size=%d bytes",
+                certificate.certificate_id, len(pdf_bytes),
+            )
+            response = HttpResponse(pdf_bytes, content_type='application/pdf')
+            response['Content-Disposition'] = f'attachment; filename="{filename}"'
+            return response
+        logger.warning("Playwright generated invalid PDF for %s", certificate.certificate_id)
+    except Exception as exc:
+        logger.warning("Playwright failed for %s: %s", certificate.certificate_id, exc)
+
+    # --- Strategy 2: xhtml2pdf (pure Python, limited CSS) ---
     try:
         from xhtml2pdf import pisa
+        from io import BytesIO
 
         result = BytesIO()
         pisa_status = pisa.CreatePDF(
@@ -159,7 +204,7 @@ def certificate_pdf_response(certificate, request=None):
     except Exception as exc:
         logger.warning("xhtml2pdf failed for %s: %s", certificate.certificate_id, exc)
 
-    # --- Strategy 2: fpdf2 pure-Python fallback ---
+    # --- Strategy 3: fpdf2 pure-Python fallback ---
     try:
         from fpdf import FPDF
         import html as html_mod
