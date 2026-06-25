@@ -57,38 +57,40 @@
     .cs-preview-canvas {
         position: relative;
         background:
-            radial-gradient(1200px 600px at 50% -10%, rgba(31, 170, 89, 0.10), transparent 60%),
-            radial-gradient(900px 500px at 50% 110%, rgba(13, 110, 253, 0.10), transparent 60%),
+            radial-gradient(1200px 600px at 50% -10%, rgba(245, 193, 72, 0.06), transparent 60%),
+            radial-gradient(900px 500px at 50% 110%, rgba(11, 20, 55, 0.04), transparent 60%),
             #ffffff;
-        padding: 22px;
+        padding: 24px;
     }
     .cs-preview-canvas::before,
     .cs-preview-canvas::after {
         content: "";
         position: absolute;
-        width: 70px; height: 70px;
+        width: 44px; height: 44px;
         z-index: 1;
+        border-color: #F5C148;
+        border-style: solid;
     }
     .cs-preview-canvas::before {
-        top: 10px; left: 10px;
-        background: linear-gradient(135deg, #1FAA59 0 50%, transparent 50% 100%);
+        top: 12px; left: 12px;
+        border-width: 3px 0 0 3px;
     }
     .cs-preview-canvas::after {
-        bottom: 10px; right: 10px;
-        background: linear-gradient(315deg, #B8861E 0 50%, transparent 50% 100%);
+        bottom: 12px; right: 12px;
+        border-width: 0 3px 3px 0;
     }
     .cs-preview-frame {
         position: relative; z-index: 2;
-        border: 3px solid #0d6efd;
-        padding: 6px;
+        border: 5px double #F5C148;
+        padding: 8px;
     }
     .cs-preview-frame-inner {
         position: relative;
-        border: 1px solid #1FAA59;
-        padding: 26px 22px 22px;
+        border: 1.5px solid #0B1437;
+        padding: 28px 24px 24px;
         text-align: center;
         background:
-            linear-gradient(180deg, rgba(255,255,255,1) 0%, rgba(248,250,252,0.4) 100%);
+            linear-gradient(180deg, #ffffff 0%, #FFFBEB 100%);
     }
     .cs-preview-logo {
         width: 80px;
