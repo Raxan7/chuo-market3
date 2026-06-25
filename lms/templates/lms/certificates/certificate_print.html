@@ -12,79 +12,100 @@
         html, body {
             margin: 0;
             padding: 0;
+            width: 297mm;
+            height: 210mm;
             font-family: "Georgia", "Times New Roman", "Cambria", serif;
             color: #111827;
             background: #E5E7EB;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
-        }
-
-        .canvas {
-            position: relative;
-            width: 297mm;
-            min-height: 210mm;
-            margin: 0 auto;
-            background:
-                radial-gradient(1200px 600px at 50% -10%, rgba(245, 193, 72, 0.06), transparent 60%),
-                radial-gradient(900px 500px at 50% 110%, rgba(11, 20, 55, 0.04), transparent 60%),
-                #ffffff;
-            padding: 14mm;
             overflow: hidden;
         }
 
-        .canvas::before,
-        .canvas::after {
+        /* ── A4 canvas (exact page size) ────────────────────────────── */
+        .canvas {
+            position: relative;
+            width: 297mm;
+            height: 210mm;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background:
+                radial-gradient(1200px 600px at 50% -10%, rgba(245, 193, 72, 0.06), transparent 60%),
+                radial-gradient(900px 500px at 50% 110%, rgba(11, 20, 55, 0.04), transparent 60%),
+                linear-gradient(180deg, #FFF8E7 0%, #ffffff 12%, #ffffff 100%),
+                #ffffff;
+            overflow: hidden;
+        }
+
+        /* ── Scaled certificate (matches _preview_modal.css exactly) ── */
+        .cert-target {
+            position: relative;
+            padding: 24px;
+            width: 760px;
+        }
+
+        /* Corner ornaments — same as preview */
+        .cert-target::before,
+        .cert-target::after {
             content: "";
             position: absolute;
-            width: 44px;
-            height: 44px;
+            width: 44px; height: 44px;
             z-index: 1;
             border-color: #F5C148;
             border-style: solid;
         }
-        .canvas::before {
-            top: 12mm;
-            left: 12mm;
+        .cert-target::before {
+            top: 12px; left: 12px;
             border-width: 3px 0 0 3px;
         }
-        .canvas::after {
-            bottom: 12mm;
-            right: 12mm;
+        .cert-target::after {
+            bottom: 12px; right: 12px;
             border-width: 0 3px 3px 0;
         }
 
+        /* ID pill — top-right corner */
+        .cs-preview-id-pill {
+            position: absolute;
+            top: 14px; right: 14px;
+            font-family: "Courier New", monospace;
+            font-size: 10px;
+            background: rgba(13, 110, 253, 0.08);
+            color: #0d6efd;
+            padding: 4px 8px;
+            border-radius: 6px;
+            z-index: 3;
+        }
+
+        /* Frame — gold double border */
         .frame {
             position: relative;
             z-index: 2;
-            width: 100%;
-            min-height: 182mm;
             border: 5px double #F5C148;
+            padding: 8px;
             background: #ffffff;
-            padding: 8mm;
         }
 
         .frame-inner {
-            width: 100%;
-            min-height: 166mm;
-            border: 1.5px solid #0B1437;
-            padding: 10mm 14mm;
             position: relative;
+            border: 1.5px solid #0B1437;
+            padding: 28px 24px 24px;
             text-align: center;
             background:
                 linear-gradient(180deg, #ffffff 0%, #FFFBEB 100%);
         }
 
-        .preview-logo {
+        .cs-preview-logo {
             width: 80px;
             margin: 0 auto 12px;
         }
-        .preview-logo img {
+        .cs-preview-logo img {
             width: 100%;
             height: auto;
             display: block;
         }
 
-        .preview-org {
+        .cs-preview-org {
             font-size: 11px;
             letter-spacing: 4px;
             text-transform: uppercase;
@@ -92,9 +113,9 @@
             font-weight: 700;
         }
 
-        .preview-title {
+        .cs-preview-title {
             font-family: "Georgia", "Times New Roman", serif;
-            font-size: 36px;
+            font-size: 26px;
             font-weight: 700;
             color: #0d6efd;
             letter-spacing: 3px;
@@ -102,14 +123,14 @@
             margin: 8px 0 4px;
         }
 
-        .preview-subtitle {
+        .cs-preview-subtitle {
             font-style: italic;
-            font-size: 14px;
+            font-size: 12px;
             color: #4B5563;
-            margin: 0 0 18px;
+            margin: 0 0 16px;
         }
 
-        .preview-presented {
+        .cs-preview-presented {
             font-size: 11px;
             letter-spacing: 2.5px;
             text-transform: uppercase;
@@ -118,9 +139,9 @@
             margin: 0 0 6px;
         }
 
-        .preview-name {
+        .cs-preview-name {
             font-family: "Brush Script MT", "Lucida Handwriting", "Apple Chancery", cursive;
-            font-size: 56px;
+            font-size: 40px;
             line-height: 1.05;
             font-style: italic;
             color: #0d6efd;
@@ -129,104 +150,96 @@
             text-shadow: 0 1px 0 rgba(13, 110, 253, 0.08);
         }
 
-        .preview-underline {
+        .cs-preview-underline {
             display: block;
             width: 60%;
-            max-width: 460px;
+            max-width: 380px;
             height: 2px;
-            margin: 4px auto 14px;
+            margin: 4px auto 12px;
             background: linear-gradient(90deg, transparent, #1FAA59, #0d6efd, #1FAA59, transparent);
             border-radius: 2px;
         }
 
-        .preview-body {
-            font-size: 14px;
-            line-height: 1.7;
+        .cs-preview-body {
+            font-size: 13px;
+            line-height: 1.6;
             color: #4B5563;
-            max-width: 720px;
+            max-width: 540px;
             margin: 0 auto 6px;
         }
 
-        .rendered-body {
-            font-size: 14px;
-            line-height: 1.7;
-            color: #4B5563;
-            max-width: 760px;
-            margin: 0 auto 6px;
-        }
-
-        .preview-course {
+        .cs-preview-course {
             font-family: "Georgia", "Times New Roman", serif;
-            font-size: 22px;
+            font-size: 18px;
             font-weight: 700;
             color: #0d6efd;
-            margin: 6px 0 4px;
+            margin: 4px 0 2px;
         }
 
-        .preview-date {
-            font-size: 13px;
+        .cs-preview-date {
+            font-size: 12px;
             color: #4B5563;
-            margin: 4px 0 22px;
+            margin: 4px 0 16px;
         }
 
-        .preview-footer {
+        .cs-preview-footer {
             display: grid;
             grid-template-columns: 1fr auto 1fr;
             align-items: end;
-            gap: 24px;
-            margin-top: 28px;
-            padding: 0 8mm;
+            gap: 16px;
+            margin-top: 18px;
+            padding: 0 4px;
         }
 
-        .preview-sig {
+        .cs-preview-sig {
             text-align: left;
         }
-        .preview-sig .name {
+        .cs-preview-sig .name {
             font-family: "Brush Script MT", "Lucida Handwriting", cursive;
-            font-size: 24px;
+            font-size: 20px;
             color: #111827;
             border-bottom: 1.5px solid #111827;
             padding-bottom: 2px;
             display: inline-block;
-            min-width: 200px;
+            min-width: 160px;
         }
-        .preview-sig .label {
+        .cs-preview-sig .label {
             font-size: 10px;
             letter-spacing: 1.5px;
             text-transform: uppercase;
             color: #4B5563;
             margin-top: 4px;
         }
-        .preview-sig .label strong { color: #111827; }
+        .cs-preview-sig .label strong { color: #111827; }
 
-        .preview-seal {
-            width: 90px;
-            height: 90px;
+        .cs-preview-seal {
+            width: 72px;
+            height: 72px;
         }
-        .preview-seal img {
+        .cs-preview-seal img {
             width: 100%;
             height: 100%;
             object-fit: contain;
             display: block;
         }
 
-        .preview-meta {
+        .cs-preview-meta {
             text-align: right;
         }
-        .preview-meta .lbl {
+        .cs-preview-meta .lbl {
             font-size: 9px;
             letter-spacing: 1.5px;
             text-transform: uppercase;
             color: #6B7280;
             margin-bottom: 2px;
         }
-        .preview-meta .id {
+        .cs-preview-meta .id {
             font-family: "Courier New", monospace;
             font-size: 11px;
             color: #4B5563;
             word-break: break-all;
         }
-        .preview-meta .verify-link {
+        .cs-preview-meta .verify-link {
             font-size: 10px;
             color: #0d6efd;
             word-break: break-all;
@@ -243,54 +256,73 @@
 </head>
 <body>
     <div class="canvas">
-        <div class="frame">
-            <div class="frame-inner">
+        <div id="certTarget" class="cert-target">
+            <span class="cs-preview-id-pill">{{ certificate.certificate_id }}</span>
+            <div class="frame">
+                <div class="frame-inner">
 
-                <div class="preview-logo">
-                    <img src="{% static 'app/images/logo.png' %}" alt="ChuoSmart" width="80" height="80">
+                    <div class="cs-preview-logo">
+                        <img src="{% static 'app/images/logo.png' %}" alt="ChuoSmart" width="80" height="80">
+                    </div>
+
+                    <div class="cs-preview-org">{{ organization_name }}</div>
+
+                    <h1 class="cs-preview-title">{{ template.title|default:"Certificate of Completion" }}</h1>
+                    <p class="cs-preview-subtitle">{{ template.subtitle|default:"Awarded in recognition of successful course completion" }}</p>
+
+                    <div class="cs-preview-presented">This certificate is proudly presented to</div>
+
+                    <div class="cs-preview-name">{{ student_name }}</div>
+                    <span class="cs-preview-underline" aria-hidden="true"></span>
+
+                    <div class="cs-preview-body">{{ rendered_body }}</div>
+
+                    <div class="cs-preview-course">{{ course_title }}</div>
+                    <div class="cs-preview-date">Issued on {{ completion_date }}</div>
+
+                    <div class="cs-preview-footer">
+                        <div class="cs-preview-sig">
+                            <div class="name">{{ instructor_name|default:"Course Instructor" }}</div>
+                            <div class="label"><strong>{{ instructor_name|default:"Course Instructor" }}</strong><br>Course Instructor</div>
+                        </div>
+
+                        <div class="cs-preview-seal">
+                            <img src="{% static 'lms/images/chuosmart_seal.png' %}" alt="ChuoSmart Seal" width="72" height="72">
+                        </div>
+
+                        <div class="cs-preview-meta">
+                            <div class="lbl">Certificate ID</div>
+                            <div class="id">{{ certificate.certificate_id }}</div>
+                            {% if verification_url %}
+                            <div class="lbl" style="margin-top:6px;">Verify Online</div>
+                            <a class="verify-link" href="{{ verification_url }}">{{ verification_url }}</a>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    {% if template.footer_note %}
+                    <div class="footer-note">{{ template.footer_note }}</div>
+                    {% endif %}
+
                 </div>
-
-                <div class="preview-org">{{ organization_name }}</div>
-
-                <h1 class="preview-title">{{ template.title|default:"Certificate of Completion" }}</h1>
-                <p class="preview-subtitle">{{ template.subtitle|default:"Awarded in recognition of successful course completion" }}</p>
-
-                <div class="preview-presented">This certificate is proudly presented to</div>
-
-                <div class="preview-name">{{ student_name }}</div>
-                <span class="preview-underline" aria-hidden="true"></span>
-
-                <div class="rendered-body">{{ rendered_body }}</div>
-
-                <div class="preview-course">{{ course_title }}</div>
-                <div class="preview-date">Issued on {{ completion_date }}</div>
-
-                <div class="preview-footer">
-                    <div class="preview-sig">
-                        <div class="name">{{ instructor_name|default:"Course Instructor" }}</div>
-                        <div class="label"><strong>{{ instructor_name|default:"Course Instructor" }}</strong><br>Course Instructor</div>
-                    </div>
-
-                    <div class="preview-seal">
-                        <img src="{% static 'lms/images/chuosmart_seal.png' %}" alt="ChuoSmart Seal" width="90" height="90">
-                    </div>
-
-                    <div class="preview-meta">
-                        <div class="lbl">Certificate ID</div>
-                        <div class="id">{{ certificate.certificate_id }}</div>
-                        {% if verification_url %}
-                        <div class="lbl" style="margin-top:6px;">Verify Online</div>
-                        <a class="verify-link" href="{{ verification_url }}">{{ verification_url }}</a>
-                        {% endif %}
-                    </div>
-                </div>
-
-                {% if template.footer_note %}
-                <div class="footer-note">{{ template.footer_note }}</div>
-                {% endif %}
-
             </div>
         </div>
     </div>
+
+    <script>
+        (function() {
+            var target = document.getElementById('certTarget');
+            if (!target) return;
+            var parent = target.parentElement;
+            var margin = 24;
+            var scaleW = (parent.clientWidth - margin * 2) / target.offsetWidth;
+            var scaleH = (parent.clientHeight - margin * 2) / target.offsetHeight;
+            var scale = Math.min(scaleW, scaleH, 2);
+            if (scale > 0 && scale !== 1) {
+                target.style.transformOrigin = 'center center';
+                target.style.transform = 'scale(' + scale + ')';
+            }
+        })();
+    </script>
 </body>
 </html>
