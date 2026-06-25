@@ -91,28 +91,84 @@ def certificate_html(certificate, request=None):
     )
 
 
-def certificate_pdf_response(certificate, request=None):
-    """Generate and return a PDF certificate download."""
-    import logging
-    logger = logging.getLogger(__name__)
-    logger.info("Starting PDF generation for cert=%s", certificate.certificate_id)
+def _pdf_link_callback(uri, rel):
+    """Resolve static file URIs for xhtml2pdf."""
+    from django.conf import settings
+    from django.contrib.staticfiles import finders
 
+    if not uri.startswith(settings.STATIC_URL):
+        return uri
+
+    relative = uri[len(settings.STATIC_URL):].lstrip('/')
+
+    # 1) Try finders.find — the canonical Django static-file lookup
+    result = finders.find(relative)
+    if result:
+        if isinstance(result, (list, tuple)):
+            return result[0]
+        return result
+
+    # 2) Fallback: walk STATICFILES_DIRS
+    for d in settings.STATICFILES_DIRS:
+        candidate = os.path.join(d, relative).replace('/', os.sep)
+        if os.path.exists(candidate):
+            return candidate
+
+    # 3) Last-ditch: guess based on BASE_DIR + 'static'
+    candidate = os.path.join(settings.BASE_DIR, 'static', relative).replace('/', os.sep)
+    if os.path.exists(candidate):
+        return candidate
+
+    return uri
+
+
+def certificate_pdf_response(certificate, request=None):
+    """Generate and return a high-quality PDF certificate download.
+
+    Uses xhtml2pdf (pure Python, no system deps) to render the full
+    CSS-designed certificate template. Falls back to fpdf2 and HTML
+    download if unavailable.
+    """
+    import logging
+    from io import BytesIO
+
+    logger = logging.getLogger(__name__)
     html = certificate_html(certificate, request=request)
-    logger.info("HTML rendered: %d bytes", len(html))
     filename = f"{certificate.certificate_id}.pdf"
 
-    # --- Strategy 1: fpdf2 pure-Python PDF (most reliable, no external deps) ---
+    # --- Strategy 1: xhtml2pdf (pure Python, renders HTML+CSS) ---
+    try:
+        from xhtml2pdf import pisa
+
+        result = BytesIO()
+        pisa_status = pisa.CreatePDF(
+            BytesIO(html.encode('utf-8')),
+            dest=result,
+            link_callback=_pdf_link_callback,
+        )
+        pdf_bytes = result.getvalue()
+        if not pisa_status.err and pdf_bytes:
+            logger.info(
+                "xhtml2pdf OK: cert=%s size=%d bytes",
+                certificate.certificate_id, len(pdf_bytes),
+            )
+            response = HttpResponse(pdf_bytes, content_type='application/pdf')
+            response['Content-Disposition'] = f'attachment; filename="{filename}"'
+            return response
+        logger.warning("xhtml2pdf generated empty PDF for %s", certificate.certificate_id)
+    except Exception as exc:
+        logger.warning("xhtml2pdf failed for %s: %s", certificate.certificate_id, exc)
+
+    # --- Strategy 2: fpdf2 pure-Python fallback ---
     try:
         from fpdf import FPDF
         import html as html_mod
 
-        logger.info("fpdf2: building certificate context")
         ctx = certificate_context(certificate, request=request)
         student = html_mod.unescape(ctx.get('student_name', ''))
         course = html_mod.unescape(ctx.get('course_title', ''))
         date = ctx.get('completion_date', '')
         instructor = html_mod.unescape(ctx.get('instructor_name', ''))
-        logger.info("fpdf2: ctx data student=%r course=%r date=%r", student[:30], course[:30], date)
 
         pdf = FPDF(orientation='L', unit='mm', format='A4')
         pdf.add_page()
@@ -160,74 +216,15 @@ def certificate_pdf_response(certificate, request=None):
         pdf.rect(0, 204, 297, 6, 'F')
 
         pdf_bytes = pdf.output()
+        logger.info("fpdf2 OK: cert=%s size=%d bytes", certificate.certificate_id, len(pdf_bytes))
         response = HttpResponse(pdf_bytes, content_type='application/pdf')
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
         return response
     except Exception as exc:
-        logger.warning("fpdf2 PDF generation failed: %s", exc)
-
-    # --- Strategy 2: Chrome headless print-to-pdf (if available) ---
-    try:
-        import subprocess
-        chrome_candidates = [
-            r"C:\Program Files\Google\Chrome\Application\chrome.exe",
-            r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
-            os.path.expanduser(r"~\AppData\Local\Google\Chrome\Application\chrome.exe"),
-            r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
-            "/usr/bin/chromium-browser",
-            "/usr/bin/chromium",
-            "/usr/bin/google-chrome",
-            "/usr/bin/google-chrome-stable",
-        ]
-        chrome_path = None
-        for candidate in chrome_candidates:
-            if os.path.exists(candidate):
-                chrome_path = candidate
-                break
-
-        if chrome_path:
-            with tempfile.NamedTemporaryFile(suffix='.html', delete=False, mode='w', encoding='utf-8') as f:
-                f.write(html)
-                html_path = f.name
-            pdf_path = tempfile.mktemp(suffix='.pdf')
-            subprocess.run(
-                [
-                    chrome_path, '--headless=new', '--disable-gpu', '--no-margins',
-                    '--no-sandbox', '--disable-dev-shm-usage',
-                    f'--print-to-pdf={pdf_path}',
-                    f'file:///{html_path.replace(os.sep, "/")}',
-                ],
-                check=True, capture_output=True, timeout=15,
-            )
-            with open(pdf_path, 'rb') as f:
-                pdf_bytes = f.read()
-            for p in [html_path, pdf_path]:
-                try: os.unlink(p)
-                except Exception: pass
-            response = HttpResponse(pdf_bytes, content_type='application/pdf')
-            response['Content-Disposition'] = f'attachment; filename="{filename}"'
-            return response
-    except Exception as exc:
-        logger.warning("Chrome headless PDF failed: %s", exc)
-        for p in [html_path, pdf_path]:
-            try: os.unlink(p)
-            except Exception: pass
-
-    # --- Strategy 3: pdfkit / wkhtmltopdf ---
-    try:
-        import pdfkit
-        pdf_bytes = pdfkit.from_string(html, False)
-        response = HttpResponse(pdf_bytes, content_type='application/pdf')
-        response['Content-Disposition'] = f'attachment; filename="{filename}"'
-        return response
-    except Exception as exc:
-        logger.warning("pdfkit PDF failed: %s", exc)
+        logger.warning("fpdf2 failed for %s: %s", certificate.certificate_id, exc)
 
     # --- Final fallback: downloadable HTML ---
-    logger.warning("All PDF strategies failed; returning HTML fallback")
-    response = HttpResponse(
-        html + '<script>window.print()</script>',
-        content_type='text/html',
-    )
+    logger.warning("All PDF strategies failed for %s; returning HTML", certificate.certificate_id)
+    response = HttpResponse(html, content_type='text/html')
     response['Content-Disposition'] = f'attachment; filename="{certificate.certificate_id}.html"'
     return response
