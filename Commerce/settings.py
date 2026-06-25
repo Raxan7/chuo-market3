@@ -25,12 +25,13 @@ DEBUG = os.getenv('DJANGO_DEBUG', 'True').strip().lower() in {'1', 'true', 'yes'
 # Define the canonical domain (without www)
 CANONICAL_DOMAIN = 'chuosmart.com'
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'chuosmart.com', 'www.chuosmart.com', 'mail.chuosmart.com']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'chuosmart.com', 'www.chuosmart.com', 'mail.chuosmart.com', '6aa8-154-74-175-23.ngrok-free.app']
 # CSRF_TRUSTED_ORIGINS = ['https://chuo-market3.onrender.com', 'http://localhost:8000']
 CSRF_TRUSTED_ORIGINS = [
     'http://localhost:8000',
     'https://www.chuosmart.com',
-    'https://chuosmart.com'
+    'https://chuosmart.com',
+    'https://6aa8-154-74-175-23.ngrok-free.app'
 ]
 # CSRF_COOKIE_SECURE = True
 # CSRF_COOKIE_SAMESITE = 'None'
@@ -199,7 +200,7 @@ TIME_ZONE = 'UTC'
 # Toggle certificate downloads/sharing. While False, students can still
 # preview their earned certificates, but the file download and share links
 # are disabled. Flip this to True when the paid certificate module ships.
-CERTIFICATE_DOWNLOADS_ENABLED = False
+CERTIFICATE_DOWNLOADS_ENABLED = True
 
 # Scheduled release date for certificate downloads. Before this date the
 # certificate notice banner is shown on dashboards and certificate pages.
@@ -276,6 +277,13 @@ if not CEREBRAS_API_KEY:
     import logging
     logger = logging.getLogger(__name__)
     logger.warning('CEREBRAS_API_KEY is not set; AI-generated assessments will use fallback behavior or remain unavailable.')
+
+# Snippe Payment Gateway Configuration
+SNIPPE_API_KEY = os.getenv('SNIPPE_API_KEY', '')
+SNIPPE_WEBHOOK_SECRET = os.getenv('SNIPPE_WEBHOOK_SECRET', '')
+
+# Default price for certificate download (TZS)
+CERTIFICATE_PRICE = 15000
 
 # Cloudinary Configuration for image storage and optimization
 CLOUDINARY_STORAGE = {
