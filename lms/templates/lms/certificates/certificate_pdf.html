@@ -1,0 +1,295 @@
+<!doctype html>
+{% load static %}
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>{{ certificate.certificate_id }} | {{ organization_name }}</title>
+<style>
+    @page { size: A4 landscape; margin: 0; }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+        width: 297mm;
+        height: 210mm;
+        font-family: "Georgia", "Times New Roman", "Cambria", serif;
+        color: #111827;
+        background: #ffffff;
+        overflow: hidden;
+    }
+
+    /* ── Outer canvas (fills A4 exactly) ──────── */
+    .canvas {
+        position: relative;
+        width: 297mm;
+        height: 210mm;
+        padding: 8mm;
+        background:
+            linear-gradient(180deg, rgba(245, 193, 72, 0.05) 0%, transparent 35%),
+            linear-gradient(0deg, rgba(11, 20, 55, 0.03) 0%, transparent 35%),
+            linear-gradient(180deg, #FFF8E7 0%, #ffffff 12%, #ffffff 100%),
+            #ffffff;
+    }
+
+    /* Corner ornaments */
+    .ornament {
+        position: absolute;
+        width: 44px; height: 44px;
+        border-color: #F5C148;
+        border-style: solid;
+        z-index: 1;
+    }
+    .ornament-tl { top: 6mm; left: 6mm; border-width: 3px 0 0 3px; }
+    .ornament-br { bottom: 6mm; right: 6mm; border-width: 0 3px 3px 0; }
+
+    /* ID pill */
+    .id-pill {
+        position: absolute;
+        top: 7mm; right: 7mm;
+        font-family: "Courier New", monospace;
+        font-size: 9pt;
+        background: rgba(13, 110, 253, 0.08);
+        color: #0d6efd;
+        padding: 3px 8px;
+        border-radius: 6px;
+        z-index: 3;
+    }
+
+    /* Gold double-border frame */
+    .frame {
+        position: relative;
+        z-index: 2;
+        width: 100%;
+        height: 100%;
+        border: 5px double #F5C148;
+        padding: 4mm;
+        background: #ffffff;
+    }
+
+    .frame-inner {
+        width: 100%;
+        height: 100%;
+        border: 1.5px solid #0B1437;
+        padding: 8mm 10mm 6mm;
+        text-align: center;
+        background: linear-gradient(180deg, #ffffff 0%, #FFFBEB 100%);
+    }
+
+    /* Logo */
+    .logo { width: 80px; margin: 0 auto 3mm; }
+    .logo img { width: 100%; height: auto; display: block; }
+
+    .org {
+        font-size: 9pt;
+        letter-spacing: 4px;
+        text-transform: uppercase;
+        color: #1FAA59;
+        font-weight: 700;
+    }
+
+    .title {
+        font-family: "Georgia", "Times New Roman", serif;
+        font-size: 22pt;
+        font-weight: 700;
+        color: #0d6efd;
+        letter-spacing: 3px;
+        text-transform: uppercase;
+        margin: 3mm 0 1mm;
+    }
+
+    .subtitle {
+        font-style: italic;
+        font-size: 10pt;
+        color: #4B5563;
+        margin: 0 0 3mm;
+    }
+
+    .presented {
+        font-size: 9pt;
+        letter-spacing: 2.5px;
+        text-transform: uppercase;
+        color: #6B7280;
+        font-weight: 700;
+        margin: 0 0 2mm;
+    }
+
+    .name {
+        font-family: "Brush Script MT", "Lucida Handwriting", "Apple Chancery", cursive;
+        font-size: 32pt;
+        line-height: 1.05;
+        font-style: italic;
+        color: #0d6efd;
+        font-weight: 700;
+        margin: 2mm 0 2mm;
+    }
+
+    .underline {
+        display: block;
+        width: 55%;
+        height: 2px;
+        margin: 2mm auto 3mm;
+        background: linear-gradient(90deg, transparent, #1FAA59, #0d6efd, #1FAA59, transparent);
+        border-radius: 2px;
+    }
+
+    .body-text {
+        font-size: 11pt;
+        line-height: 1.6;
+        color: #4B5563;
+        max-width: 170mm;
+        margin: 0 auto 2mm;
+    }
+
+    .course {
+        font-family: "Georgia", "Times New Roman", serif;
+        font-size: 16pt;
+        font-weight: 700;
+        color: #0d6efd;
+        margin: 2mm 0 1mm;
+    }
+
+    .date {
+        font-size: 10pt;
+        color: #4B5563;
+        margin: 2mm 0 4mm;
+    }
+
+    /* Footer: signature | seal | meta */
+    .footer {
+        position: absolute;
+        bottom: 6mm;
+        left: 10mm;
+        right: 10mm;
+        display: table;
+        width: calc(100% - 20mm);
+        table-layout: fixed;
+    }
+    .footer-row { display: table-row; }
+    .footer-cell {
+        display: table-cell;
+        vertical-align: bottom;
+        width: 33.33%;
+    }
+    .footer-cell:first-child { text-align: left; }
+    .footer-cell:nth-child(2) { text-align: center; }
+    .footer-cell:last-child { text-align: right; }
+
+    .sig .sig-name {
+        font-family: "Brush Script MT", "Lucida Handwriting", cursive;
+        font-size: 18pt;
+        color: #111827;
+        border-bottom: 1.5px solid #111827;
+        padding-bottom: 1px;
+        display: inline-block;
+        min-width: 50mm;
+    }
+    .sig .sig-label {
+        font-size: 8pt;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        color: #4B5563;
+        margin-top: 1mm;
+    }
+    .sig .sig-label strong { color: #111827; }
+
+    .seal { width: 20mm; height: 20mm; display: inline-block; }
+    .seal img { width: 100%; height: 100%; display: block; }
+
+    .meta .meta-lbl {
+        font-size: 8pt;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        color: #6B7280;
+        margin-bottom: 0.5mm;
+    }
+    .meta .meta-id {
+        font-family: "Courier New", monospace;
+        font-size: 9pt;
+        color: #4B5563;
+        word-break: break-all;
+    }
+    .meta .verify-link {
+        font-size: 8pt;
+        color: #0d6efd;
+        word-break: break-all;
+        text-decoration: none;
+    }
+
+    .footer-note {
+        position: absolute;
+        bottom: 1mm;
+        left: 0;
+        right: 0;
+        font-size: 8pt;
+        color: #6B7280;
+        font-style: italic;
+        text-align: center;
+    }
+
+    /* Ensure everything fits within the page */
+    .frame-inner { position: relative; }
+</style>
+</head>
+<body>
+<div class="canvas">
+    <div class="ornament ornament-tl"></div>
+    <div class="ornament ornament-br"></div>
+    <span class="id-pill">{{ certificate.certificate_id }}</span>
+
+    <div class="frame">
+        <div class="frame-inner">
+
+            <div class="logo">
+                <img src="{% static 'app/images/logo.png' %}" alt="ChuoSmart" width="80" height="80">
+            </div>
+
+            <div class="org">{{ organization_name }}</div>
+
+            <h1 class="title">{{ template.title|default:"Certificate of Completion" }}</h1>
+            <p class="subtitle">{{ template.subtitle|default:"Awarded in recognition of successful course completion" }}</p>
+
+            <div class="presented">This certificate is proudly presented to</div>
+
+            <div class="name">{{ student_name }}</div>
+            <span class="underline" aria-hidden="true"></span>
+
+            <div class="body-text">{{ rendered_body }}</div>
+
+            <div class="course">{{ course_title }}</div>
+            <div class="date">Issued on {{ completion_date }}</div>
+
+            <div class="footer">
+                <div class="footer-row">
+                    <div class="footer-cell">
+                        <div class="sig">
+                            <div class="sig-name">{{ instructor_name|default:"Course Instructor" }}</div>
+                            <div class="sig-label"><strong>{{ instructor_name|default:"Course Instructor" }}</strong><br>Course Instructor</div>
+                        </div>
+                    </div>
+                    <div class="footer-cell">
+                        <div class="seal">
+                            <img src="{% static 'lms/images/chuosmart_seal.png' %}" alt="Seal" width="72" height="72">
+                        </div>
+                    </div>
+                    <div class="footer-cell">
+                        <div class="meta">
+                            <div class="meta-lbl">Certificate ID</div>
+                            <div class="meta-id">{{ certificate.certificate_id }}</div>
+                            {% if verification_url %}
+                            <div class="meta-lbl" style="margin-top:1mm;">Verify Online</div>
+                            <a class="verify-link" href="{{ verification_url }}">{{ verification_url }}</a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {% if template.footer_note %}
+            <div class="footer-note">{{ template.footer_note }}</div>
+            {% endif %}
+
+        </div>
+    </div>
+</div>
+</body>
+</html>

@@ -2067,9 +2067,32 @@ def download_certificate(request, certificate_id):
             )
             return redirect('lms:certificate_detail', certificate_id=certificate.certificate_id)
 
-    from .certificates import certificate_pdf_response
-    logger.info("calling certificate_pdf_response")
-    return certificate_pdf_response(certificate, request=request)
+    # ── Generate PDF via WeasyPrint ──────────────────────────────
+    from .certificates import certificate_context
+    from django.template.loader import render_to_string
+    try:
+        from weasyprint import HTML
+    except ImportError:
+        logger.error("weasyprint is not installed")
+        messages.error(request, _("PDF generation is not available. Please try again later."))
+        return redirect('lms:certificate_detail', certificate_id=certificate.certificate_id)
+
+    ctx = certificate_context(certificate, request=request)
+    html_string = render_to_string(
+        'lms/certificates/certificate_pdf.html',
+        ctx,
+        request=request,
+    )
+    pdf_bytes = HTML(
+        string=html_string,
+        base_url=request.build_absolute_uri('/'),
+    ).write_pdf()
+
+    filename = f"{certificate.certificate_id}.pdf"
+    response = HttpResponse(pdf_bytes, content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    logger.info("PDF generated OK: cert=%s size=%d bytes", certificate.certificate_id, len(pdf_bytes))
+    return response
 
 
 @login_required(login_url='login')
