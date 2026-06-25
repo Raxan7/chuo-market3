@@ -92,74 +92,14 @@ def certificate_html(certificate, request=None):
 
 
 def certificate_pdf_response(certificate, request=None):
-    """Generate and return a high-quality PDF certificate download.
-
-    Tries multiple strategies in order:
-    1. Chrome/Chromium headless print-to-pdf (best quality, needs Chrome installed)
-    2. pdfkit / wkhtmltopdf (production server with wkhtmltopdf)
-    3. fpdf2 (pure-Python fallback, basic but functional)
-    """
-    import subprocess
+    """Generate and return a PDF certificate download."""
+    import logging
+    logger = logging.getLogger(__name__)
 
     html = certificate_html(certificate, request=request)
     filename = f"{certificate.certificate_id}.pdf"
 
-    # --- Strategy 1: Chrome headless print-to-pdf ---
-    chrome_candidates = [
-        r"C:\Program Files\Google\Chrome\Application\chrome.exe",
-        r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
-        os.path.expanduser(r"~\AppData\Local\Google\Chrome\Application\chrome.exe"),
-        r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
-        "/usr/bin/chromium-browser",
-        "/usr/bin/chromium",
-        "/usr/bin/google-chrome",
-        "/usr/bin/google-chrome-stable",
-    ]
-    chrome_path = None
-    for candidate in chrome_candidates:
-        if os.path.exists(candidate):
-            chrome_path = candidate
-            break
-
-    if chrome_path:
-        try:
-            with tempfile.NamedTemporaryFile(suffix='.html', delete=False, mode='w', encoding='utf-8') as f:
-                f.write(html)
-                html_path = f.name
-            pdf_path = tempfile.mktemp(suffix='.pdf')
-            subprocess.run(
-                [
-                    chrome_path, '--headless', '--disable-gpu', '--no-margins',
-                    f'--print-to-pdf={pdf_path}',
-                    f'file:///{html_path.replace(os.sep, "/")}',
-                ],
-                check=True, capture_output=True, timeout=30,
-            )
-            with open(pdf_path, 'rb') as f:
-                pdf_bytes = f.read()
-            os.unlink(html_path)
-            os.unlink(pdf_path)
-            response = HttpResponse(pdf_bytes, content_type='application/pdf')
-            response['Content-Disposition'] = f'attachment; filename="{filename}"'
-            return response
-        except Exception:
-            for p in [html_path, pdf_path]:
-                try:
-                    os.unlink(p)
-                except Exception:
-                    pass
-
-    # --- Strategy 2: pdfkit (needs wkhtmltopdf on PATH) ---
-    try:
-        import pdfkit
-        pdf_bytes = pdfkit.from_string(html, False)
-        response = HttpResponse(pdf_bytes, content_type='application/pdf')
-        response['Content-Disposition'] = f'attachment; filename="{filename}"'
-        return response
-    except Exception:
-        pass
-
-    # --- Strategy 3: fpdf2 pure-Python fallback ---
+    # --- Strategy 1: fpdf2 pure-Python PDF (most reliable, no external deps) ---
     try:
         from fpdf import FPDF
         import html as html_mod
@@ -219,10 +159,68 @@ def certificate_pdf_response(certificate, request=None):
         response = HttpResponse(pdf_bytes, content_type='application/pdf')
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
         return response
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("fpdf2 PDF generation failed: %s", exc)
 
-    # --- Final fallback: download HTML file (save & print-to-PDF manually) ---
+    # --- Strategy 2: Chrome headless print-to-pdf (if available) ---
+    try:
+        import subprocess
+        chrome_candidates = [
+            r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+            r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+            os.path.expanduser(r"~\AppData\Local\Google\Chrome\Application\chrome.exe"),
+            r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
+            "/usr/bin/chromium-browser",
+            "/usr/bin/chromium",
+            "/usr/bin/google-chrome",
+            "/usr/bin/google-chrome-stable",
+        ]
+        chrome_path = None
+        for candidate in chrome_candidates:
+            if os.path.exists(candidate):
+                chrome_path = candidate
+                break
+
+        if chrome_path:
+            with tempfile.NamedTemporaryFile(suffix='.html', delete=False, mode='w', encoding='utf-8') as f:
+                f.write(html)
+                html_path = f.name
+            pdf_path = tempfile.mktemp(suffix='.pdf')
+            subprocess.run(
+                [
+                    chrome_path, '--headless=new', '--disable-gpu', '--no-margins',
+                    '--no-sandbox', '--disable-dev-shm-usage',
+                    f'--print-to-pdf={pdf_path}',
+                    f'file:///{html_path.replace(os.sep, "/")}',
+                ],
+                check=True, capture_output=True, timeout=15,
+            )
+            with open(pdf_path, 'rb') as f:
+                pdf_bytes = f.read()
+            for p in [html_path, pdf_path]:
+                try: os.unlink(p)
+                except Exception: pass
+            response = HttpResponse(pdf_bytes, content_type='application/pdf')
+            response['Content-Disposition'] = f'attachment; filename="{filename}"'
+            return response
+    except Exception as exc:
+        logger.warning("Chrome headless PDF failed: %s", exc)
+        for p in [html_path, pdf_path]:
+            try: os.unlink(p)
+            except Exception: pass
+
+    # --- Strategy 3: pdfkit / wkhtmltopdf ---
+    try:
+        import pdfkit
+        pdf_bytes = pdfkit.from_string(html, False)
+        response = HttpResponse(pdf_bytes, content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
+    except Exception as exc:
+        logger.warning("pdfkit PDF failed: %s", exc)
+
+    # --- Final fallback: downloadable HTML ---
+    logger.warning("All PDF strategies failed; returning HTML fallback")
     response = HttpResponse(
         html + '<script>window.print()</script>',
         content_type='text/html',
