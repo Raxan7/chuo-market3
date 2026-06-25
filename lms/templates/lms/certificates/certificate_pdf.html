@@ -33,12 +33,12 @@
     .canvas {
         width: 297mm;
         height: 210mm;
-        padding: 9mm;
+        padding: 8mm;
         position: relative;
         background:
-            radial-gradient(110mm 60mm at 50% 0%, rgba(245, 193, 72, 0.16), transparent 62%),
-            radial-gradient(120mm 70mm at 50% 100%, rgba(11, 20, 55, 0.07), transparent 68%),
-            linear-gradient(180deg, #FFF8E7 0%, #ffffff 16%, #ffffff 100%);
+            radial-gradient(120mm 66mm at 50% 0%, rgba(245, 193, 72, 0.18), transparent 62%),
+            radial-gradient(130mm 76mm at 50% 100%, rgba(11, 20, 55, 0.075), transparent 68%),
+            linear-gradient(180deg, #FFF8E7 0%, #ffffff 15%, #ffffff 100%);
     }
 
     .frame {
@@ -46,7 +46,7 @@
         height: 100%;
         position: relative;
         padding: 4mm;
-        border: 1.4mm double #D9A72E;
+        border: 1.45mm double #D9A72E;
         background: #ffffff;
     }
 
@@ -54,18 +54,18 @@
         width: 100%;
         height: 100%;
         position: relative;
-        padding: 7mm 11mm 5mm;
-        border: 0.45mm solid #0B1437;
+        padding: 6.5mm 10mm 5mm;
+        border: 0.48mm solid #0B1437;
         background:
-            linear-gradient(180deg, rgba(255,255,255,0.96) 0%, rgba(255,251,235,0.96) 100%);
+            linear-gradient(180deg, rgba(255,255,255,0.97) 0%, rgba(255,251,235,0.97) 100%);
         text-align: center;
         overflow: hidden;
     }
 
     .corner {
         position: absolute;
-        width: 18mm;
-        height: 18mm;
+        width: 19mm;
+        height: 19mm;
         border-color: #D9A72E;
         border-style: solid;
         z-index: 4;
@@ -74,26 +74,26 @@
     .corner-tl {
         top: 5mm;
         left: 5mm;
-        border-width: 0.8mm 0 0 0.8mm;
+        border-width: 0.85mm 0 0 0.85mm;
     }
 
     .corner-br {
         right: 5mm;
         bottom: 5mm;
-        border-width: 0 0.8mm 0.8mm 0;
+        border-width: 0 0.85mm 0.85mm 0;
     }
 
     .id-pill {
         position: absolute;
         top: 5mm;
         right: 6mm;
-        max-width: 64mm;
-        padding: 1.4mm 2.8mm;
+        max-width: 68mm;
+        padding: 1.5mm 3mm;
         border-radius: 2mm;
         background: rgba(13, 110, 253, 0.08);
         color: #0d6efd;
         font-family: "Courier New", monospace;
-        font-size: 7.5pt;
+        font-size: 8pt;
         line-height: 1.25;
         text-align: right;
         word-break: break-all;
@@ -102,12 +102,12 @@
 
     .watermark {
         position: absolute;
-        top: 47mm;
+        top: 43mm;
         left: 50%;
-        width: 92mm;
-        height: 92mm;
-        margin-left: -46mm;
-        opacity: 0.035;
+        width: 102mm;
+        height: 102mm;
+        margin-left: -51mm;
+        opacity: 0.038;
         z-index: 1;
     }
 
@@ -120,15 +120,15 @@
     .content {
         position: relative;
         z-index: 3;
-        height: 134mm;
-        padding: 0 9mm;
+        height: 140mm;
+        padding: 0 7mm;
         overflow: hidden;
     }
 
     .logo {
-        width: 19mm;
-        height: 19mm;
-        margin: 0 auto 2.2mm;
+        width: 22mm;
+        height: 22mm;
+        margin: 0 auto 2.6mm;
     }
 
     .logo img {
@@ -139,59 +139,59 @@
     }
 
     .org {
-        max-width: 190mm;
+        max-width: 205mm;
         margin: 0 auto;
         color: #1FAA59;
         font-family: Arial, Helvetica, sans-serif;
-        font-size: 8.3pt;
+        font-size: 9.4pt;
         line-height: 1.35;
         font-weight: 700;
-        letter-spacing: 3.2px;
+        letter-spacing: 3.4px;
         text-transform: uppercase;
         overflow-wrap: anywhere;
     }
 
     .title {
-        max-width: 205mm;
-        margin: 2.8mm auto 1mm;
+        max-width: 215mm;
+        margin: 3.2mm auto 1.3mm;
         color: #0d6efd;
-        font-size: 22pt;
-        line-height: 1.12;
+        font-size: 26pt;
+        line-height: 1.08;
         font-weight: 700;
-        letter-spacing: 2.6px;
+        letter-spacing: 2.8px;
         text-transform: uppercase;
         overflow-wrap: anywhere;
     }
 
     .subtitle {
-        max-width: 190mm;
-        margin: 0 auto 4mm;
+        max-width: 205mm;
+        margin: 0 auto 4.8mm;
         color: #4B5563;
-        font-size: 9.2pt;
+        font-size: 10.4pt;
         line-height: 1.35;
         font-style: italic;
         overflow-wrap: anywhere;
     }
 
     .presented {
-        margin-bottom: 2.3mm;
+        margin-bottom: 2.7mm;
         color: #6B7280;
         font-family: Arial, Helvetica, sans-serif;
-        font-size: 8.2pt;
+        font-size: 9.1pt;
         line-height: 1.35;
         font-weight: 700;
-        letter-spacing: 2.1px;
+        letter-spacing: 2.25px;
         text-transform: uppercase;
     }
 
     .name {
-        max-width: 205mm;
-        max-height: 25mm;
-        margin: 0 auto 1.8mm;
+        max-width: 214mm;
+        max-height: 31mm;
+        margin: 0 auto 2.1mm;
         color: #0d6efd;
         font-family: Georgia, "Times New Roman", serif;
-        font-size: 31pt;
-        line-height: 1.05;
+        font-size: 39pt;
+        line-height: 1.02;
         font-weight: 700;
         font-style: italic;
         overflow-wrap: anywhere;
@@ -201,9 +201,9 @@
 
     .underline {
         display: block;
-        width: 118mm;
-        height: 0.55mm;
-        margin: 0 auto 4mm;
+        width: 132mm;
+        height: 0.65mm;
+        margin: 0 auto 4.6mm;
         border-radius: 2mm;
         background: linear-gradient(
             90deg,
@@ -216,35 +216,35 @@
     }
 
     .body-text {
-        max-width: 178mm;
-        max-height: 19mm;
-        margin: 0 auto 2mm;
+        max-width: 190mm;
+        max-height: 22mm;
+        margin: 0 auto 2.6mm;
         color: #4B5563;
         font-family: Arial, Helvetica, sans-serif;
-        font-size: 10.2pt;
-        line-height: 1.55;
+        font-size: 11.5pt;
+        line-height: 1.52;
         overflow-wrap: anywhere;
         overflow: hidden;
     }
 
     .course {
-        max-width: 190mm;
-        max-height: 17mm;
-        margin: 1.5mm auto 1.5mm;
+        max-width: 205mm;
+        max-height: 21mm;
+        margin: 2mm auto 1.8mm;
         color: #0d6efd;
-        font-size: 16pt;
-        line-height: 1.2;
+        font-size: 19.5pt;
+        line-height: 1.16;
         font-weight: 700;
         overflow-wrap: anywhere;
         overflow: hidden;
     }
 
     .date {
-        max-width: 170mm;
+        max-width: 180mm;
         margin: 0 auto;
         color: #4B5563;
         font-family: Arial, Helvetica, sans-serif;
-        font-size: 9.2pt;
+        font-size: 10.4pt;
         line-height: 1.35;
         overflow-wrap: anywhere;
     }
@@ -252,9 +252,9 @@
     .footer {
         position: relative;
         z-index: 3;
-        height: 31mm;
-        margin-top: 4mm;
-        padding: 0 5mm;
+        height: 32mm;
+        margin-top: 2.5mm;
+        padding: 0 6mm;
         display: table;
         width: 100%;
         table-layout: fixed;
@@ -279,33 +279,33 @@
     }
 
     .sig-name {
-        max-width: 68mm;
-        min-width: 44mm;
+        max-width: 74mm;
+        min-width: 50mm;
         display: inline-block;
-        padding-bottom: 1mm;
-        border-bottom: 0.45mm solid #111827;
+        padding-bottom: 1.1mm;
+        border-bottom: 0.48mm solid #111827;
         color: #111827;
-        font-size: 14pt;
+        font-size: 16pt;
         line-height: 1.15;
         font-weight: 600;
         overflow-wrap: anywhere;
     }
 
     .sig-label {
-        max-width: 68mm;
-        margin-top: 1.2mm;
+        max-width: 74mm;
+        margin-top: 1.4mm;
         color: #4B5563;
         font-family: Arial, Helvetica, sans-serif;
-        font-size: 7.3pt;
+        font-size: 8.2pt;
         line-height: 1.35;
-        letter-spacing: 1.1px;
+        letter-spacing: 1.2px;
         text-transform: uppercase;
         overflow-wrap: anywhere;
     }
 
     .seal {
-        width: 24mm;
-        height: 24mm;
+        width: 28mm;
+        height: 28mm;
         margin: 0 auto;
     }
 
@@ -317,24 +317,24 @@
     }
 
     .meta {
-        max-width: 78mm;
+        max-width: 82mm;
         margin-left: auto;
     }
 
     .meta-lbl {
-        margin-bottom: 0.7mm;
+        margin-bottom: 0.8mm;
         color: #6B7280;
         font-family: Arial, Helvetica, sans-serif;
-        font-size: 7.2pt;
+        font-size: 7.8pt;
         line-height: 1.3;
-        letter-spacing: 1.1px;
+        letter-spacing: 1.15px;
         text-transform: uppercase;
     }
 
     .meta-id {
         color: #374151;
         font-family: "Courier New", monospace;
-        font-size: 7.6pt;
+        font-size: 8.3pt;
         line-height: 1.25;
         word-break: break-all;
         overflow-wrap: anywhere;
@@ -342,10 +342,10 @@
 
     .verify-link {
         display: block;
-        max-width: 78mm;
+        max-width: 82mm;
         color: #0d6efd;
         font-family: Arial, Helvetica, sans-serif;
-        font-size: 6.8pt;
+        font-size: 7.4pt;
         line-height: 1.25;
         text-decoration: none;
         word-break: break-all;
@@ -356,11 +356,11 @@
         position: absolute;
         left: 12mm;
         right: 12mm;
-        bottom: 2.2mm;
+        bottom: 1.8mm;
         z-index: 3;
         color: #6B7280;
         font-family: Arial, Helvetica, sans-serif;
-        font-size: 7.2pt;
+        font-size: 7.7pt;
         line-height: 1.3;
         font-style: italic;
         text-align: center;
