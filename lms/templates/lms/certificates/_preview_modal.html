@@ -1,3 +1,4 @@
+{% load static %}
 <style>
     /* ============================================================
        Certificate preview modal — centered fade + scale animation
@@ -89,22 +90,14 @@
         background:
             linear-gradient(180deg, rgba(255,255,255,1) 0%, rgba(248,250,252,0.4) 100%);
     }
-    .cs-preview-medal {
-        width: 56px; height: 56px;
-        border-radius: 50%;
-        margin: 0 auto 10px;
-        background: conic-gradient(from 0deg, #F5C148 0deg 90deg, #E0A82E 90deg 180deg, #B8861E 180deg 270deg, #E0A82E 270deg 360deg);
-        display: flex; align-items: center; justify-content: center;
-        box-shadow: 0 6px 16px -4px rgba(11, 20, 55, 0.25), 0 0 0 4px #fff inset;
-        position: relative;
+    .cs-preview-logo {
+        width: 80px;
+        margin: 0 auto 12px;
     }
-    .cs-preview-medal::after {
-        content: "";
-        position: absolute; inset: 5px; border-radius: 50%;
-        background: #0d6efd; box-shadow: 0 0 0 2px #F5C148 inset;
-    }
-    .cs-preview-medal i {
-        position: relative; z-index: 2; color: #F5C148; font-size: 22px;
+    .cs-preview-logo img {
+        width: 100%;
+        height: auto;
+        display: block;
     }
     .cs-preview-org {
         font-size: 11px; letter-spacing: 4px; text-transform: uppercase;
@@ -170,28 +163,12 @@
     }
     .cs-preview-sig .label strong { color: #111827; }
     .cs-preview-seal {
-        width: 72px; height: 72px; border-radius: 50%;
-        background:
-            radial-gradient(circle at 50% 50%, #ffffff 55%, transparent 56%),
-            conic-gradient(from 0deg, #0d6efd 0deg 90deg, #1FAA59 90deg 180deg, #F5C148 180deg 270deg, #B8861E 270deg 360deg);
-        display: flex; align-items: center; justify-content: center;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.12);
+        width: 72px; height: 72px;
     }
-    .cs-preview-seal::before {
-        content: ""; position: absolute;
-        width: 60px; height: 60px; border-radius: 50%; background: #fff;
-    }
-    .cs-preview-seal .inner {
-        position: relative; z-index: 2; text-align: center; line-height: 1.1;
-    }
-    .cs-preview-seal .inner .lbl {
-        font-family: "Helvetica Neue", Arial, sans-serif;
-        font-size: 6px; letter-spacing: 1px;
-        font-weight: 700; color: #0d6efd;
-        text-transform: uppercase;
-    }
-    .cs-preview-seal .inner .yr {
-        font-size: 5.5px; color: #6B7280; letter-spacing: 0.8px;
+    .cs-preview-seal img {
+        width: 100%; height: 100%;
+        object-fit: contain;
+        display: block;
     }
     .cs-preview-meta { text-align: right; }
     .cs-preview-meta .lbl {
@@ -244,8 +221,8 @@
                     <span class="cs-preview-id-pill" id="csPreviewIdPill"></span>
                     <div class="cs-preview-frame">
                         <div class="cs-preview-frame-inner">
-                            <div class="cs-preview-medal" aria-hidden="true">
-                                <i class="fas fa-award"></i>
+                            <div class="cs-preview-logo">
+                                <img src="{% static 'app/images/logo.png' %}" alt="ChuoSmart" width="80" height="80">
                             </div>
                             <div class="cs-preview-org" id="csPreviewOrg">ChuoSmart Academy</div>
                             <div class="cs-preview-title" id="csPreviewTitle">Certificate of Completion</div>
@@ -265,10 +242,7 @@
                                     <div class="label"><strong id="csPreviewInstructorLabel">Course Instructor</strong><br>Course Instructor</div>
                                 </div>
                                 <div class="cs-preview-seal" aria-hidden="true">
-                                    <div class="inner">
-                                        <div class="lbl" id="csPreviewSealOrg">ChuoSmart</div>
-                                        <div class="yr">Official Seal</div>
-                                    </div>
+                                    <img src="{% static 'lms/images/chuosmart_seal.png' %}" alt="ChuoSmart Seal" width="72" height="72">
                                 </div>
                                 <div class="cs-preview-meta">
                                     <div class="lbl">Certificate ID</div>
