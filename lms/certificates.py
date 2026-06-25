@@ -3,11 +3,59 @@
 import logging
 import os
 import tempfile
+import threading
+
+# Playwright internally uses asyncio; prevent Django from raising
+# SynchronousOnlyOperation when it detects the async event loop.
+os.environ.setdefault('DJANGO_ALLOW_ASYNC_UNSAFE', 'true')
 
 from django.http import HttpResponse
 from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils import timezone
+
+# ── Persistent Playwright browser (singleton across requests) ──────
+_playwright_lock = threading.Lock()
+_pw_cm = None
+_pw_obj = None
+_pw_browser = None
+
+
+def _get_playwright_browser():
+    """Return a shared Playwright browser instance (lazy init)."""
+    global _pw_cm, _pw_obj, _pw_browser
+    if _pw_browser is not None:
+        return _pw_browser
+    with _playwright_lock:
+        if _pw_browser is not None:
+            return _pw_browser
+        os.environ.setdefault('DJANGO_ALLOW_ASYNC_UNSAFE', 'true')
+        from playwright.sync_api import sync_playwright
+        _pw_cm = sync_playwright()
+        _pw_obj = _pw_cm.__enter__()
+        _pw_browser = _pw_obj.chromium.launch(
+            headless=True, channel='chrome',
+            args=['--allow-file-access-from-files'],
+        )
+        return _pw_browser
+
+
+def _close_playwright():
+    """Close the shared Playwright browser (call at server shutdown)."""
+    global _pw_cm, _pw_obj, _pw_browser
+    if _pw_browser:
+        try:
+            _pw_browser.close()
+        except Exception:
+            pass
+        _pw_browser = None
+    if _pw_cm:
+        try:
+            _pw_cm.__exit__(None, None, None)
+        except Exception:
+            pass
+        _pw_cm = None
+        _pw_obj = None
 
 
 PLACEHOLDER_KEYS = (
@@ -123,29 +171,66 @@ def _pdf_link_callback(uri, rel):
     return uri
 
 
-def _pdf_via_playwright(html, filename):
-    """Generate PDF using Playwright with Chrome channel."""
-    from playwright.sync_api import sync_playwright
+def _resolve_static_to_file_uri(html):
+    """Rewrite /static/... URLs in HTML to absolute file:// URIs."""
+    from django.conf import settings
+    from django.contrib.staticfiles import finders
+    import re
 
-    with tempfile.NamedTemporaryFile(suffix='.html', delete=False, mode='w', encoding='utf-8') as f:
+    def _find_path(relative):
+        result = finders.find(relative)
+        if result:
+            if isinstance(result, (list, tuple)):
+                result = result[0]
+            return result.replace(os.sep, '/')
+        for d in getattr(settings, 'STATICFILES_DIRS', []):
+            candidate = os.path.join(d, relative).replace('/', os.sep)
+            if os.path.exists(candidate):
+                return candidate.replace(os.sep, '/')
+        return None
+
+    def _replace(m):
+        url = m.group(0)
+        relative = url[len(settings.STATIC_URL):].lstrip('/')
+        fp = _find_path(relative)
+        if fp:
+            # Windows path like "C:/..." needs leading /
+            if fp[1:3] == ':/':
+                fp = '/' + fp
+            return 'file://' + fp
+        return url
+
+    pattern = re.compile(re.escape(settings.STATIC_URL) + r'[^\s"\'<>]+')
+    return pattern.sub(_replace, html)
+
+
+def _pdf_via_playwright(html, filename):
+    """Generate PDF using a persistent Chrome browser via Playwright.
+
+    Uses file:// URIs with --allow-file-access-from-files so images load.
+    The browser is launched once and reused across requests.
+    """
+    html = _resolve_static_to_file_uri(html)
+
+    with tempfile.NamedTemporaryFile(suffix='.html', delete=False, mode='w',
+                                     encoding='utf-8') as f:
         f.write(html)
         html_path = f.name
 
+    browser = _get_playwright_browser()
+    page = browser.new_page()
     try:
-        with sync_playwright() as p:
-            browser = p.chromium.launch(headless=True, channel='chrome')
-            page = browser.new_page()
-            page.goto('file:///' + html_path.replace(os.sep, '/'))
-            page.wait_for_load_state('networkidle')
-            pdf_bytes = page.pdf(
-                format='A4',
-                landscape=True,
-                margin={'top': '0', 'right': '0', 'bottom': '0', 'left': '0'},
-                print_background=True,
-            )
-            browser.close()
+        page.goto('file:///' + html_path.replace(os.sep, '/'),
+                  wait_until='load', timeout=15000)
+        page.wait_for_timeout(1000)
+        pdf_bytes = page.pdf(
+            format='A4', landscape=True,
+            margin={'top': '0', 'right': '0', 'bottom': '0', 'left': '0'},
+            print_background=True,
+        )
         return pdf_bytes
     finally:
+        page.close()
         try:
             os.unlink(html_path)
         except Exception:
@@ -156,35 +241,52 @@ def certificate_pdf_response(certificate, request=None):
     """Generate and return a high-quality PDF certificate download.
 
     Strategies (in order):
-    1. Playwright + Chrome (full CSS support: grid, gradients, pseudo-elements, flexbox)
-    2. xhtml2pdf (pure Python, limited CSS)
-    3. fpdf2 (pure Python, programmatic layout)
-    4. HTML download fallback
+    1. HTML → Playwright/Chrome (fast, full CSS, static images resolved)
+    2. SVG → Playwright/Chrome or svglib (pixel-perfect vector)
+    3. HTML → xhtml2pdf (pure Python, limited CSS)
+    4. fpdf2 (pure Python, programmatic)
+    5. HTML download fallback
     """
     logger = logging.getLogger(__name__)
-    html = certificate_html(certificate, request=request)
     filename = f"{certificate.certificate_id}.pdf"
 
-    # --- Strategy 1: Playwright with Chrome (best fidelity) ---
+    # --- Strategy 1: HTML → Playwright (fast, full CSS) ---
     try:
+        html = certificate_html(certificate, request=request)
         pdf_bytes = _pdf_via_playwright(html, filename)
         if pdf_bytes and pdf_bytes[:5] == b'%PDF-':
             logger.info(
-                "Playwright OK: cert=%s size=%d bytes",
+                "Playwright HTML OK: cert=%s size=%d bytes",
                 certificate.certificate_id, len(pdf_bytes),
             )
             response = HttpResponse(pdf_bytes, content_type='application/pdf')
             response['Content-Disposition'] = f'attachment; filename="{filename}"'
             return response
-        logger.warning("Playwright generated invalid PDF for %s", certificate.certificate_id)
     except Exception as exc:
-        logger.warning("Playwright failed for %s: %s", certificate.certificate_id, exc)
+        logger.warning("Playwright HTML failed for %s: %s", certificate.certificate_id, exc)
 
-    # --- Strategy 2: xhtml2pdf (pure Python, limited CSS) ---
+    # --- Strategy 2: SVG → Playwright or svglib ---
+    try:
+        from .certificate_svg import certificate_svg_pdf
+
+        pdf_bytes = certificate_svg_pdf(certificate, request=request)
+        if pdf_bytes and pdf_bytes[:5] == b'%PDF-':
+            logger.info(
+                "SVG PDF OK: cert=%s size=%d bytes",
+                certificate.certificate_id, len(pdf_bytes),
+            )
+            response = HttpResponse(pdf_bytes, content_type='application/pdf')
+            response['Content-Disposition'] = f'attachment; filename="{filename}"'
+            return response
+    except Exception as exc:
+        logger.warning("SVG PDF failed for %s: %s", certificate.certificate_id, exc)
+
+    # --- Strategy 3: HTML → xhtml2pdf ---
     try:
         from xhtml2pdf import pisa
         from io import BytesIO
 
+        html = certificate_html(certificate, request=request)
         result = BytesIO()
         pisa_status = pisa.CreatePDF(
             BytesIO(html.encode('utf-8')),
@@ -200,11 +302,10 @@ def certificate_pdf_response(certificate, request=None):
             response = HttpResponse(pdf_bytes, content_type='application/pdf')
             response['Content-Disposition'] = f'attachment; filename="{filename}"'
             return response
-        logger.warning("xhtml2pdf generated empty PDF for %s", certificate.certificate_id)
     except Exception as exc:
         logger.warning("xhtml2pdf failed for %s: %s", certificate.certificate_id, exc)
 
-    # --- Strategy 3: fpdf2 pure-Python fallback ---
+    # --- Strategy 4: fpdf2 ---
     try:
         from fpdf import FPDF
         import html as html_mod
@@ -269,7 +370,8 @@ def certificate_pdf_response(certificate, request=None):
         logger.warning("fpdf2 failed for %s: %s", certificate.certificate_id, exc)
 
     # --- Final fallback: downloadable HTML ---
-    logger.warning("All PDF strategies failed for %s; returning HTML", certificate.certificate_id)
+    logger.warning("All strategies failed for %s; returning HTML", certificate.certificate_id)
+    html = certificate_html(certificate, request=request)
     response = HttpResponse(html, content_type='text/html')
     response['Content-Disposition'] = f'attachment; filename="{certificate.certificate_id}.html"'
     return response
