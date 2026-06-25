@@ -817,6 +817,10 @@ class CertificateTemplate(models.Model):
     certificate_id_display = models.CharField(max_length=100, default="{{ certificate_id }}")
     instructor_signature_text = models.CharField(max_length=255, blank=True)
     footer_note = models.TextField(blank=True)
+    certificate_price = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True,
+        help_text=_("Price for this certificate in TZS. Leave blank to use the default (15,000 TZS).")
+    )
     completion_percentage = models.PositiveIntegerField(
         default=100,
         validators=[MinValueValidator(1), MaxValueValidator(100)]
@@ -1108,6 +1112,39 @@ def enrollment_payment_status_change(sender, instance, **kwargs):
                 ActivityLog.objects.create(
                     message=_(f"Payment for '{instance.course}' by {instance.student.user.username} has been rejected.")
                 )
+class CertificatePayment(models.Model):
+    STATUS_CHOICES = (
+        ('pending', _('Pending')),
+        ('completed', _('Completed')),
+        ('failed', _('Failed')),
+        ('expired', _('Expired')),
+        ('cancelled', _('Cancelled')),
+    )
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='certificate_payments')
+    certificate = models.ForeignKey(StudentCertificate, on_delete=models.CASCADE, related_name='payments')
+    snippe_session_id = models.CharField(max_length=100, blank=True, default='',
+                                         help_text=_("Snippe session reference"))
+    snippe_reference = models.CharField(max_length=100, blank=True, default='',
+                                         help_text=_("Snippe payment reference from webhook"))
+    amount = models.DecimalField(max_digits=10, decimal_places=2, default=15000)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    checkout_url = models.URLField(blank=True, default='',
+                                    help_text=_("Snippe hosted checkout URL"))
+    payment_link_url = models.URLField(blank=True, default='',
+                                        help_text=_("Short payment link URL"))
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = _("Certificate Payment")
+        verbose_name_plural = _("Certificate Payments")
+
+    def __str__(self):
+        return f"{self.user.username} - {self.certificate.certificate_id} - {self.get_status_display()}"
+
+
 class QuizGenerationJob(models.Model):
     """
     Database-backed queue for AI quiz generation, cPanel friendly.

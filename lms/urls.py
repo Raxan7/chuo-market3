@@ -81,6 +81,10 @@ urlpatterns = [
     path('certificates/verify/<str:certificate_id>/', views.verify_certificate, name='certificate_verify'),
     path('certificates/<str:certificate_id>/', views.certificate_detail, name='certificate_detail'),
     path('certificates/<str:certificate_id>/download/', views.download_certificate, name='certificate_download'),
+    path('certificates/<str:certificate_id>/pay/', views.certificate_payment_init, name='certificate_payment'),
+
+    # Snippe webhook (no CSRF, external calls)
+    path('webhooks/snippe/', views.snippe_webhook, name='snippe_webhook'),
 
     # Legal name (required for certificates)
     path('legal-name/', views.set_legal_name, name='set_legal_name'),

@@ -1,6 +1,9 @@
 """
 Views for the LMS application
 """
+import json
+import time
+
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse, reverse_lazy
 from django.http import HttpResponseRedirect, JsonResponse, HttpResponse, Http404
@@ -10,6 +13,8 @@ from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth.models import User
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib import messages
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
 from django.views.generic import (
     
     ListView, DetailView, CreateView, UpdateView, DeleteView, FormView, TemplateView, View
@@ -18,13 +23,15 @@ from django.db.models import Q, Count, Avg
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from django.conf import settings
-import time
+
+import requests
 
 from .models import (
     LMSProfile, Program, Course, CourseModule, CourseContent, Quiz, Question,
     MCQuestion, Choice, TF_Question, Essay_Question, QuizTaker, StudentAnswer, ContentAccess,
     Grade, Semester, CourseEnrollment, ActivityLog, InstructorRequest, SiteSettings,
-    AdExemptUser, PaymentMethod, ModuleProgress, CertificateTemplate, StudentCertificate
+    AdExemptUser, PaymentMethod, ModuleProgress, CertificateTemplate, StudentCertificate,
+    CertificatePayment,
 )
 from .forms import (
     LMSProfileForm, CourseForm, CourseModuleForm, CourseContentForm,
@@ -233,6 +240,7 @@ def _build_certificate_previews(certificates):
             'certificate_title': template.title if template else 'Certificate of Completion',
             'detail_url': reverse('lms:certificate_detail', kwargs={'certificate_id': cert.certificate_id}),
             'download_url': reverse('lms:certificate_download', kwargs={'certificate_id': cert.certificate_id}),
+            'pay_url': reverse('lms:certificate_payment', kwargs={'certificate_id': cert.certificate_id}),
         })
     return out
 
@@ -1983,13 +1991,30 @@ def certificate_detail(request, certificate_id):
         return redirect('lms:student_dashboard')
 
     from .certificates import certificate_context
-    from django.conf import settings as django_settings
-    downloads_enabled = bool(getattr(django_settings, 'CERTIFICATE_DOWNLOADS_ENABLED', False))
+    downloads_enabled = bool(getattr(settings, 'CERTIFICATE_DOWNLOADS_ENABLED', False))
+
+    # Check payment status
+    has_paid = False
+    if is_owner:
+        has_paid = CertificatePayment.objects.filter(
+            certificate=certificate, user=request.user, status='completed'
+        ).exists()
+
+    # Determine certificate price
+    template = certificate.template
+    if template and template.certificate_price:
+        cert_price = int(template.certificate_price)
+    else:
+        cert_price = getattr(settings, 'CERTIFICATE_PRICE', 15000)
 
     ctx = certificate_context(certificate, request=request)
     ctx.update({
         'is_owner': is_owner,
+        'has_paid': has_paid,
+        'certificate_price': cert_price,
         'downloads_enabled': downloads_enabled,
+        'certificate_downloads_enabled': downloads_enabled,
+        'pay_url': reverse('lms:certificate_payment', kwargs={'certificate_id': certificate.certificate_id}),
         'download_url': reverse('lms:certificate_download', kwargs={'certificate_id': certificate.certificate_id}),
         'verify_url': ctx.get('verification_url'),
         'page_title': _("Your Certificate is Ready"),
@@ -2001,7 +2026,6 @@ def certificate_detail(request, certificate_id):
 @login_required(login_url='login')
 @legal_name_required
 def download_certificate(request, certificate_id):
-    from django.conf import settings as django_settings
     certificate = get_object_or_404(
         StudentCertificate.objects.select_related('student', 'course', 'template'),
         certificate_id=certificate_id,
@@ -2010,15 +2034,191 @@ def download_certificate(request, certificate_id):
         messages.error(request, _("You can only download certificates you earned."))
         return redirect('lms:student_dashboard')
 
-    if not getattr(django_settings, 'CERTIFICATE_DOWNLOADS_ENABLED', False):
+    if not getattr(settings, 'CERTIFICATE_DOWNLOADS_ENABLED', False):
         messages.info(
             request,
             _("Certificate downloads are not available yet. You can still preview your certificate."),
         )
         return redirect('lms:certificate_detail', certificate_id=certificate.certificate_id)
 
+    # Check if payment is required and has been completed
+    if certificate.student == request.user:
+        has_paid = CertificatePayment.objects.filter(
+            certificate=certificate, user=request.user, status='completed'
+        ).exists()
+        if not has_paid:
+            messages.info(
+                request,
+                _("Please pay for the certificate before downloading."),
+            )
+            return redirect('lms:certificate_detail', certificate_id=certificate.certificate_id)
+
     from .certificates import certificate_pdf_response
     return certificate_pdf_response(certificate, request=request)
+
+
+@login_required(login_url='login')
+def certificate_payment_init(request, certificate_id):
+    """Initiate a Snippe session to pay for certificate download."""
+    certificate = get_object_or_404(
+        StudentCertificate.objects.select_related('student', 'course', 'template'),
+        certificate_id=certificate_id,
+    )
+
+    if certificate.student != request.user:
+        messages.error(request, _("You can only pay for your own certificates."))
+        return redirect('lms:student_dashboard')
+
+    has_paid = CertificatePayment.objects.filter(
+        certificate=certificate, user=request.user, status='completed'
+    ).exists()
+    if has_paid:
+        messages.info(request, _("You have already paid for this certificate."))
+        return redirect('lms:certificate_download', certificate_id=certificate.certificate_id)
+
+    snippe_api_key = getattr(settings, 'SNIPPE_API_KEY', '')
+    if not snippe_api_key:
+        messages.error(request, _("Payment system is not configured. Please try again later."))
+        return redirect('lms:certificate_detail', certificate_id=certificate.certificate_id)
+
+    # Determine price: template-specific or default
+    from decimal import Decimal
+    template = certificate.template
+    if template and template.certificate_price:
+        amount = int(template.certificate_price)
+    else:
+        amount = getattr(settings, 'CERTIFICATE_PRICE', 15000)
+
+    redirect_url = request.build_absolute_uri(
+        reverse('lms:certificate_detail', kwargs={'certificate_id': certificate.certificate_id})
+    )
+    webhook_url = request.build_absolute_uri(reverse('lms:snippe_webhook'))
+    # Snippe requires HTTPS for webhook URLs
+    if webhook_url.startswith('http://'):
+        webhook_url = webhook_url.replace('http://', 'https://', 1)
+
+    customer_name = request.user.get_full_name() or request.user.username
+    customer_phone = ''
+    try:
+        customer_phone = request.user.customer.phone_number or ''
+    except Exception:
+        pass
+
+    session_payload = {
+        "amount": amount,
+        "currency": "TZS",
+        "allowed_methods": ["mobile_money", "card"],
+        "customer": {
+            "name": customer_name,
+            "phone": customer_phone,
+            "email": request.user.email or '',
+        },
+        "redirect_url": redirect_url,
+        "webhook_url": webhook_url,
+        "description": f"Certificate: {certificate.course.title}",
+        "metadata": {
+            "certificate_id": certificate.certificate_id,
+            "user_id": request.user.id,
+        },
+        "expires_in": 3600,
+    }
+
+    try:
+        resp = requests.post(
+            "https://api.snippe.sh/api/v1/sessions",
+            headers={
+                "Authorization": f"Bearer {snippe_api_key}",
+                "Content-Type": "application/json",
+            },
+            json=session_payload,
+            timeout=30,
+        )
+        data = resp.json()
+
+        if data.get("code") == 201:
+            session_data = data["data"]
+            CertificatePayment.objects.create(
+                user=request.user,
+                certificate=certificate,
+                snippe_session_id=session_data.get("reference", ""),
+                amount=amount,
+                status='pending',
+                checkout_url=session_data.get("checkout_url", ""),
+                payment_link_url=session_data.get("payment_link_url", ""),
+            )
+            return redirect(session_data["checkout_url"])
+        else:
+            err_msg = data.get("message", _("Unknown error"))
+            messages.error(request, _(f"Payment failed: {err_msg}"))
+            return redirect('lms:certificate_detail', certificate_id=certificate.certificate_id)
+
+    except requests.RequestException:
+        messages.error(request, _("Payment service is temporarily unavailable. Please try again later."))
+        return redirect('lms:certificate_detail', certificate_id=certificate.certificate_id)
+
+
+@csrf_exempt
+@require_POST
+def snippe_webhook(request):
+    """Handle Snippe webhook events (payment.completed, etc.)."""
+    signing_key = getattr(settings, 'SNIPPE_WEBHOOK_SECRET', '')
+
+    signature = request.headers.get('X-Webhook-Signature', '')
+    timestamp = request.headers.get('X-Webhook-Timestamp', '')
+    raw_body = request.body.decode('utf-8')
+
+    # Verify webhook signature using snippe SDK
+    if signing_key and signature:
+        try:
+            from snippe import verify_webhook, WebhookVerificationError
+            verify_webhook(
+                body=raw_body,
+                signature=signature,
+                timestamp=timestamp,
+                signing_key=signing_key,
+            )
+        except WebhookVerificationError:
+            return HttpResponse(status=400)
+    elif signing_key:
+        # Fallback manual verification
+        import hashlib
+        import hmac
+        message = f"{timestamp}.{raw_body}"
+        expected_sig = hmac.new(
+            signing_key.encode(), message.encode(), hashlib.sha256,
+        ).hexdigest()
+        if not hmac.compare_digest(signature, expected_sig):
+            return HttpResponse(status=400)
+
+    try:
+        payload = json.loads(raw_body)
+    except json.JSONDecodeError:
+        return HttpResponse(status=400)
+
+    event_type = payload.get('type', '')
+    event_data = payload.get('data', {})
+
+    if event_type == 'payment.completed':
+        metadata = event_data.get('metadata', {})
+        certificate_id = metadata.get('certificate_id')
+        user_id = metadata.get('user_id')
+        session_reference = event_data.get('reference', '')
+
+        if certificate_id and user_id:
+            try:
+                payment = CertificatePayment.objects.filter(
+                    certificate__certificate_id=certificate_id,
+                    user_id=user_id,
+                    status='pending',
+                ).latest('created_at')
+
+                payment.status = 'completed'
+                payment.snippe_reference = session_reference
+                payment.save()
+            except CertificatePayment.DoesNotExist:
+                pass
+
+    return HttpResponse(status=200)
 
 
 @login_required(login_url='login')

@@ -108,6 +108,17 @@
                             <span class="badge bg-secondary rounded-pill badge-count">{{ talent_count }}</span>
                         </button>
                     </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link {% if active_tab == 'courses' %}active{% endif %}" 
+                                id="courses-tab" 
+                                data-bs-toggle="pill" 
+                                data-bs-target="#courses" 
+                                type="button" 
+                                role="tab">
+                            <i class="fas fa-graduation-cap me-2"></i> My Courses
+                            <span class="badge bg-secondary rounded-pill badge-count">{{ enrolled_courses_count }}</span>
+                        </button>
+                    </li>
                 </ul>
                 
                 <div class="tab-content" id="dashboardTabsContent">
@@ -272,6 +283,115 @@
                                 <i class="fas fa-star"></i>
                                 <p>You haven't showcased any talents yet.</p>
                                 <a href="{% url 'post_talent' %}" class="btn btn-primary">Share Your First Talent</a>
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Courses Tab -->
+                    <div class="tab-pane fade {% if active_tab == 'courses' %}show active{% endif %}" id="courses" role="tabpanel">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h4>My Courses &amp; Certificates</h4>
+                            <a href="{% url 'lms:course_list' %}" class="btn btn-success">
+                                <i class="fas fa-plus-circle me-2"></i> Browse Courses
+                            </a>
+                        </div>
+                        
+                        {% if enrolled_courses %}
+                            <h5 class="text-muted mb-3">
+                                <i class="fas fa-book-open me-1"></i> Enrolled Courses
+                            </h5>
+                            <div class="row row-cols-1 row-cols-md-3 g-4 mb-5">
+                                {% for item in enrolled_courses %}
+                                    <div class="col">
+                                        <div class="card h-100 content-card">
+                                            {% if item.course.image %}
+                                                <img src="{{ item.course.image.url }}" class="card-img-top" alt="{{ item.course.title }}" style="height: 160px; object-fit: cover;">
+                                            {% else %}
+                                                <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 160px;">
+                                                    <i class="fas fa-book fa-3x text-secondary"></i>
+                                                </div>
+                                            {% endif %}
+                                            <div class="card-body">
+                                                <h5 class="card-title">{{ item.course.title }}</h5>
+                                                <p class="card-text">
+                                                    {% if item.completed %}
+                                                        <span class="badge bg-success">Completed</span>
+                                                    {% else %}
+                                                        <span class="badge bg-warning text-dark">In Progress</span>
+                                                    {% endif %}
+                                                </p>
+                                                <p class="card-text">
+                                                    {% with modules=item.course.modules.all %}
+                                                        {% with completed_count=modules|length %}
+                                                            <small class="text-muted">{{ completed_count }} module{{ completed_count|pluralize }}</small>
+                                                        {% endwith %}
+                                                    {% endwith %}
+                                                </p>
+                                                <p class="card-text text-muted small">Enrolled: {{ item.enrollment.date_enrolled|date:"M d, Y" }}</p>
+                                            </div>
+                                            <div class="card-footer bg-transparent border-top-0 d-flex justify-content-between">
+                                                <a href="{% url 'lms:course_detail' slug=item.course.slug %}" class="btn btn-info btn-sm">
+                                                    <i class="fas fa-eye"></i> View Course
+                                                </a>
+                                                {% if item.completed %}
+                                                    {% for cert in certificates %}
+                                                        {% if cert.course_id == item.course.id %}
+                                                            <a href="{% url 'lms:certificate_detail' certificate_id=cert.certificate_id %}" class="btn btn-primary btn-sm">
+                                                                <i class="fas fa-certificate"></i> Certificate
+                                                            </a>
+                                                        {% endif %}
+                                                    {% endfor %}
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <div class="empty-state mb-5">
+                                <i class="fas fa-graduation-cap"></i>
+                                <p>You haven't enrolled in any courses yet.</p>
+                                <a href="{% url 'lms:course_list' %}" class="btn btn-primary">Browse Courses</a>
+                            </div>
+                        {% endif %}
+                        
+                        {% if certificates %}
+                            <h5 class="text-muted mb-3">
+                                <i class="fas fa-certificate me-1"></i> My Certificates
+                            </h5>
+                            <div class="row row-cols-1 row-cols-md-3 g-4">
+                                {% for cert in certificates %}
+                                    <div class="col">
+                                        <div class="card h-100 content-card border-warning">
+                                            <div class="card-img-top bg-warning bg-gradient d-flex align-items-center justify-content-center" style="height: 120px;">
+                                                <i class="fas fa-award fa-4x text-white"></i>
+                                            </div>
+                                            <div class="card-body">
+                                                <h5 class="card-title">{{ cert.course.title }}</h5>
+                                                <p class="card-text">
+                                                    <span class="badge {% if cert.is_valid and not cert.is_expired %}bg-success{% elif cert.is_expired %}bg-danger{% else %}bg-secondary{% endif %}">
+                                                        {{ cert.verification_status }}
+                                                    </span>
+                                                </p>
+                                                <p class="card-text text-muted small">Issued: {{ cert.issued_at|date:"M d, Y" }}</p>
+                                                <p class="card-text text-muted small">ID: <code>{{ cert.certificate_id }}</code></p>
+                                            </div>
+                                            <div class="card-footer bg-transparent border-top-0 d-flex justify-content-between">
+                                                <a href="{% url 'lms:certificate_detail' certificate_id=cert.certificate_id %}" class="btn btn-info btn-sm">
+                                                    <i class="fas fa-eye"></i> View
+                                                </a>
+                                                <a href="{% url 'lms:certificate_verify' certificate_id=cert.certificate_id %}" class="btn btn-outline-secondary btn-sm">
+                                                    <i class="fas fa-shield-alt"></i> Verify
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        {% elif enrolled_courses %}
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle me-2"></i>
+                                Complete your courses to earn certificates.
                             </div>
                         {% endif %}
                     </div>

@@ -310,6 +310,57 @@
 <div class="container my-5">
     <div class="row">
         <div class="col-12 col-lg-8 mx-auto">
+
+            {% if course_progress and course_progress.course_completed %}
+            <div class="course-complete-card text-center p-4 p-md-5 mb-4">
+                <div class="course-complete-inner">
+                    <span class="course-complete-trophy">
+                        <i class="fas fa-trophy"></i>
+                    </span>
+
+                    <h3 class="fw-bold mb-2">Congratulations!</h3>
+                    <p class="mb-0" style="color: rgba(255,255,255,0.82);">
+                        You have completed all modules in this course.
+                    </p>
+
+                    <div class="certificate-button-row">
+                        {% if issued_certificate %}
+                        <a href="{% url 'lms:certificate_detail' issued_certificate.certificate_id %}" class="certificate-main-btn">
+                            <i class="fas fa-download"></i>
+                            <span>Download My Certificate</span>
+                            <i class="fas fa-arrow-right"></i>
+                        </a>
+                        {% else %}
+                            {% if not user.lms_profile.has_legal_name %}
+                            <a href="{% url 'lms:set_legal_name' %}?next={{ request.path|urlencode }}&reason=certificate" class="certificate-main-btn">
+                                <i class="fas fa-user-edit"></i>
+                                <span>Set Legal Name to Claim Certificate</span>
+                            </a>
+                            {% else %}
+                            <button type="button" class="certificate-main-btn" onclick="window.location.reload();" aria-label="Check certificate status">
+                                <i class="fas fa-rotate-right"></i>
+                                <span>Check Certificate Status</span>
+                            </button>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+
+                    {% if not issued_certificate %}
+                    <p class="certificate-pending-note">
+                        {% if not user.lms_profile.has_legal_name %}
+                            Your certificate is ready! We just need your <strong>legal name</strong> to print on the document before we can issue it.
+                        {% elif instructors_missing_names %}
+                            The course is complete, but we are waiting for the instructor to verify their signature details. Please check back shortly.
+                        {% else %}
+                            Your course is complete. The system is currently generating your certificate. Please refresh the page in a moment.
+                        {% endif %}
+                    </p>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% endif %}
+
             <!-- Course Header -->
             <div class="card shadow-sm mb-4">
                 {% if course.image %}
@@ -458,64 +509,6 @@
                     {% endif %}
                 </div>
                 <div class="card-body">
-            {% if course_progress and course_progress.course_completed %}
-            <div class="course-complete-card text-center p-4 p-md-5 mb-4">
-                <div class="course-complete-inner">
-                    <span class="course-complete-trophy">
-                        <i class="fas fa-trophy"></i>
-                    </span>
-
-                    <h3 class="fw-bold mb-2">Congratulations!</h3>
-                    <p class="mb-0" style="color: rgba(255,255,255,0.82);">
-                        You have completed all modules in this course. Your certificate is ready when issued.
-                    </p>
-
-                    <div class="certificate-button-row">
-                        {% if issued_certificate %}
-                        <button type="button" class="certificate-main-btn" data-cs-preview-index="0" aria-label="Preview your certificate">
-                            <i class="fas fa-award"></i>
-                            <span>Preview Your Certificate</span>
-                            <i class="fas fa-arrow-right"></i>
-                        </button>
-
-                        <a href="{% url 'lms:certificate_detail' issued_certificate.certificate_id %}" class="btn btn-outline-light certificate-secondary-btn">
-                            <i class="fas fa-up-right-from-square"></i>
-                            <span>Open Full Page</span>
-                        </a>
-                        {% else %}
-                            {% if not user.lms_profile.has_legal_name %}
-                            <a href="{% url 'lms:set_legal_name' %}?next={{ request.path|urlencode }}&reason=certificate" class="certificate-main-btn">
-                                <i class="fas fa-user-edit"></i>
-                                <span>Set Legal Name to Claim Certificate</span>
-                            </a>
-                            {% else %}
-                            <button type="button" class="certificate-main-btn" onclick="window.location.reload();" aria-label="Check certificate status">
-                                <i class="fas fa-rotate-right"></i>
-                                <span>Check Certificate Status</span>
-                            </button>
-                            {% endif %}
-                        {% endif %}
-                    </div>
-
-                    {% if not issued_certificate %}
-                    <p class="certificate-pending-note">
-                        {% if not user.lms_profile.has_legal_name %}
-                            Your certificate is ready! We just need your <strong>legal name</strong> to print on the document before we can issue it.
-                        {% elif instructors_missing_names %}
-                            The course is complete, but we are waiting for the instructor to verify their signature details. Please check back shortly.
-                        {% else %}
-                            Your course is complete. The system is currently generating your certificate. Please refresh the page in a moment.
-                        {% endif %}
-                    </p>
-                    {% endif %}
-                </div>
-            </div>
-            {% if issued_certificate %}
-            <script id="csCertPreviewsData" type="application/json">{{ certificate_previews|safe }}</script>
-            {% include "lms/certificates/_preview_modal.html" %}
-            {% endif %}
-            {% endif %}
-
                     {% if not is_enrolled and not is_course_instructor %}
                     <div class="alert alert-info mb-4">
                         <h5 class="alert-heading">Modules are locked</h5>
@@ -891,6 +884,19 @@
         
     </div>
 </div>
+
+{% if issued_certificate %}
+<script id="csCertPreviewsData" type="application/json">{{ certificate_previews|safe }}</script>
+{% include "lms/certificates/_preview_modal.html" %}
+<button type="button" id="csAutoOpenPreview" data-cs-preview-index="0" style="display:none" aria-hidden="true"></button>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var btn = document.getElementById('csAutoOpenPreview');
+    if (btn) btn.click();
+});
+</script>
+{% endif %}
+
 {% endblock main-content %}
 
 {% block structured_data %}

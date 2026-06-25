@@ -1,6 +1,6 @@
 <style>
     /* ============================================================
-       Certificate preview modal — slide-up (hover-up) animation
+       Certificate preview modal — centered fade + scale animation
        ============================================================ */
     #csCertPreviewModal {
         z-index: 1080;
@@ -8,11 +8,13 @@
     #csCertPreviewModal .modal-dialog {
         max-width: 760px;
         margin: auto 12px;
-        transform: translate(0, 100%);
-        transition: transform .55s cubic-bezier(.22, 1, .36, 1);
+        transform: scale(0.92);
+        opacity: 0;
+        transition: transform .35s cubic-bezier(.22, 1, .36, 1), opacity .25s ease;
     }
     #csCertPreviewModal.show .modal-dialog {
-        transform: translate(0, 0);
+        transform: scale(1);
+        opacity: 1;
     }
     #csCertPreviewModal .modal-content {
         border: 0;
@@ -283,7 +285,7 @@
                     </a>
                     {% if certificate_downloads_enabled %}
                     <a href="#" id="csPreviewDownload" class="btn" style="background: linear-gradient(135deg,#FFD66B 0%,#F5C148 50%,#E0A82E 100%); color:#0B1437; font-weight:700; border:1px solid #B8861E;">
-                        <i class="fas fa-download me-1"></i> Download PDF
+                        <i class="fas fa-download me-1"></i> Download Certificate
                     </a>
                     {% else %}
                     <button type="button" class="btn" disabled style="background:#f3f4f8; color:#6b7280; border:1px dashed #b6bdd2; font-weight:600;">
@@ -362,15 +364,17 @@
         if (viewFull && p.detail_url) viewFull.setAttribute('href', p.detail_url);
 
         var dl = document.getElementById('csPreviewDownload');
-        if (dl && p.download_url) dl.setAttribute('href', p.download_url);
+        if (dl) {
+            var dlUrl = p.pay_url || p.download_url;
+            if (dlUrl) dl.setAttribute('href', dlUrl);
+        }
 
         // Show the modal. Bootstrap is preferred (handles focus + backdrop);
-        // fall back to the jQuery plugin or a manual toggle if not available.
+        // fall back to a manual toggle if not available.
         if (window.bootstrap && typeof window.bootstrap.Modal === 'function') {
-            var bsModal = window.bootstrap.Modal.getOrCreateInstance(modalEl);
+            var bsModal = window.bootstrap.Modal.getInstance(modalEl);
+            if (!bsModal) bsModal = new window.bootstrap.Modal(modalEl);
             bsModal.show();
-        } else if (window.jQuery) {
-            window.jQuery(modalEl).modal('show');
         } else {
             modalEl.classList.add('show');
             modalEl.style.display = 'block';

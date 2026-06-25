@@ -1626,7 +1626,7 @@ def delete_blog(request, slug):
 @login_required
 def user_dashboard(request):
     """
-    User dashboard showing all user content - products, blogs, and talents
+    User dashboard showing all user content - products, blogs, talents, and courses
     """
     user = request.user
     
@@ -1638,6 +1638,36 @@ def user_dashboard(request):
     from talents.models import Talent
     user_talents = Talent.objects.filter(user=user).order_by('-created_at')
     
+    # Get LMS courses and certificates
+    from lms.models import CourseEnrollment, StudentCertificate
+    from lms.utils import is_course_completed
+    
+    lms_profile = getattr(user, 'lms_profile', None)
+    completed_courses = []
+    enrolled_courses_data = []
+    
+    if lms_profile:
+        enrollments = CourseEnrollment.objects.filter(
+            student=lms_profile
+        ).select_related('course')
+        
+        for enrollment in enrollments:
+            course = enrollment.course
+            completed = is_course_completed(course, lms_profile)
+            course_info = {
+                'course': course,
+                'enrollment': enrollment,
+                'completed': completed,
+            }
+            enrolled_courses_data.append(course_info)
+            if completed:
+                completed_courses.append(course_info)
+    
+    # Get certificates
+    certificates = StudentCertificate.objects.filter(
+        student=user
+    ).select_related('course', 'template').order_by('-issued_at')
+    
     # Default active tab
     active_tab = request.GET.get('tab', 'products')
     
@@ -1646,10 +1676,16 @@ def user_dashboard(request):
         'user_products': user_products,
         'user_blogs': user_blogs,
         'user_talents': user_talents,
+        'enrolled_courses': enrolled_courses_data,
+        'completed_courses': completed_courses,
+        'certificates': certificates,
         'active_tab': active_tab,
         'product_count': user_products.count(),
         'blog_count': user_blogs.count(),
         'talent_count': user_talents.count(),
+        'enrolled_courses_count': len(enrolled_courses_data),
+        'completed_courses_count': len(completed_courses),
+        'certificate_count': certificates.count(),
     }
     return render(request, 'app/dashboard.html', context)
 
