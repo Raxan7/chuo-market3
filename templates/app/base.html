@@ -220,6 +220,23 @@
         </button>
       </div>
     </div>
+    <!-- Certificate downloads live announcement (shows for 48 hours) -->
+    <div id="cs-cert-available-banner" class="cs-cert-available-banner">
+      <div class="cs-cert-banner-inner">
+        <div class="cs-cert-banner-icon" style="background:rgba(255,255,255,0.2);color:#fff;">
+          <i class="fas fa-award"></i>
+        </div>
+        <div class="cs-cert-banner-text">
+          <strong style="color:#fff;">Certificate Downloads Now Available!</strong>
+          You can now download your official certificate for any course you have completed successfully.
+          Head to your dashboard or course page to view and download your certificates.
+          Thank you for learning with ChuoSmart!
+        </div>
+        <button type="button" class="cs-cert-banner-close" onclick="dismissCertAvailableBanner()" aria-label="Dismiss">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+    </div>
     <style>
       .cs-cert-banner {
         display: none;
@@ -278,6 +295,14 @@
         background: rgba(255, 255, 255, 0.22);
         color: #fff;
       }
+      .cs-cert-available-banner {
+        display: none;
+        background: linear-gradient(135deg, #0d6efd 0%, #1FAA59 100%);
+        border-bottom: 3px solid #F5C148;
+        padding: 0;
+        position: relative;
+        z-index: 1020;
+      }
       @media (max-width: 767.98px) {
         .cs-cert-banner-inner {
           padding: 10px 12px;
@@ -322,6 +347,17 @@
       function dismissCertBanner() {
         document.getElementById('cs-cert-banner').style.display = 'none';
         localStorage.setItem('csCertNoticeDismissed', '1');
+      }
+      (function() {
+        var avail = {{ certificate_available_announcement|lower }};
+        var dismissed = localStorage.getItem('csCertAvailableDismissed');
+        if (avail && !dismissed) {
+          document.getElementById('cs-cert-available-banner').style.display = 'block';
+        }
+      })();
+      function dismissCertAvailableBanner() {
+        document.getElementById('cs-cert-available-banner').style.display = 'none';
+        localStorage.setItem('csCertAvailableDismissed', '1');
       }
     </script>
     <!-- Message container for standard messages -->

@@ -245,9 +245,6 @@
                             </div>
                         </div>
                         <div class="d-flex gap-2 align-self-md-center">
-                            <button type="button" class="btn btn-sm btn-primary" data-cs-preview-index="{{ forloop.counter0 }}">
-                                <i class="fas fa-eye me-1"></i> Preview
-                            </button>
                             {% if certificate_downloads_enabled %}
                             <a href="{% url 'lms:certificate_download' certificate.certificate_id %}" class="btn btn-sm" style="background: linear-gradient(135deg,#FFD66B 0%,#F5C148 50%,#E0A82E 100%); color:#0B1437; font-weight:700; border:1px solid #B8861E;">
                                 <i class="fas fa-download me-1"></i> Download
@@ -266,9 +263,6 @@
         </div>
     </div>
 
-    {# JSON payload consumed by the preview modal JS #}
-    <script id="csCertPreviewsData" type="application/json">{{ certificate_previews|safe }}</script>
-    {% include "lms/certificates/_preview_modal.html" %}
     {% endif %}
 
     <!-- Upcoming Quizzes and Recent Activities -->

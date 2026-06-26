@@ -91,25 +91,6 @@
         box-shadow: 0 6px 20px rgba(245, 193, 72, 0.5);
     }
 
-    .cs-btn-secondary {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        padding: 14px 28px;
-        border-radius: 10px;
-        font-weight: 600;
-        font-size: 15px;
-        background: rgba(255,255,255,0.1);
-        color: #fff;
-        border: 1px solid rgba(255,255,255,0.25);
-        text-decoration: none;
-        transition: background .1s;
-    }
-    .cs-btn-secondary:hover {
-        background: rgba(255,255,255,0.18);
-        color: #fff;
-    }
-
     /* Disabled state */
     .cs-btn-disabled {
         display: inline-flex;
@@ -126,66 +107,6 @@
         text-decoration: none;
     }
 
-    /* Certificate preview */
-    .cs-preview {
-        padding: 40px 32px;
-        text-align: center;
-        border-bottom: 1px solid var(--cs-border);
-        background: #fafbfc;
-    }
-
-    .cs-preview-org {
-        font-size: 11px;
-        letter-spacing: 3px;
-        text-transform: uppercase;
-        color: #6b7280;
-        font-weight: 700;
-    }
-
-    .cs-preview-title {
-        font-size: 22px;
-        font-weight: 800;
-        color: var(--cs-navy);
-        letter-spacing: 2px;
-        text-transform: uppercase;
-        margin: 8px 0 4px;
-    }
-
-    .cs-preview-label {
-        font-size: 12px;
-        color: #6b7280;
-        margin: 12px 0 4px;
-    }
-
-    .cs-preview-name {
-        font-family: "Brush Script MT", "Lucida Handwriting", "Apple Chancery", cursive;
-        font-size: 34px;
-        font-style: italic;
-        color: var(--cs-navy);
-        font-weight: 700;
-        margin: 0;
-    }
-
-    .cs-preview-course {
-        font-size: 14px;
-        font-weight: 700;
-        color: #111827;
-        margin: 6px 0 0;
-    }
-
-    .cs-preview-meta {
-        font-size: 12px;
-        color: #6b7280;
-        margin: 10px 0 0;
-    }
-
-    .cs-preview-meta code {
-        font-size: 11px;
-        background: #f3f4f6;
-        padding: 2px 8px;
-        border-radius: 4px;
-    }
-
     /* Details grid */
     .cs-details {
         display: grid;
@@ -199,8 +120,6 @@
         }
         .cs-page { padding: 24px 16px; }
         .cs-cert-card-top { padding: 28px 20px; }
-        .cs-preview { padding: 28px 20px; }
-        .cs-preview-name { font-size: 26px; }
     }
 
     .cs-info {
@@ -406,9 +325,6 @@
                     <a href="{{ pay_url }}" class="cs-btn-primary" id="csPayBtn">
                         <i class="fas fa-shopping-cart"></i> Pay Tsh {{ certificate_price|floatformat:0 }} &amp; Download
                     </a>
-                    <button type="button" class="cs-btn-secondary" data-cs-preview-index="0">
-                        <i class="fas fa-eye"></i> Preview
-                    </button>
                 {% elif downloads_enabled and not certificate_notice_active %}
                     <a href="{{ download_url }}" class="cs-btn-primary">
                         <i class="fas fa-download"></i> Download PDF
@@ -416,19 +332,6 @@
                 {% elif certificate_notice_active %}
                     <span class="cs-btn-disabled"><i class="fas fa-clock"></i> Available from 24 June 2026</span>
                 {% endif %}
-            </div>
-        </div>
-
-        <!-- Certificate preview -->
-        <div class="cs-preview" aria-label="Certificate preview">
-            <div class="cs-preview-org">{{ organization_name }}</div>
-            <div class="cs-preview-title">{{ template.title|default:"Certificate of Completion" }}</div>
-            <div class="cs-preview-label">This certificate is proudly presented to</div>
-            <div class="cs-preview-name">{{ student_name }}</div>
-            <div class="cs-preview-course">{{ course_title }}</div>
-            <div class="cs-preview-meta">
-                Issued {{ completion_date }}
-                &nbsp;&middot;&nbsp; ID <code>{{ certificate.certificate_id }}</code>
             </div>
         </div>
 
@@ -548,6 +451,4 @@
 
 {% block extra_scripts %}
 {{ block.super }}
-<script id="csCertPreviewsData" type="application/json">{{ certificate_previews|safe }}</script>
-{% include "lms/certificates/_preview_modal.html" %}
 {% endblock extra_scripts %}

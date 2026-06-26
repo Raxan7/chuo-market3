@@ -43,26 +43,19 @@
                                 <div class="small text-muted">
                                     {% if certificate_downloads_enabled and not certificate_notice_active %}
                                         View, download, or share it with one click.
-                                    {% elif certificate_notice_active %}
-                                        Preview your certificate. Downloads will be available from <strong>24 June 2026</strong>.
                                     {% else %}
-                                        Preview your certificate. Downloading and sharing will be enabled soon.
+                                        Your certificate is ready.
                                     {% endif %}
                                 </div>
                             </div>
                         </div>
                         <div class="d-flex flex-wrap gap-2">
-                            <button type="button" class="btn" data-cs-preview-index="0" style="background: linear-gradient(135deg,#F5C148 0%,#E0A82E 100%); color:#0B1437; font-weight:700; border:1px solid #B8861E;">
-                                <i class="fas fa-eye me-2"></i>Preview
-                            </button>
                             <a href="{% url 'lms:certificate_detail' issued_certificate.certificate_id %}" class="btn btn-outline-dark">
                                 <i class="fas fa-up-right-from-square me-2"></i>Open page
                             </a>
                         </div>
                     </div>
                 </div>
-                <script id="csCertPreviewsData" type="application/json">{{ certificate_previews|safe }}</script>
-                {% include "lms/certificates/_preview_modal.html" %}
                 {% endif %}
                 <div class="card-footer d-flex flex-column flex-sm-row gap-2 justify-content-center results-actions">
                     <a href="{% url 'lms:course_detail' quiz.course.slug %}" class="btn btn-primary">Back to Course</a>

@@ -1127,6 +1127,10 @@ class CertificatePayment(models.Model):
                                          help_text=_("Snippe session reference"))
     snippe_reference = models.CharField(max_length=100, blank=True, default='',
                                          help_text=_("Snippe payment reference from webhook"))
+    webhook_event_id = models.CharField(max_length=100, blank=True, default='',
+                                        help_text=_("Snippe webhook event ID (idempotency key)"))
+    failure_reason = models.TextField(blank=True, default='',
+                                       help_text=_("Failure reason from Snippe (e.g. 'Payment expired.')"))
     amount = models.DecimalField(max_digits=10, decimal_places=2, default=15000)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     checkout_url = models.URLField(blank=True, default='',

@@ -885,17 +885,6 @@
     </div>
 </div>
 
-{% if issued_certificate %}
-<script id="csCertPreviewsData" type="application/json">{{ certificate_previews|safe }}</script>
-{% include "lms/certificates/_preview_modal.html" %}
-<button type="button" id="csAutoOpenPreview" data-cs-preview-index="0" style="display:none" aria-hidden="true"></button>
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-    var btn = document.getElementById('csAutoOpenPreview');
-    if (btn) btn.click();
-});
-</script>
-{% endif %}
 
 {% endblock main-content %}
 

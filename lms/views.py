@@ -217,52 +217,6 @@ def _resolve_instructor_name(course, template=None):
     return 'Course Instructor'
 
 
-def _build_certificate_previews(certificates):
-    """Build a JSON-serializable list of certificate preview payloads.
-
-    Used by views that include the certificate preview modal so the
-    dashboard / course detail / quiz results can show an inline preview
-    without a full page reload.
-    """
-    from django.urls import reverse
-    from django.utils import timezone as _tz
-    import json
-    out = []
-    for cert in certificates:
-        template = cert.template
-        out.append({
-            'id': cert.certificate_id,
-            'course_title': cert.course.title if cert.course else '',
-            'student_name': _resolve_student_name(cert.student),
-            'instructor_name': _resolve_instructor_name(cert.course, template),
-            'issue_date': _tz.localtime(cert.issued_at).strftime('%B %d, %Y') if cert.issued_at else '',
-            'organization_name': template.organization_name if template else 'ChuoSmart Academy',
-            'certificate_title': template.title if template else 'Certificate of Completion',
-            'detail_url': reverse('lms:certificate_detail', kwargs={'certificate_id': cert.certificate_id}),
-            'download_url': reverse('lms:certificate_download', kwargs={'certificate_id': cert.certificate_id}),
-            'pay_url': reverse('lms:certificate_payment', kwargs={'certificate_id': cert.certificate_id}),
-        })
-    return out
-
-
-def _certificate_previews_json(certificates):
-    """Render the certificate previews list as a </script>-safe JSON string.
-
-    json.dumps handles the backslash and quote escaping, but it does NOT
-    escape the `</` sequence — so a course title like `</script><img>`
-    would break out of the surrounding <script type="application/json">
-    block. We do a targeted replace here so the resulting text is still
-    valid JSON for `JSON.parse(...)` on the client.
-    """
-    from django.utils.safestring import mark_safe
-    import json
-    payload = json.dumps(_build_certificate_previews(certificates))
-    # Only neutralise the </script> close-tag and stray `<!--`. The result
-    # is still valid JSON that JS can parse with JSON.parse().
-    payload = payload.replace('</', '<\\/')
-    return mark_safe(payload)
-
-
 def _resolve_safe_next(request, fallback):
     """Return a safe relative URL for redirect-after-post.
 
@@ -680,7 +634,6 @@ class CourseDetailView(DetailView):
             'enrollment': enrollment,
             'payment_methods': payment_methods,
             'certificate_downloads_enabled': bool(getattr(settings, 'CERTIFICATE_DOWNLOADS_ENABLED', False)),
-            'certificate_previews': _certificate_previews_json([issued_certificate]) if issued_certificate else '[]',
         })
 
         from django.utils.html import strip_tags
@@ -1131,7 +1084,7 @@ def complete_quiz(request, quiz_taker_id):
             if unlock_message:
                 messages.success(request, unlock_message)
             if issued_certificate:
-                messages.success(request, _("Congratulations! You have completed all modules in this course. Click below to preview the certificate you earned."))
+                messages.success(request, _("Congratulations! You have completed all modules in this course. Your certificate is ready."))
             if next_module:
                 return redirect(f"{reverse('lms:course_detail', kwargs={'slug': quiz.course.slug})}#collapse{next_module.id}")
         else:
@@ -1173,7 +1126,6 @@ def quiz_results(request, quiz_taker_id):
         'issued_certificate': issued_certificate,
         'show_answers': quiz.answers_at_end or not quiz.exam_paper,
         'certificate_downloads_enabled': bool(getattr(settings, 'CERTIFICATE_DOWNLOADS_ENABLED', False)),
-        'certificate_previews': _certificate_previews_json([issued_certificate]) if issued_certificate else '[]',
     }
 
     return render(request, 'lms/quiz_results.html', context)
@@ -1939,18 +1891,6 @@ class CertificateTemplateUpdateView(InstructorRequiredMixin, UpdateView):
         return reverse('lms:certificate_template_list')
 
 
-class CertificateTemplatePreviewView(InstructorRequiredMixin, DetailView):
-    model = CertificateTemplate
-    template_name = 'lms/certificates/template_preview.html'
-    context_object_name = 'template'
-
-    def get_queryset(self):
-        queryset = CertificateTemplate.objects.select_related('course')
-        if is_admin(self.request.user):
-            return queryset
-        return queryset.filter(course__instructors=self.request.user.lms_profile)
-
-
 @login_required(login_url='login')
 def publish_certificate_template(request, pk):
     template = get_object_or_404(CertificateTemplate, pk=pk)
@@ -2018,7 +1958,6 @@ def certificate_detail(request, certificate_id):
         'download_url': reverse('lms:certificate_download', kwargs={'certificate_id': certificate.certificate_id}),
         'verify_url': ctx.get('verification_url'),
         'page_title': _("Your Certificate is Ready"),
-        'certificate_previews': _certificate_previews_json([certificate]),
     })
     return render(request, 'lms/certificates/certificate_detail.html', ctx)
 
@@ -2045,19 +1984,39 @@ def download_certificate(request, certificate_id):
         logger.warning("downloads not enabled")
         messages.info(
             request,
-            _("Certificate downloads are not available yet. You can still preview your certificate."),
+            _("Certificate downloads are not available yet."),
         )
         return redirect('lms:certificate_detail', certificate_id=certificate.certificate_id)
 
-    # Check if payment is required and has been completed
+    # ── Payment verification (students only; instructors bypass) ──
     if certificate.student == request.user:
         try:
-            has_paid = CertificatePayment.objects.filter(
+            completed_payments = list(CertificatePayment.objects.filter(
                 certificate=certificate, user=request.user, status='completed'
-            ).exists()
-            logger.info("payment check: has_paid=%s", has_paid)
+            )[:1])
+            has_paid = bool(completed_payments)
+            if has_paid:
+                payment = completed_payments[0]
+                logger.info(
+                    "payment OK: cert=%s user=%s payment_id=%s ref=%s amount=%s",
+                    certificate_id, request.user.id, payment.id,
+                    payment.snippe_reference, payment.amount,
+                )
+                # Extra safety: a completed payment MUST have a Snippe reference
+                if not payment.snippe_reference:
+                    logger.error(
+                        "payment completed but missing snippe_reference: cert=%s user=%s payment_id=%s",
+                        certificate_id, request.user.id, payment.id,
+                    )
+                    messages.error(
+                        request,
+                        _("Payment record is incomplete. Please contact support."),
+                    )
+                    return redirect('lms:certificate_detail', certificate_id=certificate.certificate_id)
+            else:
+                logger.info("payment check: no completed payment found for cert=%s user=%s", certificate_id, request.user.id)
         except Exception as exc:
-            logger.error("payment check failed: %s", exc)
+            logger.error("payment check failed for cert=%s user=%s: %s", certificate_id, request.user.id, exc)
             has_paid = False
 
         if not has_paid:
@@ -2091,7 +2050,10 @@ def download_certificate(request, certificate_id):
     filename = f"{certificate.certificate_id}.pdf"
     response = HttpResponse(pdf_bytes, content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
-    logger.info("PDF generated OK: cert=%s size=%d bytes", certificate.certificate_id, len(pdf_bytes))
+    logger.info(
+        "PDF download granted: cert=%s user=%s size=%d",
+        certificate.certificate_id, request.user.id, len(pdf_bytes),
+    )
     return response
 
 
@@ -2208,8 +2170,13 @@ def snippe_webhook(request):
     Events handled:
         payment.completed  -> status='completed'
         payment.failed     -> status='failed'
+        payment.cancelled  -> status='cancelled'
         payment.voided     -> status='cancelled'
         payment.expired    -> status='expired'
+
+    Valid state transitions (ONLY):
+        pending -> completed | cancelled | failed | expired
+        (all other transitions are rejected and logged)
     """
     import logging
     import time
@@ -2220,7 +2187,7 @@ def snippe_webhook(request):
     timestamp_header = request.headers.get('X-Webhook-Timestamp', '')
     raw_body = request.body
 
-    # --- Config checks ---
+    # ── Config checks ────────────────────────────────────────────
     if not signing_key:
         logger.warning("Snippe webhook secret not configured")
         return HttpResponse(status=500)
@@ -2233,7 +2200,7 @@ def snippe_webhook(request):
         logger.warning("Snippe webhook missing X-Webhook-Timestamp header")
         return HttpResponse(status=400)
 
-    # --- Replay attack prevention ---
+    # ── Replay attack prevention ─────────────────────────────────
     try:
         event_time = int(timestamp_header)
         if int(time.time()) - event_time > 300:
@@ -2243,7 +2210,7 @@ def snippe_webhook(request):
         logger.warning("Snippe webhook invalid timestamp header")
         return HttpResponse(status=400)
 
-    # --- Signature verification ---
+    # ── Signature verification ───────────────────────────────────
     import hashlib
     import hmac
     body_str = raw_body.decode('utf-8')
@@ -2255,21 +2222,19 @@ def snippe_webhook(request):
         logger.warning("Snippe webhook signature verification failed")
         return HttpResponse(status=400)
 
-    # --- Parse payload ---
+    # ── Parse payload ────────────────────────────────────────────
     try:
         payload = json.loads(body_str)
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
         logger.error("Snippe webhook invalid body: %s", exc)
         return HttpResponse(status=400)
 
-    # --- Detect format: current envelope vs legacy flat ---
+    # ── Detect format: current envelope vs legacy flat ───────────
     if 'type' in payload and 'data' in payload:
-        # Current format (API version 2026-01-25)
         event_id = payload.get('id', '')
         event_type = payload['type']
         event_data = payload['data']
     elif 'event' in payload:
-        # Legacy format (API version 2026-01-01)
         event_id = payload.get('reference', '')
         event_type = payload['event']
         event_data = payload
@@ -2277,15 +2242,13 @@ def snippe_webhook(request):
         logger.warning("Snippe webhook unrecognised payload format")
         return HttpResponse(status=200)
 
-    # Log every incoming event for audit
     logger.info(
         "Snippe webhook received: event=%s id=%s ref=%s",
         event_type, event_id, event_data.get('reference', ''),
     )
 
-    # --- Extract common fields (works for both formats) ---
+    # ── Extract common fields ────────────────────────────────────
     metadata = event_data.get('metadata', {}) or {}
-    # Support both envelope metadata and url_metadata from payment links
     if 'url_metadata' in event_data:
         url_meta = event_data['url_metadata']
         if isinstance(url_meta, dict):
@@ -2294,6 +2257,8 @@ def snippe_webhook(request):
     certificate_id = metadata.get('certificate_id')
     user_id = metadata.get('user_id')
     payment_reference = event_data.get('reference', '')
+    failure_reason = event_data.get('failure_reason', '')
+
     amount_value = None
     try:
         amount_value = event_data['amount']['value']
@@ -2304,10 +2269,11 @@ def snippe_webhook(request):
         logger.info("Snippe webhook missing certificate_id/user_id in metadata — nothing to update")
         return HttpResponse(status=200)
 
-    # --- Map event type to payment status ---
+    # ── Map event type to payment status ─────────────────────────
     status_map = {
         'payment.completed': 'completed',
         'payment.failed': 'failed',
+        'payment.cancelled': 'cancelled',
         'payment.voided': 'cancelled',
         'payment.expired': 'expired',
     }
@@ -2316,46 +2282,67 @@ def snippe_webhook(request):
         logger.info("Snippe webhook unhandled event type: %s", event_type)
         return HttpResponse(status=200)
 
-    # --- Update or create the payment record (idempotent) ---
+    # ── Idempotency: reject events we've already processed ───────
+    if event_id and CertificatePayment.objects.filter(
+        webhook_event_id=event_id,
+    ).exists():
+        logger.info(
+            "Snippe webhook event already processed: event=%s cert=%s user=%s",
+            event_id, certificate_id, user_id,
+        )
+        return HttpResponse(status=200)
+
+    # ── Update the payment record ────────────────────────────────
     try:
         payment = CertificatePayment.objects.filter(
             certificate__certificate_id=certificate_id,
             user_id=user_id,
         ).latest('created_at')
 
-        # Idempotency: skip if already in the target state
-        if payment.status == new_status:
+        old_status = payment.status
+
+        # Skip if already in the target state
+        if old_status == new_status:
             logger.info(
                 "Snippe webhook duplicate event: cert=%s user=%s already %s",
                 certificate_id, user_id, new_status,
             )
             return HttpResponse(status=200)
 
-        # Only transition from 'pending' to the new status
-        if payment.status != 'pending':
+        # CRITICAL: ONLY allow transitions from 'pending'.
+        # Once a payment is 'completed', it is FINAL — never overwrite it.
+        if old_status != 'pending':
             logger.warning(
-                "Snippe webhook cannot transition payment from %s to %s: cert=%s user=%s",
-                payment.status, new_status, certificate_id, user_id,
+                "Snippe webhook REJECTED transition from %s to %s: "
+                "cert=%s user=%s ref=%s event=%s "
+                "(only pending→* allowed)",
+                old_status, new_status, certificate_id, user_id,
+                payment_reference, event_id,
             )
             return HttpResponse(status=200)
 
+        # Apply the transition
         payment.status = new_status
         payment.snippe_reference = payment_reference
+        if event_id:
+            payment.webhook_event_id = event_id
+        if failure_reason:
+            payment.failure_reason = failure_reason
         if amount_value is not None:
             payment.amount = amount_value
-
         payment.save()
 
-        if new_status == 'failed':
+        if new_status in ('failed', 'cancelled', 'expired'):
             logger.info(
-                "Payment failure reason: cert=%s user=%s reason=%s",
-                certificate_id, user_id, event_data.get('failure_reason', ''),
+                "Certificate payment %s: cert=%s user=%s ref=%s reason=%s",
+                new_status, certificate_id, user_id, payment_reference,
+                failure_reason or 'none',
             )
-
-        logger.info(
-            "Certificate payment %s: cert=%s user=%s ref=%s",
-            new_status, certificate_id, user_id, payment_reference,
-        )
+        else:
+            logger.info(
+                "Certificate payment %s: cert=%s user=%s ref=%s",
+                new_status, certificate_id, user_id, payment_reference,
+            )
 
     except CertificatePayment.DoesNotExist:
         logger.warning(
@@ -2487,7 +2474,6 @@ def student_dashboard(request):
         'recent_contents': recent_contents,
         'course_progress': course_progress,
         'certificates': certificates,
-        'certificate_previews': _certificate_previews_json(certificates),
         'needs_legal_name': not profile.has_legal_name,
         'certificate_downloads_enabled': bool(getattr(settings, 'CERTIFICATE_DOWNLOADS_ENABLED', False)),
     }

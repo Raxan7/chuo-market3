@@ -30,7 +30,6 @@
                 </div>
                 <div class="card-footer bg-white d-flex flex-wrap gap-2">
                     <a href="{% url 'lms:certificate_template_edit' template.pk %}" class="btn btn-sm btn-outline-primary">Edit</a>
-                    <a href="{% url 'lms:certificate_template_preview' template.pk %}" class="btn btn-sm btn-outline-secondary">Preview</a>
                     {% if template.status != 'active' %}
                     <a href="{% url 'lms:certificate_template_publish' template.pk %}" class="btn btn-sm btn-success"
                        onclick="return confirm('Publish this template and archive any other active template for this course?');">Publish</a>
