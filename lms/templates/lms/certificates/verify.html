@@ -1,44 +1,244 @@
 {% extends "app/base.html" %}
+{% load static %}
 
 {% block title %}Verify Certificate{% endblock title %}
 
+{% block extra_head %}
+<meta name="description" content="Verify a ChuoSmart certificate — check authenticity, expiry, and revocation status.">
+<meta property="og:title" content="Certificate Verification — ChuoSmart Academy">
+<meta property="og:description" content="Verified certificate issued by ChuoSmart Academy">
+<meta name="twitter:card" content="summary">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+    .vrfy-page {
+        min-height: 80vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px 16px;
+        background: #f3f4f6;
+    }
+
+    .vrfy-card {
+        width: 100%;
+        max-width: 480px;
+        background: #fff;
+        border-radius: 16px;
+        box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+        overflow: hidden;
+    }
+
+    .vrfy-banner {
+        padding: 32px 24px;
+        text-align: center;
+    }
+
+    .vrfy-banner.valid { background: linear-gradient(135deg, #065f46, #059669); }
+    .vrfy-banner.invalid { background: linear-gradient(135deg, #991b1b, #dc2626); }
+    .vrfy-banner.unverified { background: linear-gradient(135deg, #1e293b, #334155); }
+
+    .vrfy-icon {
+        width: 56px;
+        height: 56px;
+        margin: 0 auto 12px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 28px;
+        font-weight: 700;
+    }
+
+    .vrfy-banner.valid .vrfy-icon { background: rgba(255,255,255,0.2); color: #fff; }
+    .vrfy-banner.invalid .vrfy-icon { background: rgba(255,255,255,0.2); color: #fff; }
+    .vrfy-banner.unverified .vrfy-icon { background: rgba(255,255,255,0.15); color: #fff; }
+
+    .vrfy-status {
+        color: #fff;
+        font-size: 20px;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        margin: 0 0 4px;
+    }
+
+    .vrfy-sub {
+        color: rgba(255,255,255,0.8);
+        font-size: 13px;
+        margin: 0;
+    }
+
+    .vrfy-body {
+        padding: 24px;
+    }
+
+    .vrfy-field {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        padding: 10px 0;
+        border-bottom: 1px solid #f3f4f6;
+        gap: 12px;
+    }
+
+    .vrfy-field:last-child { border-bottom: none; }
+
+    .vrfy-label {
+        color: #6b7280;
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        white-space: nowrap;
+    }
+
+    .vrfy-value {
+        color: #111827;
+        font-size: 14px;
+        font-weight: 500;
+        text-align: right;
+        word-break: break-all;
+    }
+
+    .vrfy-value.sig-ok { color: #059669; }
+    .vrfy-value.sig-fail { color: #dc2626; }
+
+    .vrfy-badge {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 11px;
+        font-weight: 600;
+    }
+
+    .vrfy-badge.valid { background: #d1fae5; color: #065f46; }
+    .vrfy-badge.expired { background: #fef3c7; color: #92400e; }
+    .vrfy-badge.revoked { background: #fee2e2; color: #991b1b; }
+
+    .vrfy-footer {
+        padding: 16px 24px;
+        background: #f9fafb;
+        text-align: center;
+        font-size: 11px;
+        color: #9ca3af;
+    }
+
+    .vrfy-footer strong { color: #6b7280; }
+
+    @media (max-width: 480px) {
+        .vrfy-page { padding: 16px 8px; }
+        .vrfy-banner { padding: 24px 16px; }
+        .vrfy-body { padding: 16px; }
+        .vrfy-field { flex-direction: column; align-items: flex-start; gap: 2px; }
+        .vrfy-value { text-align: left; }
+    }
+</style>
+{% endblock extra_head %}
+
 {% block main-content %}
-<div class="container my-5">
-    <div class="row justify-content-center">
-        <div class="col-lg-7">
-            <div class="card shadow-sm">
-                <div class="card-body text-center py-5">
-                    <span class="badge {% if certificate.is_valid and not certificate.is_expired %}bg-success{% else %}bg-danger{% endif %} mb-3">
-                        {{ certificate.verification_status }}
+<div class="vrfy-page">
+    <div class="vrfy-card">
+
+        {# ── Banner ─────────────────────────────────────────── #}
+        {% if verification_status == 'Valid' and is_signature_valid %}
+            <div class="vrfy-banner valid">
+                <div class="vrfy-icon">&#10003;</div>
+                <p class="vrfy-status">Valid Certificate</p>
+                <p class="vrfy-sub">This certificate was issued by ChuoSmart Academy</p>
+            </div>
+        {% elif verification_status == 'Valid' and not is_signature_valid %}
+            <div class="vrfy-banner unverified">
+                <div class="vrfy-icon">?</div>
+                <p class="vrfy-status">Unable to Verify</p>
+                <p class="vrfy-sub">The digital signature is missing or invalid</p>
+            </div>
+        {% elif verification_status == 'Expired' %}
+            <div class="vrfy-banner invalid">
+                <div class="vrfy-icon">!</div>
+                <p class="vrfy-status">Certificate Expired</p>
+                <p class="vrfy-sub">This certificate is no longer valid</p>
+            </div>
+        {% elif verification_status == 'Revoked' %}
+            <div class="vrfy-banner invalid">
+                <div class="vrfy-icon">&#10007;</div>
+                <p class="vrfy-status">Certificate Revoked</p>
+                <p class="vrfy-sub">This certificate has been revoked by the issuer</p>
+            </div>
+        {% else %}
+            <div class="vrfy-banner unverified">
+                <div class="vrfy-icon">?</div>
+                <p class="vrfy-status">Unknown Status</p>
+            </div>
+        {% endif %}
+
+        {# ── Certificate Details ─────────────────────────────── #}
+        <div class="vrfy-body">
+            <div class="vrfy-field">
+                <span class="vrfy-label">Certificate ID</span>
+                <span class="vrfy-value">{{ certificate.certificate_id }}</span>
+            </div>
+
+            <div class="vrfy-field">
+                <span class="vrfy-label">Student</span>
+                <span class="vrfy-value">{{ student_legal_name|default:certificate.student.username }}</span>
+            </div>
+
+            <div class="vrfy-field">
+                <span class="vrfy-label">Course</span>
+                <span class="vrfy-value">{{ certificate.course.title }}</span>
+            </div>
+
+            <div class="vrfy-field">
+                <span class="vrfy-label">Instructor</span>
+                <span class="vrfy-value">{{ instructor_legal_name|default:"Course Instructor" }}</span>
+            </div>
+
+            <div class="vrfy-field">
+                <span class="vrfy-label">Issued By</span>
+                <span class="vrfy-value">{{ certificate.template.organization_name|default:"ChuoSmart Academy" }}</span>
+            </div>
+
+            <div class="vrfy-field">
+                <span class="vrfy-label">Issue Date</span>
+                <span class="vrfy-value">{{ certificate.issued_at|date:"F d, Y" }}</span>
+            </div>
+
+            {% if expires_at %}
+            <div class="vrfy-field">
+                <span class="vrfy-label">Expires</span>
+                <span class="vrfy-value">{{ expires_at|date:"F d, Y" }}</span>
+            </div>
+            {% endif %}
+
+            <div class="vrfy-field">
+                <span class="vrfy-label">Status</span>
+                <span class="vrfy-value">
+                    <span class="vrfy-badge
+                        {% if verification_status == 'Valid' %}valid
+                        {% elif verification_status == 'Expired' %}expired
+                        {% elif verification_status == 'Revoked' %}revoked
+                        {% endif %}">
+                        {{ verification_status }}
                     </span>
-                    <h1 class="h3">Certificate Verified</h1>
-                    <p class="text-muted">Certificate ID: {{ certificate.certificate_id }}</p>
-                    <hr>
-                    <div class="row text-start g-3">
-                        <div class="col-md-6">
-                            <div class="small text-muted">Student</div>
-                            <div class="fw-semibold">{{ student_legal_name|default:certificate.student.username }}</div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="small text-muted">Course</div>
-                            <div class="fw-semibold">{{ certificate.course.title }}</div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="small text-muted">Instructor</div>
-                            <div class="fw-semibold">{{ instructor_legal_name|default:"Course Instructor" }}</div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="small text-muted">Issued By</div>
-                            <div class="fw-semibold">{{ certificate.template.organization_name|default:"ChuoSmart Academy" }}</div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="small text-muted">Issue Date</div>
-                            <div class="fw-semibold">{{ certificate.issued_at|date:"F d, Y" }}</div>
-                        </div>
-                    </div>
-                </div>
+                </span>
+            </div>
+
+            <div class="vrfy-field">
+                <span class="vrfy-label">Digital Signature</span>
+                <span class="vrfy-value {% if is_signature_valid %}sig-ok{% else %}sig-fail{% endif %}">
+                    {% if is_signature_valid %}
+                        Verified &#10003;
+                    {% else %}
+                        Not verified
+                    {% endif %}
+                </span>
             </div>
         </div>
+
+        <div class="vrfy-footer">
+            Verified on {% now "F d, Y \a\t H:i" %} &middot;
+            <strong>ChuoSmart Academy</strong>
+        </div>
+
     </div>
 </div>
 {% endblock main-content %}

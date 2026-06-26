@@ -1,5 +1,5 @@
 import os
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 from dotenv import load_dotenv
 import pymysql
@@ -113,6 +113,7 @@ TEMPLATES = [
                 'core.context_processors.dashboard_notification',  # Dashboard notification
                 'core.context_processors.site_ad_settings',  # Site ad toggles
                 'core.context_processors.certificate_notice',  # Certificate notice banner
+                'core.context_processors.certificate_available_announcement',  # Downloads live banner
             ],
         },
     },
@@ -208,6 +209,10 @@ CERTIFICATE_DOWNLOADS_ENABLED = True
 # is also True) students can download normally.
 CERTIFICATE_RELEASE_DATE = date(2026, 6, 24)
 
+# One-time announcement that certificate downloads are now available.
+# Shows for 48 hours starting from this timestamp, then disappears permanently.
+CERTIFICATE_ANNOUNCEMENT_START = datetime(2026, 6, 25, 0, 0, 0)
+
 USE_I18N = True
 
 USE_TZ = True
@@ -282,6 +287,10 @@ if not CEREBRAS_API_KEY:
 SNIPPE_API_KEY = os.getenv('SNIPPE_API_KEY', '')
 SNIPPE_WEBHOOK_SECRET = os.getenv('SNIPPE_WEBHOOK_SECRET', '')
 
+# Secret key for signing certificate QR codes (HMAC-SHA256).
+# If not set, falls back to SECRET_KEY. Change this to a dedicated value in production.
+CERTIFICATE_SIGNING_SECRET = os.getenv('CERTIFICATE_SIGNING_SECRET', '')
+
 # Default price for certificate download (TZS)
 CERTIFICATE_PRICE = 15000
 
@@ -314,24 +323,52 @@ LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
     'formatters': {
-        'email_detail': {
-            'format': '[{asctime}] {levelname} [{name}.{funcName}:{lineno}] {message}',
+        'verbose': {
+            'format': '[{asctime}] {levelname} [{name}] {message}',
             'style': '{',
         },
     },
     'handlers': {
+        'console': {
+            'level': 'DEBUG',
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
         'email_file': {
             'level': 'DEBUG',
             'class': 'logging.handlers.RotatingFileHandler',
             'filename': BASE_DIR / 'logs' / 'email.log',
-            'maxBytes': 10_485_760,  # 10 MB
+            'maxBytes': 10_485_760,
             'backupCount': 5,
-            'formatter': 'email_detail',
+            'formatter': 'verbose',
+        },
+        'lms_file': {
+            'level': 'DEBUG',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': BASE_DIR / 'logs' / 'lms.log',
+            'maxBytes': 10_485_760,
+            'backupCount': 5,
+            'formatter': 'verbose',
         },
     },
     'loggers': {
         'core.email': {
             'handlers': ['email_file'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+        'lms': {
+            'handlers': ['console', 'lms_file'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+        'lms.certificates': {
+            'handlers': ['console', 'lms_file'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+        'lms.views': {
+            'handlers': ['console', 'lms_file'],
             'level': 'DEBUG',
             'propagate': False,
         },

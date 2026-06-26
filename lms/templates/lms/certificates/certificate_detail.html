@@ -392,7 +392,11 @@
                         <div>
                             <h6>Verify</h6>
                             <div class="cs-qr-box">
+                                {% if qr_data_uri %}
+                                <img src="{{ qr_data_uri }}" alt="Verification QR" width="80" height="80" loading="lazy">
+                                {% else %}
                                 <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=0&data={{ verify_url|urlencode }}" alt="Verification QR" width="80" height="80" loading="lazy">
+                                {% endif %}
                             </div>
                         </div>
                     </div>

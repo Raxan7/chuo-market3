@@ -1,6 +1,7 @@
 """
 Views for the LMS application
 """
+import hmac
 import json
 import time
 
@@ -1909,10 +1910,22 @@ def verify_certificate(request, certificate_id):
         StudentCertificate.objects.select_related('student', 'course', 'template'),
         certificate_id=certificate_id,
     )
+
+    from .certificates import _sign_certificate
+    sig = request.GET.get('sig', '')
+    expected_sig = _sign_certificate(certificate)
+    is_signature_valid = bool(sig) and hmac.compare_digest(sig, expected_sig)
+
+    status = certificate.verification_status
     context = {
         'certificate': certificate,
         'student_legal_name': _resolve_student_name(certificate.student),
         'instructor_legal_name': _resolve_instructor_name(certificate.course, certificate.template),
+        'is_signature_valid': is_signature_valid,
+        'verification_status': status,
+        'is_valid': certificate.is_valid,
+        'is_expired': certificate.is_expired,
+        'expires_at': certificate.expires_at,
     }
     return render(request, 'lms/certificates/verify.html', context)
 

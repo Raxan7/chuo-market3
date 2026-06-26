@@ -1,9 +1,12 @@
 """Certificate rendering and issuing helpers."""
 
 import base64
+import hashlib
+import hmac
 import io
 import logging
 
+from django.conf import settings
 from django.urls import reverse
 from django.utils import timezone
 
@@ -17,6 +20,39 @@ PLACEHOLDER_KEYS = (
     'certificate_id',
     'organization_name',
 )
+
+
+def _signing_key():
+    """Return the HMAC key used to sign certificate verification URLs."""
+    key = getattr(settings, 'CERTIFICATE_SIGNING_SECRET', '') or settings.SECRET_KEY
+    return key.encode('utf-8')
+
+
+def _sign_certificate(certificate):
+    """Produce an HMAC-SHA256 signature for a ``StudentCertificate``.
+
+    Signs ``{certificate_id}:{issued_at_iso}[:{expires_at_iso}]`` so that
+    anyone can verify the certificate was issued by this server.
+    The signature is returned as a URL-safe base64 string (no padding).
+    """
+    message = f"{certificate.certificate_id}:{certificate.issued_at.isoformat()}"
+    if certificate.expires_at:
+        message += f":{certificate.expires_at.isoformat()}"
+    digest = hmac.new(_signing_key(), message.encode('utf-8'), hashlib.sha256).digest()
+    return base64.urlsafe_b64encode(digest).decode('ascii').rstrip('=')
+
+
+def _signed_verification_url(certificate, request=None):
+    """Build the verification URL with an HMAC signature as ``?sig=``.
+
+    Example:  ``/lms/certificates/verify/CHUO-20260625-ABCD/?sig=<token>``
+    """
+    path = reverse('lms:certificate_verify', kwargs={'certificate_id': certificate.certificate_id})
+    sig = _sign_certificate(certificate)
+    signed_path = f"{path}?sig={sig}"
+    if request:
+        return request.build_absolute_uri(signed_path)
+    return signed_path
 
 
 def _qr_data_uri(text, box_size=4, border=1):
@@ -79,6 +115,7 @@ def certificate_context(certificate, request=None):
     completion_date = timezone.localtime(certificate.issued_at).strftime('%B %d, %Y')
     verification_path = reverse('lms:certificate_verify', kwargs={'certificate_id': certificate.certificate_id})
     verification_url = request.build_absolute_uri(verification_path) if request else verification_path
+    signed_verify_url = _signed_verification_url(certificate, request=request)
     values = {
         'student_name': student_name,
         'course_title': certificate.course.title,
@@ -98,7 +135,8 @@ def certificate_context(certificate, request=None):
         'instructor_name': instructor_name,
         'completion_date': completion_date,
         'verification_url': verification_url,
+        'signed_verification_url': signed_verify_url,
         'rendered_body': body,
-        'qr_data_uri': _qr_data_uri(verification_url) if (template and template.show_qr_code) else '',
+        'qr_data_uri': _qr_data_uri(signed_verify_url) if (template and template.show_qr_code) else '',
         **values,
     }
