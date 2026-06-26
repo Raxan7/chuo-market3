@@ -380,6 +380,17 @@
         overflow-wrap: break-word;
     }
 
+    .qr-wrap {
+        margin-top: 2.5mm;
+        text-align: right;
+    }
+
+    .qr-wrap img {
+        width: 22mm;
+        height: 22mm;
+        display: inline-block;
+    }
+
     .footer-note {
         position: absolute;
         left: 12mm;
@@ -483,6 +494,12 @@
                             <a class="verify-link" href="{{ verification_url }}">
                                 {{ verification_url }}
                             </a>
+                        {% endif %}
+
+                        {% if qr_data_uri %}
+                            <div class="qr-wrap">
+                                <img src="{{ qr_data_uri }}" alt="QR code to verify certificate" width="80" height="80">
+                            </div>
                         {% endif %}
                     </div>
                 </div>

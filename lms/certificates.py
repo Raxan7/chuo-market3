@@ -1,5 +1,7 @@
 """Certificate rendering and issuing helpers."""
 
+import base64
+import io
 import logging
 
 from django.urls import reverse
@@ -15,6 +17,29 @@ PLACEHOLDER_KEYS = (
     'certificate_id',
     'organization_name',
 )
+
+
+def _qr_data_uri(text, box_size=4, border=1):
+    """Generate a QR code for *text* and return it as a ``data:image/png;base64,…`` URI.
+
+    Falls back to empty string if the ``qrcode`` library is unavailable.
+    """
+    try:
+        import qrcode
+        from PIL import Image
+    except ImportError:
+        logger.warning("qrcode or Pillow not installed — skipping QR code generation")
+        return ''
+
+    try:
+        qr = qrcode.make(text, box_size=box_size, border=border)
+        buf = io.BytesIO()
+        qr.save(buf, format='PNG')
+        b64 = base64.b64encode(buf.getvalue()).decode('ascii')
+        return f'data:image/png;base64,{b64}'
+    except Exception as exc:
+        logger.error("QR code generation failed for %r: %s", text[:60], exc)
+        return ''
 
 
 def _resolve_student_name(user):
@@ -74,5 +99,6 @@ def certificate_context(certificate, request=None):
         'completion_date': completion_date,
         'verification_url': verification_url,
         'rendered_body': body,
+        'qr_data_uri': _qr_data_uri(verification_url) if (template and template.show_qr_code) else '',
         **values,
     }

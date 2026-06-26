@@ -246,6 +246,17 @@
             text-decoration: none;
         }
 
+        .cs-qr-wrap {
+            margin-top: 8px;
+            text-align: right;
+        }
+
+        .cs-qr-wrap img {
+            width: 60px;
+            height: 60px;
+            display: inline-block;
+        }
+
         .footer-note {
             margin-top: 12px;
             font-size: 10px;
@@ -296,6 +307,11 @@
                             {% if verification_url %}
                             <div class="lbl" style="margin-top:6px;">Verify Online</div>
                             <a class="verify-link" href="{{ verification_url }}">{{ verification_url }}</a>
+                            {% endif %}
+                            {% if qr_data_uri %}
+                            <div class="cs-qr-wrap">
+                                <img src="{{ qr_data_uri }}" alt="QR code to verify certificate" width="60" height="60">
+                            </div>
                             {% endif %}
                         </div>
                     </div>
