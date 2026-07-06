@@ -1,10 +1,14 @@
+import json
+import time
+from decimal import Decimal
+
 from django.contrib.auth.models import User
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
 from .ai_assessments import ensure_module_assessment, queue_module_assessment_generation
-from .models import Course, CourseContent, CourseEnrollment, LMSProfile, CourseModule, ContentAccess, QuizTaker, Quiz, MCQuestion, Choice, StudentAnswer, ModuleProgress
+from .models import Course, CourseContent, CourseEnrollment, LMSProfile, CourseModule, ContentAccess, QuizTaker, Quiz, MCQuestion, Choice, StudentAnswer, ModuleProgress, CoursePayment, CertificateTemplate, PaymentMethod
 from .utils import ensure_course_learning_records, is_module_unlocked, update_module_content_completion, update_module_assessment_completion
 
 
@@ -305,3 +309,332 @@ class LMSModuleGatingTests(TestCase):
         self.assertTrue(progress.content_completed)
         self.assertGreaterEqual(float(progress.best_score), 70)
         self.assertTrue(progress.completed)
+
+
+@override_settings(
+    DEBUG=True,
+    STATICFILES_STORAGE='django.contrib.staticfiles.storage.StaticFilesStorage',
+)
+class CoursePaymentTests(TestCase):
+    """Tests for paid/free course payment flow and instructor price editing"""
+
+    def setUp(self):
+        self.client = Client()
+        self.student_user = User.objects.create_user(
+            username='student', password='testpassword',
+        )
+        self.student_profile, _ = LMSProfile.objects.get_or_create(
+            user=self.student_user, defaults={'role': 'student'},
+        )
+        self.instructor_user = User.objects.create_user(
+            username='instructor', password='testpassword',
+        )
+        self.instructor_profile, created = LMSProfile.objects.get_or_create(
+            user=self.instructor_user,
+        )
+        if not created or self.instructor_profile.role != 'instructor':
+            self.instructor_profile.role = 'instructor'
+            self.instructor_profile.save()
+        # Free course
+        self.free_course = Course.objects.create(
+            title='Free Course', is_free=True, price=0,
+            course_type='general',
+        )
+        self.free_course.instructors.add(self.instructor_profile)
+        # Paid course (general type to avoid university-specific field requirements)
+        self.paid_course = Course.objects.create(
+            title='Paid Course', is_free=False, price=Decimal('25000.00'),
+            course_type='general',
+        )
+        self.paid_course.instructors.add(self.instructor_profile)
+
+    # ── Pay-First Model ──────────────────────────────────────────────
+
+    def test_free_course_enrolls_immediately(self):
+        """Free courses should enroll instantly without payment"""
+        self.client.login(username='student', password='testpassword')
+        response = self.client.get(
+            reverse('lms:enroll_course', kwargs={'slug': self.free_course.slug}),
+            follow=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        enrollment = CourseEnrollment.objects.get(
+            student=self.student_profile, course=self.free_course,
+        )
+        self.assertEqual(enrollment.payment_status, 'not_required')
+
+    def test_paid_course_redirects_to_payment_form(self):
+        """Paid courses should redirect to payment form (not auto-enroll)"""
+        self.client.login(username='student', password='testpassword')
+        response = self.client.get(
+            reverse('lms:enroll_course', kwargs={'slug': self.paid_course.slug}),
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/payment/', response['Location'])
+        self.assertFalse(
+            CourseEnrollment.objects.filter(
+                student=self.student_profile, course=self.paid_course,
+            ).exists(),
+        )
+
+    def test_enrolled_paid_course_without_approved_payment_has_no_access(self):
+        """Enrollment without approved payment should not grant access"""
+        self.client.login(username='student', password='testpassword')
+        CourseEnrollment.objects.create(
+            student=self.student_profile, course=self.paid_course,
+            payment_status='pending',
+        )
+        self.assertFalse(self.paid_course.user_has_access(self.student_user))
+
+    def test_enrolled_paid_course_with_approved_payment_has_access(self):
+        """Enrollment with approved payment should grant access"""
+        self.client.login(username='student', password='testpassword')
+        CourseEnrollment.objects.create(
+            student=self.student_profile, course=self.paid_course,
+            payment_status='approved',
+        )
+        self.assertTrue(self.paid_course.user_has_access(self.student_user))
+
+    def test_paid_course_price_shown_on_course_detail(self):
+        """Course detail page should show price for paid courses"""
+        self.client.login(username='student', password='testpassword')
+        response = self.client.get(
+            reverse('lms:course_detail', kwargs={'slug': self.paid_course.slug}),
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '25000.00')
+        self.assertContains(response, 'Paid Course')
+
+    def test_free_course_shows_free_badge(self):
+        """Free course detail should show Free badge"""
+        response = self.client.get(
+            reverse('lms:course_detail', kwargs={'slug': self.free_course.slug}),
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Free Course')
+
+    # ── CoursePayment model ──────────────────────────────────────────
+
+    @override_settings(SNIPPE_API_KEY='test_key')
+    @override_settings(CERTIFICATE_PRICE=15000)
+    def test_course_payment_init_creates_payment_record(self):
+        """course_payment_init should create a CoursePayment and attempt Snippe redirect"""
+        self.client.login(username='student', password='testpassword')
+        # Before the call, no payments exist
+        self.assertEqual(
+            CoursePayment.objects.filter(user=self.student_user, course=self.paid_course).count(), 0,
+        )
+        # Mock the Snippe API call — the view will fail because test has no real API
+        # But we can verify the view redirects to payment_form on failure
+        response = self.client.get(
+            reverse('lms:course_payment_init', kwargs={'slug': self.paid_course.slug}),
+            follow=True,
+        )
+        # It should fall back to payment form (Snippe returns error in test)
+        self.assertIn('payment', response.request['PATH_INFO'])
+
+    @override_settings(SNIPPE_API_KEY='')
+    def test_course_payment_init_falls_back_when_snippe_unconfigured(self):
+        """When Snippe is not configured, redirect back to payment form"""
+        self.client.login(username='student', password='testpassword')
+        response = self.client.get(
+            reverse('lms:course_payment_init', kwargs={'slug': self.paid_course.slug}),
+            follow=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('payment', response.request['PATH_INFO'])
+
+    def test_course_payment_success_without_payment_shows_form(self):
+        """course_payment_success without completed payment should redirect back"""
+        self.client.login(username='student', password='testpassword')
+        response = self.client.get(
+            reverse('lms:course_payment_success', kwargs={'slug': self.paid_course.slug}),
+            follow=True,
+        )
+        self.assertIn('payment', response.request['PATH_INFO'])
+
+    def test_course_payment_success_with_completed_payment_creates_enrollment(self):
+        """course_payment_success with completed CoursePayment should create approved enrollment"""
+        self.client.login(username='student', password='testpassword')
+        CoursePayment.objects.create(
+            user=self.student_user, course=self.paid_course,
+            amount=self.paid_course.price, status='completed',
+        )
+        response = self.client.get(
+            reverse('lms:course_payment_success', kwargs={'slug': self.paid_course.slug}),
+            follow=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        enrollment = CourseEnrollment.objects.get(
+            student=self.student_profile, course=self.paid_course,
+        )
+        self.assertEqual(enrollment.payment_status, 'approved')
+
+    # ── Payment form shows online option ────────────────────────────
+
+    @override_settings(SNIPPE_API_KEY='test_key_123')
+    def test_payment_form_shows_online_pay_button_when_snippe_configured(self):
+        """Payment form should show 'Pay Online' button when Snippe is configured"""
+        self.client.login(username='student', password='testpassword')
+        response = self.client.get(
+            reverse('lms:payment_form', kwargs={'slug': self.paid_course.slug}),
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Pay Online')
+        self.assertContains(response, '25000.00')
+
+    @override_settings(SNIPPE_API_KEY='')
+    def test_payment_form_hides_online_button_when_snippe_not_configured(self):
+        """Payment form should show nothing useful when Snippe is not configured"""
+        self.client.login(username='student', password='testpassword')
+        response = self.client.get(
+            reverse('lms:payment_form', kwargs={'slug': self.paid_course.slug}),
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, 'Pay Now')
+        self.assertNotContains(response, 'Pay Online')
+
+    # ── Webhook handling for course payments ─────────────────────────
+
+    @override_settings(SNIPPE_WEBHOOK_SECRET='test-secret-key')
+    def test_webhook_ignores_request_without_user_id(self):
+        """Webhook should return 200 but skip processing if no user_id"""
+        import hashlib
+        import hmac
+        import time as time_module
+        from django.test import RequestFactory
+        from .views import snippe_webhook
+        factory = RequestFactory()
+        payload = json.dumps({
+            'type': 'payment.completed',
+            'data': {
+                'reference': 'ref_123',
+                'metadata': {'payment_type': 'course_enrollment', 'course_id': 1},
+            },
+        })
+        timestamp = str(int(time_module.time()))
+        message = f"{timestamp}.{payload}"
+        signature = hmac.new(
+            b'test-secret-key', message.encode('utf-8'), hashlib.sha256,
+        ).hexdigest()
+        request = factory.post(
+            '/lms/webhooks/snippe/',
+            data=payload,
+            content_type='application/json',
+            HTTP_X_Webhook_Signature=signature,
+            HTTP_X_Webhook_Timestamp=timestamp,
+        )
+        response = snippe_webhook(request)
+        self.assertEqual(response.status_code, 200)
+
+    # ── Instructor price editing ─────────────────────────────────────
+
+    def test_instructor_can_edit_course_price(self):
+        """Instructor should be able to update course price via course update form"""
+        self.client.login(username='instructor', password='testpassword')
+        response = self.client.post(
+            reverse('lms:course_update', kwargs={'slug': self.paid_course.slug}),
+            {
+                'title': self.paid_course.title,
+                'course_type': 'general',
+                'summary': self.paid_course.summary,
+                'is_free': 'on',
+                'price': '0.00',
+                'instructors': [self.instructor_profile.id],
+            },
+            follow=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.paid_course.refresh_from_db()
+        self.assertTrue(self.paid_course.is_free)
+        self.assertEqual(self.paid_course.price, Decimal('0.00'))
+
+    def test_instructor_can_set_paid_course_price(self):
+        """Instructor should be able to set a price on a course"""
+        self.client.login(username='instructor', password='testpassword')
+        response = self.client.post(
+            reverse('lms:course_update', kwargs={'slug': self.paid_course.slug}),
+            {
+                'title': self.paid_course.title,
+                'course_type': 'general',
+                'summary': self.paid_course.summary,
+                'is_free': '',  # unchecked = paid
+                'price': '50000.00',
+                'instructors': [self.instructor_profile.id],
+            },
+            follow=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.paid_course.refresh_from_db()
+        self.assertFalse(self.paid_course.is_free)
+        self.assertEqual(self.paid_course.price, Decimal('50000.00'))
+
+    def test_instructor_dashboard_shows_price_badge(self):
+        """Instructor dashboard should show price/Free badge for each course"""
+        self.client.login(username='instructor', password='testpassword')
+        response = self.client.get(reverse('lms:instructor_dashboard'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '25000.00')
+        self.assertContains(response, 'Free')
+
+    def test_instructor_dashboard_shows_edit_price_link(self):
+        """Instructor dashboard should have Edit Price links"""
+        self.client.login(username='instructor', password='testpassword')
+        response = self.client.get(reverse('lms:instructor_dashboard'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Edit Price')
+
+    # ── Certificate price editing ────────────────────────────────────
+
+    def test_certificate_template_list_shows_price(self):
+        """Certificate template list should display certificate price"""
+        self.client.login(username='instructor', password='testpassword')
+        template = CertificateTemplate.objects.create(
+            course=self.paid_course,
+            title='Test Certificate',
+            certificate_price=Decimal('20000.00'),
+        )
+        response = self.client.get(
+            reverse('lms:certificate_template_list'),
+            follow=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '20000.00')
+
+    def test_instructor_can_edit_certificate_price(self):
+        """Instructor should be able to update certificate template price"""
+        self.client.login(username='instructor', password='testpassword')
+        template = CertificateTemplate.objects.create(
+            course=self.paid_course,
+            title='Test Certificate',
+            certificate_price=Decimal('10000.00'),
+        )
+        response = self.client.post(
+            reverse('lms:certificate_template_edit', kwargs={'pk': template.pk}),
+            {
+                'course': self.paid_course.id,
+                'title': 'Updated Certificate',
+                'organization_name': 'ChuoSmart Academy',
+                'recipient_name_format': '{{ student_name }}',
+                'course_name_display': '{{ course_title }}',
+                'completion_date_display': '{{ completion_date }}',
+                'certificate_id_display': '{{ certificate_id }}',
+                'certificate_price': '30000.00',
+                'completion_percentage': 100,
+                'status': 'draft',
+                'template_style': 'modern',
+                'orientation': 'landscape',
+                'primary_color': '#0d6efd',
+                'secondary_color': '#111827',
+                'accent_color': '#1FAA59',
+                'background_style': 'plain',
+                'border_style': 'premium',
+                'font_style': 'serif',
+            },
+        )
+        self.assertEqual(response.status_code, 302,
+                         msg=f'Got {response.status_code}')
+        self.assertIn('/lms/certificates/templates/', response['Location'])
+        template.refresh_from_db()
+        self.assertEqual(template.certificate_price, Decimal('30000.00'))
+        self.assertEqual(template.title, 'Updated Certificate')

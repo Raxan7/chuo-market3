@@ -26,6 +26,13 @@
                     </div>
                     <h2 class="h5">{{ template.title }}</h2>
                     <p class="text-muted">{{ template.course.title }}</p>
+                    <p class="small mb-1">
+                        {% if template.certificate_price %}
+                            <strong>Price:</strong> {{ template.certificate_price }} TZS
+                        {% else %}
+                            <strong>Price:</strong> Default ({{ certificate_default_price }} TZS)
+                        {% endif %}
+                    </p>
                     <p class="small mb-0">Updated {{ template.updated_at|date:"M d, Y" }}</p>
                 </div>
                 <div class="card-footer bg-white d-flex flex-wrap gap-2">

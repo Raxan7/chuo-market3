@@ -1112,6 +1112,44 @@ def enrollment_payment_status_change(sender, instance, **kwargs):
                 ActivityLog.objects.create(
                     message=_(f"Payment for '{instance.course}' by {instance.student.user.username} has been rejected.")
                 )
+class CoursePayment(models.Model):
+    """Tracks Snippe payments for course enrollment (pay-first model)"""
+    STATUS_CHOICES = (
+        ('pending', _('Pending')),
+        ('completed', _('Completed')),
+        ('failed', _('Failed')),
+        ('expired', _('Expired')),
+        ('cancelled', _('Cancelled')),
+    )
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='course_payments')
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='payments')
+    snippe_session_id = models.CharField(max_length=100, blank=True, default='',
+                                         help_text=_("Snippe session reference"))
+    snippe_reference = models.CharField(max_length=100, blank=True, default='',
+                                         help_text=_("Snippe payment reference from webhook"))
+    webhook_event_id = models.CharField(max_length=100, blank=True, default='',
+                                        help_text=_("Snippe webhook event ID (idempotency key)"))
+    failure_reason = models.TextField(blank=True, default='',
+                                       help_text=_("Failure reason from Snippe"))
+    amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    checkout_url = models.URLField(blank=True, default='',
+                                    help_text=_("Snippe hosted checkout URL"))
+    payment_link_url = models.URLField(blank=True, default='',
+                                        help_text=_("Short payment link URL"))
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = _("Course Payment")
+        verbose_name_plural = _("Course Payments")
+
+    def __str__(self):
+        return f"{self.user.username} - {self.course.title} - {self.get_status_display()}"
+
+
 class CertificatePayment(models.Model):
     STATUS_CHOICES = (
         ('pending', _('Pending')),

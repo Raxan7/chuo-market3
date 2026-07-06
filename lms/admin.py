@@ -11,7 +11,7 @@ from .models import (
     CourseContent, Quiz, Question, MCQuestion, Choice, TF_Question, 
     Essay_Question, QuizTaker, StudentAnswer, Grade, CourseEnrollment,
     InstructorRequest, ContentAccess, SiteSettings, AdExemptUser, PaymentMethod,
-    ModuleProgress, CertificateTemplate, StudentCertificate, CertificatePayment
+    ModuleProgress, CertificateTemplate, StudentCertificate, CoursePayment, CertificatePayment
 )
 
 
@@ -342,6 +342,21 @@ class CourseEnrollmentAdmin(admin.ModelAdmin):
     reject_payments.short_description = _("Reject selected payments")
 admin.site.register(Essay_Question, EssayQuestionAdmin)
 admin.site.register(SiteSettings, SiteSettingsAdmin)
+
+
+@admin.register(CoursePayment)
+class CoursePaymentAdmin(admin.ModelAdmin):
+    """Admin interface for course payments"""
+    list_display = ('user', 'course', 'amount', 'status', 'created_at')
+    list_filter = ('status', 'created_at')
+    search_fields = ('user__username', 'course__title', 'course__id', 'snippe_session_id')
+    readonly_fields = ('created_at', 'updated_at')
+    actions = ['mark_completed']
+    
+    def mark_completed(self, request, queryset):
+        updated = queryset.filter(status='pending').update(status='completed')
+        self.message_user(request, _(f"{updated} payment(s) marked as completed."))
+    mark_completed.short_description = _("Mark selected as completed")
 
 
 @admin.register(CertificatePayment)

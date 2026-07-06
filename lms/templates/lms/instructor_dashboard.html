@@ -104,14 +104,23 @@
                                     <div class="position-relative">
                                         {% include "lms/partials/_course_card.html" with show_enrolled=False show_progress=True progress_pct=stats.avg_completion|default:0 %}
                                         <div class="d-flex justify-content-between align-items-center mt-2 px-1 small text-muted">
-                                            <span><i class="fas fa-users me-1"></i>{{ course.students.count }} students</span>
+                                            <span>
+                                                <i class="fas fa-users me-1"></i>{{ course.students.count }} students
+                                            </span>
+                                            <span>
+                                                {% if course.is_free %}
+                                                    <span class="badge bg-success">Free</span>
+                                                {% else %}
+                                                    <span class="badge bg-warning text-dark">{{ course.price }} TZS</span>
+                                                {% endif %}
+                                            </span>
                                             {% if stats %}
                                                 <span class="fw-semibold text-dark">Avg best score: {{ stats.avg_best_score }}%</span>
                                             {% endif %}
                                         </div>
                                         <div class="d-flex gap-1 mt-2">
                                             <a href="{% url 'lms:course_detail' course.slug %}" class="btn btn-sm btn-outline-primary flex-grow-1">View</a>
-                                            <a href="{% url 'lms:course_update' course.slug %}" class="btn btn-sm btn-outline-secondary flex-grow-1">Edit</a>
+                                            <a href="{% url 'lms:course_update' course.slug %}" class="btn btn-sm btn-outline-secondary flex-grow-1">Edit Price</a>
                                         </div>
                                     </div>
                                 </div>

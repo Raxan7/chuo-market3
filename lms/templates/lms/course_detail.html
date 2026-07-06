@@ -422,9 +422,17 @@
                     
                     {% if not is_enrolled and user.is_authenticated %}
                     <div class="mt-4">
-                        <a href="{% url 'lms:enroll_course' slug=course.slug %}" class="btn btn-success">
-                            <i class="fas fa-user-plus"></i> Enroll in this Course
+                        <a href="{% url 'lms:enroll_course' slug=course.slug %}" class="btn btn-success btn-lg">
+                            <i class="fas fa-user-plus"></i>
+                            {% if course.is_free %}
+                                Enroll Free
+                            {% else %}
+                                Enroll Now — {{ course.price }} TZS
+                            {% endif %}
                         </a>
+                        {% if not course.is_free %}
+                        <p class="text-muted small mt-2"><i class="fas fa-info-circle me-1"></i>Payment required before access to modules.</p>
+                        {% endif %}
                     </div>
                     {% elif is_enrolled %}
                     <div class="alert alert-info mt-3">
@@ -511,10 +519,12 @@
                 <div class="card-body">
                     {% if not is_enrolled and not is_course_instructor %}
                     <div class="alert alert-info mb-4">
-                        <h5 class="alert-heading">Modules are locked</h5>
-                        <p>Enroll to start module 1. Each next module opens after you complete the previous module and score at least 70% on its mastery check.</p>
+                        <h5 class="alert-heading">{% if course.is_free %}Modules are locked{% else %}Paid Course — Modules Locked{% endif %}</h5>
+                        <p>{% if course.is_free %}Enroll to start module 1. Each next module opens after you complete the previous module and score at least 70% on its mastery check.{% else %}This is a paid course. You need to pay <strong>{{ course.price }} TZS</strong> to unlock all modules.{% endif %}</p>
                         {% if user.is_authenticated %}
-                        <a href="{% url 'lms:enroll_course' slug=course.slug %}" class="btn btn-success">Enroll in this Course</a>
+                        <a href="{% url 'lms:enroll_course' slug=course.slug %}" class="btn btn-success">
+                            {% if course.is_free %}Enroll in this Course{% else %}Enroll Now — {{ course.price }} TZS{% endif %}
+                        </a>
                         {% else %}
                         <a href="{% url 'login' %}?next={% url 'lms:enroll_course' slug=course.slug %}" class="btn btn-primary">Login to Enroll</a>
                         {% endif %}

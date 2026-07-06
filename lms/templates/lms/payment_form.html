@@ -2,68 +2,48 @@
 {% load i18n %}
 {% load static %}
 
-{% block title %}{% trans "Upload Payment Proof" %} - {{ course.title }}{% endblock %}
+{% block title %}{% trans "Course Payment" %} - {{ course.title }}{% endblock %}
 
 {% block main-content %}
 <div class="container py-5">
     <div class="row">
         <div class="col-md-8 mx-auto">
-            <div class="card shadow-sm">
-                <div class="card-header bg-primary text-white">
-                    <h3 class="mb-0">{% trans "Upload Payment Proof" %}</h3>
-                </div>
+            <!-- Course Summary Card -->
+            <div class="card shadow-sm mb-4">
                 <div class="card-body">
-                    <h4>{{ course.title }}</h4>
-                    
-                    {% if payment_methods %}
-                        <div class="alert alert-info mb-4">
-                            <h5>{% trans "Available Payment Methods:" %}</h5>
-                            {% for method in payment_methods %}
-                                <div class="mb-3 payment-method">
-                                    <h6>{{ method.name }}</h6>
-                                    <p><strong>{% trans "Phone Number:" %}</strong> {{ method.phone_number }}</p>
-                                    {% if method.instructions %}
-                                        <p>{{ method.instructions }}</p>
-                                    {% endif %}
-                                    {% if method.image %}
-                                        <img src="{{ method.image.url }}" alt="{{ method.name }}" class="img-fluid mb-2" style="max-width: 200px;">
-                                    {% endif %}
-                                </div>
-                                {% if not forloop.last %}<hr>{% endif %}
-                            {% endfor %}
+                    <div class="d-flex align-items-start gap-3">
+                        {% if course.image %}
+                            <img src="{{ course.image.url }}" alt="{{ course.title }}"
+                                 class="rounded" style="width: 120px; height: 80px; object-fit: cover;">
+                        {% else %}
+                            <div class="rounded bg-light d-flex align-items-center justify-content-center"
+                                 style="width: 120px; height: 80px;">
+                                <i class="fas fa-book-open fa-2x text-secondary"></i>
+                            </div>
+                        {% endif %}
+                        <div class="flex-grow-1">
+                            <h4 class="mb-1">{{ course.title }}</h4>
+                            <p class="text-muted mb-1 small">{{ course.summary|striptags|truncatewords:30 }}</p>
+                            <p class="mb-0"><strong>{% trans "Price" %}:</strong> {{ course_price }} <small>TZS</small></p>
                         </div>
-                    {% endif %}
-                    
-                    <form method="post" enctype="multipart/form-data">
-                        {% csrf_token %}
-                        <div class="form-group mb-3">
-                            <label for="payment_method">{% trans "Payment Method Used:" %}</label>
-                            <select name="payment_method" id="payment_method" class="form-control" required>
-                                <option value="">{% trans "Select payment method" %}</option>
-                                {% for method in payment_methods %}
-                                    <option value="{{ method.id }}">{{ method.name }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        
-                        <div class="form-group mb-3">
-                            <label for="payment_proof">{% trans "Upload Payment Screenshot:" %}</label>
-                            <input type="file" name="payment_proof" id="payment_proof" class="form-control" required accept="image/*">
-                            <small class="form-text text-muted">{% trans "Please upload a clear screenshot or image of your payment receipt." %}</small>
-                        </div>
-                        
-                        <div class="form-group mb-3">
-                            <label for="payment_notes">{% trans "Additional Notes:" %} ({% trans "Optional" %})</label>
-                            <textarea name="payment_notes" id="payment_notes" class="form-control" rows="3" placeholder="{% trans 'Any additional information about your payment' %}"></textarea>
-                        </div>
-                        
-                        <div class="text-end">
-                            <a href="{% url 'lms:course_detail' course.slug %}" class="btn btn-secondary">{% trans "Cancel" %}</a>
-                            <button type="submit" class="btn btn-primary">{% trans "Submit Payment Proof" %}</button>
-                        </div>
-                    </form>
+                    </div>
                 </div>
             </div>
+
+            <!-- Online Payment Option -->
+            {% if snippe_configured %}
+            <div class="card shadow-sm border-primary">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="mb-0"><i class="fas fa-bolt me-2"></i>{% trans "Pay Online — Instant Access" %}</h3>
+                </div>
+                <div class="card-body text-center py-4">
+                    <p class="mb-3">{% trans "Pay now via mobile money or card and get instant access to all course modules." %}</p>
+                    <a href="{% url 'lms:course_payment_init' slug=course.slug %}" class="btn btn-lg btn-success px-5">
+                        <i class="fas fa-credit-card me-2"></i>{% trans "Pay Now" %}
+                    </a>
+                </div>
+            </div>
+            {% endif %}
         </div>
     </div>
 </div>

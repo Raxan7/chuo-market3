@@ -98,6 +98,8 @@ urlpatterns = [
     # Payment Management
     path('courses/<slug:slug>/payment/', views.payment_form, name='payment_form'),
     path('courses/<slug:slug>/payment/pending/', views.payment_pending, name='payment_pending'),
+    path('courses/<slug:slug>/payment/pay-online/', views.course_payment_init, name='course_payment_init'),
+    path('courses/<slug:slug>/payment/success/', views.course_payment_success, name='course_payment_success'),
     
     # Instructor payment methods
     path('instructor/payment-methods/', views.instructor_payment_methods, name='instructor_payment_methods'),

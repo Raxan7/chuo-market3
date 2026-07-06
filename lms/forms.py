@@ -411,6 +411,7 @@ class CertificateTemplateForm(forms.ModelForm):
             'recipient_name_format', 'course_name_display',
             'completion_date_display', 'certificate_id_display',
             'certificate_body', 'instructor_signature_text', 'footer_note',
+            'certificate_price',
             'enable_verification', 'show_qr_code', 'show_certificate_id',
             'verification_url_format', 'expires', 'validity_months',
         ]
