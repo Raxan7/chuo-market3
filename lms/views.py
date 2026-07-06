@@ -572,13 +572,13 @@ class CourseDetailView(DetailView):
         course_progress = None
         module_states = []
         issued_certificate = None
+        from .utils import instructors_missing_legal_name
         if is_enrolled and student_profile and has_access:
             from .utils import (
                 calculate_course_progress,
                 ensure_course_learning_records,
                 get_module_progress_states,
                 issue_certificate_if_eligible,
-                instructors_missing_legal_name,
             )
             ensure_course_learning_records(course, student_profile)
             quizzes = Quiz.objects.filter(
