@@ -1156,7 +1156,7 @@ def course_content_detail(request, course_slug, content_id):
             return redirect('lms:enroll_course', slug=course.slug)
         if not course.user_has_access(request.user):
             messages.warning(request, _("Your payment must be approved before you can access this course."))
-            return redirect('lms:course_detail', slug=course.slug)
+            return redirect('lms:payment_form', slug=course.slug)
 
         from .utils import is_module_unlocked
         if not is_module_unlocked(content.module, profile):
