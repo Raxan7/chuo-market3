@@ -854,13 +854,14 @@ def start_quiz(request, slug):
     
     profile = request.user.lms_profile
     
-    # Check if enrolled in course
+    # Check if enrolled or instructor
     is_enrolled = CourseEnrollment.objects.filter(
         student=profile,
         course=quiz.course
     ).exists()
+    is_instructor = is_course_instructor(request.user, quiz.course)
     
-    if not is_enrolled:
+    if not is_enrolled and not is_instructor:
         messages.error(request, _("You must be enrolled in the course to take this quiz."))
         return redirect('lms:quiz_detail', slug=quiz.slug)
 

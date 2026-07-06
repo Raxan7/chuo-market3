@@ -209,6 +209,15 @@ class Course(models.Model):
             
         if not user.is_authenticated:
             return False
+
+        # Instructors and admins always have access
+        if user.is_staff or user.is_superuser:
+            return True
+        if hasattr(user, 'lms_profile'):
+            if user.lms_profile.role == 'admin':
+                return True
+            if self.instructors.filter(id=user.lms_profile.id).exists():
+                return True
             
         try:
             enrollment = CourseEnrollment.objects.get(
