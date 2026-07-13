@@ -556,7 +556,7 @@ class CourseDetailView(DetailView):
                 is_enrolled = True
                 payment_status = enrollment.payment_status
                 # For enrolled users: access depends on course type and payment status
-                has_access = course.is_free or payment_status == 'approved'
+                has_access = course.is_free or payment_status == 'approved' or enrollment.admin_granted_access
             except CourseEnrollment.DoesNotExist:
                 has_access = course.is_free
         
@@ -1952,6 +1952,13 @@ def certificate_detail(request, certificate_id):
         has_paid = CertificatePayment.objects.filter(
             certificate=certificate, user=request.user, status='completed'
         ).exists()
+        # Check if admin granted certificate access
+        if not has_paid:
+            has_paid = CourseEnrollment.objects.filter(
+                student__user=request.user,
+                course=certificate.course,
+                admin_granted_certificate=True
+            ).exists()
 
     # Determine certificate price
     template = certificate.template
@@ -2028,6 +2035,12 @@ def download_certificate(request, certificate_id):
                     return redirect('lms:certificate_detail', certificate_id=certificate.certificate_id)
             else:
                 logger.info("payment check: no completed payment found for cert=%s user=%s", certificate_id, request.user.id)
+                # Check if admin granted certificate access
+                has_paid = CourseEnrollment.objects.filter(
+                    student__user=request.user,
+                    course=certificate.course,
+                    admin_granted_certificate=True
+                ).exists()
         except Exception as exc:
             logger.error("payment check failed for cert=%s user=%s: %s", certificate_id, request.user.id, exc)
             has_paid = False

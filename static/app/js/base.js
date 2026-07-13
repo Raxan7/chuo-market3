@@ -3,28 +3,6 @@
    Extracted from base.html inline scripts for caching & perf
    ============================================================ */
 
-/* ---- AdSense List Ads Initializer ---- */
-window.initializeListAds = function(container) {
-  if (!container || typeof window.adsbygoogle === 'undefined') {
-    return;
-  }
-  var adSlots = container.querySelectorAll('ins.adsbygoogle:not([data-adsbygoogle-status])');
-  adSlots.forEach(function(slot) {
-    if (slot.offsetWidth === 0) {
-      return;
-    }
-    try {
-      (adsbygoogle = window.adsbygoogle || []).push({});
-    } catch (e) {
-      // Ad providers can reject duplicate initialization; ignore safely.
-    }
-  });
-};
-
-document.addEventListener('DOMContentLoaded', function() {
-  window.initializeListAds(document);
-});
-
 /* ---- Cart Count AJAX ---- */
 function updateCartCount() {
   $.ajax({

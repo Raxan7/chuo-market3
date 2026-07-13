@@ -29,7 +29,7 @@ class CourseEnrollmentInline(admin.TabularInline):
     model = CourseEnrollment
     extra = 1
     readonly_fields = ('date_enrolled', 'payment_date', 'payment_approved_date')
-    fields = ('student', 'date_enrolled', 'payment_status', 'payment_proof', 'payment_method', 'payment_notes')
+    fields = ('student', 'date_enrolled', 'payment_status', 'payment_proof', 'payment_method', 'payment_notes', 'admin_granted_access', 'admin_granted_certificate')
 
 
 @admin.register(LMSProfile)
@@ -291,8 +291,8 @@ class PaymentMethodAdmin(admin.ModelAdmin):
 @admin.register(CourseEnrollment)
 class CourseEnrollmentAdmin(admin.ModelAdmin):
     """Admin interface for course enrollments with payment management"""
-    list_display = ('student', 'course', 'date_enrolled', 'payment_status')
-    list_filter = ('payment_status', 'date_enrolled')
+    list_display = ('student', 'course', 'date_enrolled', 'payment_status', 'admin_granted_access', 'admin_granted_certificate')
+    list_filter = ('payment_status', 'admin_granted_access', 'admin_granted_certificate', 'date_enrolled')
     search_fields = ('student__user__username', 'student__user__email', 'course__title')
     readonly_fields = ('date_enrolled', 'payment_date', 'payment_approved_date', 'payment_approved_by')
     raw_id_fields = ('student', 'course')
@@ -304,9 +304,13 @@ class CourseEnrollmentAdmin(admin.ModelAdmin):
             'fields': ('payment_status', 'payment_proof', 'payment_method', 'payment_date', 
                      'payment_approved_by', 'payment_approved_date', 'payment_notes')
         }),
+        (_('Admin Granted Access'), {
+            'fields': ('admin_granted_access', 'admin_granted_certificate', 'granted_by'),
+            'description': _('Grant course access without requiring payment. Certificate access is separate.')
+        }),
     )
     
-    actions = ['approve_payments', 'reject_payments']
+    actions = ['approve_payments', 'reject_payments', 'grant_course_access', 'grant_certificate_access', 'revoke_admin_granted_access']
     
     def approve_payments(self, request, queryset):
         """Bulk approve pending payments"""
@@ -340,6 +344,56 @@ class CourseEnrollmentAdmin(admin.ModelAdmin):
             messages.info(request, _("No pending payments were selected."))
     
     reject_payments.short_description = _("Reject selected payments")
+    
+    def grant_course_access(self, request, queryset):
+        """Grant course access to selected enrollments without requiring payment"""
+        updated = 0
+        for enrollment in queryset:
+            enrollment.admin_granted_access = True
+            enrollment.granted_by = request.user
+            enrollment.save()
+            updated += 1
+        
+        if updated > 0:
+            messages.success(request, _(f"{updated} enrollment(s) granted course access."))
+        else:
+            messages.info(request, _("No enrollments were updated."))
+    
+    grant_course_access.short_description = _("Grant course access (no certificate)")
+    
+    def grant_certificate_access(self, request, queryset):
+        """Grant certificate access to selected enrollments in addition to course access"""
+        updated = 0
+        for enrollment in queryset:
+            enrollment.admin_granted_access = True
+            enrollment.admin_granted_certificate = True
+            enrollment.granted_by = request.user
+            enrollment.save()
+            updated += 1
+        
+        if updated > 0:
+            messages.success(request, _(f"{updated} enrollment(s) granted full access including certificate."))
+        else:
+            messages.info(request, _("No enrollments were updated."))
+    
+    grant_certificate_access.short_description = _("Grant full access (course + certificate)")
+    
+    def revoke_admin_granted_access(self, request, queryset):
+        """Revoke admin granted access from selected enrollments"""
+        updated = 0
+        for enrollment in queryset:
+            enrollment.admin_granted_access = False
+            enrollment.admin_granted_certificate = False
+            enrollment.granted_by = None
+            enrollment.save()
+            updated += 1
+        
+        if updated > 0:
+            messages.success(request, _(f"{updated} enrollment(s) had admin access revoked."))
+        else:
+            messages.info(request, _("No enrollments were updated."))
+    
+    revoke_admin_granted_access.short_description = _("Revoke admin granted access")
 admin.site.register(Essay_Question, EssayQuestionAdmin)
 admin.site.register(SiteSettings, SiteSettingsAdmin)
 

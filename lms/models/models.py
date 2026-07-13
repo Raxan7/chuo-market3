@@ -224,7 +224,7 @@ class Course(models.Model):
                 student__user=user, 
                 course=self
             )
-            return enrollment.payment_status == 'approved'
+            return enrollment.payment_status == 'approved' or enrollment.admin_granted_access
         except CourseEnrollment.DoesNotExist:
             return False
 
@@ -304,6 +304,24 @@ class CourseEnrollment(models.Model):
     payment_approved_date = models.DateTimeField(blank=True, null=True)
     payment_notes = models.TextField(blank=True, null=True)
     
+    # Admin granted access fields
+    admin_granted_access = models.BooleanField(
+        default=False,
+        help_text=_("Admin has granted course access without payment. Certificate access is not included.")
+    )
+    admin_granted_certificate = models.BooleanField(
+        default=False,
+        help_text=_("Admin has granted certificate access in addition to course access.")
+    )
+    granted_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True,
+        related_name='granted_enrollments',
+        help_text=_("Admin who granted this access")
+    )
+    
     class Meta:
         unique_together = ['student', 'course']
     
@@ -315,7 +333,7 @@ class CourseEnrollment(models.Model):
         """Determine if student has access to the course"""
         if self.course.is_free:
             return True
-        return self.payment_status == 'approved'
+        return self.payment_status == 'approved' or self.admin_granted_access
         
     def save(self, *args, **kwargs):
         # For free courses, automatically set payment_status to not_required

@@ -54,23 +54,6 @@ iframe {
   width: 100%;
 }
 
-/* ---- Google Auto Ads Layout Fix ---- */
-/* Suppress Google "Related topics" injected widget that breaks mobile layout
-   with aggressive !important inline styles causing horizontal overflow. */
-.goog-rentries,
-.goog-rentry,
-div[class*="google-anno"] {
-  display: none !important;
-}
-
-/* Suppress all other Google auto-ads injected interstitial/overlay elements
-   that may block taps on buttons on iOS. */
-div[class*="google-auto-placed"],
-ins.adsbygoogle[data-ad-status="unfilled"]:not([data-ad-slot]),
-ins.adsbygoogle[data-ad-status="filled"]:not([data-ad-slot]) {
-  display: none !important;
-}
-
 pre, code {
   white-space: pre-wrap;
   word-break: break-word;
