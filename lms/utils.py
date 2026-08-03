@@ -327,12 +327,11 @@ def get_module_progress_states(course, student):
     } if student else {}
     
     states = []
-    previously_completed = True  # The first module is always unlocked
     
     for index, module in enumerate(modules):
         progress = progress_map.get(module.id)
-        # Logic sequence gating: unlocked if the module BEFORE this one in the list was passed
-        unlocked = previously_completed
+        paid = module.is_paid_for(student) if student else False
+        unlocked = module.is_unlocked_for(student) if student else False
         assessment = get_module_assessment(module, student=student)
         if not assessment:
             assessment_status = 'not_ready'
@@ -350,6 +349,7 @@ def get_module_progress_states(course, student):
             'progress': progress,
             'unlocked': unlocked,
             'completed': completed,
+            'paid': paid,
             'assessment': assessment,
             'assessment_status': assessment_status,
             'skip_assessment': getattr(module, 'skip_assessment', False),
@@ -360,10 +360,6 @@ def get_module_progress_states(course, student):
             'lock_message': module.lock_message_for(student) if student else '',
             'is_first_module': index == 0,
         })
-        
-        # Update previously_completed for the next iteration in the sequence
-        current_unlocked_next = bool(progress and progress.unlocks_next)
-        previously_completed = current_unlocked_next
 
     return states
 

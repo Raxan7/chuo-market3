@@ -8,7 +8,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from .ai_assessments import ensure_module_assessment, queue_module_assessment_generation
-from .models import Course, CourseContent, CourseEnrollment, LMSProfile, CourseModule, ContentAccess, QuizTaker, Quiz, MCQuestion, Choice, StudentAnswer, ModuleProgress, CoursePayment, CertificateTemplate, PaymentMethod
+from .models import Course, CourseContent, CourseEnrollment, LMSProfile, CourseModule, ContentAccess, ModuleAccessGrant, QuizTaker, Quiz, MCQuestion, Choice, StudentAnswer, ModuleProgress, CoursePayment, CertificateTemplate, PaymentMethod
 from .utils import ensure_course_learning_records, is_module_unlocked, update_module_content_completion, update_module_assessment_completion
 
 
@@ -254,6 +254,46 @@ class LMSModuleGatingTests(TestCase):
         self.assertContains(response, 'Prerequisite module: Module 1')
         self.assertIn('aria-disabled="true"', response.content.decode())
         self.assertNotIn(f'data-bs-target="#collapse{second_module.id}"', response.content.decode())
+
+    def test_admin_module_grant_unlocks_only_target_module(self):
+        first_module = CourseModule.objects.create(
+            course=self.course,
+            title='Module 1',
+            description='First module',
+            order=0,
+        )
+        second_module = CourseModule.objects.create(
+            course=self.course,
+            title='Module 2',
+            description='Second module',
+            order=1,
+        )
+        first_content = self._create_content(first_module, title='Lesson 1')
+        self._create_content(second_module, title='Lesson 2')
+
+        ModuleAccessGrant.objects.create(
+            student=self.profile,
+            module=first_module,
+            active=True,
+            granted_by=self.user,
+            notes='Admin granted single-module access',
+        )
+
+        self.assertTrue(CourseEnrollment.objects.filter(student=self.profile, course=self.course).exists())
+        self.assertFalse(self.course.user_has_access(self.user))
+        self.assertTrue(self.course.user_has_any_access(self.user))
+        self.assertTrue(first_module.is_paid_for(self.profile))
+        self.assertTrue(first_module.is_unlocked_for(self.profile))
+        self.assertFalse(second_module.is_paid_for(self.profile))
+        self.assertFalse(second_module.is_unlocked_for(self.profile))
+
+        content_response = self.client.get(
+            reverse('lms:content_detail', kwargs={'course_slug': self.course.slug, 'content_id': first_content.id}),
+            follow=True,
+        )
+        self.assertEqual(content_response.status_code, 200)
+        self.assertContains(content_response, 'Lesson 1')
+        self.assertNotContains(content_response, 'Lesson 2')
 
     @override_settings(CEREBRAS_API_KEY=None, CEREBRAS_STRICT_ASSESSMENTS=False)
     def test_passing_quiz_saves_progress_and_redirects_to_next_module(self):

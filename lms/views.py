@@ -555,8 +555,8 @@ class CourseDetailView(DetailView):
                 )
                 is_enrolled = True
                 payment_status = enrollment.payment_status
-                # For enrolled users: access depends on course type and payment status
-                has_access = course.is_free or payment_status == 'approved' or enrollment.admin_granted_access
+                # For enrolled users: allow either full-course access or a module-only grant.
+                has_access = course.user_has_any_access(self.request.user)
             except CourseEnrollment.DoesNotExist:
                 has_access = course.is_free
         
@@ -1155,7 +1155,7 @@ def course_content_detail(request, course_slug, content_id):
         if not is_enrolled:
             messages.info(request, _("Enroll in this course to open its modules."))
             return redirect('lms:enroll_course', slug=course.slug)
-        if not course.user_has_access(request.user):
+        if not course.user_has_any_access(request.user):
             messages.warning(request, _("Your payment must be approved before you can access this course."))
             return redirect('lms:payment_form', slug=course.slug)
 

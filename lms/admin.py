@@ -10,7 +10,7 @@ from .models import (
     ActivityLog, Semester, LMSProfile, Program, Course, CourseModule, 
     CourseContent, Quiz, Question, MCQuestion, Choice, TF_Question, 
     Essay_Question, QuizTaker, StudentAnswer, Grade, CourseEnrollment,
-    InstructorRequest, ContentAccess, SiteSettings, AdExemptUser, PaymentMethod,
+    InstructorRequest, ContentAccess, ModuleAccessGrant, SiteSettings, AdExemptUser, PaymentMethod,
     ModuleProgress, CertificateTemplate, StudentCertificate, CoursePayment, CertificatePayment
 )
 
@@ -18,6 +18,14 @@ from .models import (
 class CourseModuleInline(admin.TabularInline):
     model = CourseModule
     extra = 1
+
+
+class ModuleAccessGrantInline(admin.TabularInline):
+    model = ModuleAccessGrant
+    extra = 1
+    raw_id_fields = ('student',)
+    readonly_fields = ('granted_at',)
+    fields = ('student', 'active', 'notes', 'granted_at')
 
 
 class ChoiceInline(admin.TabularInline):
@@ -62,11 +70,22 @@ class CourseModuleAdmin(admin.ModelAdmin):
     list_filter = ('course',)
     search_fields = ('title', 'description', 'course__title')
     ordering = ('course', 'order')
+    inlines = [ModuleAccessGrantInline]
     fieldsets = (
         (None, {
             'fields': ('title', 'course', 'order', 'skip_assessment', 'description')
         }),
     )
+
+    def save_formset(self, request, form, formset, change):
+        instances = formset.save(commit=False)
+        for instance in instances:
+            if isinstance(instance, ModuleAccessGrant) and not instance.granted_by_id:
+                instance.granted_by = request.user
+            instance.save()
+        for obj in formset.deleted_objects:
+            obj.delete()
+        formset.save_m2m()
 
 
 @admin.register(CourseContent)
@@ -216,6 +235,20 @@ class ContentAccessAdmin(admin.ModelAdmin):
     list_filter = ('completed', 'accessed_at', 'completed_at')
     search_fields = ('student__user__username', 'content__title')
     readonly_fields = ('accessed_at',)
+
+
+@admin.register(ModuleAccessGrant)
+class ModuleAccessGrantAdmin(admin.ModelAdmin):
+    list_display = ('student', 'module', 'active', 'granted_by', 'granted_at')
+    list_filter = ('active', 'module__course', 'granted_at')
+    search_fields = ('student__user__username', 'module__title', 'module__course__title', 'notes')
+    readonly_fields = ('granted_at', 'granted_by')
+    raw_id_fields = ('student', 'module')
+
+    def save_model(self, request, obj, form, change):
+        if not obj.granted_by_id:
+            obj.granted_by = request.user
+        super().save_model(request, obj, form, change)
 
 
 @admin.register(ModuleProgress)

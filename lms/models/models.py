@@ -228,6 +228,25 @@ class Course(models.Model):
         except CourseEnrollment.DoesNotExist:
             return False
 
+    def user_has_any_access(self, user):
+        """
+        Check if the user has access to at least one module in this course.
+
+        This returns True for full-course access or for an admin-granted
+        single-module override.
+        """
+        if self.user_has_access(user):
+            return True
+
+        if not user or not user.is_authenticated or not hasattr(user, 'lms_profile'):
+            return False
+
+        return ModuleAccessGrant.objects.filter(
+            student=user.lms_profile,
+            module__course=self,
+            active=True,
+        ).exists()
+
     def save(self, *args, **kwargs):
         if self.image:
             if not self.pk:
@@ -393,8 +412,59 @@ class CourseModule(models.Model):
             return None
         return self.student_progress.filter(student=student).first()
 
+    def has_admin_module_access(self, student):
+        if not student:
+            return False
+
+        user = student.user
+        if user.is_staff or user.is_superuser:
+            return True
+        if hasattr(user, 'lms_profile'):
+            profile = user.lms_profile
+            if profile.role == 'admin':
+                return True
+            if self.course.instructors.filter(id=profile.id).exists():
+                return True
+
+        return ModuleAccessGrant.objects.filter(
+            student=student,
+            module=self,
+            active=True,
+        ).exists()
+
+    def is_paid_for(self, student):
+        if not student:
+            return False
+
+        user = student.user
+        if self.course.is_free:
+            return True
+
+        if user.is_staff or user.is_superuser:
+            return True
+        if hasattr(user, 'lms_profile'):
+            profile = user.lms_profile
+            if profile.role == 'admin':
+                return True
+            if self.course.instructors.filter(id=profile.id).exists():
+                return True
+
+        if self.course.user_has_access(user):
+            return True
+
+        if self.has_admin_module_access(student):
+            return True
+
+        return False
+
     def is_unlocked_for(self, student):
         if not student:
+            return False
+
+        if self.has_admin_module_access(student):
+            return True
+
+        if not self.is_paid_for(student):
             return False
 
         previous_module = self.get_previous_module()
@@ -491,6 +561,65 @@ class ContentAccess(models.Model):
             self.completed = True
             self.completed_at = timezone.now()
             self.save()
+
+
+class ModuleAccessGrant(models.Model):
+    """Admin-granted access to a single module for a student."""
+
+    student = models.ForeignKey(
+        LMSProfile,
+        on_delete=models.CASCADE,
+        related_name='module_access_grants',
+    )
+    module = models.ForeignKey(
+        CourseModule,
+        on_delete=models.CASCADE,
+        related_name='access_grants',
+    )
+    active = models.BooleanField(default=True)
+    notes = models.TextField(blank=True, default='')
+    granted_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True,
+        related_name='module_access_grants_granted',
+        help_text=_('Admin who granted this module access'),
+    )
+    granted_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ['student', 'module']
+        ordering = ['-granted_at']
+        verbose_name = _('Module Access Grant')
+        verbose_name_plural = _('Module Access Grants')
+
+    def __str__(self):
+        return f"{self.student.user.username} -> {self.module.title}"
+
+
+@receiver(post_save, sender=ModuleAccessGrant)
+def module_access_grant_post_save(sender, instance, created, **kwargs):
+    """Auto-enroll students when a module grant is created or activated."""
+    if not instance.active:
+        return
+
+    enrollment, enrollment_created = CourseEnrollment.objects.get_or_create(
+        student=instance.student,
+        course=instance.module.course,
+        defaults={
+            'payment_status': 'pending',
+            'payment_notes': _('Auto-enrolled because an admin granted module access.'),
+        },
+    )
+
+    if enrollment_created:
+        return
+
+    if enrollment.payment_status == 'not_required' and not enrollment.admin_granted_access:
+        enrollment.payment_status = 'pending'
+        enrollment.payment_notes = _('Auto-enrolled because an admin granted module access.')
+        enrollment.save(update_fields=['payment_status', 'payment_notes'])
 
 
 class Quiz(models.Model):
