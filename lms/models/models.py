@@ -332,6 +332,10 @@ class CourseEnrollment(models.Model):
         default=False,
         help_text=_("Admin has granted certificate access in addition to course access.")
     )
+    certificate_prepaid = models.BooleanField(
+        default=False,
+        help_text=_("Certificate has been prepaid as part of this enrollment.")
+    )
     granted_by = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,
