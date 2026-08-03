@@ -256,6 +256,8 @@ class LMSModuleGatingTests(TestCase):
         self.assertNotIn(f'data-bs-target="#collapse{second_module.id}"', response.content.decode())
 
     def test_admin_module_grant_unlocks_only_target_module(self):
+        self.course.is_free = False
+        self.course.save(update_fields=['is_free'])
         first_module = CourseModule.objects.create(
             course=self.course,
             title='Module 1',
@@ -287,6 +289,17 @@ class LMSModuleGatingTests(TestCase):
         self.assertFalse(second_module.is_paid_for(self.profile))
         self.assertFalse(second_module.is_unlocked_for(self.profile))
 
+        response = self.client.get(
+            reverse('lms:course_detail', kwargs={'slug': self.course.slug}),
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.context['has_special_module_access'])
+        self.assertFalse(response.context['has_full_course_access'])
+        self.assertEqual([module.id for module in response.context['granted_modules']], [first_module.id])
+        self.assertContains(response, 'You are enrolled with special module access')
+        self.assertContains(response, 'All other modules are locked')
+        self.assertContains(response, 'This module is not included in your special access')
+
         content_response = self.client.get(
             reverse('lms:content_detail', kwargs={'course_slug': self.course.slug, 'content_id': first_content.id}),
             follow=True,
@@ -294,6 +307,32 @@ class LMSModuleGatingTests(TestCase):
         self.assertEqual(content_response.status_code, 200)
         self.assertContains(content_response, 'Lesson 1')
         self.assertNotContains(content_response, 'Lesson 2')
+
+    def test_module_grant_is_shown_even_without_an_enrollment_record(self):
+        self.course.is_free = False
+        self.course.save(update_fields=['is_free'])
+        CourseEnrollment.objects.filter(student=self.profile, course=self.course).delete()
+        module = CourseModule.objects.create(
+            course=self.course,
+            title='Special Module',
+            description='Granted module',
+            order=0,
+        )
+        ModuleAccessGrant.objects.create(
+            student=self.profile,
+            module=module,
+            active=True,
+            granted_by=self.user,
+        )
+        # Simulate a legacy/manual grant that has no matching enrollment row.
+        CourseEnrollment.objects.filter(student=self.profile, course=self.course).delete()
+
+        response = self.client.get(reverse('lms:course_detail', kwargs={'slug': self.course.slug}))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.context['is_enrolled'])
+        self.assertTrue(response.context['has_special_module_access'])
+        self.assertContains(response, 'You are enrolled with special module access')
 
     @override_settings(CEREBRAS_API_KEY=None, CEREBRAS_STRICT_ASSESSMENTS=False)
     def test_passing_quiz_saves_progress_and_redirects_to_next_module(self):

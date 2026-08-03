@@ -32,7 +32,7 @@ from .models import (
     MCQuestion, Choice, TF_Question, Essay_Question, QuizTaker, StudentAnswer, ContentAccess,
     Grade, Semester, CourseEnrollment, ActivityLog, InstructorRequest, SiteSettings,
     AdExemptUser, PaymentMethod, ModuleProgress, CertificateTemplate, StudentCertificate,
-    CoursePayment, CertificatePayment,
+    CoursePayment, CertificatePayment, ModuleAccessGrant,
 )
 from .forms import (
     LMSProfileForm, CourseForm, CourseModuleForm, CourseContentForm,
@@ -544,10 +544,19 @@ class CourseDetailView(DetailView):
         enrollment = None
         payment_status = None
         has_access = course.is_free
+        has_full_course_access = course.is_free
+        granted_modules = []
         can_view_content = False
         
         if self.request.user.is_authenticated and hasattr(self.request.user, 'lms_profile'):
             student_profile = self.request.user.lms_profile
+            granted_modules = list(
+                ModuleAccessGrant.objects.filter(
+                    student=student_profile,
+                    module__course=course,
+                    active=True,
+                ).select_related('module').order_by('module__order', 'module__id')
+            )
             try:
                 enrollment = CourseEnrollment.objects.get(
                     student=student_profile,
@@ -555,10 +564,14 @@ class CourseDetailView(DetailView):
                 )
                 is_enrolled = True
                 payment_status = enrollment.payment_status
+                has_full_course_access = course.user_has_access(self.request.user)
                 # For enrolled users: allow either full-course access or a module-only grant.
                 has_access = course.user_has_any_access(self.request.user)
             except CourseEnrollment.DoesNotExist:
-                has_access = course.is_free
+                # Keep older/manual grants usable even if their automatic
+                # enrollment record was not created.
+                is_enrolled = bool(granted_modules)
+                has_access = course.is_free or bool(granted_modules)
         
         # Check if user is instructor for this course
         is_course_instructor = False
@@ -567,6 +580,7 @@ class CourseDetailView(DetailView):
             # Instructors always have access
             if is_course_instructor:
                 has_access = True
+                has_full_course_access = True
         
         # Get course progress if user is enrolled and has access
         course_progress = None
@@ -588,6 +602,14 @@ class CourseDetailView(DetailView):
             ).order_by('module__order', 'module__id', 'title', 'id')
             course_progress = calculate_course_progress(course, student_profile)
             module_states = get_module_progress_states(course, student_profile)
+            if granted_modules and not has_full_course_access:
+                granted_module_ids = {grant.module_id for grant in granted_modules}
+                for state in module_states:
+                    if state['module'].id not in granted_module_ids:
+                        state['lock_message'] = _(
+                            'This module is not included in your special access. '
+                            'Full-course payment is required to unlock it.'
+                        )
             if course_progress.get('course_completed'):
                 issued_certificate = issue_certificate_if_eligible(course, student_profile)
                 if not issued_certificate:
@@ -629,6 +651,9 @@ class CourseDetailView(DetailView):
             'instructors_missing_names': instructors_missing_legal_name(course) if is_enrolled else [],
             'students_progress': students_progress,
             'has_access': has_access,
+            'has_full_course_access': has_full_course_access,
+            'has_special_module_access': bool(granted_modules) and not has_full_course_access,
+            'granted_modules': [grant.module for grant in granted_modules],
             'can_view_content': can_view_content,  # Allow unauthenticated preview
             'is_authenticated': self.request.user.is_authenticated,
             'payment_status': payment_status,
