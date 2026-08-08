@@ -152,25 +152,30 @@ WSGI_APPLICATION = 'Commerce.wsgi.application'
 # }
 
 # Production MySQL Database Configuration (Fixed for emoji support)
+# Production MySQL Database Configuration (Fixed for emoji support)
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
+        'ENGINE': 'django.db.backends.mysql',
         'NAME': os.getenv('DB_NAME'),  # Database name from .env
         'USER': os.getenv('DB_USER'),  # Database username from .env
         'PASSWORD': os.getenv('DB_PASSWORD'),  # Database password from .env
         'HOST': os.getenv('DB_HOST', default='localhost'),  # Database host from .env
         'PORT': os.getenv('DB_PORT', default='3306'),  # Database port from .env
-        'OPTIONS': {
-            'charset': 'utf8mb4',  # Use utf8mb4 for full UTF-8 support including emojis
-            'init_command': "SET sql_mode='STRICT_TRANS_TABLES', innodb_strict_mode=1, NAMES utf8mb4 COLLATE utf8mb4_unicode_ci",
-            'use_unicode': True,
-        },
-        'TEST': {
-            'CHARSET': 'utf8mb4',
-            'COLLATION': 'utf8mb4_unicode_ci',
-        }
     }
 }
+
+# Add charset options only for MySQL
+if DATABASES['default']['ENGINE'] == 'django.db.backends.mysql':
+    DATABASES['default']['OPTIONS'] = {
+        'charset': 'utf8mb4',
+        'init_command': "SET sql_mode='STRICT_TRANS_TABLES', innodb_strict_mode=1, NAMES utf8mb4 COLLATE utf8mb4_unicode_ci",
+        'use_unicode': True,
+    }
+    DATABASES['default']['TEST'] = {
+        'CHARSET': 'utf8mb4',
+        'COLLATION': 'utf8mb4_unicode_ci',
+    }
+
 
 # Password validation
 # https://docs.djangoproject.com/en/5.0/ref/settings/#auth-password-validators
