@@ -32,7 +32,7 @@ from .models import (
     MCQuestion, Choice, TF_Question, Essay_Question, QuizTaker, StudentAnswer, ContentAccess,
     Grade, Semester, CourseEnrollment, ActivityLog, InstructorRequest, SiteSettings,
     AdExemptUser, PaymentMethod, ModuleProgress, CertificateTemplate, StudentCertificate,
-    CoursePayment, CertificatePayment, ModuleAccessGrant,
+    CoursePayment, CertificatePayment, ModuleAccessGrant, ModulePayment, ModuleAccessRequest,
 )
 from .forms import (
     LMSProfileForm, CourseForm, CourseModuleForm, CourseContentForm,
@@ -572,6 +572,17 @@ class CourseDetailView(DetailView):
                 # enrollment record was not created.
                 is_enrolled = bool(granted_modules)
                 has_access = course.is_free or bool(granted_modules)
+
+        # Per-module in-system access requests for the current student
+        module_access_requests = {}
+        if self.request.user.is_authenticated and hasattr(self.request.user, 'lms_profile'):
+            module_access_requests = {
+                req.module_id: req
+                for req in ModuleAccessRequest.objects.filter(
+                    student=self.request.user.lms_profile,
+                    module__course=course,
+                ).select_related('module', 'payment')
+            }
         
         # Check if user is instructor for this course
         is_course_instructor = False
@@ -654,6 +665,7 @@ class CourseDetailView(DetailView):
             'has_full_course_access': has_full_course_access,
             'has_special_module_access': bool(granted_modules) and not has_full_course_access,
             'granted_modules': [grant.module for grant in granted_modules],
+            'module_access_requests': module_access_requests,
             'can_view_content': can_view_content,  # Allow unauthenticated preview
             'is_authenticated': self.request.user.is_authenticated,
             'payment_status': payment_status,
@@ -2308,6 +2320,7 @@ def snippe_webhook(request):
     payment_type = metadata.get('payment_type', 'certificate')
     certificate_id = metadata.get('certificate_id')
     course_id = metadata.get('course_id')
+    module_id = metadata.get('module_id')
     user_id = metadata.get('user_id')
     payment_reference = event_data.get('reference', '')
     failure_reason = event_data.get('failure_reason', '')
@@ -2326,7 +2339,11 @@ def snippe_webhook(request):
         logger.info("Snippe webhook missing course_id for course_enrollment — nothing to update")
         return HttpResponse(status=200)
 
-    if payment_type != 'course_enrollment' and not certificate_id:
+    if payment_type == 'module_access' and not module_id:
+        logger.info("Snippe webhook missing module_id for module_access — nothing to update")
+        return HttpResponse(status=200)
+
+    if payment_type not in ('course_enrollment', 'module_access') and not certificate_id:
         logger.info("Snippe webhook missing certificate_id in metadata — nothing to update")
         return HttpResponse(status=200)
 
@@ -2413,16 +2430,10 @@ def snippe_webhook(request):
                         enrollment.payment_status = 'approved'
                         enrollment.payment_date = timezone.now()
                         enrollment.save()
-
-                    logger.info(
-                        "Course enrollment approved: course=%s user=%s",
-                        course_id, user_id,
-                    )
+                    
+                    logger.info("Course enrollment approved: course=%s user=%s", course_id, user_id)
                 except User.DoesNotExist:
-                    logger.warning(
-                        "Snippe webhook user not found for course payment: user=%s",
-                        user_id,
-                    )
+                    logger.warning("Snippe webhook user not found for course payment: user=%s", user_id)
 
             if new_status in ('failed', 'cancelled', 'expired'):
                 logger.info(
@@ -2440,6 +2451,104 @@ def snippe_webhook(request):
             logger.warning(
                 "Snippe webhook no course payment found for course=%s user=%s — skipping",
                 course_id, user_id,
+            )
+
+    elif payment_type == 'module_access':
+        # ── Handle module access payment ─────────────────────────
+        # Idempotency check
+        if event_id and ModulePayment.objects.filter(
+            webhook_event_id=event_id,
+        ).exists():
+            logger.info(
+                "Snippe webhook module payment event already processed: event=%s module=%s user=%s",
+                event_id, module_id, user_id,
+            )
+            return HttpResponse(status=200)
+
+        try:
+            payment = ModulePayment.objects.filter(
+                module_id=module_id,
+                user_id=user_id,
+            ).latest('created_at')
+
+            old_status = payment.status
+
+            if old_status == new_status:
+                logger.info(
+                    "Snippe webhook duplicate event: module=%s user=%s already %s",
+                    module_id, user_id, new_status,
+                )
+                return HttpResponse(status=200)
+
+            if old_status != 'pending':
+                logger.warning(
+                    "Snippe webhook REJECTED transition from %s to %s: "
+                    "module=%s user=%s ref=%s event=%s "
+                    "(only pending→* allowed)",
+                    old_status, new_status, module_id, user_id,
+                    payment_reference, event_id,
+                )
+                return HttpResponse(status=200)
+
+            # Apply the transition
+            payment.status = new_status
+            payment.snippe_reference = payment_reference
+            if event_id:
+                payment.webhook_event_id = event_id
+            if failure_reason:
+                payment.failure_reason = failure_reason
+            if amount_value is not None:
+                payment.amount = amount_value
+            payment.save()
+
+            # On completed payment, create the access request awaiting admin approval
+            if new_status == 'completed':
+                try:
+                    user = User.objects.get(id=user_id)
+                    if hasattr(user, 'lms_profile'):
+                        profile = user.lms_profile
+                    else:
+                        profile = LMSProfile.objects.create(user=user, role='student')
+
+                    request_obj, created = ModuleAccessRequest.objects.get_or_create(
+                        student=profile,
+                        module_id=module_id,
+                        defaults={
+                            'payment': payment,
+                            'status': 'pending',
+                            'notes': _('Paid via Snippe. Awaiting admin approval.'),
+                        },
+                    )
+                    if not created and request_obj.status == 'pending':
+                        request_obj.payment = payment
+                        request_obj.save(update_fields=['payment', 'updated_at'])
+
+                    logger.info(
+                        "Module access request created/updated: module=%s user=%s request=%s",
+                        module_id, user_id, request_obj.id,
+                    )
+                except User.DoesNotExist:
+                    logger.warning(
+                        "Snippe webhook user not found for module payment: user=%s",
+                        user_id,
+                    )
+
+            if new_status in ('failed', 'cancelled', 'expired'):
+                logger.info(
+                    "Module payment %s: module=%s user=%s ref=%s reason=%s",
+                    new_status, module_id, user_id, payment_reference,
+                    failure_reason or 'none',
+                )
+            else:
+                logger.info(
+                    "Module payment %s: module=%s user=%s ref=%s",
+                    new_status, module_id, user_id, payment_reference,
+                )
+
+        except ModulePayment.DoesNotExist:
+            logger.warning(
+                "Snippe webhook no module payment found for module=%s user=%s — skipping",
+                module_id, user_id,
             )
 
     else:
@@ -3137,3 +3246,213 @@ def course_payment_success(request, slug):
         # Payment still pending or failed — redirect to payment page
         messages.info(request, _("Your payment is being processed. If you completed payment, it will be confirmed shortly."))
         return redirect('lms:payment_form', slug=course.slug)
+
+
+def _user_has_module_access(user, module):
+    """Return True if the user already has access to the module (full course or grant)."""
+    if not user or not user.is_authenticated:
+        return False
+    if user.is_staff or user.is_superuser:
+        return True
+    if not hasattr(user, 'lms_profile'):
+        return False
+    profile = user.lms_profile
+    if profile.role == 'admin':
+        return True
+    if module.course.instructors.filter(id=profile.id).exists():
+        return True
+    if module.course.user_has_access(user):
+        return True
+    return module.has_admin_module_access(profile)
+
+
+@login_required(login_url='login')
+def module_access_payment(request, course_slug, module_id):
+    """Payment page for requesting single-module access."""
+    course = get_object_or_404(Course, slug=course_slug)
+    module = get_object_or_404(CourseModule, id=module_id, course=course)
+
+    # Only modules with a price set by the admin are purchasable
+    if not module.price:
+        messages.error(request, _("Access requests are not available for this module."))
+        return redirect('lms:course_detail', slug=course.slug)
+
+    if _user_has_module_access(request.user, module):
+        messages.info(request, _("You already have access to this module."))
+        return redirect('lms:course_detail', slug=course.slug)
+
+    profile = request.user.lms_profile
+    request_obj = ModuleAccessRequest.objects.filter(
+        student=profile, module=module,
+    ).select_related('payment').first()
+
+    if request_obj and request_obj.status == 'pending':
+        messages.info(
+            request,
+            _("Your payment was successful and this module access request is awaiting admin approval."),
+        )
+        return redirect('lms:course_detail', slug=course.slug)
+
+    if request_obj and request_obj.status == 'approved':
+        messages.info(request, _("Your access request for this module has already been approved."))
+        return redirect('lms:course_detail', slug=course.slug)
+
+    snippe_configured = bool(getattr(settings, 'SNIPPE_API_KEY', ''))
+
+    return render(request, 'lms/module_payment.html', {
+        'course': course,
+        'module': module,
+        'module_price': module.price,
+        'snippe_configured': snippe_configured,
+    })
+
+
+@login_required(login_url='login')
+def module_payment_init(request, course_slug, module_id):
+    """Initiate a Snippe session to pay for single-module access."""
+    course = get_object_or_404(Course, slug=course_slug)
+    module = get_object_or_404(CourseModule, id=module_id, course=course)
+
+    if not module.price:
+        messages.error(request, _("Access requests are not available for this module."))
+        return redirect('lms:course_detail', slug=course.slug)
+
+    if _user_has_module_access(request.user, module):
+        messages.info(request, _("You already have access to this module."))
+        return redirect('lms:course_detail', slug=course.slug)
+
+    if hasattr(request.user, 'lms_profile'):
+        profile = request.user.lms_profile
+        request_obj = ModuleAccessRequest.objects.filter(student=profile, module=module).first()
+        if request_obj and request_obj.status == 'approved':
+            messages.info(request, _("You already have approved access to this module."))
+            return redirect('lms:course_detail', slug=course.slug)
+
+    snippe_api_key = getattr(settings, 'SNIPPE_API_KEY', '')
+    if not snippe_api_key:
+        messages.error(request, _("Online payment is not configured. Please try again later."))
+        return redirect('lms:module_access_payment', course_slug=course.slug, module_id=module.id)
+
+    amount = int(module.price) if module.price else 0
+    if amount <= 0:
+        messages.error(request, _("Invalid module price."))
+        return redirect('lms:course_detail', slug=course.slug)
+
+    redirect_url = request.build_absolute_uri(
+        reverse('lms:module_payment_success', kwargs={
+            'course_slug': course.slug,
+            'module_id': module.id,
+        })
+    )
+    webhook_url = request.build_absolute_uri(reverse('lms:snippe_webhook'))
+    if webhook_url.startswith('http://'):
+        webhook_url = webhook_url.replace('http://', 'https://', 1)
+
+    customer_name = request.user.get_full_name() or request.user.username
+    customer_phone = ''
+    try:
+        customer_phone = request.user.customer.phone_number or ''
+    except Exception:
+        pass
+
+    session_payload = {
+        "amount": amount,
+        "currency": "TZS",
+        "allowed_methods": ["mobile_money", "card"],
+        "customer": {
+            "name": customer_name,
+            "phone": customer_phone,
+            "email": request.user.email or '',
+        },
+        "redirect_url": redirect_url,
+        "webhook_url": webhook_url,
+        "description": f"Module access: {module.title} ({course.title})",
+        "metadata": {
+            "payment_type": "module_access",
+            "module_id": module.id,
+            "course_id": course.id,
+            "user_id": request.user.id,
+        },
+        "expires_in": 3600,
+    }
+
+    try:
+        resp = requests.post(
+            "https://api.snippe.sh/api/v1/sessions",
+            headers={
+                "Authorization": f"Bearer {snippe_api_key}",
+                "Content-Type": "application/json",
+            },
+            json=session_payload,
+            timeout=30,
+        )
+        data = resp.json()
+
+        if data.get("code") == 201:
+            session_data = data["data"]
+            ModulePayment.objects.create(
+                user=request.user,
+                module=module,
+                snippe_session_id=session_data.get("reference", ""),
+                amount=amount,
+                status='pending',
+                checkout_url=session_data.get("checkout_url", ""),
+                payment_link_url=session_data.get("payment_link_url", ""),
+            )
+            return redirect(session_data["checkout_url"])
+        else:
+            err_msg = data.get("message", _("Unknown error"))
+            messages.error(request, _(f"Payment failed: {err_msg}"))
+            return redirect('lms:module_access_payment', course_slug=course.slug, module_id=module.id)
+
+    except requests.RequestException:
+        messages.error(request, _("Payment service is temporarily unavailable. Please try again later."))
+        return redirect('lms:module_access_payment', course_slug=course.slug, module_id=module.id)
+
+
+@login_required(login_url='login')
+def module_payment_success(request, course_slug, module_id):
+    """Callback after Snippe checkout redirect — user lands here after paying.
+
+    Once the webhook confirms the payment, the access request is created with a
+    'pending' status. The admin then approves it via the admin panel.
+    """
+    course = get_object_or_404(Course, slug=course_slug)
+    module = get_object_or_404(CourseModule, id=module_id, course=course)
+
+    if not hasattr(request.user, 'lms_profile'):
+        profile = LMSProfile.objects.create(user=request.user, role='student')
+    else:
+        profile = request.user.lms_profile
+
+    has_paid = ModulePayment.objects.filter(
+        user=request.user, module=module, status='completed',
+    ).exists()
+
+    if has_paid:
+        payment = ModulePayment.objects.filter(
+            user=request.user, module=module, status='completed',
+        ).first()
+        access_request, created = ModuleAccessRequest.objects.get_or_create(
+            student=profile,
+            module=module,
+            defaults={
+                'payment': payment,
+                'status': 'pending',
+                'notes': _('Paid via Snippe. Awaiting admin approval.'),
+            },
+        )
+        if access_request.status == 'pending':
+            access_request.payment = payment
+            access_request.save(update_fields=['payment', 'updated_at'])
+            messages.success(
+                request,
+                _("Payment successful! Your request for module access is awaiting admin approval."),
+            )
+        elif access_request.status == 'approved':
+            messages.success(request, _("Payment confirmed! You already have access to this module."))
+        return redirect('lms:course_detail', slug=course.slug)
+    else:
+        # Payment still pending or failed — redirect back to payment page
+        messages.info(request, _("Your payment is being processed. If you completed payment, it will be confirmed shortly."))
+        return redirect('lms:module_access_payment', course_slug=course.slug, module_id=module.id)

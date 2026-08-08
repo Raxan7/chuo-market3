@@ -597,6 +597,36 @@
                                     </div>
                                     {% endif %}
 
+                                    {% with module_request=module_access_requests|get_item:module %}
+                                    {% if not is_course_instructor and module.price and not state.unlocked %}
+                                        {% if module_request.status == 'pending' %}
+                                        <div class="alert alert-warning border-0 mb-3">
+                                            <div class="fw-semibold"><i class="fas fa-hourglass-half me-1"></i>Waiting for access grant</div>
+                                            <div class="mt-1 small">Your payment was successful and your request is awaiting admin approval.</div>
+                                        </div>
+                                        {% elif module_request.status == 'approved' %}
+                                        <div class="alert alert-success border-0 mb-3">
+                                            <div class="fw-semibold"><i class="fas fa-check-circle me-1"></i>Access approved</div>
+                                            <div class="mt-1 small">Your request for this module has been approved.</div>
+                                        </div>
+                                        {% elif not module_request or module_request.status == 'rejected' %}
+                                        {% if is_authenticated %}
+                                        <div class="mb-3">
+                                            <a href="{% url 'lms:module_access_payment' course_slug=course.slug module_id=module.id %}" class="btn btn-sm btn-primary">
+                                                <i class="fas fa-key me-1"></i> Request Access — {{ module.price }} TZS
+                                            </a>
+                                        </div>
+                                        {% else %}
+                                        <div class="mb-3">
+                                            <a href="{% url 'login' %}?next={% url 'lms:module_access_payment' course_slug=course.slug module_id=module.id %}" class="btn btn-sm btn-outline-primary">
+                                                <i class="fas fa-key me-1"></i> Login to Request Access
+                                            </a>
+                                        </div>
+                                        {% endif %}
+                                        {% endif %}
+                                    {% endif %}
+                                    {% endwith %}
+
                                     <h5 class="mt-3">Module Content</h5>
                                     {% if module.contents.all %}
                                     <ul class="list-group mb-3">
@@ -677,13 +707,40 @@
                     {% elif modules %}
                     <div class="list-group">
                         {% for module in modules %}
+                        {% with module_request=module_access_requests|get_item:module %}
                         <div class="list-group-item d-flex justify-content-between align-items-start">
                             <div>
                                 <h5>{{ module.title }}</h5>
                                 <p class="mb-0 text-muted">{{ module.description|striptags|truncatechars:140 }}</p>
                             </div>
-                            <span class="badge bg-secondary"><i class="fas fa-lock me-1"></i>Locked</span>
+                            <div class="text-end">
+                                {% if module_request.status == 'pending' %}
+                                <span class="badge bg-warning text-dark"><i class="fas fa-hourglass-half me-1"></i>Waiting for access grant</span>
+                                {% elif module_request.status == 'approved' %}
+                                <span class="badge bg-success">Access approved</span>
+                                {% else %}
+                                <span class="badge bg-secondary"><i class="fas fa-lock me-1"></i>Locked</span>
+                                {% endif %}
+                                {% if module.price and not module_request.status == 'approved' %}
+                                <div class="mt-2">
+                                    {% if module_request.status == 'pending' %}
+                                    <div class="small text-muted">Payment successful. Awaiting admin approval.</div>
+                                    {% else %}
+                                        {% if is_authenticated %}
+                                        <a href="{% url 'lms:module_access_payment' course_slug=course.slug module_id=module.id %}" class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-key me-1"></i> Request Access — {{ module.price }} TZS
+                                        </a>
+                                        {% else %}
+                                        <a href="{% url 'login' %}?next={% url 'lms:module_access_payment' course_slug=course.slug module_id=module.id %}" class="btn btn-sm btn-outline-secondary">
+                                            <i class="fas fa-key me-1"></i> Login to Request Access
+                                        </a>
+                                        {% endif %}
+                                    {% endif %}
+                                </div>
+                                {% endif %}
+                            </div>
                         </div>
+                        {% endwith %}
                         {% endfor %}
                     </div>
                     {% else %}

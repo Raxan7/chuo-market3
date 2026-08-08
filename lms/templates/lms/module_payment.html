@@ -1,0 +1,67 @@
+{% extends 'app/base.html' %}
+{% load i18n %}
+{% load static %}
+
+{% block title %}{% trans "Module Access Payment" %} - {{ module.title }}{% endblock %}
+
+{% block main-content %}
+<div class="container py-5">
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <!-- Module Summary Card -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <div class="d-flex align-items-start gap-3">
+                        {% if course.image %}
+                            <img src="{{ course.image.url }}" alt="{{ course.title }}"
+                                 class="rounded" style="width: 120px; height: 80px; object-fit: cover;">
+                        {% else %}
+                            <div class="rounded bg-light d-flex align-items-center justify-content-center"
+                                 style="width: 120px; height: 80px;">
+                                <i class="fas fa-book-open fa-2x text-secondary"></i>
+                            </div>
+                        {% endif %}
+                        <div class="flex-grow-1">
+                            <p class="text-muted mb-1 small">{{ course.title }}</p>
+                            <h4 class="mb-1">{{ module.title }}</h4>
+                            <p class="text-muted mb-1 small">{{ module.description|striptags|truncatewords:30 }}</p>
+                            <p class="mb-0"><strong>{% trans "Price" %}:</strong> {{ module_price }} <small>TZS</small></p>
+                        </div>
+                    </div>
+                    <div class="alert alert-info mt-3 mb-0">
+                        <i class="fas fa-info-circle me-1"></i>
+                        {% trans "After payment, your request is sent to the admin for approval. You will be able to access this module once the admin approves your request." %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Online Payment Option -->
+            {% if snippe_configured %}
+            <div class="card shadow-sm border-primary">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="mb-0"><i class="fas fa-bolt me-2"></i>{% trans "Pay Online" %}</h3>
+                </div>
+                <div class="card-body text-center py-4">
+                    <p class="mb-3">{% trans "Pay now via mobile money or card to request access to this module." %}</p>
+                    <a href="{% url 'lms:module_payment_init' course_slug=course.slug module_id=module.id %}" class="btn btn-lg btn-success px-5">
+                        <i class="fas fa-credit-card me-2"></i>{% trans "Pay Now" %} — {{ module_price }} TZS
+                    </a>
+                </div>
+            </div>
+            {% else %}
+            <div class="card shadow-sm">
+                <div class="card-body text-center py-4">
+                    <p class="text-muted mb-0">{% trans "Online payment is not currently available. Please try again later." %}</p>
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="mt-3 text-center">
+                <a href="{% url 'lms:course_detail' slug=course.slug %}" class="btn btn-link">
+                    <i class="fas fa-arrow-left me-1"></i>{% trans "Back to Course" %}
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock main-content %}

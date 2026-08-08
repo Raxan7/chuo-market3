@@ -379,6 +379,10 @@ class CourseModule(models.Model):
     description = models.TextField(blank=True)
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='modules')
     order = models.PositiveIntegerField(default=0)
+    price = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True,
+        help_text=_("Price (TZS) for single-module access. Leave empty to hide the Request Access option."),
+    )
     skip_assessment = models.BooleanField(
         default=False,
         verbose_name=_("Skip Assessment"),
@@ -624,6 +628,129 @@ def module_access_grant_post_save(sender, instance, created, **kwargs):
         enrollment.payment_status = 'pending'
         enrollment.payment_notes = _('Auto-enrolled because an admin granted module access.')
         enrollment.save(update_fields=['payment_status', 'payment_notes'])
+
+
+class ModulePayment(models.Model):
+    """Tracks Snippe payments for single-module access (pay-first model)."""
+    STATUS_CHOICES = (
+        ('pending', _('Pending')),
+        ('completed', _('Completed')),
+        ('failed', _('Failed')),
+        ('expired', _('Expired')),
+        ('cancelled', _('Cancelled')),
+    )
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='module_payments')
+    module = models.ForeignKey(CourseModule, on_delete=models.CASCADE, related_name='payments')
+    snippe_session_id = models.CharField(max_length=100, blank=True, default='',
+                                         help_text=_("Snippe session reference"))
+    snippe_reference = models.CharField(max_length=100, blank=True, default='',
+                                        help_text=_("Snippe payment reference from webhook"))
+    webhook_event_id = models.CharField(max_length=100, blank=True, default='',
+                                        help_text=_("Snippe webhook event ID (idempotency key)"))
+    failure_reason = models.TextField(blank=True, default='',
+                                       help_text=_("Failure reason from Snippe"))
+    amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    checkout_url = models.URLField(blank=True, default='',
+                                    help_text=_("Snippe hosted checkout URL"))
+    payment_link_url = models.URLField(blank=True, default='',
+                                        help_text=_("Short payment link URL"))
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = _("Module Payment")
+        verbose_name_plural = _("Module Payments")
+
+    def __str__(self):
+        return f"{self.user.username} - {self.module.title} - {self.get_status_display()}"
+
+
+class ModuleAccessRequest(models.Model):
+    """A student's in-system request to access a single module after paying.
+
+    Created automatically once the student's Snippe payment for the module is
+    completed. The admin approves or rejects the request; on approval a
+    ModuleAccessGrant is created (and auto-enrollment kicks in).
+    """
+    STATUS_CHOICES = (
+        ('pending', _('Pending')),
+        ('approved', _('Approved')),
+        ('rejected', _('Rejected')),
+    )
+
+    student = models.ForeignKey(
+        LMSProfile,
+        on_delete=models.CASCADE,
+        related_name='module_access_requests',
+    )
+    module = models.ForeignKey(
+        CourseModule,
+        on_delete=models.CASCADE,
+        related_name='access_requests',
+    )
+    payment = models.ForeignKey(
+        ModulePayment,
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True,
+        related_name='access_request',
+        help_text=_("The completed Snippe payment behind this request."),
+    )
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    notes = models.TextField(blank=True, default='')
+    approved_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True,
+        related_name='module_access_requests_approved',
+        help_text=_("Admin who approved this request."),
+    )
+    requested_at = models.DateTimeField(auto_now_add=True)
+    approved_at = models.DateTimeField(blank=True, null=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ['student', 'module']
+        ordering = ['-requested_at']
+        verbose_name = _("Module Access Request")
+        verbose_name_plural = _("Module Access Requests")
+
+    def __str__(self):
+        return f"{self.student.user.username} -> {self.module.title} ({self.get_status_display()})"
+
+    def approve(self, admin_user):
+        """Approve this request by granting the student module access."""
+        grant, created = ModuleAccessGrant.objects.get_or_create(
+            student=self.student,
+            module=self.module,
+            defaults={
+                'active': True,
+                'notes': self.notes or _('Approved from an in-system access request.'),
+                'granted_by': admin_user,
+            },
+        )
+        if not created:
+            grant.active = True
+            grant.granted_by = admin_user
+            grant.save(update_fields=['active', 'granted_by'])
+
+        self.status = 'approved'
+        self.approved_by = admin_user
+        self.approved_at = timezone.now()
+        self.save(update_fields=['status', 'approved_by', 'approved_at', 'updated_at'])
+
+    def reject(self, admin_user, notes=''):
+        """Reject this request, keeping the paid amount recorded but without access."""
+        self.status = 'rejected'
+        self.approved_by = admin_user
+        self.approved_at = timezone.now()
+        if notes:
+            self.notes = notes
+        self.save(update_fields=['status', 'approved_by', 'approved_at', 'notes', 'updated_at'])
 
 
 class Quiz(models.Model):

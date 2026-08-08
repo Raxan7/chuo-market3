@@ -11,7 +11,8 @@ from .models import (
     CourseContent, Quiz, Question, MCQuestion, Choice, TF_Question, 
     Essay_Question, QuizTaker, StudentAnswer, Grade, CourseEnrollment,
     InstructorRequest, ContentAccess, ModuleAccessGrant, SiteSettings, AdExemptUser, PaymentMethod,
-    ModuleProgress, CertificateTemplate, StudentCertificate, CoursePayment, CertificatePayment
+    ModuleProgress, CertificateTemplate, StudentCertificate, CoursePayment, CertificatePayment,
+    ModulePayment, ModuleAccessRequest,
 )
 
 
@@ -26,6 +27,15 @@ class ModuleAccessGrantInline(admin.TabularInline):
     raw_id_fields = ('student',)
     readonly_fields = ('granted_at',)
     fields = ('student', 'active', 'notes', 'granted_at')
+
+
+class ModuleAccessRequestInline(admin.TabularInline):
+    model = ModuleAccessRequest
+    extra = 0
+    can_delete = False
+    raw_id_fields = ('student',)
+    readonly_fields = ('status', 'requested_at', 'approved_at')
+    fields = ('student', 'status', 'payment', 'notes', 'requested_at', 'approved_at')
 
 
 class ChoiceInline(admin.TabularInline):
@@ -66,14 +76,21 @@ class CourseAdmin(admin.ModelAdmin):
 
 @admin.register(CourseModule)
 class CourseModuleAdmin(admin.ModelAdmin):
-    list_display = ('title', 'course', 'order', 'skip_assessment')
+    list_display = ('title', 'course', 'order', 'price', 'skip_assessment')
     list_filter = ('course',)
     search_fields = ('title', 'description', 'course__title')
     ordering = ('course', 'order')
-    inlines = [ModuleAccessGrantInline]
+    inlines = [ModuleAccessGrantInline, ModuleAccessRequestInline]
     fieldsets = (
         (None, {
-            'fields': ('title', 'course', 'order', 'skip_assessment', 'description')
+            'fields': ('title', 'course', 'order', 'price', 'skip_assessment', 'description')
+        }),
+        (_('Module Access Pricing'), {
+            'description': _(
+                'Set a price to enable students to pay online and request access to '
+                'this single module. Leave blank to hide the "Request Access" option.'
+            ),
+            'fields': (),
         }),
     )
 
@@ -249,6 +266,58 @@ class ModuleAccessGrantAdmin(admin.ModelAdmin):
         if not obj.granted_by_id:
             obj.granted_by = request.user
         super().save_model(request, obj, form, change)
+
+
+@admin.register(ModuleAccessRequest)
+class ModuleAccessRequestAdmin(admin.ModelAdmin):
+    """Admin interface to approve/reject student module access requests.
+
+    Approving a request creates a ModuleAccessGrant (the existing, working
+    mechanism) and auto-enrolls the student in the course.
+    """
+    list_display = ('student', 'module', 'module_price', 'payment_amount', 'status', 'requested_at', 'approved_at')
+    list_filter = ('status', 'requested_at', 'module__course')
+    search_fields = ('student__user__username', 'student__user__email', 'module__title', 'module__course__title', 'notes')
+    readonly_fields = ('requested_at', 'updated_at', 'approved_at', 'approved_by')
+    raw_id_fields = ('student', 'module', 'payment')
+    actions = ('approve_requests', 'reject_requests')
+    list_select_related = ('student', 'module', 'module__course')
+
+    def module_price(self, obj):
+        return obj.module.price
+    module_price.short_description = _('Module Price (TZS)')
+
+    def payment_amount(self, obj):
+        return obj.payment.amount if obj.payment else '—'
+    payment_amount.short_description = _('Paid Amount (TZS)')
+
+    def save_model(self, request, obj, form, change):
+        super().save_model(request, obj, form, change)
+
+    @admin.action(description=_('Approve selected access requests'))
+    def approve_requests(self, request, queryset):
+        for obj in queryset.filter(status='pending'):
+            obj.approve(request.user)
+            self.message_user(
+                request,
+                _('Approved module access for %(student)s on "%(module)s".') % {
+                    'student': obj.student.user.username,
+                    'module': obj.module.title,
+                },
+            )
+
+    @admin.action(description=_('Reject selected access requests'))
+    def reject_requests(self, request, queryset):
+        count = queryset.filter(status='pending').update(status='rejected', approved_by=request.user, approved_at=timezone.now())
+        self.message_user(request, _('Rejected %(count)d access request(s).') % {'count': count})
+
+
+@admin.register(ModulePayment)
+class ModulePaymentAdmin(admin.ModelAdmin):
+    list_display = ('user', 'module', 'amount', 'status', 'created_at', 'snippe_reference')
+    list_filter = ('status', 'module__course', 'created_at')
+    search_fields = ('user__username', 'module__title', 'snippe_reference', 'snippe_session_id')
+    readonly_fields = ('created_at', 'updated_at')
 
 
 @admin.register(ModuleProgress)

@@ -101,6 +101,14 @@ urlpatterns = [
     path('courses/<slug:slug>/payment/pay-online/', views.course_payment_init, name='course_payment_init'),
     path('courses/<slug:slug>/payment/success/', views.course_payment_success, name='course_payment_success'),
     
+    # Module access payment (pay-first, in-system request)
+    path('courses/<slug:course_slug>/modules/<int:module_id>/access/', 
+         views.module_access_payment, name='module_access_payment'),
+    path('courses/<slug:course_slug>/modules/<int:module_id>/access/pay/', 
+         views.module_payment_init, name='module_payment_init'),
+    path('courses/<slug:course_slug>/modules/<int:module_id>/access/success/', 
+         views.module_payment_success, name='module_payment_success'),
+    
     # Instructor payment methods
     path('instructor/payment-methods/', views.instructor_payment_methods, name='instructor_payment_methods'),
     path('instructor/payment-methods/add/', views.add_payment_method, name='add_payment_method'),

@@ -2,6 +2,6 @@ from .models import ActivityLog, Semester, LMSProfile, Program, Course, CourseEn
     CourseModule, CourseContent, ContentAccess, ModuleAccessGrant, Quiz, Question, MCQuestion, Choice, \
     TF_Question, Essay_Question, QuizTaker, StudentAnswer, Grade, InstructorRequest, \
     PaymentMethod, ModuleProgress, CertificateTemplate, StudentCertificate, QuizGenerationJob, \
-    CoursePayment, CertificatePayment
+    CoursePayment, CertificatePayment, ModulePayment, ModuleAccessRequest
 from .site_settings import SiteSettings
 from .ad_exempt import AdExemptUser

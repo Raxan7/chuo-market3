@@ -154,7 +154,7 @@ WSGI_APPLICATION = 'Commerce.wsgi.application'
 # Production MySQL Database Configuration (Fixed for emoji support)
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.mysql',
+        'ENGINE': 'django.db.backends.sqlite3',
         'NAME': os.getenv('DB_NAME'),  # Database name from .env
         'USER': os.getenv('DB_USER'),  # Database username from .env
         'PASSWORD': os.getenv('DB_PASSWORD'),  # Database password from .env

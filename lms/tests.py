@@ -1,3 +1,5 @@
+import hashlib
+import hmac as hmac_mod
 import json
 import time
 from decimal import Decimal
@@ -8,7 +10,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from .ai_assessments import ensure_module_assessment, queue_module_assessment_generation
-from .models import Course, CourseContent, CourseEnrollment, LMSProfile, CourseModule, ContentAccess, ModuleAccessGrant, QuizTaker, Quiz, MCQuestion, Choice, StudentAnswer, ModuleProgress, CoursePayment, CertificateTemplate, PaymentMethod
+from .models import Course, CourseContent, CourseEnrollment, LMSProfile, CourseModule, ContentAccess, ModuleAccessGrant, QuizTaker, Quiz, MCQuestion, Choice, StudentAnswer, ModuleProgress, CoursePayment, CertificateTemplate, PaymentMethod, ModulePayment, ModuleAccessRequest
 from .utils import ensure_course_learning_records, is_module_unlocked, update_module_content_completion, update_module_assessment_completion
 
 
@@ -717,3 +719,441 @@ class CoursePaymentTests(TestCase):
         template.refresh_from_db()
         self.assertEqual(template.certificate_price, Decimal('30000.00'))
         self.assertEqual(template.title, 'Updated Certificate')
+
+
+@override_settings(
+    DEBUG=True,
+    STATICFILES_STORAGE='django.contrib.staticfiles.storage.StaticFilesStorage',
+)
+class ModulePaymentTests(TestCase):
+    """Tests for single-module access payment and in-system request flow."""
+
+    def setUp(self):
+        self.client = Client()
+        self.student_user = User.objects.create_user(
+            username='module_student',
+            email='mod_student@example.com',
+            password='testpassword',
+        )
+        self.student_profile, _ = LMSProfile.objects.get_or_create(
+            user=self.student_user,
+            defaults={'role': 'student'},
+        )
+
+        self.admin_user = User.objects.create_user(
+            username='admin',
+            email='admin@example.com',
+            password='testpassword',
+            is_staff=True,
+        )
+        self.admin_profile, _ = LMSProfile.objects.get_or_create(
+            user=self.admin_user,
+            defaults={'role': 'admin'},
+        )
+
+        self.instructor_user = User.objects.create_user(
+            username='instructor',
+            email='instructor@example.com',
+            password='testpassword',
+        )
+        self.instructor_profile, _ = LMSProfile.objects.get_or_create(
+            user=self.instructor_user,
+            defaults={'role': 'instructor'},
+        )
+
+        self.course = Course.objects.create(
+            title='Paid Module Course',
+            course_type='general',
+            is_free=False,
+            price=Decimal('50000.00'),
+            summary='A course with a priced module.',
+        )
+        self.course.instructors.add(self.instructor_profile)
+
+        # Module with price set (should show Request Access button)
+        self.priced_module = CourseModule.objects.create(
+            course=self.course,
+            title='Priced Module',
+            description='Module with a price.',
+            order=0,
+            price=Decimal('10000.00'),
+        )
+        CourseContent.objects.create(
+            title='Content A',
+            module=self.priced_module,
+            content_type='text',
+            text_content='Some content.',
+            order=0,
+        )
+
+        # Module WITHOUT price (should NOT show Request Access button)
+        self.free_module = CourseModule.objects.create(
+            course=self.course,
+            title='Unpriced Module',
+            description='Module without a price.',
+            order=1,
+        )
+
+        self.client.login(username='module_student', password='testpassword')
+
+    # ── Request Access button visibility ─────────────────────────────
+
+    def test_course_detail_shows_request_access_button_for_priced_module(self):
+        """Module with a price should show Request Access button"""
+        response = self.client.get(reverse('lms:course_detail', kwargs={'slug': self.course.slug}))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Request Access')
+
+    def test_course_detail_hides_request_access_for_unpriced_module(self):
+        """Module without a price should NOT show Request Access button"""
+        # Use a course containing only an unpriced module
+        unpriced_course = Course.objects.create(
+            title='Unpriced Course',
+            course_type='general',
+            is_free=False,
+            price=Decimal('50000.00'),
+            summary='Course with only unpriced modules.',
+        )
+        CourseModule.objects.create(
+            course=unpriced_course,
+            title='Only Unpriced Module',
+            description='Module without a price.',
+            order=0,
+        )
+        response = self.client.get(reverse('lms:course_detail', kwargs={'slug': unpriced_course.slug}))
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, 'Request Access')
+
+    def test_request_access_hidden_when_already_has_access(self):
+        """Request Access should not show if the user already has full-course access"""
+        # Enroll student as approved
+        CourseEnrollment.objects.create(
+            student=self.student_profile,
+            course=self.course,
+            payment_status='approved',
+            payment_date=timezone.now(),
+        )
+        response = self.client.get(reverse('lms:course_detail', kwargs={'slug': self.course.slug}))
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, 'Request Access')
+
+    # ── Module access payment page ───────────────────────────────────
+
+    @override_settings(SNIPPE_API_KEY='test_key')
+    def test_module_access_payment_page_renders(self):
+        """Module access payment page should show the module price and Pay Now"""
+        response = self.client.get(reverse('lms:module_access_payment', kwargs={
+            'course_slug': self.course.slug,
+            'module_id': self.priced_module.id,
+        }))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '10000')
+        self.assertContains(response, 'Pay Now')
+
+    def test_module_access_payment_redirects_if_no_price(self):
+        """If module has no price, redirect away from the payment page"""
+        response = self.client.get(reverse('lms:module_access_payment', kwargs={
+            'course_slug': self.course.slug,
+            'module_id': self.free_module.id,
+        }), follow=True)
+        self.assertEqual(response.status_code, 200)
+        # Should redirect to course detail
+        self.assertNotContains(response, 'Pay Now')
+
+    def test_module_access_payment_redirects_if_already_paid(self):
+        """If user already has access, redirect away from the payment page"""
+        ModuleAccessGrant.objects.create(
+            student=self.student_profile,
+            module=self.priced_module,
+            active=True,
+            granted_by=self.admin_user,
+        )
+        response = self.client.get(reverse('lms:module_access_payment', kwargs={
+            'course_slug': self.course.slug,
+            'module_id': self.priced_module.id,
+        }), follow=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, 'Pay Now')
+
+    # ── Module payment initiation ────────────────────────────────────
+
+    @override_settings(SNIPPE_API_KEY='test_key')
+    def test_module_payment_init_creates_module_payment(self):
+        """module_payment_init should create a ModulePayment record and attempt Snippe redirect"""
+        from unittest.mock import patch
+
+        mock_response = type('FakeResponse', (), {'json': lambda self: {
+            'code': 201,
+            'data': {
+                'reference': 'sess_module_123',
+                'checkout_url': 'https://pay.snippe.sh/sess_module_123',
+                'payment_link_url': 'https://pay.snippe.sh/l/sess_module_123',
+            },
+        }})()
+        with patch('lms.views.requests.post', return_value=mock_response) as mock_post:
+            response = self.client.get(reverse('lms:module_payment_init', kwargs={
+                'course_slug': self.course.slug,
+                'module_id': self.priced_module.id,
+            }))
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(response['Location'].startswith('https://pay.snippe.sh/'))
+        self.assertEqual(mock_post.call_count, 1)
+
+        payment = ModulePayment.objects.get(
+            user=self.student_user, module=self.priced_module,
+        )
+        self.assertEqual(payment.status, 'pending')
+        self.assertEqual(payment.snippe_session_id, 'sess_module_123')
+        self.assertEqual(payment.amount, self.priced_module.price)
+
+    @override_settings(SNIPPE_API_KEY='')
+    def test_module_payment_init_falls_back_when_snippe_unconfigured(self):
+        """When Snippe is not configured, redirect back to the payment page"""
+        response = self.client.get(reverse('lms:module_payment_init', kwargs={
+            'course_slug': self.course.slug,
+            'module_id': self.priced_module.id,
+        }), follow=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('access', response.request['PATH_INFO'])
+
+    # ── Module payment success ───────────────────────────────────────
+
+    def test_module_payment_success_with_completed_payment_creates_pending_request(self):
+        """On success callback, completed ModulePayment should create a pending ModuleAccessRequest"""
+        payment = ModulePayment.objects.create(
+            user=self.student_user,
+            module=self.priced_module,
+            amount=self.priced_module.price,
+            status='completed',
+        )
+        response = self.client.get(reverse('lms:module_payment_success', kwargs={
+            'course_slug': self.course.slug,
+            'module_id': self.priced_module.id,
+        }), follow=True)
+        self.assertEqual(response.status_code, 200)
+
+        access_request = ModuleAccessRequest.objects.get(
+            student=self.student_profile,
+            module=self.priced_module,
+        )
+        self.assertEqual(access_request.status, 'pending')
+        self.assertEqual(access_request.payment, payment)
+        # Should have been redirected to course detail
+        self.assertIn(self.course.slug, response.request['PATH_INFO'])
+
+    def test_module_payment_success_without_completed_payment_redirects_back(self):
+        """On success callback, without a completed payment, redirect back to payment page"""
+        response = self.client.get(reverse('lms:module_payment_success', kwargs={
+            'course_slug': self.course.slug,
+            'module_id': self.priced_module.id,
+        }), follow=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('access', response.request['PATH_INFO'])
+        self.assertFalse(ModuleAccessRequest.objects.filter(
+            student=self.student_profile,
+            module=self.priced_module,
+        ).exists())
+
+    # ── Pending request state in course detail ───────────────────────
+
+    def test_pending_request_shows_waiting_on_course_detail(self):
+        """A pending ModuleAccessRequest should show 'Waiting for access grant' on the course page"""
+        ModuleAccessRequest.objects.create(
+            student=self.student_profile,
+            module=self.priced_module,
+            status='pending',
+            notes='Payment successful.',
+        )
+        response = self.client.get(reverse('lms:course_detail', kwargs={'slug': self.course.slug}))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Waiting for access grant')
+        self.assertContains(response, 'Payment successful')
+
+    def test_approved_request_shows_approved_on_course_detail(self):
+        """An approved ModuleAccessRequest should unlock the module (no Request Access shown)"""
+        # Create an approved request AND a grant
+        ModuleAccessRequest.objects.create(
+            student=self.student_profile,
+            module=self.priced_module,
+            status='approved',
+            approved_by=self.admin_user,
+        )
+        ModuleAccessGrant.objects.create(
+            student=self.student_profile,
+            module=self.priced_module,
+            active=True,
+            granted_by=self.admin_user,
+        )
+        response = self.client.get(reverse('lms:course_detail', kwargs={'slug': self.course.slug}))
+        self.assertEqual(response.status_code, 200)
+        # Approved module should be accessible - no 'Request Access' anywhere
+        self.assertNotContains(response, 'Request Access')
+
+    # ── ModuleAccessRequest model approve/reject ─────────────────────
+
+    def test_approve_request_creates_module_grant(self):
+        """Approving a request should create a ModuleAccessGrant"""
+        request_obj = ModuleAccessRequest.objects.create(
+            student=self.student_profile,
+            module=self.priced_module,
+            status='pending',
+        )
+        request_obj.approve(self.admin_user)
+
+        request_obj.refresh_from_db()
+        self.assertEqual(request_obj.status, 'approved')
+        self.assertEqual(request_obj.approved_by, self.admin_user)
+        self.assertIsNotNone(request_obj.approved_at)
+
+        grant = ModuleAccessGrant.objects.get(
+            student=self.student_profile,
+            module=self.priced_module,
+        )
+        self.assertTrue(grant.active)
+        self.assertEqual(grant.granted_by, self.admin_user)
+
+    def test_approve_request_reactivates_inactive_grant(self):
+        """Approving a request should reactivate an inactive grant"""
+        ModuleAccessGrant.objects.create(
+            student=self.student_profile,
+            module=self.priced_module,
+            active=False,
+            granted_by=self.admin_user,
+        )
+        request_obj = ModuleAccessRequest.objects.create(
+            student=self.student_profile,
+            module=self.priced_module,
+            status='pending',
+        )
+        request_obj.approve(self.admin_user)
+
+        grant = ModuleAccessGrant.objects.get(
+            student=self.student_profile,
+            module=self.priced_module,
+        )
+        self.assertTrue(grant.active)
+
+    def test_reject_request_sets_status(self):
+        """Rejecting a request should update the status to 'rejected'"""
+        request_obj = ModuleAccessRequest.objects.create(
+            student=self.student_profile,
+            module=self.priced_module,
+            status='pending',
+        )
+        request_obj.reject(self.admin_user, notes='Not eligible.')
+
+        request_obj.refresh_from_db()
+        self.assertEqual(request_obj.status, 'rejected')
+        self.assertEqual(request_obj.approved_by, self.admin_user)
+        self.assertEqual(request_obj.notes, 'Not eligible.')
+
+    # ── Webhook handling for module payments ─────────────────────────
+
+    @override_settings(SNIPPE_WEBHOOK_SECRET='module-test-secret')
+    def test_webhook_creates_pending_request_on_completed_module_payment(self):
+        """Webhook 'payment.completed' for a module_access should create a pending access request"""
+        # Pre-create the ModulePayment (view already did this before the user went to Snippe)
+        module_payment = ModulePayment.objects.create(
+            user=self.student_user,
+            module=self.priced_module,
+            amount=self.priced_module.price,
+            status='pending',
+        )
+
+        event_id = 'evt_module_001'
+        payload = json.dumps({
+            'id': event_id,
+            'type': 'payment.completed',
+            'data': {
+                'reference': 'ref_mod_123',
+                'status': 'completed',
+                'amount': {'value': str(self.priced_module.price)},
+                'metadata': {
+                    'payment_type': 'module_access',
+                    'module_id': self.priced_module.id,
+                    'course_id': self.course.id,
+                    'user_id': self.student_user.id,
+                },
+            },
+        })
+        timestamp = str(int(time.time()))
+        message = f"{timestamp}.{payload}"
+        signature = hmac_mod.new(
+            b'module-test-secret', message.encode('utf-8'), hashlib.sha256,
+        ).hexdigest()
+
+        response = self.client.post(
+            '/lms/webhooks/snippe/',
+            data=payload,
+            content_type='application/json',
+            HTTP_X_Webhook_Signature=signature,
+            HTTP_X_Webhook_Timestamp=timestamp,
+        )
+        self.assertEqual(response.status_code, 200)
+
+        module_payment.refresh_from_db()
+        self.assertEqual(module_payment.status, 'completed')
+
+        access_request = ModuleAccessRequest.objects.get(
+            student=self.student_profile,
+            module=self.priced_module,
+        )
+        self.assertEqual(access_request.status, 'pending')
+        self.assertEqual(access_request.payment, module_payment)
+
+    @override_settings(SNIPPE_WEBHOOK_SECRET='module-test-secret')
+    def test_webhook_is_idempotent_for_module_payments(self):
+        """Processing the same webhook event twice should not duplicate data"""
+        ModulePayment.objects.create(
+            user=self.student_user,
+            module=self.priced_module,
+            amount=self.priced_module.price,
+            status='pending',
+        )
+
+        event_id = 'evt_module_dup_001'
+        payload = json.dumps({
+            'id': event_id,
+            'type': 'payment.completed',
+            'data': {
+                'reference': 'ref_mod_dup',
+                'status': 'completed',
+                'amount': {'value': self.priced_module.price},
+                'metadata': {
+                    'payment_type': 'module_access',
+                    'module_id': self.priced_module.id,
+                    'course_id': self.course.id,
+                    'user_id': self.student_user.id,
+                },
+            },
+        })
+        timestamp = str(int(time.time()))
+        message = f"{timestamp}.{payload}"
+        signature = hmac_mod.new(
+            b'module-test-secret', message.encode('utf-8'), hashlib.sha256,
+        ).hexdigest()
+
+        response = self.client.post(
+            '/lms/webhooks/snippe/',
+            data=payload,
+            content_type='application/json',
+            HTTP_X_Webhook_Signature=signature,
+            HTTP_X_Webhook_Timestamp=timestamp,
+        )
+        self.assertEqual(response.status_code, 200)
+
+        # Second webhook call with same event_id
+        response2 = self.client.post(
+            '/lms/webhooks/snippe/',
+            data=payload,
+            content_type='application/json',
+            HTTP_X_Webhook_Signature=signature,
+            HTTP_X_Webhook_Timestamp=timestamp,
+        )
+        self.assertEqual(response2.status_code, 200)
+
+        # Ensure only one access request exists
+        self.assertEqual(ModuleAccessRequest.objects.filter(
+            student=self.student_profile,
+            module=self.priced_module,
+        ).count(), 1)
