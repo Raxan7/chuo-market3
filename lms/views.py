@@ -2515,7 +2515,7 @@ def snippe_webhook(request):
                     else:
                         profile = LMSProfile.objects.create(user=user, role='student')
 
-                    request_obj, created = ModuleAccessRequest.objects.get_or_create(
+                    request_obj = ModuleAccessRequest.objects.get_or_create(
                         student=profile,
                         module_id=module_id,
                         defaults={
@@ -2523,7 +2523,7 @@ def snippe_webhook(request):
                             'status': 'pending',
                             'notes': _('Paid via Snippe. Access granted automatically.'),
                         },
-                    )
+                    )[0]
                     if request_obj.status == 'pending':
                         request_obj.payment = payment
                         request_obj.save(update_fields=['payment', 'updated_at'])
@@ -3458,7 +3458,7 @@ def module_payment_success(request, course_slug, module_id):
         payment = ModulePayment.objects.filter(
             user=request.user, module=module, status='completed',
         ).first()
-        access_request, created = ModuleAccessRequest.objects.get_or_create(
+        access_request = ModuleAccessRequest.objects.get_or_create(
             student=profile,
             module=module,
             defaults={
@@ -3466,7 +3466,7 @@ def module_payment_success(request, course_slug, module_id):
                 'status': 'pending',
                 'notes': _('Paid via Snippe. Access granted automatically.'),
             },
-        )
+        )[0]
         if access_request.status == 'pending':
             access_request.payment = payment
             access_request.save(update_fields=['payment', 'updated_at'])
