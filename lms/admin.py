@@ -6,7 +6,9 @@ from decimal import Decimal, InvalidOperation
 
 from django.contrib import admin
 from django.contrib.admin import helpers
+from django.http import HttpResponseRedirect
 from django.shortcuts import render
+from django.urls import path, reverse
 from django.utils.translation import gettext_lazy as _
 from django.utils import timezone
 from django.contrib import messages
@@ -112,51 +114,11 @@ class CourseModuleAdmin(admin.ModelAdmin):
 
     @admin.action(description=_('Set price for selected modules (bulk)'))
     def bulk_set_price(self, request, queryset):
-        """Apply a single price to many modules at once (with confirmation step).
+        """Show the confirmation page to apply a single price to many modules.
 
         Since most modules within a course share the same price, this saves
         editing each module individually in the admin.
         """
-        if request.POST.get('apply_price'):
-            price = request.POST.get('price', '').strip()
-            apply_to_course = request.POST.get('apply_to_course') == 'on'
-
-            new_price = None
-            if price:
-                try:
-                    new_price = Decimal(price)
-                except InvalidOperation:
-                    self.message_user(
-                        request,
-                        _('Invalid price "%(price)s". Enter a valid number or leave blank to clear the price.') % {
-                            'price': price,
-                        },
-                        level=messages.ERROR,
-                    )
-                    return self._render_bulk_price_form(request, queryset)
-
-            if apply_to_course:
-                course_ids = list(queryset.values_list('course_id', flat=True).distinct())
-                updated = CourseModule.objects.filter(course_id__in=course_ids).update(price=new_price)
-                self.message_user(
-                    request,
-                    _('Set price to %(price)s for %(count)d module(s) across %(courses)d course(s).') % {
-                        'price': new_price if new_price is not None else _('empty (free)'),
-                        'count': updated,
-                        'courses': len(course_ids),
-                    },
-                )
-            else:
-                updated = queryset.update(price=new_price)
-                self.message_user(
-                    request,
-                    _('Set price to %(price)s for %(count)d module(s).') % {
-                        'price': new_price if new_price is not None else _('empty (free)'),
-                        'count': updated,
-                    },
-                )
-            return None
-
         return self._render_bulk_price_form(request, queryset)
 
     def _render_bulk_price_form(self, request, queryset):
@@ -170,6 +132,68 @@ class CourseModuleAdmin(admin.ModelAdmin):
             'action_checkbox_name': helpers.ACTION_CHECKBOX_NAME,
         }
         return render(request, 'admin/lms/coursemodule/bulk_set_price.html', context)
+
+    def get_urls(self):
+        urls = super().get_urls()
+        custom_urls = [
+            path(
+                'bulk-set-price/',
+                self.admin_site.admin_view(self.bulk_set_price_view),
+                name='lms_coursemodule_bulk_set_price',
+            ),
+        ]
+        return custom_urls + urls
+
+    def bulk_set_price_view(self, request):
+        """Handle the price submission from the bulk-set-price confirmation page."""
+        if request.method != 'POST':
+            return HttpResponseRedirect(reverse('admin:lms_coursemodule_changelist'))
+
+        ids = request.POST.getlist(helpers.ACTION_CHECKBOX_NAME)
+        queryset = self.get_queryset(request).filter(pk__in=ids)
+        if not queryset.exists():
+            self.message_user(request, _('No modules were selected.'), level=messages.WARNING)
+            return HttpResponseRedirect(reverse('admin:lms_coursemodule_changelist'))
+
+        price = request.POST.get('price', '').strip()
+        apply_to_course = request.POST.get('apply_to_course') == 'on'
+
+        new_price = None
+        if price:
+            try:
+                new_price = Decimal(price)
+            except InvalidOperation:
+                self.message_user(
+                    request,
+                    _('Invalid price "%(price)s". Enter a valid number or leave blank to clear the price.') % {
+                        'price': price,
+                    },
+                    level=messages.ERROR,
+                )
+                return self._render_bulk_price_form(request, queryset)
+
+        if apply_to_course:
+            course_ids = list(queryset.values_list('course_id', flat=True).distinct())
+            updated = CourseModule.objects.filter(course_id__in=course_ids).update(price=new_price)
+            self.message_user(
+                request,
+                _('Set price to %(price)s for %(count)d module(s) across %(courses)d course(s).') % {
+                    'price': new_price if new_price is not None else _('empty (free)'),
+                    'count': updated,
+                    'courses': len(course_ids),
+                },
+            )
+        else:
+            updated = queryset.update(price=new_price)
+            self.message_user(
+                request,
+                _('Set price to %(price)s for %(count)d module(s).') % {
+                    'price': new_price if new_price is not None else _('empty (free)'),
+                    'count': updated,
+                },
+            )
+
+        return HttpResponseRedirect(reverse('admin:lms_coursemodule_changelist'))
 
 
 @admin.register(CourseContent)

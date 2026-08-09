@@ -28,7 +28,7 @@
 <div id="content-main" class="bulk-price-form">
   <h1>{% translate 'Set price for selected modules' %}</h1>
 
-  <form method="post" action="{% url opts|admin_urlname:'changelist' %}">
+  <form method="post" action="{% url 'admin:lms_coursemodule_bulk_set_price' %}">
     {% csrf_token %}
     <div class="module">
       <h2>{% blocktranslate count counter=queryset_count %}Selected module{% plural %}Selected modules{% endblocktranslate %}
@@ -72,11 +72,9 @@
     {% for module in queryset %}
     <input type="hidden" name="{{ action_checkbox_name }}" value="{{ module.pk }}">
     {% endfor %}
-    <input type="hidden" name="action" value="bulk_set_price">
-    <input type="hidden" name="apply_price" value="1">
 
     <div class="submit-row">
-      <input type="submit" value="{% translate 'Apply price' %}" class="default" name="_save">
+      <input type="submit" value="{% translate 'Apply price' %}" class="default" name="apply_price">
       <a href="{% url opts|admin_urlname:'changelist' %}" class="closelink">{% translate 'Cancel' %}</a>
     </div>
   </form>
