@@ -1,10 +1,6 @@
 """
-Management command to create a development demo course for testing module access.
-
-Creates a paid course with:
-  - Module 1: skip_assessment=True (free, open to everyone, even without enrollment)
-  - Module 2: paid module right after the free overview (requestable without enrollment)
-  - Module 3+: more paid modules (sequential gating applies)
+Management command to create 10 development demo courses for testing
+module access behaviors (free skip_assessment, paid modules, sequential gating).
 
 Usage:
     python manage.py create_dev_demo_course
@@ -18,88 +14,170 @@ from django.utils.text import slugify
 from lms.models import Course, CourseContent, CourseModule
 
 
+COURSES = [
+    {
+        "title": "Dev 1: Free Overview + Paid Modules",
+        "summary": "Classic layout: one free overview, then paid modules.",
+        "price": 50000,
+        "modules": [
+            ("Introduction to Course", 0, None, True),
+            ("Fundamentals", 1, 20000, False),
+            ("Intermediate Topics", 2, 15000, False),
+            ("Advanced Topics", 3, 15000, False),
+        ],
+    },
+    {
+        "title": "Dev 2: All Paid — No Free Module",
+        "summary": "All modules have a price, no skip_assessment.",
+        "price": 60000,
+        "modules": [
+            ("Getting Started", 0, 10000, False),
+            ("Core Concepts", 1, 20000, False),
+            ("Practical Projects", 2, 20000, False),
+        ],
+    },
+    {
+        "title": "Dev 3: Free Overview at the Middle",
+        "summary": "A skip_assessment module appears in the middle of paid modules.",
+        "price": 45000,
+        "modules": [
+            ("Part 1: Basics", 0, 15000, False),
+            ("Part 2: Intermediate", 1, 15000, False),
+            ("Bonus: Quick Recap (skip assessment)", 2, None, True),
+            ("Part 3: Advanced", 3, 20000, False),
+        ],
+    },
+    {
+        "title": "Dev 4: Single Free Module Only",
+        "summary": "One free skip_assessment module, no paid modules.",
+        "price": 0,
+        "modules": [
+            ("Introduction (skip assessment)", 0, None, True),
+        ],
+    },
+    {
+        "title": "Dev 5: Multiple Free Modules",
+        "summary": "Two free overview modules followed by paid ones.",
+        "price": 40000,
+        "modules": [
+            ("Welcome (skip assessment)", 0, None, True),
+            ("Course Roadmap (skip assessment)", 1, None, True),
+            ("Module 1: First Paid Lesson", 2, 15000, False),
+            ("Module 2: Second Paid Lesson", 3, 15000, False),
+        ],
+    },
+    {
+        "title": "Dev 6: Free Overview + Chain of Paid",
+        "summary": "One free overview, then a long chain of paid modules.",
+        "price": 80000,
+        "modules": [
+            ("Course Overview (skip assessment)", 0, None, True),
+            ("Week 1", 1, 10000, False),
+            ("Week 2", 2, 10000, False),
+            ("Week 3", 3, 10000, False),
+            ("Week 4", 4, 10000, False),
+            ("Week 5", 5, 10000, False),
+        ],
+    },
+    {
+        "title": "Dev 7: Expensive Course",
+        "summary": "Higher priced modules for premium feel.",
+        "price": 200000,
+        "modules": [
+            ("Introduction (skip assessment)", 0, None, True),
+            ("Foundation Module", 1, 80000, False),
+            ("Expert Module", 2, 100000, False),
+        ],
+    },
+    {
+        "title": "Dev 8: Cheap Course",
+        "summary": "Low-cost modules for budget testing.",
+        "price": 15000,
+        "modules": [
+            ("What You Will Learn (skip assessment)", 0, None, True),
+            ("Lesson 1", 1, 5000, False),
+            ("Lesson 2", 2, 5000, False),
+            ("Lesson 3", 3, 5000, False),
+        ],
+    },
+    {
+        "title": "Dev 9: Free Module Last",
+        "summary": "Skip_assessment module placed at the end.",
+        "price": 50000,
+        "modules": [
+            ("Part 1: Fundamentals", 0, 20000, False),
+            ("Part 2: Practice", 1, 20000, False),
+            ("Part 3: Summary & Review (skip assessment)", 2, None, True),
+        ],
+    },
+    {
+        "title": "Dev 10: Free + Paid Alternating",
+        "summary": "Alternating free and paid modules.",
+        "price": 60000,
+        "modules": [
+            ("Overview (skip assessment)", 0, None, True),
+            ("Deep Dive 1", 1, 15000, False),
+            ("Bonus Recap (skip assessment)", 2, None, True),
+            ("Deep Dive 2", 3, 15000, False),
+            ("Bonus Recap 2 (skip assessment)", 4, None, True),
+            ("Final Project", 5, 20000, False),
+        ],
+    },
+]
+
+
 class Command(BaseCommand):
-    help = 'Creates a development demo course to test free skip_assessment modules and module access requests'
+    help = 'Creates 10 development demo courses to test module access behaviors'
 
     def handle(self, *args, **kwargs):
-        title = 'Dev Demo: Free Overview + Paid Modules'
-        if Course.objects.filter(title=title).exists():
-            self.stdout.write(self.style.WARNING('Demo course already exists — skipping.'))
-            return
+        created = 0
+        skipped = 0
 
-        course = Course.objects.create(
-            title=title,
-            slug=slugify(title) + '-dev',
-            course_type='general',
-            is_free=False,
-            price=Decimal('50000.00'),
-            summary='Dev course: Module 1 is free (skip_assessment), later modules are paid.',
-            content=(
-                '<h3>Course Description</h3>'
-                '<p>This course lets you verify that the first module is free and open to everyone, '
-                'and that the following paid module shows a Request Access button.</p>'
-            ),
-        )
+        for i, spec in enumerate(COURSES, 1):
+            title = spec["title"]
+            if Course.objects.filter(title=title).exists():
+                skipped += 1
+                continue
 
-        overview = CourseModule.objects.create(
-            course=course,
-            title='Module 1: Free Overview (skip assessment)',
-            description=(
-                '<p>This module is free and open to everyone — no enrollment or payment needed.</p>'
-            ),
-            order=0,
-            price=None,
-            skip_assessment=True,
-        )
-        CourseContent.objects.create(
-            title='Welcome to the free overview',
-            module=overview,
-            content_type='text',
-            text_content='This free lesson is accessible without enrollment.',
-            order=0,
-        )
-        CourseContent.objects.create(
-            title='How module access works',
-            module=overview,
-            content_type='text',
-            text_content='The next module is paid. You can request access to it individually.',
-            order=1,
-        )
-
-        module2 = CourseModule.objects.create(
-            course=course,
-            title='Module 2: Paid Module (requestable)',
-            description=(
-                '<p>This module follows the free overview, so it must show a Request Access button.</p>'
-            ),
-            order=1,
-            price=Decimal('20000.00'),
-        )
-        CourseContent.objects.create(
-            title='Paid lesson 1',
-            module=module2,
-            content_type='text',
-            text_content='Paid module content — locked until access is granted.',
-            order=0,
-        )
-
-        for i in (3, 4):
-            module = CourseModule.objects.create(
-                course=course,
-                title=f'Module {i}: Another Paid Module',
-                description='<p>Sequential gating applies here — previous module must be completed.</p>',
-                order=i,
-                price=Decimal('15000.00'),
+            course = Course.objects.create(
+                title=title,
+                slug=slugify(title) + "-dev",
+                course_type="general",
+                is_free=spec["price"] == 0,
+                price=Decimal(str(spec["price"])),
+                summary=spec["summary"],
+                content="<p>Development demo course for testing module access.</p>",
             )
-            CourseContent.objects.create(
-                title=f'Paid lesson {i}',
-                module=module,
-                content_type='text',
-                text_content='Paid module content.',
-                order=0,
-            )
+
+            for mod_title, order, price, skip in spec["modules"]:
+                mod = CourseModule.objects.create(
+                    course=course,
+                    title=mod_title,
+                    description=f"<p>Module content for {mod_title}.</p>",
+                    order=order,
+                    price=Decimal(str(price)) if price else None,
+                    skip_assessment=skip,
+                )
+                CourseContent.objects.create(
+                    title=f"{mod_title} — Lesson 1",
+                    module=mod,
+                    content_type="text",
+                    text_content=f"Content for {mod_title}.",
+                    order=0,
+                )
+                if not skip:
+                    CourseContent.objects.create(
+                        title=f"{mod_title} — Lesson 2",
+                        module=mod,
+                        content_type="text",
+                        text_content=f"Additional content for {mod_title}.",
+                        order=1,
+                    )
+
+            created += 1
+            modules = CourseModule.objects.filter(course=course).count()
+            self.stdout.write(f"  {i}/10  {title}  ({modules} modules)")
 
         self.stdout.write(self.style.SUCCESS(
-            f'Created demo course "{course.title}" (id={course.id}, slug={course.slug}) '
-            f'with {CourseModule.objects.filter(course=course).count()} modules.'
+            f"\nDone: {created} course(s) created, {skipped} already existed."
         ))
