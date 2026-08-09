@@ -1317,3 +1317,201 @@ class ModulePaymentTests(TestCase):
             student=self.student_profile,
             module=self.priced_module,
         ).count(), 1)
+
+
+@override_settings(
+    DEBUG=True,
+    STATICFILES_STORAGE='django.contrib.staticfiles.storage.StaticFilesStorage',
+)
+class CertificatePrepaidTests(TestCase):
+    """G1: certificate_prepaid allows certificate download without a CertificatePayment."""
+
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(username='certuser', password='testpw')
+        self.profile = self.user.lms_profile
+        self.profile.legal_name = 'Test User'
+        self.profile.save(update_fields=['legal_name'])
+        self.course = Course.objects.create(title='Cert Course', summary='Cert summary')
+        self.template = CertificateTemplate.objects.create(
+            course=self.course, title='Cert', status='active',
+        )
+        from .models import StudentCertificate
+        self.certificate = StudentCertificate.objects.create(
+            student=self.user, course=self.course, template=self.template,
+        )
+        self.client.login(username='certuser', password='testpw')
+        self.detail_url = reverse('lms:certificate_detail', args=[self.certificate.certificate_id])
+        self.download_url = reverse('lms:certificate_download', args=[self.certificate.certificate_id])
+
+    @override_settings(CERTIFICATE_DOWNLOADS_ENABLED=True)
+    def test_certificate_detail_paid_via_prepaid_flag(self):
+        enrollment = CourseEnrollment.objects.create(
+            student=self.profile, course=self.course, payment_status='approved',
+        )
+        enrollment.certificate_prepaid = True
+        enrollment.save(update_fields=['certificate_prepaid'])
+
+        response = self.client.get(self.detail_url)
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.context['has_paid'])
+
+    @override_settings(CERTIFICATE_DOWNLOADS_ENABLED=False)
+    def test_certificate_detail_not_paid_without_flag(self):
+        CourseEnrollment.objects.create(
+            student=self.profile, course=self.course, payment_status='approved',
+        )
+        response = self.client.get(self.detail_url)
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.context['has_paid'])
+
+    @override_settings(CERTIFICATE_DOWNLOADS_ENABLED=True)
+    def test_download_blocked_without_prepaid_or_payment(self):
+        CourseEnrollment.objects.create(
+            student=self.profile, course=self.course, payment_status='approved',
+        )
+        response = self.client.get(self.download_url, follow=True)
+        from django.contrib.messages import get_messages
+        messages_list = list(get_messages(response.wsgi_request))
+        self.assertTrue(any('pay for the certificate' in str(m) for m in messages_list))
+
+
+@override_settings(
+    DEBUG=True,
+    STATICFILES_STORAGE='django.contrib.staticfiles.storage.StaticFilesStorage',
+    CEREBRAS_API_KEY=None,
+    CEREBRAS_STRICT_ASSESSMENTS=False,
+)
+class PartialEnrollmentAccessGateTests(TestCase):
+    """G2+G3: quizzes gated by module payment; unenroll blocked for partial students."""
+
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(username='partial', password='testpw')
+        self.profile, _ = LMSProfile.objects.get_or_create(user=self.user, defaults={'role': 'student'})
+        self.course = Course.objects.create(title='Paid Course', summary='Paid summary', is_free=False, price=10000)
+        self.paid_module = CourseModule.objects.create(
+            course=self.course, title='Paid Mod', order=1, price=5000,
+        )
+        self.locked_module = CourseModule.objects.create(
+            course=self.course, title='Locked Mod', order=2, price=5000,
+        )
+        self.quiz = Quiz.objects.create(
+            course=self.course, module=self.paid_module, title='Mod1 Quiz',
+        )
+        self.locked_quiz = Quiz.objects.create(
+            course=self.course, module=self.locked_module, title='Mod2 Quiz',
+        )
+        self.quiz_question = MCQuestion.objects.create(quiz=self.quiz, content='Q1')
+        Choice.objects.create(question=self.quiz_question, content='opt', correct=True)
+        Choice.objects.create(question=self.quiz_question, content='wrong', correct=False)
+        self.locked_question = MCQuestion.objects.create(quiz=self.locked_quiz, content='Q1')
+        Choice.objects.create(question=self.locked_question, content='opt', correct=True)
+        Choice.objects.create(question=self.locked_question, content='wrong', correct=False)
+
+        self.client.login(username='partial', password='testpw')
+
+    def _grant_paid(self):
+        ModuleAccessGrant.objects.create(
+            student=self.profile, module=self.paid_module, active=True,
+        )
+
+    def test_start_quiz_blocked_for_unpaid_module(self):
+        self._grant_paid()
+        url = reverse('lms:start_quiz', args=[self.locked_quiz.slug])
+        response = self.client.get(url, follow=True)
+        from django.contrib.messages import get_messages
+        messages_list = list(get_messages(response.wsgi_request))
+        self.assertTrue(any('purchase access' in str(m) for m in messages_list))
+
+    def test_start_quiz_allowed_for_granted_module(self):
+        self._grant_paid()
+        url = reverse('lms:start_quiz', args=[self.quiz.slug])
+        response = self.client.get(url)
+        # Should redirect to quiz_question (status 302) or 200 if quiz detail fallback
+        self.assertIn(response.status_code, [200, 302])
+
+    def test_quiz_detail_shows_no_module_access_for_unpaid(self):
+        self._grant_paid()
+        url = reverse('lms:quiz_detail', args=[self.locked_quiz.slug])
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.context['no_module_access'])
+        self.assertFalse(response.context['user_can_take_quiz'])
+
+    def test_quiz_detail_can_take_for_granted_module(self):
+        self._grant_paid()
+        url = reverse('lms:quiz_detail', args=[self.quiz.slug])
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.context['no_module_access'])
+
+    def test_unenroll_blocked_with_active_grants(self):
+        self._grant_paid()
+        # Also create enrollment (signal auto-creates, but create explicitly)
+        CourseEnrollment.objects.get_or_create(
+            student=self.profile, course=self.course,
+            defaults={'payment_status': 'pending'},
+        )
+        url = reverse('lms:unenroll_course', args=[self.course.slug])
+        response = self.client.get(url, follow=True)
+        from django.contrib.messages import get_messages
+        messages_list = list(get_messages(response.wsgi_request))
+        self.assertTrue(any('module access' in str(m).lower() for m in messages_list))
+        self.assertTrue(CourseEnrollment.objects.filter(
+            student=self.profile, course=self.course
+        ).exists())
+
+    def test_unenroll_allowed_without_grants(self):
+        CourseEnrollment.objects.get_or_create(
+            student=self.profile, course=self.course,
+            defaults={'payment_status': 'pending'},
+        )
+        url = reverse('lms:unenroll_course', args=[self.course.slug])
+        response = self.client.post(url, follow=True)
+        self.assertFalse(CourseEnrollment.objects.filter(
+            student=self.profile, course=self.course
+        ).exists())
+
+
+@override_settings(
+    DEBUG=True,
+    STATICFILES_STORAGE='django.contrib.staticfiles.storage.StaticFilesStorage',
+)
+class EnsureLearningRecordsScopeTests(TestCase):
+    """G4: ensure_course_learning_records only creates progress for paid modules."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username='scope', password='testpw')
+        self.profile, _ = LMSProfile.objects.get_or_create(user=self.user, defaults={'role': 'student'})
+        self.course = Course.objects.create(title='Scope Course', summary='Scope summary', is_free=False, price=10000)
+        self.granted_mod = CourseModule.objects.create(
+            course=self.course, title='Granted Mod', order=1, price=5000,
+        )
+        self.locked_mod = CourseModule.objects.create(
+            course=self.course, title='Locked Mod', order=2, price=5000,
+        )
+        CourseEnrollment.objects.get_or_create(
+            student=self.profile, course=self.course,
+            defaults={'payment_status': 'pending'},
+        )
+        ModuleAccessGrant.objects.create(
+            student=self.profile, module=self.granted_mod, active=True,
+        )
+
+    @override_settings(CEREBRAS_API_KEY=None)
+    def test_records_created_only_for_granted_modules(self):
+        stats = ensure_course_learning_records(self.course, self.profile, queue_assessments=False)
+        self.assertEqual(stats['progress_created'], 1)
+        self.assertTrue(ModuleProgress.objects.filter(student=self.profile, module=self.granted_mod).exists())
+        self.assertFalse(ModuleProgress.objects.filter(student=self.profile, module=self.locked_mod).exists())
+
+    @override_settings(CEREBRAS_API_KEY=None)
+    def test_records_for_all_modules_with_full_access(self):
+        self.enrollment = CourseEnrollment.objects.get(student=self.profile, course=self.course)
+        self.enrollment.payment_status = 'approved'
+        self.enrollment.save(update_fields=['payment_status'])
+        stats = ensure_course_learning_records(self.course, self.profile, queue_assessments=False)
+        self.assertEqual(stats['progress_created'], 2)
+        self.assertTrue(ModuleProgress.objects.filter(student=self.profile, module=self.granted_mod).exists())
+        self.assertTrue(ModuleProgress.objects.filter(student=self.profile, module=self.locked_mod).exists())

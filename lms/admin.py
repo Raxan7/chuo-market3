@@ -53,7 +53,7 @@ class CourseEnrollmentInline(admin.TabularInline):
     model = CourseEnrollment
     extra = 1
     readonly_fields = ('date_enrolled', 'payment_date', 'payment_approved_date')
-    fields = ('student', 'date_enrolled', 'payment_status', 'payment_proof', 'payment_method', 'payment_notes', 'admin_granted_access', 'admin_granted_certificate')
+    fields = ('student', 'date_enrolled', 'payment_status', 'payment_proof', 'payment_method', 'payment_notes', 'admin_granted_access', 'admin_granted_certificate', 'certificate_prepaid')
 
 
 @admin.register(LMSProfile)
@@ -486,8 +486,8 @@ class PaymentMethodAdmin(admin.ModelAdmin):
 @admin.register(CourseEnrollment)
 class CourseEnrollmentAdmin(admin.ModelAdmin):
     """Admin interface for course enrollments with payment management"""
-    list_display = ('student', 'course', 'date_enrolled', 'payment_status', 'admin_granted_access', 'admin_granted_certificate')
-    list_filter = ('payment_status', 'admin_granted_access', 'admin_granted_certificate', 'date_enrolled')
+    list_display = ('student', 'course', 'date_enrolled', 'payment_status', 'admin_granted_access', 'admin_granted_certificate', 'certificate_prepaid')
+    list_filter = ('payment_status', 'admin_granted_access', 'admin_granted_certificate', 'certificate_prepaid', 'date_enrolled')
     search_fields = ('student__user__username', 'student__user__email', 'course__title')
     readonly_fields = ('date_enrolled', 'payment_date', 'payment_approved_date', 'payment_approved_by')
     raw_id_fields = ('student', 'course')
@@ -500,8 +500,8 @@ class CourseEnrollmentAdmin(admin.ModelAdmin):
                      'payment_approved_by', 'payment_approved_date', 'payment_notes')
         }),
         (_('Admin Granted Access'), {
-            'fields': ('admin_granted_access', 'admin_granted_certificate', 'granted_by'),
-            'description': _('Grant course access without requiring payment. Certificate access is separate.')
+            'fields': ('admin_granted_access', 'admin_granted_certificate', 'certificate_prepaid', 'granted_by'),
+            'description': _('Grant course access without requiring payment. Certificate access is separate. Use "Certificate prepaid" when the certificate was included in a bundled course payment.')
         }),
     )
     
@@ -562,6 +562,7 @@ class CourseEnrollmentAdmin(admin.ModelAdmin):
         for enrollment in queryset:
             enrollment.admin_granted_access = True
             enrollment.admin_granted_certificate = True
+            enrollment.certificate_prepaid = True
             enrollment.granted_by = request.user
             enrollment.save()
             updated += 1
@@ -579,6 +580,7 @@ class CourseEnrollmentAdmin(admin.ModelAdmin):
         for enrollment in queryset:
             enrollment.admin_granted_access = False
             enrollment.admin_granted_certificate = False
+            enrollment.certificate_prepaid = False
             enrollment.granted_by = None
             enrollment.save()
             updated += 1

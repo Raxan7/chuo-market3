@@ -182,9 +182,15 @@ def get_module_assessment(module, student=None):
     ).order_by('id').first()
 
 
-def ensure_course_learning_records(course, student, queue_assessments=True, force_assessment_regeneration=False):
+def ensure_course_learning_records(course, student, queue_assessments=True, force_assessment_regeneration=False, modules=None):
     """
     Ensure an enrolled learner has module progress rows and AI quiz jobs.
+
+    When ``modules`` is ``None`` (the default), only modules the student has
+    paid for are processed — modules they can access via a full-course grant,
+    an admin grant, or a single-module ModuleAccessGrant.  This prevents
+    partially-enrolled students from getting progress rows and AI quizzes
+    generated for modules they have not purchased.
 
     This is intentionally idempotent so it can run from enrollment signals,
     module/content changes, and course detail rendering without creating
@@ -205,7 +211,13 @@ def ensure_course_learning_records(course, student, queue_assessments=True, forc
         'assessments_skipped': 0,
     }
 
-    for module in course.modules.order_by('order', 'id'):
+    all_modules = list(course.modules.order_by('order', 'id'))
+    if modules is None:
+        accessible_modules = [m for m in all_modules if m.is_paid_for(student)]
+    else:
+        accessible_modules = list(modules)
+
+    for module in accessible_modules:
         progress, created = ModuleProgress.objects.get_or_create(
             student=student,
             module=module,

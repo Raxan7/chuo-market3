@@ -783,6 +783,20 @@ def unenroll_course(request, slug):
         messages.info(request, _("You are not enrolled in this course."))
         return redirect('lms:course_detail', slug=course.slug)
     
+    # Block unenroll if the student has active module-level grants (partially enrolled).
+    # These represent paid access that should not be silently orphaned.
+    if ModuleAccessGrant.objects.filter(
+        student=profile,
+        module__course=course,
+        active=True,
+    ).exists():
+        messages.error(
+            request,
+            _("You have paid module access for this course. "
+              "Please contact support to remove individual module access before unenrolling."),
+        )
+        return redirect('lms:course_detail', slug=course.slug)
+    
     # Delete enrollment
     enrollment.delete()
     
@@ -822,11 +836,8 @@ class QuizDetailView(DetailView):
         if self.request.user.is_authenticated and hasattr(self.request.user, 'lms_profile'):
             profile = self.request.user.lms_profile
             
-            # Check if enrolled in course
-            is_enrolled = CourseEnrollment.objects.filter(
-                student=profile,
-                course=quiz.course
-            ).exists()
+            # Check if enrolled in course (full access or module-level grant)
+            is_enrolled = quiz.course.user_has_any_access(self.request.user)
             
             # Check if instructor
             is_instructor = is_course_instructor(self.request.user, quiz.course)
@@ -842,14 +853,22 @@ class QuizDetailView(DetailView):
             if completed_attempt:
                 user_score = completed_attempt.get_score_percentage()
             
-            if is_enrolled:
+            # Module-level payment gate: quizzes for a module require paid access
+            no_module_access = False
+            if is_enrolled and quiz.module:
+                if not _user_has_module_access(self.request.user, quiz.module):
+                    no_module_access = True
+                    can_take_quiz = False
+            
+            if is_enrolled and not no_module_access:
                 if quiz.module and getattr(quiz.module, 'skip_assessment', False):
                     module_locked = False
                     can_take_quiz = False
                 elif quiz.module:
                     from .utils import is_module_unlocked
                     module_locked = not is_module_unlocked(quiz.module, profile)
-                # Do not block taking the quiz based on module lock status.
+                else:
+                    module_locked = False
                 # Check single attempt restriction
                 if not quiz_is_ready:
                     can_take_quiz = False
@@ -874,6 +893,7 @@ class QuizDetailView(DetailView):
             'has_already_taken': completed_attempt is not None,
             'user_score': user_score,
             'module_locked': module_locked,
+            'no_module_access': no_module_access,
             'is_past_due': is_past_due,
             'past_due': is_past_due,
             'generation_status': generation_status,
@@ -897,11 +917,8 @@ def start_quiz(request, slug):
     
     profile = request.user.lms_profile
     
-    # Check if enrolled or instructor
-    is_enrolled = CourseEnrollment.objects.filter(
-        student=profile,
-        course=quiz.course
-    ).exists()
+    # Check if enrolled or instructor (full access or module-level grant)
+    is_enrolled = quiz.course.user_has_any_access(request.user)
     is_instructor = is_course_instructor(request.user, quiz.course)
     
     if not is_enrolled and not is_instructor:
@@ -917,9 +934,13 @@ def start_quiz(request, slug):
             messages.info(request, _("Your personalized quiz is still being prepared. Please check the progress page in a moment."))
             return redirect('lms:quiz_detail', slug=quiz.slug)
 
-        # Allow taking mastery checks even if the module is locked.
-        # The module lock still applies to content access, but assessments
-        # can be taken to qualify for unlocking subsequent modules.
+        # Module-level payment gate: require paid access to the module
+        if not _user_has_module_access(request.user, quiz.module):
+            messages.error(
+                request,
+                _("You need to purchase access to this module to take its quiz."),
+            )
+            return redirect('lms:course_detail', slug=quiz.course.slug)
     
     # Check single attempt restriction
     completed_attempt = QuizTaker.objects.filter(user=profile, quiz=quiz, completed=True).first()
@@ -1188,7 +1209,7 @@ def course_content_detail(request, course_slug, content_id):
 
     if request.user.is_authenticated and hasattr(request.user, 'lms_profile'):
         profile = request.user.lms_profile
-        is_enrolled = CourseEnrollment.objects.filter(student=profile, course=course).exists()
+        is_enrolled = course.user_has_any_access(request.user)
         is_instructor = course.instructors.filter(id=profile.id).exists()
 
     if not is_instructor:
@@ -2003,12 +2024,13 @@ def certificate_detail(request, certificate_id):
         has_paid = CertificatePayment.objects.filter(
             certificate=certificate, user=request.user, status='completed'
         ).exists()
-        # Check if admin granted certificate access
+        # Check if admin granted certificate access or certificate was prepaid
         if not has_paid:
             has_paid = CourseEnrollment.objects.filter(
                 student__user=request.user,
                 course=certificate.course,
-                admin_granted_certificate=True
+            ).filter(
+                Q(admin_granted_certificate=True) | Q(certificate_prepaid=True)
             ).exists()
 
     # Determine certificate price
@@ -2086,11 +2108,12 @@ def download_certificate(request, certificate_id):
                     return redirect('lms:certificate_detail', certificate_id=certificate.certificate_id)
             else:
                 logger.info("payment check: no completed payment found for cert=%s user=%s", certificate_id, request.user.id)
-                # Check if admin granted certificate access
+                # Check if admin granted certificate access or certificate was prepaid
                 has_paid = CourseEnrollment.objects.filter(
                     student__user=request.user,
                     course=certificate.course,
-                    admin_granted_certificate=True
+                ).filter(
+                    Q(admin_granted_certificate=True) | Q(certificate_prepaid=True)
                 ).exists()
         except Exception as exc:
             logger.error("payment check failed for cert=%s user=%s: %s", certificate_id, request.user.id, exc)
