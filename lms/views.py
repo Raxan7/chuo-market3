@@ -575,6 +575,7 @@ class CourseDetailView(DetailView):
 
         # Per-module in-system access requests for the current student
         module_access_requests = {}
+        request_eligible_modules = set()
         if self.request.user.is_authenticated and hasattr(self.request.user, 'lms_profile'):
             module_access_requests = {
                 req.module_id: req
@@ -583,6 +584,10 @@ class CourseDetailView(DetailView):
                     module__course=course,
                 ).select_related('module', 'payment')
             }
+            # Compute which modules are eligible for a new access request
+            for mod in modules:
+                if mod.is_request_eligible_for(self.request.user.lms_profile):
+                    request_eligible_modules.add(mod.id)
         
         # Check if user is instructor for this course
         is_course_instructor = False
@@ -666,6 +671,7 @@ class CourseDetailView(DetailView):
             'has_special_module_access': bool(granted_modules) and not has_full_course_access,
             'granted_modules': [grant.module for grant in granted_modules],
             'module_access_requests': module_access_requests,
+            'request_eligible_modules': request_eligible_modules,
             'can_view_content': can_view_content,  # Allow unauthenticated preview
             'is_authenticated': self.request.user.is_authenticated,
             'payment_status': payment_status,
@@ -2411,7 +2417,6 @@ def snippe_webhook(request):
             # On completed payment, auto-create/approve enrollment
             if new_status == 'completed':
                 try:
-                    from django.contrib.auth.models import User
                     user = User.objects.get(id=user_id)
                     if hasattr(user, 'lms_profile'):
                         profile = user.lms_profile
@@ -3281,7 +3286,15 @@ def module_access_payment(request, course_slug, module_id):
         messages.info(request, _("You already have access to this module."))
         return redirect('lms:course_detail', slug=course.slug)
 
+    # Sequential gating: previous module must be accessible first
     profile = request.user.lms_profile
+    if not module.previous_module_accessible_for_request(profile):
+        messages.error(
+            request,
+            _("You must complete and gain access to the previous module before requesting access to this module."),
+        )
+        return redirect('lms:course_detail', slug=course.slug)
+
     request_obj = ModuleAccessRequest.objects.filter(
         student=profile, module=module,
     ).select_related('payment').first()
@@ -3321,12 +3334,19 @@ def module_payment_init(request, course_slug, module_id):
         messages.info(request, _("You already have access to this module."))
         return redirect('lms:course_detail', slug=course.slug)
 
-    if hasattr(request.user, 'lms_profile'):
-        profile = request.user.lms_profile
-        request_obj = ModuleAccessRequest.objects.filter(student=profile, module=module).first()
-        if request_obj and request_obj.status == 'approved':
-            messages.info(request, _("You already have approved access to this module."))
-            return redirect('lms:course_detail', slug=course.slug)
+    # Sequential gating: previous module must be accessible first
+    profile = request.user.lms_profile
+    if not module.previous_module_accessible_for_request(profile):
+        messages.error(
+            request,
+            _("You must complete and gain access to the previous module before requesting access to this module."),
+        )
+        return redirect('lms:course_detail', slug=course.slug)
+
+    request_obj = ModuleAccessRequest.objects.filter(student=profile, module=module).first()
+    if request_obj and request_obj.status == 'approved':
+        messages.info(request, _("You already have approved access to this module."))
+        return redirect('lms:course_detail', slug=course.slug)
 
     snippe_api_key = getattr(settings, 'SNIPPE_API_KEY', '')
     if not snippe_api_key:

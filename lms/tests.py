@@ -1118,7 +1118,7 @@ class ModulePaymentTests(TestCase):
             'data': {
                 'reference': 'ref_mod_dup',
                 'status': 'completed',
-                'amount': {'value': self.priced_module.price},
+                'amount': {'value': str(self.priced_module.price)},
                 'metadata': {
                     'payment_type': 'module_access',
                     'module_id': self.priced_module.id,

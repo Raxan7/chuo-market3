@@ -407,6 +407,84 @@ class CourseModule(models.Model):
             )
         ).order_by('-order', '-id').first()
 
+    def previous_module_accessible_for_request(self, student):
+        """Check if the previous module is accessible, enforcing sequential access.
+
+        Returns True if:
+          - This is the first module (no previous module).
+          - The student has full-course access.
+          - The previous module is free (no price set).
+          - The previous module has an active ModuleAccessGrant for the student.
+
+        This is used as a gate: a student can only request access to module N
+        when module N-1 is already accessible.
+        """
+        if not student:
+            return True
+
+        user = student.user
+
+        # Staff, superusers, admins, instructors always have access
+        if user.is_staff or user.is_superuser:
+            return True
+        if hasattr(user, 'lms_profile') and user.lms_profile.role == 'admin':
+            return True
+        if hasattr(user, 'lms_profile') and self.course.instructors.filter(id=user.lms_profile.id).exists():
+            return True
+
+        previous_module = self.get_previous_module()
+        if previous_module is None:
+            return True
+
+        # If the student has full course access, all modules are accessible
+        if self.course.user_has_access(user):
+            return True
+
+        # If the previous module has no price, it's accessible to everyone
+        if not previous_module.price:
+            return True
+
+        # If the student has an active grant for the previous module
+        return ModuleAccessGrant.objects.filter(
+            student=student,
+            module=previous_module,
+            active=True,
+        ).exists()
+
+    def is_request_eligible_for(self, student):
+        """Check if a student can request access to this module.
+
+        A module is eligible if:
+          - It has a price set by the admin.
+          - The student does NOT already have access.
+          - The student does NOT have a pending/approved request.
+          - The previous module is accessible (sequential gating).
+        """
+        if not student or not self.price:
+            return False
+
+        user = student.user
+
+        # Staff/superusers/admins/instructors don't need requests
+        if user.is_staff or user.is_superuser:
+            return False
+        if hasattr(user, 'lms_profile') and user.lms_profile.role == 'admin':
+            return False
+        if hasattr(user, 'lms_profile') and self.course.instructors.filter(id=user.lms_profile.id).exists():
+            return False
+
+        # If already has full course access or module grant, no need to request
+        if self.course.user_has_access(user):
+            return False
+        if self.has_admin_module_access(student):
+            return False
+
+        # Sequential gating: previous module must be accessible
+        if not self.previous_module_accessible_for_request(student):
+            return False
+
+        return True
+
     def get_next_module(self):
         return CourseModule.objects.filter(
             models.Q(course=self.course) & (
