@@ -361,10 +361,12 @@ class ModuleAccessGrantAdmin(admin.ModelAdmin):
 
 @admin.register(ModuleAccessRequest)
 class ModuleAccessRequestAdmin(admin.ModelAdmin):
-    """Admin interface to approve/reject student module access requests.
+    """Admin interface to review student module access requests.
 
-    Approving a request creates a ModuleAccessGrant (the existing, working
-    mechanism) and auto-enrolls the student in the course.
+    Requests are auto-approved once the Snippe payment is completed, which
+    creates a ModuleAccessGrant (the existing, working mechanism) and
+    auto-enrolls the student in the course. The approve/reject actions remain
+    available as a manual override for legacy pending requests.
     """
     list_display = ('student', 'module', 'module_price', 'payment_amount', 'status', 'requested_at', 'approved_at')
     list_filter = ('status', 'requested_at', 'module__course')

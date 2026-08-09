@@ -918,8 +918,8 @@ class ModulePaymentTests(TestCase):
 
     # ── Module payment success ───────────────────────────────────────
 
-    def test_module_payment_success_with_completed_payment_creates_pending_request(self):
-        """On success callback, completed ModulePayment should create a pending ModuleAccessRequest"""
+    def test_module_payment_success_auto_approves_access_on_completed_payment(self):
+        """On success callback, completed ModulePayment should auto-grant module access"""
         payment = ModulePayment.objects.create(
             user=self.student_user,
             module=self.priced_module,
@@ -936,8 +936,23 @@ class ModulePaymentTests(TestCase):
             student=self.student_profile,
             module=self.priced_module,
         )
-        self.assertEqual(access_request.status, 'pending')
+        self.assertEqual(access_request.status, 'approved')
+        self.assertIsNone(access_request.approved_by)
+        self.assertIsNotNone(access_request.approved_at)
         self.assertEqual(access_request.payment, payment)
+
+        grant = ModuleAccessGrant.objects.get(
+            student=self.student_profile,
+            module=self.priced_module,
+        )
+        self.assertTrue(grant.active)
+        self.assertIsNone(grant.granted_by)
+
+        # Auto-enrollment kicked in via the grant post-save signal
+        self.assertTrue(CourseEnrollment.objects.filter(
+            student=self.student_profile,
+            course=self.course,
+        ).exists())
         # Should have been redirected to course detail
         self.assertIn(self.course.slug, response.request['PATH_INFO'])
 
@@ -1047,11 +1062,39 @@ class ModulePaymentTests(TestCase):
         self.assertEqual(request_obj.approved_by, self.admin_user)
         self.assertEqual(request_obj.notes, 'Not eligible.')
 
+    def test_system_auto_approval_grants_access_without_admin(self):
+        """Approving without an admin (system auto-grant) should create the grant"""
+        request_obj = ModuleAccessRequest.objects.create(
+            student=self.student_profile,
+            module=self.priced_module,
+            status='pending',
+            notes='Paid via Snippe. Access granted automatically.',
+        )
+        request_obj.approve()
+
+        request_obj.refresh_from_db()
+        self.assertEqual(request_obj.status, 'approved')
+        self.assertIsNone(request_obj.approved_by)
+        self.assertIsNotNone(request_obj.approved_at)
+
+        grant = ModuleAccessGrant.objects.get(
+            student=self.student_profile,
+            module=self.priced_module,
+        )
+        self.assertTrue(grant.active)
+        self.assertIsNone(grant.granted_by)
+
+        # Auto-enrollment kicked in via the grant post-save signal
+        self.assertTrue(CourseEnrollment.objects.filter(
+            student=self.student_profile,
+            course=self.course,
+        ).exists())
+
     # ── Webhook handling for module payments ─────────────────────────
 
     @override_settings(SNIPPE_WEBHOOK_SECRET='module-test-secret')
-    def test_webhook_creates_pending_request_on_completed_module_payment(self):
-        """Webhook 'payment.completed' for a module_access should create a pending access request"""
+    def test_webhook_auto_approves_access_on_completed_module_payment(self):
+        """Webhook 'payment.completed' for a module_access should auto-grant access"""
         # Pre-create the ModulePayment (view already did this before the user went to Snippe)
         module_payment = ModulePayment.objects.create(
             user=self.student_user,
@@ -1098,8 +1141,22 @@ class ModulePaymentTests(TestCase):
             student=self.student_profile,
             module=self.priced_module,
         )
-        self.assertEqual(access_request.status, 'pending')
+        self.assertEqual(access_request.status, 'approved')
+        self.assertIsNone(access_request.approved_by)
         self.assertEqual(access_request.payment, module_payment)
+
+        grant = ModuleAccessGrant.objects.get(
+            student=self.student_profile,
+            module=self.priced_module,
+        )
+        self.assertTrue(grant.active)
+        self.assertIsNone(grant.granted_by)
+
+        # Auto-enrollment kicked in via the grant post-save signal
+        self.assertTrue(CourseEnrollment.objects.filter(
+            student=self.student_profile,
+            course=self.course,
+        ).exists())
 
     @override_settings(SNIPPE_WEBHOOK_SECRET='module-test-secret')
     def test_webhook_is_idempotent_for_module_payments(self):
