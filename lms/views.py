@@ -2506,7 +2506,7 @@ def snippe_webhook(request):
                 payment.amount = amount_value
             payment.save()
 
-            # On completed payment, create the access request awaiting admin approval
+            # On completed payment, auto-grant module access (no admin approval needed)
             if new_status == 'completed':
                 try:
                     user = User.objects.get(id=user_id)
@@ -2521,17 +2521,22 @@ def snippe_webhook(request):
                         defaults={
                             'payment': payment,
                             'status': 'pending',
-                            'notes': _('Paid via Snippe. Awaiting admin approval.'),
+                            'notes': _('Paid via Snippe. Access granted automatically.'),
                         },
                     )
-                    if not created and request_obj.status == 'pending':
+                    if request_obj.status == 'pending':
                         request_obj.payment = payment
                         request_obj.save(update_fields=['payment', 'updated_at'])
-
-                    logger.info(
-                        "Module access request created/updated: module=%s user=%s request=%s",
-                        module_id, user_id, request_obj.id,
-                    )
+                        request_obj.approve()
+                        logger.info(
+                            "Module access auto-granted on completed payment: module=%s user=%s request=%s",
+                            module_id, user_id, request_obj.id,
+                        )
+                    else:
+                        logger.info(
+                            "Module access request created/updated: module=%s user=%s request=%s status=%s",
+                            module_id, user_id, request_obj.id, request_obj.status,
+                        )
                 except User.DoesNotExist:
                     logger.warning(
                         "Snippe webhook user not found for module payment: user=%s",
@@ -3302,7 +3307,7 @@ def module_access_payment(request, course_slug, module_id):
     if request_obj and request_obj.status == 'pending':
         messages.info(
             request,
-            _("Your payment was successful and this module access request is awaiting admin approval."),
+            _("Your payment was successful and your access request is being processed."),
         )
         return redirect('lms:course_detail', slug=course.slug)
 
@@ -3434,8 +3439,8 @@ def module_payment_init(request, course_slug, module_id):
 def module_payment_success(request, course_slug, module_id):
     """Callback after Snippe checkout redirect — user lands here after paying.
 
-    Once the webhook confirms the payment, the access request is created with a
-    'pending' status. The admin then approves it via the admin panel.
+    Once the payment is confirmed, the access request is auto-approved and the
+    student is granted module access immediately (no admin approval needed).
     """
     course = get_object_or_404(Course, slug=course_slug)
     module = get_object_or_404(CourseModule, id=module_id, course=course)
@@ -3459,15 +3464,16 @@ def module_payment_success(request, course_slug, module_id):
             defaults={
                 'payment': payment,
                 'status': 'pending',
-                'notes': _('Paid via Snippe. Awaiting admin approval.'),
+                'notes': _('Paid via Snippe. Access granted automatically.'),
             },
         )
         if access_request.status == 'pending':
             access_request.payment = payment
             access_request.save(update_fields=['payment', 'updated_at'])
+            access_request.approve()
             messages.success(
                 request,
-                _("Payment successful! Your request for module access is awaiting admin approval."),
+                _("Payment successful! Your access to this module has been granted."),
             )
         elif access_request.status == 'approved':
             messages.success(request, _("Payment confirmed! You already have access to this module."))

@@ -602,7 +602,7 @@
                                         {% if module_request.status == 'pending' %}
                                         <div class="alert alert-warning border-0 mb-3">
                                             <div class="fw-semibold"><i class="fas fa-hourglass-half me-1"></i>Waiting for access grant</div>
-                                            <div class="mt-1 small">Your payment was successful and your request is awaiting admin approval.</div>
+                                            <div class="mt-1 small">Your payment was successful and your access request is being processed.</div>
                                         </div>
                                         {% elif module_request.status == 'approved' %}
                                         <div class="alert alert-success border-0 mb-3">
@@ -731,7 +731,7 @@
                                 {% if module.price and not module_request.status == 'approved' %}
                                 <div class="mt-2">
                                     {% if module_request.status == 'pending' %}
-                                    <div class="small text-muted">Payment successful. Awaiting admin approval.</div>
+                                    <div class="small text-muted">Payment successful. Access request is being processed.</div>
                                     {% elif module.id in request_eligible_modules %}
                                         {% if is_authenticated %}
                                         <a href="{% url 'lms:module_access_payment' course_slug=course.slug module_id=module.id %}" class="btn btn-sm btn-outline-primary">
