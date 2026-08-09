@@ -1,0 +1,84 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls static %}
+
+{% block extrastyle %}
+  {{ block.super }}
+  <style>
+    .bulk-price-form { max-width: 46rem; }
+    .bulk-price-form .module { padding: 1rem; }
+    .bulk-price-form .module table { width: 100%; }
+    .bulk-price-form .module td, .bulk-price-form .module th { vertical-align: middle; }
+    .bulk-price-form input[type="text"] { margin-left: .5rem; }
+  </style>
+{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+  <a href="{% url 'admin:index' %}">{% translate 'Home' %}</a>
+  &rsaquo;
+  <a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a>
+  &rsaquo;
+  <a href="{% url opts|admin_urlname:'changelist' %}">{{ opts.verbose_name_plural|capfirst }}</a>
+  &rsaquo;
+  {% translate 'Bulk set price' %}
+</div>
+{% endblock %}
+
+{% block content %}
+<div id="content-main" class="bulk-price-form">
+  <h1>{% translate 'Set price for selected modules' %}</h1>
+
+  <form method="post" action="{% url opts|admin_urlname:'changelist' %}">
+    {% csrf_token %}
+    <div class="module">
+      <h2>{% blocktranslate count counter=queryset_count %}Selected module{% plural %}Selected modules{% endblocktranslate %}
+        ({{ queryset_count }})</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>{% translate 'Module' %}</th>
+            <th>{% translate 'Course' %}</th>
+            <th>{% translate 'Current price' %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for module in queryset %}
+          <tr>
+            <td>{{ module.title }}</td>
+            <td>{{ module.course.title }}</td>
+            <td>{{ module.price|default:'—' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="module">
+      <h2>{% translate 'New price' %}</h2>
+      <p class="help">{% translate 'Most modules in a course share the same price, so set it once here instead of editing each module individually.' %}</p>
+      <div>
+        <label for="id_price">{% translate 'Price (TZS):' %}</label>
+        <input type="text" id="id_price" name="price" placeholder="{% translate 'e.g. 5000 or 10000' %}">
+      </div>
+      <p class="help">{% translate 'Leave empty to clear the price (module becomes free / Request Access is hidden).' %}</p>
+      <div>
+        <label for="id_apply_to_course">
+          <input type="checkbox" id="id_apply_to_course" name="apply_to_course">
+          {% translate 'Apply this price to ALL modules in the same course(s) as the selected modules' %}
+        </label>
+      </div>
+    </div>
+
+    {% for module in queryset %}
+    <input type="hidden" name="{{ action_checkbox_name }}" value="{{ module.pk }}">
+    {% endfor %}
+    <input type="hidden" name="action" value="bulk_set_price">
+    <input type="hidden" name="apply_price" value="1">
+
+    <div class="submit-row">
+      <input type="submit" value="{% translate 'Apply price' %}" class="default" name="_save">
+      <a href="{% url opts|admin_urlname:'changelist' %}" class="closelink">{% translate 'Cancel' %}</a>
+    </div>
+  </form>
+</div>
+{% endblock %}
