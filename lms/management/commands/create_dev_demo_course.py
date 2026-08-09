@@ -8,10 +8,25 @@ Usage:
 
 from decimal import Decimal
 
+from django.contrib.auth.models import User
 from django.core.management.base import BaseCommand
 from django.utils.text import slugify
 
-from lms.models import Course, CourseContent, CourseModule
+from lms.models import Course, CourseContent, CourseModule, LMSProfile
+
+
+def _get_or_create_instructor():
+    user, _ = User.objects.get_or_create(
+        username='dev_instructor',
+        defaults={'email': 'instructor@dev.local', 'first_name': 'Dev', 'last_name': 'Instructor'},
+    )
+    user.set_password('instructor123')
+    user.save()
+    profile, _ = LMSProfile.objects.get_or_create(user=user, defaults={'role': 'instructor'})
+    if profile.role != 'instructor':
+        profile.role = 'instructor'
+        profile.save(update_fields=['role'])
+    return profile
 
 
 COURSES = [
@@ -130,6 +145,9 @@ class Command(BaseCommand):
     help = 'Creates 10 development demo courses to test module access behaviors'
 
     def handle(self, *args, **kwargs):
+        instructor = _get_or_create_instructor()
+        self.stdout.write(f"Instructor: {instructor.user.username} (id={instructor.id})")
+
         created = 0
         skipped = 0
 
@@ -148,6 +166,7 @@ class Command(BaseCommand):
                 summary=spec["summary"],
                 content="<p>Development demo course for testing module access.</p>",
             )
+            course.instructors.add(instructor)
 
             for mod_title, order, price, skip in spec["modules"]:
                 mod = CourseModule.objects.create(
