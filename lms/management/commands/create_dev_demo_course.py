@@ -4,10 +4,14 @@ module access behaviors (free skip_assessment, paid modules, sequential gating).
 
 Usage:
     python manage.py create_dev_demo_course
+
+** This command is for local development ONLY and will refuse to run
+   when DEBUG is False (i.e. production). **
 """
 
 from decimal import Decimal
 
+from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.management.base import BaseCommand
 from django.utils.text import slugify
@@ -145,6 +149,13 @@ class Command(BaseCommand):
     help = 'Creates 10 development demo courses to test module access behaviors'
 
     def handle(self, *args, **kwargs):
+        if not settings.DEBUG:
+            self.stderr.write(self.style.ERROR(
+                'Refusing to run: DEBUG is False. '
+                'This command is for local development only.'
+            ))
+            return
+
         instructor = _get_or_create_instructor()
         self.stdout.write(f"Instructor: {instructor.user.username} (id={instructor.id})")
 
