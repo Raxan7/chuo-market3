@@ -750,8 +750,9 @@ class ModuleAccessRequest(models.Model):
     """A student's in-system request to access a single module after paying.
 
     Created automatically once the student's Snippe payment for the module is
-    completed. The admin approves or rejects the request; on approval a
-    ModuleAccessGrant is created (and auto-enrollment kicks in).
+    completed. The request is then auto-approved (status='approved') so a
+    ModuleAccessGrant is created immediately (and auto-enrollment kicks in).
+    Admins can still override by approving/rejecting via the admin panel.
     """
     STATUS_CHOICES = (
         ('pending', _('Pending')),
@@ -800,21 +801,35 @@ class ModuleAccessRequest(models.Model):
     def __str__(self):
         return f"{self.student.user.username} -> {self.module.title} ({self.get_status_display()})"
 
-    def approve(self, admin_user):
-        """Approve this request by granting the student module access."""
+    def approve(self, admin_user=None):
+        """Approve this request by granting the student module access.
+
+        When ``admin_user`` is None the approval is performed automatically by
+        the system (e.g. right after the Snippe payment is completed), so the
+        grant is recorded without an admin grantor.
+        """
+        system_approved = admin_user is None
+        grant_notes = (
+            _('Auto-granted after successful payment.') if system_approved
+            else self.notes or _('Approved from an in-system access request.')
+        )
         grant, created = ModuleAccessGrant.objects.get_or_create(
             student=self.student,
             module=self.module,
             defaults={
                 'active': True,
-                'notes': self.notes or _('Approved from an in-system access request.'),
+                'notes': grant_notes,
                 'granted_by': admin_user,
             },
         )
         if not created:
             grant.active = True
             grant.granted_by = admin_user
-            grant.save(update_fields=['active', 'granted_by'])
+            if not system_approved:
+                grant.notes = grant_notes
+                grant.save(update_fields=['active', 'granted_by', 'notes'])
+            else:
+                grant.save(update_fields=['active', 'granted_by'])
 
         self.status = 'approved'
         self.approved_by = admin_user
