@@ -573,6 +573,13 @@ class CourseDetailView(DetailView):
                 is_enrolled = bool(granted_modules)
                 has_access = course.is_free or bool(granted_modules)
 
+        # Staff and superusers always have access to every course
+        if self.request.user.is_authenticated and (
+            self.request.user.is_staff or self.request.user.is_superuser
+        ):
+            has_access = True
+            has_full_course_access = True
+
         # Per-module in-system access requests for the current student
         module_access_requests = {}
         request_eligible_modules = set()

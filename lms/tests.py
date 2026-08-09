@@ -1193,6 +1193,27 @@ class ModulePaymentTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertIn(course.slug, response.url)
 
+    def test_admin_sees_access_not_locked_on_course_detail(self):
+        """Admin (staff) sees 'You have access' for paid modules, not 'Complete the previous module'"""
+        course, overview, paid = self._course_with_skip_assessment_then_paid()
+        # Login as admin (is_staff=True)
+        self.client.login(username='admin', password='testpassword')
+        response = self.client.get(reverse('lms:course_detail', kwargs={'slug': course.slug}))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Free access')
+        self.assertContains(response, 'You have access')
+        self.assertNotContains(response, 'Complete the previous module first')
+
+    def test_student_sees_request_access_for_module_after_skip_assessment(self):
+        """A regular student sees 'Request Access' for the paid module after a skip_assessment module"""
+        course, overview, paid = self._course_with_skip_assessment_then_paid()
+        # student_user is already logged in and NOT enrolled in this course
+        response = self.client.get(reverse('lms:course_detail', kwargs={'slug': course.slug}))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Free access')
+        self.assertContains(response, 'Request Access')
+        self.assertContains(response, str(paid.price))
+
     # ── Webhook handling for module payments ─────────────────────────
 
     @override_settings(SNIPPE_WEBHOOK_SECRET='module-test-secret')
