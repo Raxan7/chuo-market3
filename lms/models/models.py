@@ -413,7 +413,7 @@ class CourseModule(models.Model):
         Returns True if:
           - This is the first module (no previous module).
           - The student has full-course access.
-          - The previous module is free (no price set).
+          - The previous module is free (no price set, or skip_assessment).
           - The previous module has an active ModuleAccessGrant for the student.
 
         This is used as a gate: a student can only request access to module N
@@ -440,6 +440,12 @@ class CourseModule(models.Model):
         if self.course.user_has_access(user):
             return True
 
+        # A skip_assessment module is free and available to everyone, so it
+        # always satisfies the sequential-access gate (no payment/enrollment
+        # needed to move on to the next module).
+        if previous_module.skip_assessment:
+            return True
+
         # If the previous module has no price, it's accessible to everyone
         if not previous_module.price:
             return True
@@ -461,6 +467,11 @@ class CourseModule(models.Model):
           - The previous module is accessible (sequential gating).
         """
         if not student or not self.price:
+            return False
+
+        # skip_assessment modules are free/available to everyone, so there is
+        # never a need to request access for them.
+        if self.skip_assessment:
             return False
 
         user = student.user
@@ -522,6 +533,10 @@ class CourseModule(models.Model):
         if not student:
             return False
 
+        # skip_assessment modules are free and available to everyone.
+        if self.skip_assessment:
+            return True
+
         user = student.user
         if self.course.is_free:
             return True
@@ -546,6 +561,10 @@ class CourseModule(models.Model):
     def is_unlocked_for(self, student):
         if not student:
             return False
+
+        # skip_assessment modules are free/available to everyone.
+        if self.skip_assessment:
+            return True
 
         if self.has_admin_module_access(student):
             return True

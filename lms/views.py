@@ -1192,20 +1192,25 @@ def course_content_detail(request, course_slug, content_id):
         is_instructor = course.instructors.filter(id=profile.id).exists()
 
     if not is_instructor:
-        if not request.user.is_authenticated:
-            messages.info(request, _("Login and enroll to open course modules."))
-            return redirect_to_login(request.get_full_path(), reverse('login'))
-        if not is_enrolled:
-            messages.info(request, _("Enroll in this course to open its modules."))
-            return redirect('lms:enroll_course', slug=course.slug)
-        if not course.user_has_any_access(request.user):
-            messages.warning(request, _("Your payment must be approved before you can access this course."))
-            return redirect('lms:payment_form', slug=course.slug)
+        # skip_assessment modules are free and available to everyone, so they
+        # bypass the enrollment/payment/unlock gate entirely.
+        is_free_module = getattr(content.module, 'skip_assessment', False)
 
-        from .utils import is_module_unlocked
-        if not is_module_unlocked(content.module, profile):
-            messages.error(request, _("This module is locked. Complete the previous module assessment with at least 70% first."))
-            return redirect('lms:course_detail', slug=course.slug)
+        if not is_free_module:
+            if not request.user.is_authenticated:
+                messages.info(request, _("Login and enroll to open course modules."))
+                return redirect_to_login(request.get_full_path(), reverse('login'))
+            if not is_enrolled:
+                messages.info(request, _("Enroll in this course to open its modules."))
+                return redirect('lms:enroll_course', slug=course.slug)
+            if not course.user_has_any_access(request.user):
+                messages.warning(request, _("Your payment must be approved before you can access this course."))
+                return redirect('lms:payment_form', slug=course.slug)
+
+            from .utils import is_module_unlocked
+            if not is_module_unlocked(content.module, profile):
+                messages.error(request, _("This module is locked. Complete the previous module assessment with at least 70% first."))
+                return redirect('lms:course_detail', slug=course.slug)
 
     # If user attempts to mark content complete, require login and enrollment to save progress
     mark_complete = request.GET.get('mark_complete') == 'true'
@@ -1216,14 +1221,17 @@ def course_content_detail(request, course_slug, content_id):
         if not profile:
             messages.error(request, _("You need an LMS profile to save progress."))
             return redirect('lms:lms_home')
-        # If user is not enrolled and not an instructor, ask them to enroll
-        if not is_enrolled and not is_instructor:
+        # Free (skip_assessment) modules allow progress without enrollment;
+        # paid modules require enrollment to save progress.
+        if not is_enrolled and not is_instructor and not getattr(content.module, 'skip_assessment', False):
             messages.info(request, _("You need to enroll in this course to save progress."))
             return redirect('lms:enroll_course', slug=course.slug)
     
-    # Allow access to all: unauthenticated users, students, and instructors
-    # Track content access for authenticated students (not instructors or staff)
-    if is_enrolled and not is_instructor and not request.user.is_staff and profile:
+    # Allow access to all: unauthenticated users, students, and instructors.
+    # By this point access is guaranteed (instructor, free skip_assessment
+    # module, or enrolled with access). Track content access for any
+    # authenticated student (not instructors or staff).
+    if profile and not is_instructor and not request.user.is_staff and request.user.is_authenticated:
         content_access, created = ContentAccess.objects.get_or_create(
             student=profile,
             content=content
@@ -1247,7 +1255,7 @@ def course_content_detail(request, course_slug, content_id):
     
     # Check if this content is completed by the student
     content_completed = False
-    if profile and is_enrolled:
+    if profile:
         content_completed = ContentAccess.objects.filter(
             student=profile,
             content=content,
@@ -3270,6 +3278,9 @@ def _user_has_module_access(user, module):
     if profile.role == 'admin':
         return True
     if module.course.instructors.filter(id=profile.id).exists():
+        return True
+    # skip_assessment modules are free and available to everyone
+    if module.skip_assessment:
         return True
     if module.course.user_has_access(user):
         return True

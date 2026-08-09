@@ -725,10 +725,24 @@
                                 <span class="badge bg-warning text-dark"><i class="fas fa-hourglass-half me-1"></i>Waiting for access grant</span>
                                 {% elif module_request.status == 'approved' %}
                                 <span class="badge bg-success">Access approved</span>
+                                {% elif module.skip_assessment %}
+                                <span class="badge bg-success"><i class="fas fa-unlock me-1"></i>Free access</span>
                                 {% else %}
                                 <span class="badge bg-secondary"><i class="fas fa-lock me-1"></i>Locked</span>
                                 {% endif %}
-                                {% if module.price and not module_request.status == 'approved' %}
+                                {% if module.skip_assessment %}
+                                <div class="mt-2">
+                                    {% with first_content=module.contents.all|first %}
+                                    {% if first_content %}
+                                    <a href="{% url 'lms:content_detail' course_slug=course.slug content_id=first_content.id %}" class="btn btn-sm btn-outline-success">
+                                        <i class="fas fa-book-open me-1"></i> Open Module
+                                    </a>
+                                    {% else %}
+                                    <div class="small text-success"><i class="fas fa-unlock me-1"></i> Available without payment</div>
+                                    {% endif %}
+                                    {% endwith %}
+                                </div>
+                                {% elif module.price and not module_request.status == 'approved' %}
                                 <div class="mt-2">
                                     {% if module_request.status == 'pending' %}
                                     <div class="small text-muted">Payment successful. Access request is being processed.</div>

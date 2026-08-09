@@ -1090,6 +1090,109 @@ class ModulePaymentTests(TestCase):
             course=self.course,
         ).exists())
 
+    # ── skip_assessment modules are free and available ───────────────
+
+    def _course_with_skip_assessment_then_paid(self):
+        """Build a course: [skip_assessment module (priced)] -> [paid module]."""
+        course = Course.objects.create(
+            title='Free Overview Course',
+            course_type='general',
+            is_free=False,
+            price=Decimal('50000.00'),
+            summary='A course with a free overview module followed by a paid module.',
+        )
+        overview = CourseModule.objects.create(
+            course=course,
+            title='Free Overview',
+            description='Free module without a quiz.',
+            order=0,
+            price=Decimal('10000.00'),
+            skip_assessment=True,
+        )
+        paid = CourseModule.objects.create(
+            course=course,
+            title='Paid Module 2',
+            description='Paid module after the free overview.',
+            order=1,
+            price=Decimal('20000.00'),
+        )
+        return course, overview, paid
+
+    def test_skip_assessment_module_is_free_and_unlocked_without_enrollment(self):
+        """A skip_assessment module is paid/unlocked for a non-enrolled student"""
+        course, overview, paid = self._course_with_skip_assessment_then_paid()
+        # Non-enrolled student (this course has no enrollment for student_profile)
+        self.assertTrue(overview.is_paid_for(self.student_profile))
+        self.assertTrue(overview.is_unlocked_for(self.student_profile))
+        # Free modules never need a paid access request
+        self.assertFalse(overview.is_request_eligible_for(self.student_profile))
+        # The paid module after it stays locked until paid
+        self.assertFalse(paid.is_unlocked_for(self.student_profile))
+
+    def test_paid_module_after_skip_assessment_is_request_eligible_without_enrollment(self):
+        """The paid module after a skip_assessment module can be requested by a non-enrolled student"""
+        course, overview, paid = self._course_with_skip_assessment_then_paid()
+        self.assertTrue(paid.previous_module_accessible_for_request(self.student_profile))
+        self.assertTrue(paid.is_request_eligible_for(self.student_profile))
+
+        # The payment page renders, so the student can start the pay flow
+        response = self.client.get(reverse('lms:module_access_payment', kwargs={
+            'course_slug': course.slug,
+            'module_id': paid.id,
+        }))
+        self.assertEqual(response.status_code, 200)
+
+    def test_course_content_detail_allows_skip_assessment_without_enrollment(self):
+        """Content in a skip_assessment module is viewable without enrollment"""
+        course, overview, paid = self._course_with_skip_assessment_then_paid()
+        content = CourseContent.objects.create(
+            title='Free lesson',
+            module=overview,
+            content_type='text',
+            text_content='Free module content.',
+            order=0,
+        )
+        # Logged-in, non-enrolled student
+        response = self.client.get(reverse('lms:content_detail', kwargs={
+            'course_slug': course.slug,
+            'content_id': content.id,
+        }))
+        self.assertEqual(response.status_code, 200)
+
+        # Anonymous visitor
+        self.client.logout()
+        response = self.client.get(reverse('lms:content_detail', kwargs={
+            'course_slug': course.slug,
+            'content_id': content.id,
+        }))
+        self.assertEqual(response.status_code, 200)
+
+    def test_course_content_detail_blocks_paid_module_without_enrollment(self):
+        """Content in a paid module is still blocked for non-enrolled students"""
+        course, overview, paid = self._course_with_skip_assessment_then_paid()
+        content = CourseContent.objects.create(
+            title='Paid lesson',
+            module=paid,
+            content_type='text',
+            text_content='Paid module content.',
+            order=0,
+        )
+        response = self.client.get(reverse('lms:content_detail', kwargs={
+            'course_slug': course.slug,
+            'content_id': content.id,
+        }))
+        self.assertEqual(response.status_code, 302)
+
+    def test_module_access_payment_redirects_for_skip_assessment_module(self):
+        """The payment page treats a skip_assessment module as already accessible"""
+        course, overview, paid = self._course_with_skip_assessment_then_paid()
+        response = self.client.get(reverse('lms:module_access_payment', kwargs={
+            'course_slug': course.slug,
+            'module_id': overview.id,
+        }))
+        self.assertEqual(response.status_code, 302)
+        self.assertIn(course.slug, response.url)
+
     # ── Webhook handling for module payments ─────────────────────────
 
     @override_settings(SNIPPE_WEBHOOK_SECRET='module-test-secret')
