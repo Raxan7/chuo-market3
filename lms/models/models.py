@@ -408,16 +408,17 @@ class CourseModule(models.Model):
         ).order_by('-order', '-id').first()
 
     def previous_module_accessible_for_request(self, student):
-        """Check if the previous module is accessible, enforcing sequential access.
+        """Check if the previous module is accessible AND completed, enforcing sequential access.
 
         Returns True if:
           - This is the first module (no previous module).
-          - The student has full-course access.
+          - The student has full-course access (all modules are accessible).
           - The previous module is free (no price set, or skip_assessment).
-          - The previous module has an active ModuleAccessGrant for the student.
+          - The previous module has an active ModuleAccessGrant for the student
+            AND the student has completed it (assessment passed or content completed).
 
         This is used as a gate: a student can only request access to module N
-        when module N-1 is already accessible.
+        when module N-1 is already accessible and completed.
         """
         if not student:
             return True
@@ -442,7 +443,8 @@ class CourseModule(models.Model):
 
         # A skip_assessment module is free and available to everyone, so it
         # always satisfies the sequential-access gate (no payment/enrollment
-        # needed to move on to the next module).
+        # needed to move on to the next module). Completion of the overview
+        # content is not required to request the next module.
         if previous_module.skip_assessment:
             return True
 
@@ -450,12 +452,18 @@ class CourseModule(models.Model):
         if not previous_module.price:
             return True
 
-        # If the student has an active grant for the previous module
-        return ModuleAccessGrant.objects.filter(
+        # If the student has an active grant for the previous module, they
+        # must have also COMPLETED it (assessment passed) to be eligible to
+        # request access to the next module.
+        if ModuleAccessGrant.objects.filter(
             student=student,
             module=previous_module,
             active=True,
-        ).exists()
+        ).exists():
+            previous_progress = previous_module.get_progress_for(student)
+            return previous_progress is not None and previous_progress.unlocks_next
+
+        return False
 
     def is_request_eligible_for(self, student):
         """Check if a student can request access to this module.

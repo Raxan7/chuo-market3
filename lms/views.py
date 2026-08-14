@@ -638,7 +638,7 @@ class CourseDetailView(DetailView):
                 if not issued_certificate:
                     # Fallback: Fetch existing certificate if already issued
                     issued_certificate = StudentCertificate.objects.filter(
-                        student=request.user,
+                        student=self.request.user,
                         course=course
                     ).first()
             

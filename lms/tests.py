@@ -1344,6 +1344,133 @@ class ModulePaymentTests(TestCase):
     DEBUG=True,
     STATICFILES_STORAGE='django.contrib.staticfiles.storage.StaticFilesStorage',
 )
+class ModuleAccessRequestAfterManualGrantTests(TestCase):
+    """A student with a manual ModuleAccessGrant for module N who completes it
+    should see a 'Request Access' button for module N+1 (priced module)."""
+
+    def setUp(self):
+        self.client = Client()
+        self.student_user = User.objects.create_user(
+            username='manual_enrollee',
+            password='testpassword',
+        )
+        self.student_profile, _ = LMSProfile.objects.get_or_create(
+            user=self.student_user,
+            defaults={'role': 'student'},
+        )
+        self.admin_user = User.objects.create_user(
+            username='admin2',
+            password='testpassword',
+            is_staff=True,
+        )
+
+        self.course = Course.objects.create(
+            title='Manual Grant Course',
+            course_type='general',
+            is_free=False,
+            price=Decimal('50000.00'),
+            summary='Course with manually granted modules.',
+        )
+
+        self.module_1 = CourseModule.objects.create(
+            course=self.course,
+            title='Module 1',
+            description='First module.',
+            order=0,
+            price=Decimal('10000.00'),
+        )
+        CourseContent.objects.create(
+            title='Lesson 1',
+            module=self.module_1,
+            content_type='text',
+            text_content='Module 1 content.',
+            order=0,
+        )
+
+        self.module_2 = CourseModule.objects.create(
+            course=self.course,
+            title='Module 2',
+            description='Second module.',
+            order=1,
+            price=Decimal('15000.00'),
+        )
+        CourseContent.objects.create(
+            title='Lesson 2',
+            module=self.module_2,
+            content_type='text',
+            text_content='Module 2 content.',
+            order=0,
+        )
+
+        self.quiz = Quiz.objects.create(
+            course=self.course,
+            module=self.module_1,
+            title='Module 1 Mastery Check',
+            pass_mark=70,
+            draft=False,
+            generation_status='ready',
+        )
+        question = MCQuestion.objects.create(quiz=self.quiz, content='Q1?', order=1)
+        Choice.objects.create(question=question, content='Correct', correct=True)
+        Choice.objects.create(question=question, content='Wrong', correct=False)
+
+        self.client.login(username='manual_enrollee', password='testpassword')
+
+    @override_settings(CEREBRAS_API_KEY=None, CEREBRAS_STRICT_ASSESSMENTS=False)
+    def test_request_access_hidden_until_previous_module_completed(self):
+        """Request Access must be hidden for module 2 until module 1 is completed."""
+        ModuleAccessGrant.objects.create(
+            student=self.student_profile,
+            module=self.module_1,
+            active=True,
+            granted_by=self.admin_user,
+        )
+
+        # For module 2, previous module is module 1 which was NOT completed
+        self.assertFalse(self.module_2.previous_module_accessible_for_request(self.student_profile))
+
+        response = self.client.get(reverse('lms:course_detail', kwargs={'slug': self.course.slug}))
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, 'Request Access — 15000.00')
+        self.assertContains(response, 'Previous module required')
+
+    @override_settings(CEREBRAS_API_KEY=None, CEREBRAS_STRICT_ASSESSMENTS=False)
+    def test_request_access_shown_after_completing_granted_module(self):
+        """After completing module 1 (granted), module 2 should show Request Access."""
+        ModuleAccessGrant.objects.create(
+            student=self.student_profile,
+            module=self.module_1,
+            active=True,
+            granted_by=self.admin_user,
+        )
+
+        # Simulate completing module 1 by passing its quiz
+        quiz_taker = QuizTaker.objects.create(
+            user=self.student_profile,
+            quiz=self.quiz,
+            score=85,
+            completed=True,
+            date_completed=timezone.now(),
+        )
+        from .utils import update_module_assessment_completion
+        progress = update_module_assessment_completion(quiz_taker)
+        self.assertTrue(progress.assessment_passed)
+        self.assertTrue(progress.unlocks_next)
+
+        # After completing module 1, module 2 should now be eligible for request
+        self.assertTrue(self.module_2.previous_module_accessible_for_request(self.student_profile))
+        self.assertTrue(self.module_2.is_request_eligible_for(self.student_profile))
+
+        response = self.client.get(reverse('lms:course_detail', kwargs={'slug': self.course.slug}))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Request Access')
+        self.assertContains(response, '15000.00')
+
+
+@override_settings(
+    DEBUG=True,
+    STATICFILES_STORAGE='django.contrib.staticfiles.storage.StaticFilesStorage',
+)
 class CertificatePrepaidTests(TestCase):
     """G1: certificate_prepaid allows certificate download without a CertificatePayment."""
 
