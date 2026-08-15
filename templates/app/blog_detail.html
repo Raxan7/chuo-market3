@@ -10,8 +10,8 @@
 
 {% block og_title %}{{ blog.title }} | ChuoSmart Blog{% endblock og_title %}
 {% block og_description %}{{ blog.content|striptags|truncatewords:25 }}{% endblock og_description %}
-{% if blog.image %}
-{% block og_image %}{{ request.scheme }}://{{ request.get_host }}{{ blog.image.url }}{% endblock og_image %}
+{% if blog.thumbnail_cloudinary or blog.thumbnail %}
+{% block og_image %}{% if blog.thumbnail_cloudinary %}{{ blog.thumbnail_cloudinary }}{% else %}{{ request.scheme }}://{{ request.get_host }}{{ blog.thumbnail.url }}{% endif %}{% endblock og_image %}
 {% endif %}
 {% block og_type %}article{% endblock og_type %}
 
@@ -448,10 +448,16 @@
                         </div>
                     </div>
                     
-                    {% if blog.thumbnail %}
+                    {% if blog.thumbnail_cloudinary or blog.thumbnail %}
                         {% load image_tags %}
-                        <!-- Don't lazy load the main blog image as it's above the fold -->
-                        {% picture webp_src=blog.thumbnail_webp|safe_url fallback_src=blog.thumbnail.url alt=blog.title css_class="blog-thumbnail" lazy=False %}
+                        {% if blog.thumbnail_cloudinary %}
+                            {# Cloudinary image - already a full URL, use directly #}
+                            <img src="{{ blog.thumbnail_cloudinary }}" alt="{{ blog.title }}" class="blog-thumbnail" loading="eager" fetchpriority="high" style="max-width: 100%; height: auto;">
+                        {% else %}
+                            {# Local storage with WebP optimization #}
+                            <!-- Don't lazy load the main blog image as it's above the fold -->
+                            {% picture webp_src=blog.thumbnail_webp|safe_url fallback_src=blog.thumbnail.url alt=blog.title css_class="blog-thumbnail" lazy=False %}
+                        {% endif %}
                     {% endif %}
                 </div>
                 
