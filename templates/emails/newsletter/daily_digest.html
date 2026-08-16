@@ -39,7 +39,7 @@
         <div style="padding:20px 28px 0;">
           <div style="border-top:2px solid #e5e7eb;padding-top:16px;">
             <h2 style="margin:0 0 4px;font-size:20px;color:#111827;">
-              {% if category.key == 'talents' %} Talents
+              {% if category.key == 'materials' %} Materials
               {% elif category.key == 'jobs' %} Jobs
               {% elif category.key == 'courses' %} Courses
               {% elif category.key == 'blogs' %} Blogs
@@ -64,9 +64,8 @@
               </h3>
 
               {# Category-specific fields #}
-              {% if category.key == 'talents' %}
+              {% if category.key == 'materials' %}
                 {% if item.category %}<p style="margin:0 0 4px;font-size:13px;color:#6b7280;">{{ item.category|title }}</p>{% endif %}
-                {% if item.location %}<p style="margin:0 0 4px;font-size:13px;color:#6b7280;">{{ item.location }}</p>{% endif %}
               {% elif category.key == 'jobs' %}
                 {% if item.company %}<p style="margin:0 0 4px;font-size:13px;color:#6b7280;">{{ item.company }}</p>{% endif %}
                 {% if item.location %}<p style="margin:0 0 4px;font-size:13px;color:#6b7280;">{{ item.location }}</p>{% endif %}
@@ -96,7 +95,7 @@
               {% endif %}
 
               <a href="{{ item.url | safe_href }}" style="display:inline-block;background:#0f766e;color:#ffffff;text-decoration:none;padding:8px 16px;border-radius:999px;font-size:13px;font-weight:600;">
-                {% if category.key == 'talents' %}View Profile
+                {% if category.key == 'materials' %}View Material
                 {% elif category.key == 'jobs' %}View & Apply
                 {% elif category.key == 'courses' %}View Course
                 {% elif category.key == 'blogs' %}Read More

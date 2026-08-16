@@ -74,7 +74,7 @@
     <!--Owl Carousel CSS (local with CDN fallback)-->
     <link rel="stylesheet" href="{% static 'app/css/owl.carousel.min.css' %}">
 
-    <!--Base CSS (layout, nav, chatbot, notifications, utilities)-->
+    <!--Base CSS (layout, nav, notifications, utilities)-->
     <link rel="stylesheet" href="{% static 'app/css/base.css' %}">
 
     <!--Custom Site CSS-->
@@ -120,8 +120,8 @@
               </a>
             </li>
             <li class="nav-item">
-              <a class="nav-link {% if 'talent' in request.path %}active fw-bold{% endif %}" href="{% url 'talent_list' %}">
-                <i class="fas fa-users fa-fw me-1 d-lg-none"></i> Talents
+              <a class="nav-link {% if 'materials' in request.path %}active fw-bold{% endif %}" href="{% url 'materials:list' %}">
+                <i class="fas fa-link fa-fw me-1 d-lg-none"></i> Materials
               </a>
             </li>
             <li class="nav-item">
@@ -138,7 +138,7 @@
           <!-- Search Form - Enhanced Design -->
           <form class="d-flex me-2 mb-2 mb-lg-0 navbar-search-form" method="get" action="{% url 'search' %}">
             <div class="input-group">
-              <input class="form-control border-end-0 navbar-search-input" name="q" type="search" placeholder="Search products, courses, blogs, talents..." aria-label="Search">
+              <input class="form-control border-end-0 navbar-search-input" name="q" type="search" placeholder="Search products, courses, blogs..." aria-label="Search">
               <button class="btn btn-light border-start-0" type="submit">
                 <i class="fas fa-search"></i>
               </button>
@@ -165,7 +165,7 @@
                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="addDropdown">
                   <li><a class="dropdown-item" href="{% url 'add_product' %}"><i class="fas fa-box fa-fw me-2"></i> Product</a></li>
                   <li><a class="dropdown-item" href="{% url 'add_blog' %}"><i class="fas fa-blog fa-fw me-2"></i> Blog Post</a></li>
-                  <li><a class="dropdown-item" href="{% url 'post_talent' %}"><i class="fas fa-star fa-fw me-2"></i> Talent</a></li>
+                  <li><a class="dropdown-item" href="{% url 'materials:create' %}"><i class="fas fa-link fa-fw me-2"></i> Material</a></li>
                   <li><a class="dropdown-item" href="{% url 'jobs:create_job' %}"><i class="fas fa-briefcase fa-fw me-2"></i> Job</a></li>
                 </ul>
               </li>
@@ -365,12 +365,10 @@
       {% if messages %}
         <div id="message-container">
           {% for message in messages %}
-            {% if not message.extra_tags == "chatbot" %}
-              <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
-                {{ message|sanitize }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-              </div>
-            {% endif %}
+            <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
+              {{ message|sanitize }}
+              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
           {% endfor %}
         </div>
       {% endif %}
@@ -378,7 +376,6 @@
     
     <div class="content flex-grow-1">
       {% block banner_slider %} {% endblock banner_slider %}
-      {% block chatbox %} {% endblock chatbox %}
       {% block livesale %} {% endblock livesale %}
       {% block main-content %} {% endblock main-content %}
     </div>
@@ -434,16 +431,6 @@
         </div>
     </footer> <!-- End Footer -->
 
-    <div id="chatbot">
-      <div id="chatbot-header">Chat with us!</div>
-      <div id="chatbot-body"></div>
-      <div id="chatbot-input">
-        <input type="text" id="chatbot-message" placeholder="Type a message...">
-        <button id="chatbot-send">Send</button>
-      </div>
-      <button id="scroll-down"><i class="fas fa-arrow-down"></i></button>
-    </div>
-    <button id="chatbot-toggle"><i class="fas fa-comments"></i><span class="chat-label d-none">Chat</span></button>
     
     <!-- Mobile Bottom Navigation -->
     <div class="mobile-bottom-nav">
@@ -477,7 +464,7 @@
     <div id="mobile-search-overlay" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0,0,0,0.9); z-index: 1001; padding: 20px;">
       <button id="close-search" style="position: absolute; top: 20px; right: 20px; background: transparent; border: none; color: white; font-size: 20px;"><i class="fas fa-times"></i></button>
       <form class="mobile-search-form" method="get" action="{% url 'search' %}">
-        <input class="form-control me-2" name="q" type="search" placeholder="Search products, courses, blogs, talents..." aria-label="Search">
+        <input class="form-control me-2" name="q" type="search" placeholder="Search products, courses, blogs..." aria-label="Search">
         <button class="btn btn-warning" type="submit">Search</button>
       </form>
     </div>
@@ -513,7 +500,7 @@
 
     <!-- Site-specific JS -->
     <script src="{% static 'app/js/myscript.js' %}"></script>
-    <!-- Base JS (cart count, chatbot, mobile nav, etc.) -->
+    <!-- Base JS (cart count, mobile nav, etc.) -->
     <script src="{% static 'app/js/base.js' %}"></script>
     {% block extra_scripts %}{% endblock extra_scripts %}
     

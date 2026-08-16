@@ -10,14 +10,14 @@
   <div class="mb-4">
     <h1 class="h3 mb-1">Search Results</h1>
     {% if query %}
-      <p class="text-muted mb-0">Showing matches for "{{ query }}" across products, courses, blogs, talents, and jobs.</p>
+      <p class="text-muted mb-0">Showing matches for "{{ query }}" across products, courses, blogs, materials, and jobs.</p>
     {% else %}
       <p class="text-muted mb-0">Enter a keyword to search the entire platform.</p>
     {% endif %}
   </div>
 
   {% if query %}
-    {% if products or courses or blogs or talents or jobs %}
+    {% if products or courses or blogs or materials or jobs %}
       {% if products %}
       <section class="mb-5">
         <div class="d-flex justify-content-between align-items-center mb-3">
@@ -84,20 +84,20 @@
       </section>
       {% endif %}
 
-      {% if talents %}
+      {% if materials %}
       <section class="mb-5">
         <div class="d-flex justify-content-between align-items-center mb-3">
-          <h2 class="h4 mb-0">Talents</h2>
-          <a href="{% url 'talent_list' %}" class="small text-decoration-none">View all talents</a>
+          <h2 class="h4 mb-0">Materials</h2>
+          <a href="{% url 'materials:list' %}" class="small text-decoration-none">View all materials</a>
         </div>
         <div class="row g-3">
-          {% for talent in talents %}
+          {% for material in materials %}
           <div class="col-12 col-md-6 col-lg-4">
-            <a href="{% url 'talent_detail' talent.id %}" class="text-decoration-none text-reset">
+            <a href="{% url 'materials:detail' material.id %}" class="text-decoration-none text-reset">
               <div class="card h-100 border-0 shadow-sm">
                 <div class="card-body">
-                  <h3 class="h6 mb-1">{{ talent.title }}</h3>
-                  <p class="small text-muted mb-0">{{ talent.description|striptags|truncatewords:18 }}</p>
+                  <h3 class="h6 mb-1">{{ material.title }}</h3>
+                  <p class="small text-muted mb-0">{{ material.description|striptags|truncatewords:18 }}</p>
                 </div>
               </div>
             </a>
@@ -138,7 +138,7 @@
   {% else %}
     <div class="alert alert-light border text-center py-4">
       <h2 class="h5">Start searching</h2>
-      <p class="mb-0 text-muted">Use the search bar to find products, courses, blogs, talents, and jobs.</p>
+      <p class="mb-0 text-muted">Use the search bar to find products, courses, blogs, materials, and jobs.</p>
     </div>
   {% endif %}
 </div>

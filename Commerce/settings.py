@@ -59,13 +59,12 @@ INSTALLED_APPS = [
     'rest_framework',  # For the API
     
     'core',
-    'talents',
-    'chatbotapp',
     'lms',
     'landing',
     'affiliates',
     # 'promotions',
     'jobs',  # Our new job portal app
+    'materials',
 ]
 
 # Site ID and domain for the sites framework

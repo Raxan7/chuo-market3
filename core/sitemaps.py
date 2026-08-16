@@ -1,12 +1,11 @@
 """
 Sitemap generators for the ChuoSmart platform.
-Contains classes for generating sitemaps for products, blogs, talents, and static views.
+Contains classes for generating sitemaps for products, blogs, jobs, and static views.
 """
 from django.contrib.sitemaps import Sitemap
 from django.urls import reverse
 from django.conf import settings
 from .models import Product, Blog
-from talents.models import Talent
 
 # Try to import Job model from jobs app if available
 try:
@@ -49,20 +48,6 @@ class BlogSitemap(ChuoSmartSitemap):
 
     def location(self, obj):
         return reverse('blog_detail', args=[obj.pk])
-
-
-class TalentSitemap(ChuoSmartSitemap):
-    changefreq = "monthly"
-    priority = 0.7
-
-    def items(self):
-        return Talent.objects.all()
-
-    def lastmod(self, obj):
-        return obj.created_at if hasattr(obj, 'created_at') else None
-
-    def location(self, obj):
-        return reverse('talent_detail', args=[obj.pk])
 
 
 class JobSitemap(ChuoSmartSitemap):

@@ -248,7 +248,7 @@ class ComposeEmailForm(forms.Form):
 
 class NewsletterDigestTestForm(forms.Form):
     CATEGORY_CHOICES = [
-        ('talents', 'Talents'),
+        ('materials', 'Materials'),
         ('jobs', 'Jobs'),
         ('courses', 'Courses'),
         ('blogs', 'Blogs'),

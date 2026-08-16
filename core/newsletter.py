@@ -26,15 +26,16 @@ logger = logging.getLogger(__name__)
 NEWSLETTER_CONFIRM_SALT = 'core.newsletter.confirmation'
 
 CATEGORY_CONFIG = OrderedDict([
-    ('talents', {
-        'label': 'Talents',
-        'model_path': 'talents.models.Talent',
+    ('materials', {
+        'label': 'Materials',
+        'model_path': 'materials.models.Material',
         'date_field': 'created_at',
         'title_field': 'title',
         'description_field': 'description',
-        'image_field': 'media',
-        'url_name': 'talent_detail',
+        'image_field': None,
+        'url_name': 'materials:detail',
         'url_kwarg': 'pk',
+        'status_filter': {'is_active': True},
     }),
     ('jobs', {
         'label': 'Jobs',
@@ -136,9 +137,8 @@ def _build_item_dict(item, config):
             d['url'] = '#'
 
     # Extra fields per category
-    if config['label'] == 'Talents':
+    if config['label'] == 'Materials':
         d['category'] = getattr(item, 'category', '')
-        d['location'] = getattr(item, 'location', '')
     elif config['label'] == 'Jobs':
         company = getattr(item, 'company', None)
         d['company'] = company.name if company else ''
@@ -218,8 +218,6 @@ def get_daily_digest_data(target_date=None, selected_categories=None):
         # Most popular (up to 5)
         if config.get('popularity_field'):
             popular = list(qs.order_by(f'-{config["popularity_field"]}')[:5])
-        elif cat_key == 'talents':
-            popular = list(qs.annotate(popularity=Count('likes')).order_by('-popularity')[:5])
         else:
             popular = list(qs.order_by(f'-{date_field}')[:5])
 
@@ -286,7 +284,7 @@ def send_daily_digest(digest_data, subscriber_email, subscriber_name=''):
         'site_url': get_site_root_url(),
         'display_name': subscriber_name or 'there',
         'categories': digest_data['categories'],
-        'has_talents': any(c['key'] == 'talents' for c in digest_data['categories']),
+        'has_materials': any(c['key'] == 'materials' for c in digest_data['categories']),
         'has_jobs': any(c['key'] == 'jobs' for c in digest_data['categories']),
         'has_courses': any(c['key'] == 'courses' for c in digest_data['categories']),
         'has_blogs': any(c['key'] == 'blogs' for c in digest_data['categories']),
@@ -604,13 +602,13 @@ def send_job_newsletter(job, related_jobs):
     )
 
 
-def send_talent_newsletter(talent, related_talents):
+def send_material_newsletter(material, related_materials):
     return _run_content_newsletter_async(
-        talent,
-        'talent',
+        material,
+        'material',
         'emails/newsletter/content_announcement.html',
-        f'New talent featured: {talent.title}',
-        related_talents,
+        f'New material added: {material.title}',
+        related_materials,
     )
 
 

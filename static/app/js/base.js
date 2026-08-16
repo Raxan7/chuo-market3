@@ -18,13 +18,6 @@ function updateCartCount() {
   });
 }
 
-/* ---- Chatbot ---- */
-function scrollToBottom() {
-  var chatbotBody = $('#chatbot-body');
-  chatbotBody.scrollTop(chatbotBody[0].scrollHeight);
-  $('#scroll-down').hide();
-}
-
 /* ---- Mobile Cart Count Sync ---- */
 function updateMobileCartCount() {
   var cartCount = $('#cart-count').text();
@@ -34,59 +27,6 @@ function updateMobileCartCount() {
 /* ---- Document Ready ---- */
 $(document).ready(function() {
   updateCartCount();
-
-  // Chatbot toggle
-  $('#chatbot-header, #chatbot-toggle').click(function() {
-    $('#chatbot').toggle();
-    setTimeout(scrollToBottom, 100);
-  });
-
-  // Chatbot send
-  $('#chatbot-send').click(function() {
-    var message = $('#chatbot-message').val().trim();
-    if (message === '') return;
-    $('#chatbot-body').append('<div><strong>You:</strong> ' + $('<span>').text(message).html() + '</div>');
-    $('#chatbot-message').val('');
-    $.ajax({
-      url: window.CHATBOT_API_URL || '/chatbot/chatbot/',
-      type: 'POST',
-      data: JSON.stringify({ message: message }),
-      contentType: 'application/json',
-      headers: { 'X-CSRFToken': window.CSRF_TOKEN || '' },
-      success: function(response) {
-        $('#chatbot-body').append('<div><strong>Bot:</strong> ' + response.reply + '</div>');
-        scrollToBottom();
-      },
-      error: function(xhr, status, error) {
-        console.error('Error sending message:', error);
-        $('#chatbot-body').append('<div><strong>Bot:</strong> Sorry, something went wrong. Please try again.</div>');
-        scrollToBottom();
-      }
-    });
-  });
-
-  // Chatbot Enter key
-  $('#chatbot-message').keypress(function(e) {
-    if (e.which === 13) {
-      $('#chatbot-send').click();
-    }
-  });
-
-  // Chatbot scroll
-  $('#chatbot-body').on('scroll', function() {
-    var cb = $(this);
-    if (cb.scrollTop() + cb.innerHeight() >= cb[0].scrollHeight) {
-      $('#scroll-down').hide();
-    } else {
-      $('#scroll-down').show();
-    }
-  });
-
-  $('#scroll-down').click(function() {
-    scrollToBottom();
-  });
-
-  scrollToBottom();
 
   // Mobile search toggle
   $('#mobile-search-toggle').click(function(e) {

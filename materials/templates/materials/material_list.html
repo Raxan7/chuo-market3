@@ -1,0 +1,83 @@
+{% extends 'app/base.html' %}
+{% load static %}
+
+{% block title %}Materials - ChuoSmart{% endblock %}
+
+{% block main-content %}
+<div class="container py-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0">Materials</h1>
+        {% if user.is_authenticated %}
+            <a href="{% url 'materials:create' %}" class="btn btn-primary">
+                <i class="fas fa-plus me-2"></i>Add Material
+            </a>
+        {% endif %}
+    </div>
+
+    {% if materials %}
+        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+            {% for material in materials %}
+            <div class="col">
+                <div class="card h-100 shadow-sm border-0">
+                    <div class="card-body d-flex flex-column">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <span class="badge bg-primary bg-opacity-10 text-primary">
+                                {{ material.get_category_display }}
+                            </span>
+                            <small class="text-muted">{{ material.created_at|date:"M d, Y" }}</small>
+                        </div>
+                        <h5 class="card-title">{{ material.title }}</h5>
+                        {% if material.description %}
+                            <p class="card-text text-muted small flex-grow-1">{{ material.description|truncatewords:30 }}</p>
+                        {% endif %}
+                        <div class="d-flex justify-content-between align-items-center mt-3 pt-3 border-top">
+                            <small class="text-muted">
+                                <i class="fas fa-user me-1"></i>{{ material.created_by.get_full_name|default:material.created_by.username }}
+                            </small>
+                            <a href="{{ material.software_url }}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-external-link-alt me-1"></i>Open Software
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        {% if is_paginated %}
+        <nav aria-label="Materials pagination" class="mt-4">
+            <ul class="pagination justify-content-center">
+                {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+                </li>
+                {% endif %}
+                <li class="page-item disabled">
+                    <span class="page-link">Page {{ page_obj.number }} of {{ paginator.num_pages }}</span>
+                </li>
+                {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+    {% else %}
+        <div class="text-center py-5">
+            <i class="fas fa-link fa-3x text-muted mb-3"></i>
+            <h4 class="text-muted">No materials yet</h4>
+            <p class="text-muted">Be the first to share a useful software or tool link!</p>
+            {% if user.is_authenticated %}
+                <a href="{% url 'materials:create' %}" class="btn btn-primary mt-2">
+                    <i class="fas fa-plus me-2"></i>Add Material
+                </a>
+            {% else %}
+                <a href="{% url 'login' %}" class="btn btn-primary mt-2">
+                    <i class="fas fa-sign-in-alt me-2"></i>Login to Add Material
+                </a>
+            {% endif %}
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

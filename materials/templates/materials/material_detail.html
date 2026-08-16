@@ -1,0 +1,67 @@
+{% extends 'app/base.html' %}
+{% load static %}
+
+{% block title %}{{ material.title }} - ChuoSmart{% endblock %}
+
+{% block main-content %}
+<div class="container py-5">
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'materials:list' %}">Materials</a></li>
+            <li class="breadcrumb-item active" aria-current="page">{{ material.title }}</li>
+        </ol>
+    </nav>
+
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <div class="card shadow-sm border-0">
+                <div class="card-body p-4 p-md-5">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <span class="badge bg-primary bg-opacity-10 text-primary fs-6 px-3 py-2">
+                            {{ material.get_category_display }}
+                        </span>
+                        <small class="text-muted">{{ material.created_at|date:"F d, Y" }}</small>
+                    </div>
+
+                    <h1 class="h3 mb-3">{{ material.title }}</h1>
+
+                    {% if material.description %}
+                        <div class="mb-4">
+                            <h5 class="text-muted small fw-normal mb-2">Description</h5>
+                            <p class="text-muted">{{ material.description|linebreaks }}</p>
+                        </div>
+                    {% endif %}
+
+                    <div class="d-flex flex-wrap gap-2 mb-4">
+                        <a href="{{ material.software_url }}" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-lg">
+                            <i class="fas fa-external-link-alt me-2"></i>Open Software
+                        </a>
+                        {% if user == material.created_by or user.is_staff %}
+                            <a href="{% url 'materials:update' material.pk %}" class="btn btn-outline-secondary">
+                                <i class="fas fa-edit me-1"></i>Edit
+                            </a>
+                            <a href="{% url 'materials:delete' material.pk %}" class="btn btn-outline-danger">
+                                <i class="fas fa-trash me-1"></i>Delete
+                            </a>
+                        {% endif %}
+                    </div>
+
+                    <hr class="my-4">
+
+                    <div class="d-flex align-items-center text-muted small">
+                        <i class="fas fa-user me-2"></i>
+                        <span>Posted by <strong>{{ material.created_by.get_full_name|default:material.created_by.username }}</strong></span>
+                        <span class="mx-3">|</span>
+                        <span><i class="fas fa-calendar-alt me-1"></i>{{ material.created_at|date:"F d, Y" }}</span>
+                        {% if material.updated_at != material.created_at %}
+                            <span class="mx-3">|</span>
+                            <span><i class="fas fa-edit me-1"></i>Updated {{ material.updated_at|date:"F d, Y" }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

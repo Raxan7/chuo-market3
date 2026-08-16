@@ -98,14 +98,14 @@
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link {% if active_tab == 'talents' %}active{% endif %}" 
-                                id="talents-tab" 
+                        <button class="nav-link {% if active_tab == 'materials' %}active{% endif %}" 
+                                id="materials-tab" 
                                 data-bs-toggle="pill" 
-                                data-bs-target="#talents" 
+                                data-bs-target="#materials" 
                                 type="button" 
                                 role="tab">
-                            <i class="fas fa-star me-2"></i> My Talents
-                            <span class="badge bg-secondary rounded-pill badge-count">{{ talent_count }}</span>
+                            <i class="fas fa-link me-2"></i> My Materials
+                            <span class="badge bg-secondary rounded-pill badge-count">{{ material_count }}</span>
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
@@ -225,51 +225,35 @@
                         {% endif %}
                     </div>
                     
-                    <!-- Talents Tab -->
-                    <div class="tab-pane fade {% if active_tab == 'talents' %}show active{% endif %}" id="talents" role="tabpanel">
+                    <!-- Materials Tab -->
+                    <div class="tab-pane fade {% if active_tab == 'materials' %}show active{% endif %}" id="materials" role="tabpanel">
                         <div class="d-flex justify-content-between align-items-center mb-3">
-                            <h4>My Talents</h4>
-                            <a href="{% url 'post_talent' %}" class="btn btn-success">
-                                <i class="fas fa-plus-circle me-2"></i> Add New Talent
+                            <h4>My Materials</h4>
+                            <a href="{% url 'materials:create' %}" class="btn btn-success">
+                                <i class="fas fa-plus-circle me-2"></i> Add New Material
                             </a>
                         </div>
                         
-                        {% if user_talents %}
+                        {% if user_materials %}
                             <div class="row row-cols-1 row-cols-md-3 g-4">
-                                {% for talent in user_talents %}
+                                {% for material in user_materials %}
                                     <div class="col">
                                         <div class="card h-100 content-card">
-                                            {% if talent.media %}
-                                                {% if talent.media.url|lower|slice:"-3:" == 'mp4' %}
-                                                    <div class="card-img-top bg-dark d-flex align-items-center justify-content-center" style="height: 180px;">
-                                                        <i class="fas fa-video fa-3x text-light"></i>
-                                                    </div>
-                                                {% elif talent.media.url|lower|slice:"-3:" in 'jpg,jpeg,png,gif,webp' %}
-                                                    <img src="{{ talent.media.url }}" class="card-img-top" alt="{{ talent.title }}" style="height: 180px; object-fit: cover;">
-                                                {% else %}
-                                                    <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 180px;">
-                                                        <i class="fas fa-file fa-3x text-secondary"></i>
-                                                    </div>
-                                                {% endif %}
-                                            {% else %}
-                                                <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 180px;">
-                                                    <i class="fas fa-star fa-3x text-secondary"></i>
-                                                </div>
-                                            {% endif %}
                                             <div class="card-body">
-                                                <h5 class="card-title">{{ talent.title }}</h5>
-                                                <p class="card-text"><span class="badge bg-secondary">{{ talent.get_category_display }}</span></p>
-                                                <p class="card-text text-muted small">Posted: {{ talent.created_at|date:"M d, Y" }}</p>
+                                                <h5 class="card-title">{{ material.title }}</h5>
+                                                <p class="card-text"><span class="badge bg-secondary">{{ material.get_category_display }}</span></p>
+                                                <p class="card-text text-muted small">{{ material.description|truncatewords:20 }}</p>
+                                                <p class="card-text text-muted small">Posted: {{ material.created_at|date:"M d, Y" }}</p>
                                             </div>
                                             <div class="card-footer d-flex justify-content-between bg-transparent border-top-0">
-                                                <a href="{% url 'talent_detail' pk=talent.pk %}" class="btn btn-info btn-sm">
-                                                    <i class="fas fa-eye"></i> View
+                                                <a href="{{ material.software_url }}" target="_blank" rel="noopener noreferrer" class="btn btn-info btn-sm">
+                                                    <i class="fas fa-external-link-alt"></i> Visit
                                                 </a>
                                                 <div>
-                                                    <a href="{% url 'edit-talent' pk=talent.pk %}" class="btn btn-primary btn-sm me-2">
+                                                    <a href="{% url 'materials:update' pk=material.pk %}" class="btn btn-primary btn-sm me-2">
                                                         <i class="fas fa-edit"></i> Edit
                                                     </a>
-                                                    <a href="{% url 'delete-talent' pk=talent.pk %}" class="btn btn-danger btn-sm">
+                                                    <a href="{% url 'materials:delete' pk=material.pk %}" class="btn btn-danger btn-sm">
                                                         <i class="fas fa-trash"></i> Delete
                                                     </a>
                                                 </div>
@@ -280,9 +264,9 @@
                             </div>
                         {% else %}
                             <div class="empty-state">
-                                <i class="fas fa-star"></i>
-                                <p>You haven't showcased any talents yet.</p>
-                                <a href="{% url 'post_talent' %}" class="btn btn-primary">Share Your First Talent</a>
+                                <i class="fas fa-link"></i>
+                                <p>You haven't added any materials yet.</p>
+                                <a href="{% url 'materials:create' %}" class="btn btn-primary">Share Your First Material</a>
                             </div>
                         {% endif %}
                     </div>

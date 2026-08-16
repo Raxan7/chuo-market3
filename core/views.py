@@ -18,12 +18,11 @@ from django.db.models import Q
 
 from .models import *
 from .forms import RegistrationForm, LoginForm, ProductForm, BlogForm, SubscriptionForm, SubscriptionPaymentForm, CustomerProfileForm, AccountDeletionRequestForm
-from .universities_colleges_tanzania import universities_data
-from chatbotapp.models import ChatMessage, UnauthenticatedChatMessage
 from asgiref.sync import sync_to_async
 from datetime import timedelta
 from core.decorators.customer_required import customer_required, phone_required
 from core.newsletter import decode_newsletter_confirmation_token, send_unsubscribe_confirmation_email
+
 
 import logging
 import re
@@ -116,22 +115,8 @@ def home(request):
 
     is_authenticated = user.is_authenticated
     if is_authenticated:
-        chat_messages = list(ChatMessage.objects.filter(user=user))
-        # request.session.flush()  # Comment out this line to prevent session flush on login
         customers = Customer.objects.filter(user=user).exists()
-        
-        # Check if we should show the dashboard notification (only once)
-        if 'dashboard_notification_shown' not in request.session:
-            # Set the session flag so we don't show it again
-            request.session['dashboard_notification_shown'] = True
-            # Set a session variable to show the modal that will be picked up by our context processor
-            request.session['show_dashboard_modal'] = True
     else:
-        chat_messages = request.session.get('messages', [])
-        if not chat_messages:
-            chat_messages = list(UnauthenticatedChatMessage.objects.filter(session_key=session_key))
-            request.session['messages'] = [{'user_message': msg.user_message, 'bot_response': msg.bot_response} for msg in chat_messages]
-            request.session.modified = True
         customers = False
 
     # Fetch courses in random order so the homepage feels fresh on every device.
@@ -171,7 +156,6 @@ def home(request):
         'featured_products': featured_products,  # Secondary content
         'banners': banners,
         'show_dashboard_modal': show_dashboard_modal,
-        'chat_messages': chat_messages,
         'is_authenticated': is_authenticated,
         'category_counts': category_counts,
         'home_page_json_ld': {
@@ -618,12 +602,12 @@ def search_bar(request):
     products = Product.objects.none()
     courses = []
     blogs = Blog.objects.none()
-    talents = []
+    materials = []
     jobs = []
 
     if query:
         from lms.models import Course
-        from talents.models import Talent
+        from materials.models import Material
 
         products = Product.objects.filter(
             Q(title__icontains=query) | Q(description__icontains=query)
@@ -640,10 +624,10 @@ def search_bar(request):
             Q(content__icontains=query)
         ).select_related('author').order_by('-created_at')[:24]
 
-        talents = Talent.objects.filter(
+        materials = Material.objects.filter(
             Q(title__icontains=query) |
             Q(description__icontains=query)
-        ).select_related('user').order_by('-created_at')[:24]
+        ).select_related('created_by').order_by('-created_at')[:24]
 
         try:
             from jobs.models import Job
@@ -659,7 +643,7 @@ def search_bar(request):
         'products': products,
         'courses': courses,
         'blogs': blogs,
-        'talents': talents,
+        'materials': materials,
         'jobs': jobs,
     }
     return render(request, 'app/global_search.html', context)
@@ -1626,7 +1610,7 @@ def delete_blog(request, slug):
 @login_required
 def user_dashboard(request):
     """
-    User dashboard showing all user content - products, blogs, talents, and courses
+    User dashboard showing all user content - products, blogs, materials, and courses
     """
     user = request.user
     
@@ -1634,9 +1618,9 @@ def user_dashboard(request):
     user_products = Product.objects.filter(user=user).order_by('-created_at')
     user_blogs = Blog.objects.filter(author=user).order_by('-created_at')
     
-    # Get user talents from the talents app
-    from talents.models import Talent
-    user_talents = Talent.objects.filter(user=user).order_by('-created_at')
+    # Get user materials
+    from materials.models import Material
+    user_materials = Material.objects.filter(created_by=user).order_by('-created_at')
     
     # Get LMS courses and certificates
     from lms.models import CourseEnrollment, StudentCertificate
@@ -1675,14 +1659,14 @@ def user_dashboard(request):
         'user': user,
         'user_products': user_products,
         'user_blogs': user_blogs,
-        'user_talents': user_talents,
+        'user_materials': user_materials,
         'enrolled_courses': enrolled_courses_data,
         'completed_courses': completed_courses,
         'certificates': certificates,
         'active_tab': active_tab,
         'product_count': user_products.count(),
         'blog_count': user_blogs.count(),
-        'talent_count': user_talents.count(),
+        'material_count': user_materials.count(),
         'enrolled_courses_count': len(enrolled_courses_data),
         'completed_courses_count': len(completed_courses),
         'certificate_count': certificates.count(),

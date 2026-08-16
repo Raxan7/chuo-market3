@@ -3,14 +3,13 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib.sitemaps.views import sitemap
-from core.sitemaps import ProductSitemap, BlogSitemap, TalentSitemap, JobSitemap, StaticViewSitemap
+from core.sitemaps import ProductSitemap, BlogSitemap, JobSitemap, StaticViewSitemap
 from core.views import robots_txt
 
 # Define the sitemaps dictionary
 sitemaps = {
     'products': ProductSitemap,
     'blogs': BlogSitemap,
-    'talents': TalentSitemap,
     'jobs': JobSitemap,
     'static': StaticViewSitemap,
 }
@@ -19,8 +18,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('core.urls')),
     path('affiliates/', include('affiliates.urls')),
-    path('talents/', include('talents.urls')),
-    path('chatbot/', include('chatbotapp.urls')),
+    path('materials/', include('materials.urls')),
     path('landing/', include('landing.urls')),
     path('lms/', include('lms.urls')),
     path('webpush/', include('webpush.urls')),  # Web Push Notifications
