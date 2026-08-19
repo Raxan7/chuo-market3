@@ -27,6 +27,7 @@ body {
   width: 100%;
   max-width: 100vw;
   position: relative;
+  padding-top: 76px; /* Account for fixed navbar */
 }
 .content {
   flex: 1 0 auto;
@@ -241,6 +242,9 @@ a, button, .btn, input, select, textarea, label, .nav-link, .dropdown-item,
 .navbar {
   padding: 0.5rem 0;
   transition: all 0.3s ease;
+}
+.navbar.fixed-top {
+  z-index: 1030;
 }
 .navbar-brand {
   font-size: 1.25rem;
