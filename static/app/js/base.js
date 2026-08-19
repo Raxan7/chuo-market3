@@ -3,6 +3,21 @@
    Extracted from base.html inline scripts for caching & perf
    ============================================================ */
 
+/* ---- Body Scroll Lock Restore ---- */
+var _savedScrollPos = 0;
+function lockBodyScroll() {
+  _savedScrollPos = window.pageYOffset;
+  document.documentElement.style.position = 'fixed';
+  document.documentElement.style.top = (-_savedScrollPos) + 'px';
+  document.body.style.overflow = 'hidden';
+}
+function restoreBodyScroll() {
+  document.documentElement.style.position = '';
+  document.documentElement.style.top = '';
+  document.body.style.overflow = '';
+  window.scrollTo(0, _savedScrollPos);
+}
+
 /* ---- Cart Count AJAX ---- */
 function updateCartCount() {
   $.ajax({
@@ -47,31 +62,61 @@ $(document).ready(function() {
   var mainNavbar = document.getElementById('mainNavbar');
   if (mainNavbar) {
     mainNavbar.addEventListener('show.bs.collapse', function() {
-      document.body.style.overflow = 'hidden';
+      lockBodyScroll();
     });
     mainNavbar.addEventListener('hide.bs.collapse', function() {
-      document.body.style.overflow = '';
+      restoreBodyScroll();
     });
   }
 
-  // Bootstrap nav fallback
-  if (typeof bootstrap === 'undefined') {
+  // Close dropdowns when clicking nav links (collapses the navbar)
+  if (typeof bootstrap !== 'undefined') {
+    // Close navbar collapse and dropdowns when clicking a regular nav link
+    $('.navbar-nav .nav-link:not(.dropdown-toggle)').on('click', function() {
+      $('.navbar-collapse').removeClass('show');
+      $('.dropdown-menu').removeClass('show');
+      $('.dropdown-toggle').attr('aria-expanded', 'false');
+      restoreBodyScroll();
+    });
+    // Click-outside: close any open dropdown
+    $(document).on('click', function(e) {
+      if (!$(e.target).closest('.dropdown').length) {
+        $('.dropdown-menu').removeClass('show');
+        $('.dropdown-toggle').attr('aria-expanded', 'false');
+      }
+    });
+    // Close dropdown after navigating to a link inside it
+    $('.dropdown-menu .dropdown-item').on('click', function() {
+      var $parent = $(this).closest('.dropdown');
+      $parent.find('.dropdown-menu').removeClass('show');
+      $parent.find('.dropdown-toggle').attr('aria-expanded', 'false');
+      $('.navbar-collapse').removeClass('show');
+      restoreBodyScroll();
+    });
+  } else {
+    // Fallback: manual toggle when Bootstrap is unavailable
     $('.navbar-toggler').on('click', function() {
       var target = $($(this).attr('data-bs-target'));
-      var isShown = target.hasClass('show');
       target.toggleClass('show');
-      document.body.style.overflow = isShown ? '' : 'hidden';
+      if (target.hasClass('show')) {
+        lockBodyScroll();
+      } else {
+        restoreBodyScroll();
+      }
     });
     $(document).on('click', function(e) {
       if (!$(e.target).closest('.navbar').length) {
         $('.navbar-collapse').removeClass('show');
-        document.body.style.overflow = '';
+        $('.dropdown-menu').removeClass('show');
+        $('.dropdown-toggle').attr('aria-expanded', 'false');
+        restoreBodyScroll();
       }
     });
-  } else {
     $('.navbar-nav .nav-link').on('click', function() {
       $('.navbar-collapse').removeClass('show');
-      document.body.style.overflow = '';
+      $('.dropdown-menu').removeClass('show');
+      $('.dropdown-toggle').attr('aria-expanded', 'false');
+      restoreBodyScroll();
     });
   }
 
