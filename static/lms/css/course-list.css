@@ -1,5 +1,5 @@
 /* Course list page - relies on lms.css for the unified course card styles. */
-@import url("../lms/css/lms.css");
+@import url("lms.css");
 
 .course-filter-panel {
     /* Filter sidebar stays visible while scrolling on wide viewports */
