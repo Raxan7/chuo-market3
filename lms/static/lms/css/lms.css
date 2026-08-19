@@ -118,6 +118,7 @@
     background-color: #f8f9fa;
     aspect-ratio: 16 / 9;
     overflow: hidden;
+    position: relative;
 }
 
 .course-card-img {
@@ -125,6 +126,13 @@
     height: 100%;
     object-fit: cover;
     display: block;
+    transition: transform 0.35s ease;
+}
+
+.course-card-uniform:hover .course-card-img {
+    object-fit: contain;
+    transform: scale(1.02);
+    background-color: #f8f9fa;
 }
 
 .course-card-img-placeholder {
