@@ -43,20 +43,35 @@ $(document).ready(function() {
 
   updateMobileCartCount();
 
+  // Body scroll lock when mobile menu is open
+  var mainNavbar = document.getElementById('mainNavbar');
+  if (mainNavbar) {
+    mainNavbar.addEventListener('show.bs.collapse', function() {
+      document.body.style.overflow = 'hidden';
+    });
+    mainNavbar.addEventListener('hide.bs.collapse', function() {
+      document.body.style.overflow = '';
+    });
+  }
+
   // Bootstrap nav fallback
   if (typeof bootstrap === 'undefined') {
     $('.navbar-toggler').on('click', function() {
       var target = $($(this).attr('data-bs-target'));
+      var isShown = target.hasClass('show');
       target.toggleClass('show');
+      document.body.style.overflow = isShown ? '' : 'hidden';
     });
     $(document).on('click', function(e) {
       if (!$(e.target).closest('.navbar').length) {
         $('.navbar-collapse').removeClass('show');
+        document.body.style.overflow = '';
       }
     });
   } else {
     $('.navbar-nav .nav-link').on('click', function() {
       $('.navbar-collapse').removeClass('show');
+      document.body.style.overflow = '';
     });
   }
 
