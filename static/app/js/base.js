@@ -67,6 +67,16 @@ $(document).ready(function() {
     mainNavbar.addEventListener('hide.bs.collapse', function() {
       restoreBodyScroll();
     });
+    // After collapse animation completes, ensure scroll styles are correct
+    mainNavbar.addEventListener('shown.bs.collapse', function() {
+      var nc = mainNavbar.querySelector('.navbar-collapse');
+      if (nc) {
+        nc.style.overflow = '';
+        nc.style.overflowY = '';
+        nc.style.height = '';
+        nc.style.maxHeight = '';
+      }
+    });
   }
 
   // Close dropdowns when clicking nav links (collapses the navbar)

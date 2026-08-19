@@ -174,11 +174,19 @@ a, button, .btn, input, select, textarea, label, .nav-link, .dropdown-item,
     margin-top: 10px;
     padding: 15px;
     border-radius: 5px;
+    max-height: calc(100dvh - 100px);
     max-height: calc(100vh - 100px);
     overflow-y: auto;
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
     touch-action: pan-y;
+    min-height: 0;
+  }
+  .navbar-collapse.show {
+    overflow-y: auto !important;
+    max-height: calc(100dvh - 100px) !important;
+    max-height: calc(100vh - 100px) !important;
+    min-height: 0 !important;
   }
   .navbar-collapse .navbar-nav {
     flex-direction: column !important;
@@ -299,6 +307,14 @@ a, button, .btn, input, select, textarea, label, .nav-link, .dropdown-item,
     overflow-y: auto;
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+    min-height: 0;
+  }
+  .navbar-collapse.show {
+    overflow-y: auto !important;
+    max-height: calc(100dvh - 100px) !important;
+    max-height: calc(100vh - 100px) !important;
+    min-height: 0 !important;
   }
   .nav-item {
     margin: 0.25rem 0;
