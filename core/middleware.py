@@ -23,9 +23,13 @@ class SecurityHeadersMiddleware(MiddlewareMixin):
             'https://upload-widget.cloudinary.com',
             'https://www.googletagmanager.com',
             'https://www.google-analytics.com',
+            'https://www.google.com',
             'https://pagead2.googlesyndication.com',
             'https://googleads.g.doubleclick.net',
             'https://www.googleadservices.com',
+            'https://fundingchoicesmessages.google.com',
+            'https://ep1.adtrafficquality.google',
+            'https://ep2.adtrafficquality.google',
             'https://static.cloudflareinsights.com',
             'https://code.jquery.com',
             'https://cdn.jsdelivr.net',
@@ -58,8 +62,11 @@ class SecurityHeadersMiddleware(MiddlewareMixin):
             'https://www.google-analytics.com',
             'https://www.google.com',
             'https://googleads.g.doubleclick.net',
+            'https://ad.doubleclick.net',
             'https://www.googleadservices.com',
+            'https://pagead2.googlesyndication.com',
             'https://ep1.adtrafficquality.google',
+            'https://ep2.adtrafficquality.google',
             'https://static.cloudflareinsights.com',
             'https://cdn.jsdelivr.net',
             'https://*.stripe.com',
@@ -102,7 +109,7 @@ class SecurityHeadersMiddleware(MiddlewareMixin):
         response.setdefault('Cross-Origin-Opener-Policy', 'same-origin')
         # CSP only when not in DEBUG
         if not settings.DEBUG:
-            response.setdefault('Content-Security-Policy', self._build_csp())
+            response['Content-Security-Policy'] = self._build_csp()
         return response
 
 
