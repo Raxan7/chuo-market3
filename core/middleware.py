@@ -65,6 +65,7 @@ class SecurityHeadersMiddleware(MiddlewareMixin):
             'https://ad.doubleclick.net',
             'https://www.googleadservices.com',
             'https://pagead2.googlesyndication.com',
+            'https://fundingchoicesmessages.google.com',
             'https://ep1.adtrafficquality.google',
             'https://ep2.adtrafficquality.google',
             'https://static.cloudflareinsights.com',
