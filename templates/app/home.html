@@ -165,15 +165,6 @@
 
 {% block main-content %}
 
-<!-- Horizontal Ad Banner - Top of Page -->
-<div class="container my-4">
-  <div class="row">
-    <div class="col-12">
-      {% include 'app/partials/list_ad_card.html' %}
-    </div>
-  </div>
-</div>
-
 <div class="container mt-4">
   <h1 class="display-6 fw-bold text-dark mb-2">View Free and Paid Courses for Students in Tanzania</h1>
   <p class="text-muted mb-0">Start a new course this week, study at your pace, and build practical skills for school and work.</p>
@@ -223,20 +214,6 @@
         <div class="col-lg-4 col-md-6 mb-4">
           {% include "lms/partials/_course_card.html" %}
         </div>
-
-        <!-- Horizontal Ad Card (Every 5 items) -->
-        {% if show_list_ads and forloop.counter|divisibleby:5 %}
-          <div class="col-12 mb-2">
-            {% include 'app/partials/list_ad_card.html' %}
-          </div>
-        {% endif %}
-
-        <!-- Vertical Ad Card (Every 6 items, offset for variety) -->
-        {% if forloop.counter|divisibleby:6 %}
-          <div class="col-lg-4 col-md-6 mb-4 d-none d-md-block">
-            {% include 'app/partials/vertical_ad_card.html' %}
-          </div>
-        {% endif %}
       {% endfor %}
     </div>
 

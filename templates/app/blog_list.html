@@ -51,11 +51,6 @@
                     </a>
                 </div>
             </div>
-            {% if show_list_ads and forloop.counter|divisibleby:5 %}
-                <div class="col-12">
-                    {% include 'app/partials/list_ad_card.html' %}
-                </div>
-            {% endif %}
         {% empty %}
             <div class="col-12 text-center py-5">
                 <div class="py-5">

@@ -439,13 +439,8 @@ class StudentCertificateAdmin(admin.ModelAdmin):
 
 class SiteSettingsAdmin(admin.ModelAdmin):
     """Admin for site settings"""
-    fieldsets = (
-        (_('Advertisement Settings'), {
-            'fields': ('show_ads_before_free_courses', 'show_list_ads'),
-            'description': _('Configure whether advertisements should be shown before users can access free courses.')
-        }),
-    )
-    
+    fieldsets = ()
+
     def has_add_permission(self, request):
         # Only allow one instance of SiteSettings
         return SiteSettings.objects.count() == 0
