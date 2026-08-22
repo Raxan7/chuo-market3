@@ -80,6 +80,7 @@ TEMPLATES = [
                 'core.context_processors.auth_status',
                 'core.seo_context.seo_context',
                 'core.context_processors.dashboard_notification',
+                'core.context_processors.site_ad_settings',
                 'core.context_processors.certificate_notice',
                 'core.context_processors.certificate_available_announcement',
             ],

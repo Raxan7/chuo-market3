@@ -439,7 +439,12 @@ class StudentCertificateAdmin(admin.ModelAdmin):
 
 class SiteSettingsAdmin(admin.ModelAdmin):
     """Admin for site settings"""
-    fieldsets = ()
+    fieldsets = (
+        (_('Advertisement Settings'), {
+            'fields': ('show_ads_before_free_courses', 'show_list_ads'),
+            'description': _('Configure whether sponsored cards should be shown on list pages.')
+        }),
+    )
 
     def has_add_permission(self, request):
         # Only allow one instance of SiteSettings
