@@ -326,10 +326,18 @@
             </div>
           </a>
         </div>
-        {% if show_list_ads and forloop.counter|divisibleby:5 %}
-          <div class="col-12 mb-2">
-            {% include 'app/partials/list_ad_card.html' %}
-          </div>
+        {% if forloop.counter|divisibleby:3 %}
+          {% if forloop.counter|divisibleby:6 %}
+            <div class="col-12 mb-2">
+              {% include 'app/partials/adsterra_ad_card.html' %}
+            </div>
+          {% else %}
+            {% if show_list_ads %}
+              <div class="col-12 mb-2">
+                {% include 'app/partials/list_ad_card.html' %}
+              </div>
+            {% endif %}
+          {% endif %}
         {% endif %}
       {% endfor %}
     </div>
