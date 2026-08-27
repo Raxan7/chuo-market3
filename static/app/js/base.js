@@ -4,18 +4,13 @@
    ============================================================ */
 
 /* ---- Body Scroll Lock Restore ---- */
-var _savedScrollPos = 0;
 function lockBodyScroll() {
-  _savedScrollPos = window.pageYOffset;
-  document.documentElement.style.position = 'fixed';
-  document.documentElement.style.top = (-_savedScrollPos) + 'px';
   document.body.style.overflow = 'hidden';
+  document.documentElement.style.overflow = 'hidden';
 }
 function restoreBodyScroll() {
-  document.documentElement.style.position = '';
-  document.documentElement.style.top = '';
   document.body.style.overflow = '';
-  window.scrollTo(0, _savedScrollPos);
+  document.documentElement.style.overflow = '';
 }
 
 /* ---- Cart Count AJAX ---- */
@@ -66,16 +61,6 @@ $(document).ready(function() {
     });
     mainNavbar.addEventListener('hide.bs.collapse', function() {
       restoreBodyScroll();
-    });
-    // After collapse animation completes, ensure scroll styles are correct
-    mainNavbar.addEventListener('shown.bs.collapse', function() {
-      var nc = mainNavbar.querySelector('.navbar-collapse');
-      if (nc) {
-        nc.style.overflow = '';
-        nc.style.overflowY = '';
-        nc.style.height = '';
-        nc.style.maxHeight = '';
-      }
     });
   }
 
@@ -161,4 +146,46 @@ document.addEventListener("DOMContentLoaded", function() {
       });
     }, 5000);
   }
+});
+
+/* ---- Ad iFrame Auto-loading ----
+   Ads are rendered as cards matching the dimensions of sibling
+   course/product/blog cards. Each ad is housed in an <iframe> that
+   auto-loads the ad content (no click required). This function
+   initializes iframes either on initial page load or after new
+   items are appended via infinite scroll. */
+function initAdIframes(root) {
+  var container = root || document;
+  var iframes = container.querySelectorAll('iframe.ad-iframe:not([data-initialized])');
+  iframes.forEach(function(iframe) {
+    var adSrc = iframe.getAttribute('data-ad-src');
+    if (iframe.getAttribute('data-ad-type') === 'adsense') {
+      // Build an inline HTML document that loads the AdSense unit
+      var client = iframe.getAttribute('data-ad-client');
+      var slot = iframe.getAttribute('data-ad-slot');
+      var doc = '<!DOCTYPE html><html><head>'
+        + '<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=' + client + '" crossorigin="anonymous"><\/script>'
+        + '<style>html,body{margin:0;padding:0;height:100%;background:transparent;overflow:hidden;}' 
+        + 'body{display:flex;align-items:center;justify-content:center;}</style>'
+        + '</head><body>'
+        + '<ins class="adsbygoogle" style="display:block" data-ad-client="' + client + '" data-ad-slot="' + slot + '" data-ad-format="auto" data-full-width-responsive="true"></ins>'
+        + '<script>(adsbygoogle = window.adsbygoogle || []).push({});<\/script>'
+        + '</body></html>';
+      iframe.srcdoc = doc;
+    } else if (adSrc) {
+      // Adsterra smart link: load the URL directly (auto-loads the ad)
+      iframe.src = adSrc;
+    }
+    iframe.setAttribute('data-initialized', 'true');
+  });
+}
+
+window.initializeListAds = function(listContainer) {
+  if (listContainer) {
+    initAdIframes(listContainer);
+  }
+};
+
+document.addEventListener("DOMContentLoaded", function() {
+  initAdIframes(document);
 });

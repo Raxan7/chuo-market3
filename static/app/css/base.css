@@ -179,14 +179,24 @@ a, button, .btn, input, select, textarea, label, .nav-link, .dropdown-item,
     overflow-y: auto;
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
-    touch-action: pan-y;
     min-height: 0;
   }
   .navbar-collapse.show {
+    position: fixed !important;
+    top: 76px !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    max-height: none !important;
+    height: calc(100dvh - 76px) !important;
+    height: calc(100vh - 76px) !important;
     overflow-y: auto !important;
-    max-height: calc(100dvh - 100px) !important;
-    max-height: calc(100vh - 100px) !important;
+    overscroll-behavior: contain !important;
+    -webkit-overflow-scrolling: touch !important;
+    z-index: 1030 !important;
     min-height: 0 !important;
+    margin-top: 0 !important;
+    border-radius: 0 !important;
   }
   .navbar-collapse .navbar-nav {
     flex-direction: column !important;
@@ -307,14 +317,24 @@ a, button, .btn, input, select, textarea, label, .nav-link, .dropdown-item,
     overflow-y: auto;
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
-    touch-action: pan-y;
     min-height: 0;
   }
   .navbar-collapse.show {
+    position: fixed !important;
+    top: 76px !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    max-height: none !important;
+    height: calc(100dvh - 76px) !important;
+    height: calc(100vh - 76px) !important;
     overflow-y: auto !important;
-    max-height: calc(100dvh - 100px) !important;
-    max-height: calc(100vh - 100px) !important;
+    overscroll-behavior: contain !important;
+    -webkit-overflow-scrolling: touch !important;
+    z-index: 1030 !important;
     min-height: 0 !important;
+    margin-top: 0 !important;
+    border-radius: 0 !important;
   }
   .nav-item {
     margin: 0.25rem 0;
@@ -449,4 +469,26 @@ a, button, .btn, input, select, textarea, label, .nav-link, .dropdown-item,
 }
 .toast-container .toast {
   min-width: 250px;
+}
+
+/* ---- Ad Cards (Course/Product/Blog list views) ----
+   Ads fill the same column width as sibling cards so they line up
+   in the grid. The iframe fills the card body and auto-loads the ad. */
+.ad-iframe-wrap {
+  width: 100%;
+  overflow: hidden;
+  border-radius: 6px;
+}
+.ad-iframe {
+  width: 100%;
+  height: 100%;
+  min-height: 200px;
+  border: 0;
+  display: block;
+}
+
+/* Ensure ad cards stretch to match sibling card heights */
+.list-ad-card,
+.adsterra-ad-card {
+  height: 100%;
 }
