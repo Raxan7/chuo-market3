@@ -394,8 +394,13 @@
     const loadingIndicator = document.getElementById('marketplace-loading-more');
     let nextUrl = (function() {
       const el = document.getElementById('marketplace-next-page');
-      const val = el ? el.textContent : '';
-      return val && val.length > 0 ? val : null;
+      if (!el) return null;
+      try {
+        const val = JSON.parse(el.textContent);
+        return val ? val : null;
+      } catch (e) {
+        return el.textContent || null;
+      }
     })();
     let isLoading = false;
 

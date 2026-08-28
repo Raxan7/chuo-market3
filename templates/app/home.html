@@ -322,8 +322,16 @@
     const listContainer = document.getElementById('home-courses-grid');
     const sentinel = document.getElementById('home-infinite-scroll-sentinel');
     const loadingIndicator = document.getElementById('home-loading-more');
-    const nextUrlRaw = document.getElementById('home-next-page').textContent;
-    let nextUrl = nextUrlRaw && nextUrlRaw.length > 0 ? nextUrlRaw : null;
+    const nextUrlEl = document.getElementById('home-next-page');
+    let nextUrl = (function() {
+      if (!nextUrlEl) return null;
+      try {
+        const val = JSON.parse(nextUrlEl.textContent);
+        return val ? val : null;
+      } catch (e) {
+        return nextUrlEl.textContent || null;
+      }
+    })();
     let isLoading = false;
 
     if (!listContainer || !sentinel || !nextUrl) {
