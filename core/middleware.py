@@ -34,6 +34,8 @@ class SecurityHeadersMiddleware(MiddlewareMixin):
             'https://cdn.jsdelivr.net',
             'https://cdnjs.cloudflare.com',
             'https://js.stripe.com',
+            'https://fundingchoicesmessages.google.com',
+            'https://ad.doubleclick.net',
         ],
         'style-src': [
             "'self'",
@@ -69,6 +71,8 @@ class SecurityHeadersMiddleware(MiddlewareMixin):
             'https://cdn.jsdelivr.net',
             'https://*.stripe.com',
             'https://res.cloudinary.com',
+            'https://ad.doubleclick.net',
+            'https://fundingchoicesmessages.google.com',
             'wss:',
         ],
         'frame-src': [
@@ -81,6 +85,7 @@ class SecurityHeadersMiddleware(MiddlewareMixin):
             'https://www.googleadservices.com',
             'https://ep2.adtrafficquality.google',
             'https://www.google.com',
+            'https://www.profitableratecpmnetwork.com',
         ],
         'object-src': ["'none'"],
         'base-uri': ["'self'"],
