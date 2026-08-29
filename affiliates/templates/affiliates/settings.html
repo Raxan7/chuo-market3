@@ -1,0 +1,17 @@
+{% extends 'app/base.html' %}
+{% block title %}Affiliate Payout Settings | ChuoSmart{% endblock %}
+{% block meta_robots %}noindex,follow{% endblock %}
+{% block main-content %}
+<div class="container py-4 py-lg-5" style="max-width:760px">
+  <h1 class="h2">Payout settings</h1>
+  <p class="text-muted">Keep payout details accurate before requesting a withdrawal.</p>
+  <form method="post" class="card border-0 shadow-sm"><div class="card-body p-4">
+    {% csrf_token %}
+    <div class="mb-3"><label class="form-label" for="payment_method">Payment method</label><input class="form-control" id="payment_method" name="payment_method" value="{{ affiliate.payment_method|default:'' }}" placeholder="e.g. M-Pesa, Airtel Money, bank"></div>
+    <div class="mb-3"><label class="form-label" for="phone_number">Phone number</label><input class="form-control" id="phone_number" name="phone_number" value="{{ affiliate.phone_number|default:'' }}" autocomplete="tel"></div>
+    <div class="mb-3"><label class="form-label" for="payout_email">Payout/contact email</label><input type="email" class="form-control" id="payout_email" name="payout_email" value="{{ affiliate.payment_details.email|default:request.user.email }}" autocomplete="email"></div>
+    <button class="btn btn-primary" type="submit">Save payout settings</button>
+    <a class="btn btn-link" href="{% url 'affiliates:dashboard' %}">Cancel</a>
+  </div></form>
+</div>
+{% endblock %}

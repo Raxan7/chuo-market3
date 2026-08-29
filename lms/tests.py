@@ -16,7 +16,10 @@ from .utils import ensure_course_learning_records, is_module_unlocked, update_mo
 
 @override_settings(
     DEBUG=True,
-    STATICFILES_STORAGE='django.contrib.staticfiles.storage.StaticFilesStorage',
+    STORAGES={
+        'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
+        'staticfiles': {'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage'},
+    },
 )
 class LMSModuleGatingTests(TestCase):
     def setUp(self):
@@ -394,7 +397,10 @@ class LMSModuleGatingTests(TestCase):
 
 @override_settings(
     DEBUG=True,
-    STATICFILES_STORAGE='django.contrib.staticfiles.storage.StaticFilesStorage',
+    STORAGES={
+        'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
+        'staticfiles': {'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage'},
+    },
 )
 class CoursePaymentTests(TestCase):
     """Tests for paid/free course payment flow and instructor price editing"""
@@ -736,7 +742,10 @@ class CoursePaymentTests(TestCase):
 
 @override_settings(
     DEBUG=True,
-    STATICFILES_STORAGE='django.contrib.staticfiles.storage.StaticFilesStorage',
+    STORAGES={
+        'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
+        'staticfiles': {'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage'},
+    },
 )
 class ModulePaymentTests(TestCase):
     """Tests for single-module access payment and in-system request flow."""
@@ -1362,7 +1371,10 @@ class ModulePaymentTests(TestCase):
 
 @override_settings(
     DEBUG=True,
-    STATICFILES_STORAGE='django.contrib.staticfiles.storage.StaticFilesStorage',
+    STORAGES={
+        'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
+        'staticfiles': {'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage'},
+    },
 )
 class ModuleAccessRequestAfterManualGrantTests(TestCase):
     """A student with a manual ModuleAccessGrant for module N who completes it
@@ -1489,7 +1501,10 @@ class ModuleAccessRequestAfterManualGrantTests(TestCase):
 
 @override_settings(
     DEBUG=True,
-    STATICFILES_STORAGE='django.contrib.staticfiles.storage.StaticFilesStorage',
+    STORAGES={
+        'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
+        'staticfiles': {'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage'},
+    },
 )
 class CertificatePrepaidTests(TestCase):
     """G1: certificate_prepaid allows certificate download without a CertificatePayment."""
@@ -1546,7 +1561,10 @@ class CertificatePrepaidTests(TestCase):
 
 @override_settings(
     DEBUG=True,
-    STATICFILES_STORAGE='django.contrib.staticfiles.storage.StaticFilesStorage',
+    STORAGES={
+        'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
+        'staticfiles': {'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage'},
+    },
     CEREBRAS_API_KEY=None,
     CEREBRAS_STRICT_ASSESSMENTS=False,
 )
@@ -1644,7 +1662,10 @@ class PartialEnrollmentAccessGateTests(TestCase):
 
 @override_settings(
     DEBUG=True,
-    STATICFILES_STORAGE='django.contrib.staticfiles.storage.StaticFilesStorage',
+    STORAGES={
+        'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
+        'staticfiles': {'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage'},
+    },
 )
 class EnsureLearningRecordsScopeTests(TestCase):
     """G4: ensure_course_learning_records only creates progress for paid modules."""

@@ -189,6 +189,22 @@ class Course(models.Model):
             return f"{self.title} ({self.code})"
         return self.title
     
+    @property
+    def enrolled_students_count(self):
+        """Use a queryset annotation when available, otherwise count lazily."""
+        annotated = getattr(self, 'student_count', None)
+        if annotated is not None:
+            return annotated
+        return self.students.count()
+
+    @property
+    def instructor_count(self):
+        """Use a queryset annotation when available, otherwise count lazily."""
+        annotated = getattr(self, 'annotated_instructor_count', None)
+        if annotated is not None:
+            return annotated
+        return self.instructors.count()
+
     def get_absolute_url(self):
         return reverse("lms:course_detail", kwargs={"slug": self.slug})
         

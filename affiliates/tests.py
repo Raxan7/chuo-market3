@@ -39,3 +39,36 @@ class PayoutSecurityTests(TestCase):
         second = self.client.post(reverse('affiliates:request_payout'))
         self.assertEqual(second.status_code, 400)
         self.assertEqual(PayoutRequest.objects.filter(affiliate=self.affiliate).count(), 1)
+
+
+class AffiliateFlowRegressionTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username='new-affiliate', email='new-affiliate@example.com', password='password12345'
+        )
+        self.client.login(username='new-affiliate', password='password12345')
+
+    def test_registration_uses_affiliate_code_field(self):
+        response = self.client.post(reverse('affiliates:register'))
+        self.assertRedirects(response, reverse('affiliates:dashboard'))
+        affiliate = Affiliate.objects.get(user=self.user)
+        self.assertTrue(affiliate.affiliate_code)
+
+    def test_canonical_code_referral_link_resolves(self):
+        affiliate = Affiliate.objects.create(user=self.user, affiliate_code='share-me')
+        visitor = self.client_class()
+        response = visitor.get(reverse('affiliates:referral_link', kwargs={'code': 'share-me'}))
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(visitor.session.get('referrer_id'), affiliate.pk)
+
+    def test_payout_history_uses_payout_requests(self):
+        affiliate = Affiliate.objects.create(user=self.user, affiliate_code='payout-history')
+        PayoutRequest.objects.create(
+            affiliate=affiliate,
+            amount=Decimal('2500.00'),
+            payment_method='mobile_money',
+            status=PayoutRequest.PayoutStatus.PAID,
+        )
+        response = self.client.get(reverse('affiliates:payouts'))
+        self.assertContains(response, '2,500')
+        self.assertContains(response, 'Paid')

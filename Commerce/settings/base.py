@@ -25,6 +25,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'django.contrib.sitemaps',
     'django.contrib.sites',
+    'django.contrib.humanize',
     'tinymce',
     'markdown_deux',
     'widget_tweaks',
@@ -120,7 +121,7 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 LANGUAGE_CODE = 'en-us'
-TIME_ZONE = 'UTC'
+TIME_ZONE = os.getenv('TIME_ZONE', 'Africa/Dar_es_Salaam')
 
 CERTIFICATE_DOWNLOADS_ENABLED = True
 CERTIFICATE_RELEASE_DATE = date(2026, 6, 24)
@@ -141,17 +142,20 @@ PRIVATE_MEDIA_ROOT = os.getenv('PRIVATE_MEDIA_ROOT', str(BASE_DIR / 'private_med
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'
+STORAGES = {
+    'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
+    'staticfiles': {'BACKEND': 'whitenoise.storage.CompressedStaticFilesStorage'},
+}
 
-TINYMCE_JS_URL = 'https://cdnjs.cloudflare.com/ajax/libs/tinymce/5.10.7/tinymce.min.js'
-TINYMCE_JS_ROOT = 'https://cdnjs.cloudflare.com/ajax/libs/tinymce/5.10.7/'
+TINYMCE_LICENSE_KEY = os.getenv('TINYMCE_LICENSE_KEY', 'gpl')
 
 TINYMCE_DEFAULT_CONFIG = {
     'height': 300,
-    'plugins': 'advlist autolink lists link image charmap print preview hr anchor pagebreak',
+    'license_key': TINYMCE_LICENSE_KEY,
+    'plugins': 'advlist autolink lists link image charmap preview anchor searchreplace visualblocks code fullscreen media table help wordcount',
     'toolbar_mode': 'floating',
     'menubar': False,
-    'toolbar': 'undo redo | formatselect | bold italic underline | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | removeformat | link image',
+    'toolbar': 'undo redo | blocks | bold italic underline | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | removeformat | link image media table | code fullscreen',
     'image_advtab': False,
     'paste_data_images': True,
     'content_css': '/static/css/tinymce_custom.css',

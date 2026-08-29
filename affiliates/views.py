@@ -7,7 +7,6 @@ from django.contrib.auth.models import User
 from django.views.decorators.http import require_POST
 from django.db import transaction
 from django.db.models import Sum
-import uuid
 import json
 
 
@@ -32,18 +31,9 @@ def affiliate_dashboard(request):
 @login_required
 def register_affiliate(request):
     if request.method == 'POST':
-        # Check if user already is an affiliate
-        affiliate, created = Affiliate.objects.get_or_create(user=request.user)
-        
-        if created:
-            # Generate a unique referral code if not provided
-            if not affiliate.referral_code:
-                affiliate.referral_code = f"{request.user.username}-{uuid.uuid4().hex[:6]}"
-                affiliate.save()
-            
-            return redirect('affiliates:dashboard')
-        else:
-            return redirect('affiliates:dashboard')
+        # The model generates a unique affiliate_code on first save.
+        Affiliate.objects.get_or_create(user=request.user)
+        return redirect('affiliates:dashboard')
     
     return render(request, 'affiliates/register.html')
 
@@ -73,12 +63,16 @@ def request_payout(request):
     return HttpResponse("Payout request submitted for review.")
 
 
-def referral_link(request, username=None, product_id=None):
-    # This view handles incoming referral links
-    if username:
+def referral_link(request, code=None, username=None, product_id=None):
+    # This view handles both canonical affiliate-code links and legacy username links.
+    if code or username:
         try:
-            referring_user = User.objects.get(username=username)
-            affiliate = Affiliate.objects.get(user=referring_user)
+            if code:
+                affiliate = Affiliate.objects.select_related('user').get(affiliate_code=code)
+                referring_user = affiliate.user
+            else:
+                referring_user = User.objects.get(username=username)
+                affiliate = Affiliate.objects.get(user=referring_user)
             
             # Store referral info in session
             request.session['referrer_id'] = affiliate.id
@@ -95,11 +89,11 @@ def referral_link(request, username=None, product_id=None):
                     pass
             
             # Otherwise redirect to homepage
-            return redirect('core:home')
+            return redirect('home')
         except (User.DoesNotExist, Affiliate.DoesNotExist):
             pass
     
-    return redirect('core:home')
+    return redirect('home')
 
 
 @login_required
@@ -111,7 +105,7 @@ def affiliate_stats(request):
     
     # Get basic stats
     total_referrals = Referral.objects.filter(affiliate=affiliate).count()
-    successful_referrals = Referral.objects.filter(affiliate=affiliate, is_converted=True).count()
+    successful_referrals = Referral.objects.filter(affiliate=affiliate, converted_at__isnull=False).count()
     total_earnings = sum([r.commission_earned for r in Referral.objects.filter(affiliate=affiliate)])
     
     context = {
@@ -154,12 +148,20 @@ def affiliate_settings(request):
         return render(request, 'affiliates/not_affiliate.html')
     
     if request.method == 'POST':
-        # Update affiliate settings
-        payout_email = request.POST.get('payout_email')
+        payment_method = (request.POST.get('payment_method') or '').strip()[:50]
+        phone_number = (request.POST.get('phone_number') or '').strip()[:15]
+        payout_email = (request.POST.get('payout_email') or '').strip()
+
+        details = dict(affiliate.payment_details or {})
         if payout_email:
-            affiliate.payout_email = payout_email
-            affiliate.save()
-        
+            details['email'] = payout_email
+        if phone_number:
+            details['phone'] = phone_number
+
+        affiliate.payment_method = payment_method or affiliate.payment_method
+        affiliate.phone_number = phone_number or affiliate.phone_number
+        affiliate.payment_details = details
+        affiliate.save(update_fields=['payment_method', 'phone_number', 'payment_details'])
         return redirect('affiliates:settings')
     
     context = {
@@ -176,14 +178,15 @@ def payout_history(request):
     except Affiliate.DoesNotExist:
         return render(request, 'affiliates/not_affiliate.html')
     
-    # In a real app, you'd have a PayoutHistory model
-    # For now, we'll just use referrals that have been paid
-    payouts = Referral.objects.filter(affiliate=affiliate, is_paid=True)
-    
+    payouts = PayoutRequest.objects.filter(affiliate=affiliate).order_by('-requested_at')
+    total_paid = payouts.filter(status=PayoutRequest.PayoutStatus.PAID).aggregate(
+        total=Sum('amount')
+    )['total'] or 0
+
     context = {
         'affiliate': affiliate,
         'payouts': payouts,
-        'total_paid': sum([r.commission_earned for r in payouts]),
+        'total_paid': total_paid,
     }
     
     return render(request, 'affiliates/payouts.html', context)

@@ -5,7 +5,7 @@
 {% block title %}
 {% if current_filters.q %}
 {{ current_filters.q|truncatechars:45 }} Courses for Students in Tanzania
-{% elif current_filters.course_type or current_filters.program or current_filters.semester or current_filters.level %}
+{% elif current_filters.course_type or current_filters.program or current_filters.semester or current_filters.level or current_filters.pricing %}
 Filtered Courses for Students in Tanzania
 {% else %}
 Free and Paid Courses in Tanzania
@@ -15,7 +15,7 @@ Free and Paid Courses in Tanzania
 {% block meta_description %}
 {% if current_filters.q %}
 View course results for "{{ current_filters.q|truncatechars:40 }}". Find free and paid student courses in Tanzania and start learning this week.
-{% elif current_filters.course_type or current_filters.program or current_filters.semester or current_filters.level %}
+{% elif current_filters.course_type or current_filters.program or current_filters.semester or current_filters.level or current_filters.pricing %}
 View filtered courses for students in Tanzania. Compare free and paid options, choose your track, and complete your course in weeks.
 {% else %}
 View free and paid courses for students in Tanzania. Browse programs, levels, and semesters to find your next course this week.
@@ -89,6 +89,15 @@ View free and paid courses for students in Tanzania. Browse programs, levels, an
                                 </h2>
                                 <div id="filterCollapse" class="accordion-collapse collapse" aria-labelledby="filterHeading">
                                     <div class="accordion-body">
+                                        <div class="mb-3">
+                                            <label for="pricing" class="form-label fw-bold"><i class="fas fa-tag me-2"></i>Pricing</label>
+                                            <select name="pricing" id="pricing" class="form-select">
+                                                <option value="">Free & Paid</option>
+                                                <option value="free" {% if current_filters.pricing == 'free' %}selected{% endif %}>Free courses</option>
+                                                <option value="paid" {% if current_filters.pricing == 'paid' %}selected{% endif %}>Paid courses</option>
+                                            </select>
+                                        </div>
+
                                         <div class="mb-3">
                                             <label for="course_type" class="form-label fw-bold"><i class="fas fa-graduation-cap me-2"></i>Course Type</label>
                                             <select name="course_type" id="course_type" class="form-select">

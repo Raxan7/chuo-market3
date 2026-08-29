@@ -48,8 +48,18 @@ def dashboard_notification(request):
 
 
 def site_ad_settings(request):
-    """Expose site-wide ad toggles for templates with a safe default."""
-    show_list_ads = True
+    """Expose ad toggles and suppress ads on trust-sensitive/high-intent pages."""
+    path = request.path.lower()
+    sensitive_prefixes = (
+        '/login/', '/registration/', '/checkout/', '/cart/', '/profile/',
+        '/changepassword/', '/account-deletion-request/', '/lms/certificates/',
+        '/lms/quizzes/', '/lms/quiz',
+    )
+    sensitive_fragments = ('/payment/', '/access/pay/', '/access/success/', '/access/status/')
+    ads_allowed = not (
+        path.startswith(sensitive_prefixes) or any(fragment in path for fragment in sensitive_fragments)
+    )
+    show_list_ads = ads_allowed
     try:
         from lms.models import SiteSettings
         settings_obj = SiteSettings.get_settings()
@@ -57,4 +67,4 @@ def site_ad_settings(request):
     except Exception:
         show_list_ads = True
 
-    return {'show_list_ads': show_list_ads}
+    return {'show_list_ads': show_list_ads and ads_allowed, 'ads_allowed': ads_allowed}

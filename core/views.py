@@ -141,10 +141,6 @@ def home(request):
         request.session.create()
         session_key = request.session.session_key
 
-    # Set session expiration times
-    request.session.set_expiry(3600)  # 1 hour of constant use
-    request.session.set_expiry(1800)  # 30 minutes if inactive
-
     is_authenticated = user.is_authenticated
     if is_authenticated:
         customers = Customer.objects.filter(user=user).exists()
@@ -153,17 +149,19 @@ def home(request):
 
     # Fetch courses in random order so the homepage feels fresh on every device.
     from lms.models import Course
-    courses_qs = Course.objects.select_related('program').order_by('?')
+    from django.db.models import Count
+    courses_qs = (Course.objects.select_related('program').prefetch_related('instructors')
+                  .annotate(student_count=Count('students', distinct=True), annotated_instructor_count=Count('instructors', distinct=True))
+                  .order_by('-is_pinned', '-created_at', '-id'))
     paginator = Paginator(courses_qs, LIST_PAGE_SIZE)
     page_number = request.GET.get('page')
     courses_page = paginator.get_page(page_number)
     banners = list(Banners.objects.all())
     
     # Keep the product carousel randomized as well.
-    featured_products = list(Product.objects.select_related('user').order_by('?')[:8])
+    featured_products = list(Product.objects.select_related('user').order_by('-created_at', '-id')[:8])
     
-    # Get category counts for the category cards  
-    from django.db.models import Count
+    # Get category counts for the category cards
     category_counts = {
         'mobiles': Product.objects.filter(category='M').count(),
         'electronics': Product.objects.filter(category='El').count(),
@@ -217,10 +215,6 @@ def marketplace(request):
         request.session.create()
         session_key = request.session.session_key
 
-    # Set session expiration times
-    request.session.set_expiry(3600)  # 1 hour of constant use
-    request.session.set_expiry(1800)  # 30 minutes if inactive
-
     is_authenticated = user.is_authenticated
     if is_authenticated:
         customers = Customer.objects.filter(user=user).exists()
@@ -231,7 +225,7 @@ def marketplace(request):
         'user',
         'user__customer',
         'user__customer__subscription',
-    ).order_by('?')
+    ).order_by('-created_at', '-id')
     paginator = Paginator(products_qs, LIST_PAGE_SIZE)
     page_number = request.GET.get('page')
     products_page = paginator.get_page(page_number)
@@ -286,7 +280,7 @@ def product_detail(request, pk=None, slug=None):
     # Get related products (same category, excluding current product)
     related_by_category = Product.objects.filter(
         category=product.category
-    ).exclude(pk=product.pk).order_by('?')[:6]
+    ).exclude(pk=product.pk).order_by('-created_at', '-id')[:6]
     
     # Get products from same seller (excluding current product)
     related_by_seller = Product.objects.filter(
@@ -921,7 +915,7 @@ def create_blog(request):
     return render(request, 'app/create_blog.html', context)
 
 def blog_list(request):
-    blogs_qs = Blog.objects.select_related('author').order_by('?')
+    blogs_qs = Blog.objects.select_related('author').order_by('-created_at', '-id')
     paginator = Paginator(blogs_qs, LIST_PAGE_SIZE)
     page_number = request.GET.get('page')
     blogs_page = paginator.get_page(page_number)
@@ -1459,13 +1453,13 @@ def debug_blog_content(request, blog_id):
         cleaned_content = deep_clean_html_content(original_content)
         
         # Specialized direct fix - if direct method is specified in the URL
-        if request.GET.get('direct_fix') == '1':
+        if request.GET.get('direct_fix') == '1' or request.POST.get('direct_fix') == '1':
             logger.debug("Using direct fix method")
             if original_content.startswith('{') and original_content.endswith('}'):
                 direct_fixed = original_content[1:-1]  # Simply remove outer braces
                 
                 # Save this version if save parameter is provided
-                if request.GET.get('save') == '1':
+                if request.method == 'POST' and request.POST.get('save') == '1':
                     logger.debug("Saving direct fix to database")
                     blog.content = direct_fixed
                     blog.save(update_fields=['content'])
@@ -1483,7 +1477,7 @@ def debug_blog_content(request, blog_id):
                 })
         
         # If save parameter is provided, save the cleaned content
-        if request.GET.get('save') == '1':
+        if request.method == 'POST' and request.POST.get('save') == '1':
             logger.debug("Saving cleaned content to database")
             blog.content = cleaned_content
             blog.save(update_fields=['content'])
@@ -1779,24 +1773,29 @@ def user_dashboard(request):
     
     # Get LMS courses and certificates
     from lms.models import CourseEnrollment, StudentCertificate
-    from lms.utils import is_course_completed
+    from lms.utils import calculate_course_progress, is_course_completed
     
     lms_profile = getattr(user, 'lms_profile', None)
     completed_courses = []
     enrolled_courses_data = []
     
     if lms_profile:
-        enrollments = CourseEnrollment.objects.filter(
-            student=lms_profile
-        ).select_related('course')
-        
+        enrollments = (
+            CourseEnrollment.objects.filter(student=lms_profile)
+            .select_related('course')
+            .prefetch_related('course__modules')
+            .order_by('-date_enrolled')
+        )
+
         for enrollment in enrollments:
             course = enrollment.course
-            completed = is_course_completed(course, lms_profile)
+            progress = calculate_course_progress(course, lms_profile)
+            completed = progress['course_completed'] or is_course_completed(course, lms_profile)
             course_info = {
                 'course': course,
                 'enrollment': enrollment,
                 'completed': completed,
+                'progress': progress,
             }
             enrolled_courses_data.append(course_info)
             if completed:
@@ -1807,8 +1806,14 @@ def user_dashboard(request):
         student=user
     ).select_related('course', 'template').order_by('-issued_at')
     
-    # Default active tab
-    active_tab = request.GET.get('tab', 'products')
+    # Learners should land on learning first; creators can still switch tabs.
+    default_tab = 'courses' if enrolled_courses_data else 'products'
+    active_tab = request.GET.get('tab', default_tab)
+    allowed_tabs = {'products', 'blogs', 'materials', 'courses'}
+    if active_tab not in allowed_tabs:
+        active_tab = default_tab
+
+    continue_course = next((item for item in enrolled_courses_data if not item['completed']), None)
     
     context = {
         'user': user,
@@ -1825,6 +1830,7 @@ def user_dashboard(request):
         'enrolled_courses_count': len(enrolled_courses_data),
         'completed_courses_count': len(completed_courses),
         'certificate_count': certificates.count(),
+        'continue_course': continue_course,
     }
     return render(request, 'app/dashboard.html', context)
 

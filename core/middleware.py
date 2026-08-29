@@ -119,27 +119,22 @@ class SecurityHeadersMiddleware(MiddlewareMixin):
 
 
 class SessionIdleTimeoutMiddleware:
-    """
-    Middleware to track user session activity.
-    Sessions are now configured to persist indefinitely until explicit logout.
-    """
+    """Enforce a sliding authenticated-session idle timeout."""
     def __init__(self, get_response):
         self.get_response = get_response
 
     def __call__(self, request):
         if request.user.is_authenticated:
             current_time = time.time()
-            
-            # Update last activity timestamp for authenticated users
-            request.session['last_activity'] = current_time
-            
-            # Set a flag to indicate the user is active (for UI purposes)
-            request.session['user_active'] = True
-            
-            # Extend session expiry on each request
-            # This ensures the session never expires during active use
-            if 'sessionid' in request.COOKIES:
+            last_activity = request.session.get('last_activity')
+            idle_timeout = getattr(settings, 'SESSION_IDLE_TIMEOUT', 60 * 60 * 24 * 7)
+
+            if last_activity and current_time - float(last_activity) > idle_timeout:
+                logout(request)
+                request.session.flush()
+            else:
+                request.session['last_activity'] = current_time
+                request.session['user_active'] = True
                 request.session.set_expiry(settings.SESSION_COOKIE_AGE)
-        
-        response = self.get_response(request)
-        return response
+
+        return self.get_response(request)

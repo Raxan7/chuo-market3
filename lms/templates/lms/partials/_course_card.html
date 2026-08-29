@@ -1,3 +1,4 @@
+{% load humanize %}
 <div class="card h-100 shadow-sm course-card-uniform border-0">
     <div class="position-relative course-card-image-wrap">
         {% if course.image %}
@@ -69,8 +70,8 @@
                     <div class="small text-muted mb-2">
                         <i class="fas fa-chalkboard-teacher me-1"></i>
                         {{ first_instructor.display_legal_name|default:first_instructor.user.get_full_name|default:first_instructor.user.username }}
-                        {% if course.instructors.count > 1 %}
-                            <span class="text-muted">+{{ course.instructors.count|add:-1 }}</span>
+                        {% if course.instructor_count > 1 %}
+                            <span class="text-muted">+{{ course.instructor_count|add:-1 }}</span>
                         {% endif %}
                     </div>
                 {% endif %}
@@ -82,12 +83,12 @@
                 {% if course.is_free %}
                     <span class="fw-bold text-success">Free</span>
                 {% else %}
-                    <span class="fw-bold text-dark">{{ course.price }} <small class="text-muted">TZS</small></span>
+                    <span class="fw-bold text-dark">TSh {{ course.price|floatformat:0|intcomma }}</span>
                 {% endif %}
             </div>
             {% if show_enrolled|default_if_none:True %}
                 <small class="text-muted">
-                    <i class="fas fa-users me-1"></i>{{ course.students.count }}
+                    <i class="fas fa-users me-1"></i>{{ course.enrolled_students_count }}
                 </small>
             {% endif %}
         </div>

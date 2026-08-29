@@ -1,6 +1,7 @@
 {% extends 'app/base.html' %}
 {% load static %}
 {% load form_tags %}
+{% load humanize %}
 {% block title %}User Dashboard{% endblock title %}
 {% block meta_robots %}noindex,follow{% endblock %}
 
@@ -62,8 +63,41 @@
 <div class="container my-5">
     <div class="row">
         <div class="col-12">
-            <h2 class="mb-4">My Dashboard</h2>
-            
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-end gap-2 mb-4">
+                <div>
+                    <h1 class="h2 mb-1">My Dashboard</h1>
+                    <p class="text-muted mb-0">Continue learning and manage what you publish on ChuoSmart.</p>
+                </div>
+                <a href="{% url 'lms:course_list' %}" class="btn btn-primary"><i class="fas fa-search me-2"></i>Find a course</a>
+            </div>
+
+            {% if continue_course %}
+            <div class="card border-0 shadow-sm mb-4 overflow-hidden">
+                <div class="card-body p-4">
+                    <div class="row align-items-center g-3">
+                        <div class="col-md-8">
+                            <div class="small text-uppercase fw-bold text-primary mb-1">Continue learning</div>
+                            <h2 class="h4 mb-2">{{ continue_course.course.title }}</h2>
+                            <div class="progress mb-2" role="progressbar" aria-label="Course progress" aria-valuenow="{{ continue_course.progress.percentage|floatformat:0 }}" aria-valuemin="0" aria-valuemax="100" style="height: 10px;">
+                                <div class="progress-bar" style="width: {{ continue_course.progress.percentage|floatformat:0 }}%"></div>
+                            </div>
+                            <div class="small text-muted">{{ continue_course.progress.completed_count }} of {{ continue_course.progress.total_count }} assessed modules complete · {{ continue_course.progress.percentage|floatformat:0 }}%</div>
+                        </div>
+                        <div class="col-md-4 text-md-end">
+                            <a href="{% url 'lms:course_detail' slug=continue_course.course.slug %}" class="btn btn-success btn-lg">Continue course</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="row g-3 mb-4">
+                <div class="col-6 col-lg-3"><div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="small text-muted">Courses</div><div class="h3 mb-0">{{ enrolled_courses_count }}</div></div></div></div>
+                <div class="col-6 col-lg-3"><div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="small text-muted">Completed</div><div class="h3 mb-0">{{ completed_courses_count }}</div></div></div></div>
+                <div class="col-6 col-lg-3"><div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="small text-muted">Certificates</div><div class="h3 mb-0">{{ certificate_count }}</div></div></div></div>
+                <div class="col-6 col-lg-3"><div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="small text-muted">Published items</div><div class="h3 mb-0">{{ product_count|add:blog_count|add:material_count }}</div></div></div></div>
+            </div>
+
             <div class="dashboard-container">
                 {% if messages %}
                     {% for message in messages %}
@@ -139,7 +173,7 @@
                                             <img src="{{ product.image.url }}" class="card-img-top" alt="{{ product.title }}" style="height: 180px; object-fit: cover;">
                                             <div class="card-body">
                                                 <h5 class="card-title">{{ product.title }}</h5>
-                                                <p class="card-text">Price: TSh {{ product.price }}</p>
+                                                <p class="card-text">Price: TSh {{ product.price|floatformat:0|intcomma }}</p>
                                                 <p class="card-text">
                                                     <span class="badge bg-secondary">{{ product.get_category_display }}</span>
                                                 </p>
@@ -304,13 +338,10 @@
                                                         <span class="badge bg-warning text-dark">In Progress</span>
                                                     {% endif %}
                                                 </p>
-                                                <p class="card-text">
-                                                    {% with modules=item.course.modules.all %}
-                                                        {% with completed_count=modules|length %}
-                                                            <small class="text-muted">{{ completed_count }} module{{ completed_count|pluralize }}</small>
-                                                        {% endwith %}
-                                                    {% endwith %}
-                                                </p>
+                                                <div class="progress mb-2" role="progressbar" aria-label="{{ item.course.title }} progress" aria-valuenow="{{ item.progress.percentage|floatformat:0 }}" aria-valuemin="0" aria-valuemax="100" style="height: 8px;">
+                                                    <div class="progress-bar" style="width: {{ item.progress.percentage|floatformat:0 }}%"></div>
+                                                </div>
+                                                <p class="card-text small text-muted mb-2">{{ item.progress.completed_count }}/{{ item.progress.total_count }} assessed modules · {{ item.progress.percentage|floatformat:0 }}%</p>
                                                 <p class="card-text text-muted small">Enrolled: {{ item.enrollment.date_enrolled|date:"M d, Y" }}</p>
                                             </div>
                                             <div class="card-footer bg-transparent border-top-0 d-flex justify-content-between">

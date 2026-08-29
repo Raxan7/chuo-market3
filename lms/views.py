@@ -16,6 +16,8 @@ from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth.models import User
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib import messages
+from django.forms import ImageField
+from django.core.exceptions import ValidationError
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 from django.views.generic import (
@@ -435,7 +437,7 @@ def lms_home(request):
             })
     else:
         # For unauthenticated users, show featured courses
-        featured_courses = Course.objects.filter(is_pinned=True).order_by('?')[:6]
+        featured_courses = Course.objects.filter(is_pinned=True).prefetch_related('instructors').order_by('-created_at', '-id')[:6]
         context.update({
             'featured_courses': featured_courses,
         })
@@ -459,7 +461,7 @@ class ProgramDetailView(DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         program = self.get_object()
-        context['courses'] = Course.objects.filter(program=program).order_by('?')
+        context['courses'] = Course.objects.filter(program=program).prefetch_related('instructors').annotate(student_count=Count('students', distinct=True), annotated_instructor_count=Count('instructors', distinct=True)).order_by('-is_pinned', '-created_at', '-id')
         return context
 
 
@@ -472,12 +474,20 @@ class CourseListView(ListView):
     
     def get_queryset(self):
         # Randomize the base queryset so the course list feels fresh across layouts.
-        queryset = Course.objects.all().order_by('?')
+        queryset = (Course.objects.select_related('program').prefetch_related('instructors')
+                    .annotate(student_count=Count('students', distinct=True), annotated_instructor_count=Count('instructors', distinct=True))
+                    .order_by('-is_pinned', '-created_at', '-id'))
         
         # Filter by course type if provided
         course_type = self.request.GET.get('course_type')
         if course_type:
             queryset = queryset.filter(course_type=course_type)
+
+        pricing = self.request.GET.get('pricing')
+        if pricing == 'free':
+            queryset = queryset.filter(is_free=True)
+        elif pricing == 'paid':
+            queryset = queryset.filter(is_free=False)
         
         # Filter by semester if provided
         semester = self.request.GET.get('semester')
@@ -514,6 +524,7 @@ class CourseListView(ListView):
             'program': self.request.GET.get('program', ''),
             'level': self.request.GET.get('level', ''),
             'course_type': self.request.GET.get('course_type', ''),
+            'pricing': self.request.GET.get('pricing', ''),
             'q': self.request.GET.get('q', ''),
         }
         context['course_listing_json_ld'] = {
@@ -1245,7 +1256,7 @@ def course_content_detail(request, course_slug, content_id):
                 return redirect('lms:course_detail', slug=course.slug)
 
     # If user attempts to mark content complete, require login and enrollment to save progress
-    mark_complete = request.GET.get('mark_complete') == 'true'
+    mark_complete = request.method == 'POST' and request.POST.get('action') == 'mark_complete'
     if mark_complete:
         if not request.user.is_authenticated:
             return redirect_to_login(request.get_full_path(), reverse('login'))
@@ -2953,6 +2964,7 @@ def debug_upload_view(request):
 
 @login_required
 @staff_member_required
+@require_POST
 def toggle_ad_exemption(request, user_id):
     """
     Toggle ad exemption for a specific user
@@ -2967,7 +2979,7 @@ def toggle_ad_exemption(request, user_id):
         messages.success(request, f"Ad exemption for {user.username} has been removed.")
     except AdExemptUser.DoesNotExist:
         # If exemption doesn't exist, create it
-        reason = request.GET.get('reason', 'Staff exemption')
+        reason = request.POST.get('reason', 'Staff exemption')
         AdExemptUser.objects.create(user=user, reason=reason)
         messages.success(request, f"Ad exemption for {user.username} has been added.")
     
@@ -3009,10 +3021,15 @@ def payment_form(request, slug):
 
         if not payment_proof:
             messages.error(request, _("Please upload a payment proof image."))
+        elif payment_proof.size > 5 * 1024 * 1024:
+            messages.error(request, _("Payment proof images must be 5 MB or smaller."))
         elif not payment_method_id:
             messages.error(request, _("Please select a payment method."))
         else:
             try:
+                # Validate the actual uploaded image with Django/Pillow instead of
+                # trusting the filename or browser-provided content type.
+                payment_proof = ImageField().clean(payment_proof)
                 payment_method = payment_methods.get(id=payment_method_id)
                 # If not enrolled, create enrollment now
                 if not enrollment:
@@ -3038,6 +3055,8 @@ def payment_form(request, slug):
                 )
                 messages.success(request, _("Your payment proof has been submitted and is awaiting approval."))
                 return redirect('lms:payment_pending', slug=course.slug)
+            except ValidationError:
+                messages.error(request, _("Please upload a valid JPEG, PNG, GIF, or WebP image."))
             except PaymentMethod.DoesNotExist:
                 messages.error(request, _("Invalid payment method selected."))
 

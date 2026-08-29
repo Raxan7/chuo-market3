@@ -1,0 +1,30 @@
+{% extends 'app/base.html' %}
+{% load humanize %}
+{% block title %}Affiliate Payouts | ChuoSmart{% endblock %}
+{% block meta_robots %}noindex,follow{% endblock %}
+{% block main-content %}
+<div class="container py-4 py-lg-5">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div><h1 class="h2 mb-1">Payout history</h1><p class="text-muted mb-0">Total paid: TSh {{ total_paid|floatformat:0|intcomma }}</p></div>
+    <a href="{% url 'affiliates:dashboard' %}" class="btn btn-outline-secondary">Back to dashboard</a>
+  </div>
+  <div class="card border-0 shadow-sm"><div class="table-responsive">
+    <table class="table align-middle mb-0">
+      <thead><tr><th>Requested</th><th>Amount</th><th>Method</th><th>Status</th><th>Processed</th></tr></thead>
+      <tbody>
+      {% for payout in payouts %}
+        <tr>
+          <td>{{ payout.requested_at|date:"M d, Y H:i" }}</td>
+          <td>TSh {{ payout.amount|floatformat:0|intcomma }}</td>
+          <td>{{ payout.payment_method|default:"Manual review" }}</td>
+          <td><span class="badge {% if payout.status == 'paid' %}bg-success{% elif payout.status == 'rejected' %}bg-danger{% elif payout.status == 'approved' %}bg-primary{% else %}bg-warning text-dark{% endif %}">{{ payout.get_status_display }}</span></td>
+          <td>{{ payout.processed_at|date:"M d, Y H:i"|default:"—" }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="5" class="text-center text-muted py-5">No payout requests yet.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div></div>
+</div>
+{% endblock %}

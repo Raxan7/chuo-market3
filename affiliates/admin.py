@@ -59,15 +59,16 @@ class PayoutRequestAdmin(admin.ModelAdmin):
     actions = ['approve_payouts', 'mark_as_paid', 'reject_payouts']
     
     def approve_payouts(self, request, queryset):
-        queryset.update(status='approved')
-        self.message_user(request, f"{queryset.count()} payout requests have been approved.")
+        pending = queryset.filter(status=PayoutRequest.PayoutStatus.PENDING)
+        count = pending.update(status=PayoutRequest.PayoutStatus.APPROVED)
+        self.message_user(request, f"{count} pending payout requests have been approved.")
     approve_payouts.short_description = "Approve selected payout requests"
     
     def mark_as_paid(self, request, queryset):
         paid_count = 0
         with transaction.atomic():
             for payout in queryset.select_related('affiliate').select_for_update():
-                if payout.status == PayoutRequest.PayoutStatus.PAID:
+                if payout.status != PayoutRequest.PayoutStatus.APPROVED:
                     continue
                 affiliate = Affiliate.objects.select_for_update().get(pk=payout.affiliate_id)
                 if payout.amount > affiliate.balance:
@@ -88,6 +89,7 @@ class PayoutRequestAdmin(admin.ModelAdmin):
     mark_as_paid.short_description = "Mark selected payout requests as paid"
     
     def reject_payouts(self, request, queryset):
-        queryset.update(status='rejected')
-        self.message_user(request, f"{queryset.count()} payout requests have been rejected.")
+        rejectable = queryset.exclude(status=PayoutRequest.PayoutStatus.PAID)
+        count = rejectable.update(status=PayoutRequest.PayoutStatus.REJECTED)
+        self.message_user(request, f"{count} payout requests have been rejected.")
     reject_payouts.short_description = "Reject selected payout requests"

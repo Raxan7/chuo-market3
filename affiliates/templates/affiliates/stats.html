@@ -1,0 +1,16 @@
+{% extends 'app/base.html' %}
+{% load humanize %}
+{% block title %}Affiliate Stats | ChuoSmart{% endblock %}
+{% block meta_robots %}noindex,follow{% endblock %}
+{% block main-content %}
+<div class="container py-4 py-lg-5">
+  <h1 class="h2 mb-4">Affiliate statistics</h1>
+  <div class="row g-3">
+    <div class="col-md-4"><div class="card border-0 shadow-sm"><div class="card-body"><div class="text-muted">Referrals</div><div class="display-6">{{ total_referrals }}</div></div></div></div>
+    <div class="col-md-4"><div class="card border-0 shadow-sm"><div class="card-body"><div class="text-muted">Converted</div><div class="display-6">{{ successful_referrals }}</div></div></div></div>
+    <div class="col-md-4"><div class="card border-0 shadow-sm"><div class="card-body"><div class="text-muted">Conversion rate</div><div class="display-6">{{ conversion_rate|floatformat:1 }}%</div></div></div></div>
+  </div>
+  <div class="card border-0 shadow-sm mt-3"><div class="card-body"><div class="text-muted">Total earnings</div><div class="h2">TSh {{ total_earnings|floatformat:0|intcomma }}</div></div></div>
+  <a href="{% url 'affiliates:dashboard' %}" class="btn btn-outline-secondary mt-4">Back to dashboard</a>
+</div>
+{% endblock %}

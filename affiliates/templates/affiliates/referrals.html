@@ -1,0 +1,14 @@
+{% extends 'app/base.html' %}
+{% load humanize %}
+{% block title %}Affiliate Referrals | ChuoSmart{% endblock %}
+{% block meta_robots %}noindex,follow{% endblock %}
+{% block main-content %}
+<div class="container py-4 py-lg-5">
+  <h1 class="h2 mb-4">Your referrals</h1>
+  <div class="card border-0 shadow-sm"><div class="table-responsive"><table class="table mb-0 align-middle">
+    <thead><tr><th>User</th><th>Type</th><th>Purchase</th><th>Commission</th><th>Created</th></tr></thead>
+    <tbody>{% for referral in referrals %}<tr><td>{{ referral.referred_user.username }}</td><td>{{ referral.get_referral_type_display }}</td><td>TSh {{ referral.purchase_amount|floatformat:0|intcomma }}</td><td>TSh {{ referral.commission_earned|floatformat:0|intcomma }}</td><td>{{ referral.created_at|date:"M d, Y" }}</td></tr>{% empty %}<tr><td colspan="5" class="text-center text-muted py-5">No referrals yet.</td></tr>{% endfor %}</tbody>
+  </table></div></div>
+  <a href="{% url 'affiliates:dashboard' %}" class="btn btn-outline-secondary mt-4">Back to dashboard</a>
+</div>
+{% endblock %}
