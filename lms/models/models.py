@@ -17,6 +17,7 @@ import string
 import uuid
 from django.dispatch import receiver
 from django.db.models.signals import pre_save, post_save, post_delete
+from core.storage import private_payment_storage
 
 from core.image_utils import optimize_image
 
@@ -299,7 +300,8 @@ class CourseEnrollment(models.Model):
         help_text=_("Payment status for premium courses")
     )
     payment_proof = models.ImageField(
-        upload_to='lms/payment_proofs/', 
+        upload_to='lms/payment_proofs/',
+        storage=private_payment_storage,
         blank=True, 
         null=True,
         help_text=_("Upload proof of payment for premium courses")

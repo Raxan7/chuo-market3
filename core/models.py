@@ -1,4 +1,5 @@
 from django.db import models
+from core.storage import private_payment_storage
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.utils import timezone
@@ -310,7 +311,10 @@ class Blog(models.Model):
 class SubscriptionPayment(models.Model):
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE)
     subscription = models.ForeignKey(Subscription, on_delete=models.CASCADE)
-    payment_proof = models.ImageField(upload_to='payment_proofs/')
+    payment_proof = models.ImageField(
+        upload_to='payment_proofs/',
+        storage=private_payment_storage,
+    )
     status = models.CharField(
         max_length=20,
         choices=[('Pending', 'Pending'), ('Verified', 'Verified'), ('Rejected', 'Rejected')],
@@ -337,7 +341,7 @@ class NewsletterSubscriber(models.Model):
 
 class UserNewsletterPreference(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='newsletter_preference')
-    newsletter = models.BooleanField(default=True)
+    newsletter = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -354,7 +358,7 @@ def _get_newsletter_preference(user):
 
 def _get_user_newsletter(self):
     preference = _get_newsletter_preference(self)
-    return preference.newsletter if preference else True
+    return preference.newsletter if preference else False
 
 
 def _set_user_newsletter(self, value):

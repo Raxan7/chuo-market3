@@ -70,6 +70,11 @@ def send_notification_to_user(request, user_id=None):
     # Default to current user if no user_id provided
     target_user = request.user
     if user_id:
+        if not request.user.is_staff:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Permission denied'
+            }, status=403)
         try:
             target_user = User.objects.get(id=user_id)
         except User.DoesNotExist:
@@ -99,6 +104,8 @@ def send_notification_to_user(request, user_id=None):
         'message': 'Notification sent successfully!'
     })
 
+@login_required
+@require_POST
 def send_notification_to_group(request, group_name):
     """
     Send a notification to a group of users

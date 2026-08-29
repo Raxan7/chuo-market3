@@ -137,6 +137,7 @@ STATICFILES_DIRS = [
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+PRIVATE_MEDIA_ROOT = os.getenv('PRIVATE_MEDIA_ROOT', str(BASE_DIR / 'private_media'))
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
@@ -161,11 +162,11 @@ TINYMCE_DEFAULT_CONFIG = {
 }
 
 SESSION_ENGINE = 'django.contrib.sessions.backends.db'
-SESSION_COOKIE_AGE = 31536000
-SESSION_SAVE_EVERY_REQUEST = True
+SESSION_COOKIE_AGE = int(os.getenv('SESSION_COOKIE_AGE', str(60 * 60 * 24 * 14)))
+SESSION_SAVE_EVERY_REQUEST = False
 SESSION_EXPIRE_AT_BROWSER_CLOSE = False
 SESSION_COOKIE_HTTPONLY = True
-SESSION_IDLE_TIMEOUT = 31536000
+SESSION_IDLE_TIMEOUT = int(os.getenv('SESSION_IDLE_TIMEOUT', str(60 * 60 * 24 * 7)))
 
 CEREBRAS_API_KEY = os.getenv('CEREBRAS_API_KEY')
 CEREBRAS_ASSESSMENT_MODEL = os.getenv('CEREBRAS_ASSESSMENT_MODEL', 'zai-glm-4.7')
@@ -192,14 +193,14 @@ CLOUDINARY_STORAGE = {
 LOGIN_URL = 'login'
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'server311.web-hosting.com'
-EMAIL_PORT = 465
-EMAIL_HOST_USER = 'support@chuosmart.com'
+EMAIL_HOST = os.getenv('EMAIL_HOST', 'server311.web-hosting.com')
+EMAIL_PORT = int(os.getenv('EMAIL_PORT', '465'))
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', 'support@chuosmart.com')
 EMAIL_HOST_PASSWORD = os.getenv('SUPPORT_EMAIL_HOST_PASSWORD')
-EMAIL_USE_SSL = True
-EMAIL_USE_TLS = False
-DEFAULT_FROM_EMAIL = 'ChuoSmart <support@chuosmart.com>'
-EMAIL_TIMEOUT = 30
+EMAIL_USE_SSL = os.getenv('EMAIL_USE_SSL', 'true').lower() in ('1', 'true', 'yes')
+EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'false').lower() in ('1', 'true', 'yes')
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'ChuoSmart <support@chuosmart.com>')
+EMAIL_TIMEOUT = int(os.getenv('EMAIL_TIMEOUT', '30'))
 
 os.makedirs(BASE_DIR / 'logs', exist_ok=True)
 

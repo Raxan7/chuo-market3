@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
-from django.http import HttpResponseRedirect, JsonResponse, HttpResponseForbidden, Http404
+from django.http import HttpResponseRedirect, JsonResponse, HttpResponseForbidden, Http404, FileResponse
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash, get_user_model
 from django.templatetags.static import static
@@ -15,6 +15,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.db.models import Q
+from django.db import transaction
 
 from .models import *
 from .forms import RegistrationForm, LoginForm, ProductForm, BlogForm, SubscriptionForm, SubscriptionPaymentForm, CustomerProfileForm, AccountDeletionRequestForm
@@ -22,10 +23,14 @@ from asgiref.sync import sync_to_async
 from datetime import timedelta
 from core.decorators.customer_required import customer_required, phone_required
 from core.newsletter import decode_newsletter_confirmation_token, send_unsubscribe_confirmation_email
+from core.rate_limit import rate_limit
+from core.storage import private_payment_storage
 
 
 import logging
 import re
+import mimetypes
+from urllib.parse import urlencode
 
 logger = logging.getLogger(__name__)
 
@@ -331,12 +336,35 @@ def product_detail(request, pk=None, slug=None):
 
 
 @login_required(login_url='login')
+@rate_limit('seller-contact', limit=30, window=60 * 60, methods=('GET',))
+def seller_contact(request, slug):
+    """Reveal seller contact only after an authenticated, deliberate action."""
+    product = get_object_or_404(Product.objects.select_related('user'), slug=slug)
+    customer = get_object_or_404(Customer, user=product.user)
+    phone = re.sub(r'[^0-9]', '', customer.phone_number or '')
+    if not phone:
+        messages.error(request, 'This seller has not provided a contact number.')
+        return redirect('product-detail', slug=product.slug)
+
+    text = (
+        f"Hello, I am interested in your product '{product.title}' listed at "
+        f"TSh {product.price:,.0f}. Please let me know if it is still available.\n"
+        "Listed at chuosmart.com"
+    )
+    return redirect(f"https://wa.me/{phone}?{urlencode({'text': text})}")
+
+
+@login_required(login_url='login')
 @customer_required
+@require_POST
 def add_to_cart(request):
     user = request.user
-    product_id = request.GET.get('product_id')
-    product = Product.objects.get(id=product_id)
-    Cart.objects.create(user=user, product=product)
+    product_id = request.POST.get('product_id')
+    product = get_object_or_404(Product, id=product_id)
+    cart_item, created = Cart.objects.get_or_create(user=user, product=product)
+    if not created:
+        cart_item.quantity = min(cart_item.quantity + 1, 99)
+        cart_item.save(update_fields=['quantity'])
     return HttpResponseRedirect(reverse('carts'))
 
 
@@ -354,49 +382,44 @@ def view_cart(request):
 
 @login_required(login_url='login')
 @customer_required
+@require_POST
 def remove_cart(request, pk):
-    product = get_object_or_404(Product, pk=pk)
-    if product:
-        print('Product Found')
-    else:
-        print('Product not Found')
-    cart_item = Cart.objects.filter(product=product, user=request.user).first()
-
-    if cart_item:
-        print('Cart Found')
-        cart_item.delete()
+    cart_item = get_object_or_404(Cart, product_id=pk, user=request.user)
+    cart_item.delete()
 
     return redirect(reverse('carts'))
 
 @login_required(login_url='login')
 @customer_required
+@require_POST
 def plus_cart(request):
-    if request.method == 'GET':
-        pid = request.GET.get('pid')
-        cart_item = get_object_or_404(Cart, user=request.user, product__id=pid)
-        cart_item.quantity += 1
-        cart_item.save()
+    pid = request.POST.get('pid')
+    cart_item = get_object_or_404(Cart, user=request.user, product__id=pid)
+    cart_item.quantity = min(cart_item.quantity + 1, 99)
+    cart_item.save(update_fields=['quantity'])
 
-        amount = cart_item.product.price * cart_item.quantity
-        shipping_amount = 5.0
-        total_amount = amount + shipping_amount
+    carts = Cart.objects.filter(user=request.user).select_related('product')
+    amount = sum(item.product.price * item.quantity for item in carts)
+    shipping_amount = 5.0
+    total_amount = amount + shipping_amount
 
-        return JsonResponse({'status': 'ok', 'quantity': cart_item.quantity, 'total_amount': total_amount, 'amount': amount})
+    return JsonResponse({'status': 'ok', 'quantity': cart_item.quantity, 'total_amount': total_amount, 'amount': amount})
 
 @login_required(login_url='login')
 @customer_required
+@require_POST
 def minus_cart(request):
-    if request.method == 'GET':
-        pid = request.GET.get('pid')
-        cart_item = get_object_or_404(Cart, user=request.user, product__id=pid)
-        cart_item.quantity -= 1
-        cart_item.save()
+    pid = request.POST.get('pid')
+    cart_item = get_object_or_404(Cart, user=request.user, product__id=pid)
+    cart_item.quantity = max(cart_item.quantity - 1, 1)
+    cart_item.save(update_fields=['quantity'])
 
-        amount = cart_item.product.price * cart_item.quantity
-        shipping_amount = 5.0
-        total_amount = amount + shipping_amount
+    carts = Cart.objects.filter(user=request.user).select_related('product')
+    amount = sum(item.product.price * item.quantity for item in carts)
+    shipping_amount = 5.0
+    total_amount = amount + shipping_amount
 
-        return JsonResponse({'status': 'ok', 'quantity': cart_item.quantity, 'total_amount': total_amount, 'amount':amount})
+    return JsonResponse({'status': 'ok', 'quantity': cart_item.quantity, 'total_amount': total_amount, 'amount':amount})
         
 
 
@@ -449,27 +472,85 @@ def orders(request):
     orders = OrderPlaced.objects.filter(user=user)
     return render(request, 'app/orders.html', {'orders': orders})
 
+
+@login_required(login_url='login')
+def private_payment_proof(request, path):
+    """Serve a payment proof only to its owner or an authorized reviewer."""
+    normalized_path = path.lstrip('/')
+    allowed = request.user.is_staff or request.user.is_superuser
+
+    subscription_payment = SubscriptionPayment.objects.filter(
+        payment_proof=normalized_path,
+    ).select_related('customer__user').first()
+    if subscription_payment:
+        allowed = allowed or subscription_payment.customer.user_id == request.user.id
+    else:
+        from lms.models import CourseEnrollment
+        enrollment = CourseEnrollment.objects.filter(
+            payment_proof=normalized_path,
+        ).select_related('student__user', 'course').first()
+        if not enrollment:
+            raise Http404('Payment proof not found.')
+        allowed = allowed or enrollment.student.user_id == request.user.id
+        if not allowed and hasattr(request.user, 'lms_profile'):
+            allowed = enrollment.course.instructors.filter(pk=request.user.lms_profile.pk).exists()
+
+    if not allowed:
+        raise Http404('Payment proof not found.')
+
+    try:
+        handle = private_payment_storage.open(normalized_path, 'rb')
+    except FileNotFoundError:
+        raise Http404('Payment proof file not found.')
+
+    content_type, _ = mimetypes.guess_type(normalized_path)
+    response = FileResponse(handle, content_type=content_type or 'application/octet-stream')
+    response['Cache-Control'] = 'private, no-store, max-age=0'
+    response['X-Content-Type-Options'] = 'nosniff'
+    return response
+
 @login_required(login_url='login')
 @customer_required
+@require_POST
 def order_placed(request):
     user = request.user
-    customer_id = request.GET.get("customer_id")
-    customer = get_object_or_404(Customer, id=customer_id)
+    customer_id = request.POST.get("customer_id")
+    customer = get_object_or_404(Customer, id=customer_id, user=user)
     
-    product_id = request.GET.get("product_id")
-    quantity = int(request.GET.get("quantity", 1))
+    product_id = request.POST.get("product_id")
+    try:
+        quantity = int(request.POST.get("quantity", 1))
+    except (TypeError, ValueError):
+        quantity = 0
 
-    if product_id:
-        product = get_object_or_404(Product, id=product_id)
-        product_price = product.price  
-        OrderPlaced.objects.create(user=user, customer=customer, product=product, quantity=quantity, price=str(product_price * quantity + 5))
-    else:
-        carts = Cart.objects.filter(user=user)
-        for cart in carts:
-            product_price = cart.product.price  
-            OrderPlaced.objects.create(user=user, customer=customer, product=cart.product, quantity=cart.quantity, price=str(product_price * cart.quantity + 5))
-            cart.delete()
-        print('OrderPlaced DONE')
+    if quantity < 1 or quantity > 99:
+        return JsonResponse({'status': 'error', 'message': 'Invalid quantity.'}, status=400)
+
+    with transaction.atomic():
+        if product_id:
+            product = get_object_or_404(Product, id=product_id)
+            product_price = product.price
+            OrderPlaced.objects.create(
+                user=user,
+                customer=customer,
+                product=product,
+                quantity=quantity,
+                price=str(product_price * quantity + 5),
+            )
+        else:
+            carts = list(
+                Cart.objects.select_for_update().filter(user=user).select_related('product')
+            )
+            for cart in carts:
+                product_price = cart.product.price
+                OrderPlaced.objects.create(
+                    user=user,
+                    customer=customer,
+                    product=cart.product,
+                    quantity=cart.quantity,
+                    price=str(product_price * cart.quantity + 5),
+                )
+            Cart.objects.filter(pk__in=[cart.pk for cart in carts]).delete()
 
     return redirect('orders')
 
@@ -477,6 +558,7 @@ def order_placed(request):
 def mobile(request):
  return render(request, 'app/mobile.html')
 
+@rate_limit('login', limit=8, window=15 * 60, identity_field='username')
 def user_login(request):
     if request.method == 'POST':
         form = LoginForm(request.POST)
@@ -486,8 +568,8 @@ def user_login(request):
             user = authenticate(request, username=username, password=password)
             if user is not None:
                 login(request, user)
-                # Set session to never expire
-                request.session.set_expiry(31536000)  # 1 year in seconds
+                # Use the centrally configured session lifetime.
+                request.session.set_expiry(settings.SESSION_COOKIE_AGE)
                 # Check if user needs to complete their profile
                 if not hasattr(user, 'customer') or not user.customer:
                     messages.info(request, 'Please complete your profile information.')
@@ -525,6 +607,7 @@ def user_login(request):
     
     return render(request, 'app/login.html', {'form': form})
 
+@rate_limit('registration', limit=5, window=60 * 60, identity_field='email')
 def customerregistration(request):
     if request.method == 'POST':
         form = RegistrationForm(request.POST)
@@ -533,6 +616,10 @@ def customerregistration(request):
                 user = form.save(commit=False)
                 user.is_active = True  # Activate account immediately - no email verification required
                 user.save()
+                UserNewsletterPreference.objects.update_or_create(
+                    user=user,
+                    defaults={'newsletter': bool(form.cleaned_data.get('newsletter_opt_in'))},
+                )
                 # Customer profile will be created by signal handler
 
                 logger.info("User %s registered successfully and is now active", user.username)
@@ -559,7 +646,44 @@ def checkout(request, product_id=None, quantity=1):
     
     if request.method == "POST":
         address_id = request.POST.get('customer_id')
-        return redirect(reverse('order_placed') + f'?customer_id={address_id}&product_id={product_id}&quantity={quantity}')
+        customer = get_object_or_404(Customer, id=address_id, user=user)
+        try:
+            requested_quantity = int(request.POST.get('quantity', quantity or 1))
+        except (TypeError, ValueError):
+            requested_quantity = 0
+        if requested_quantity < 1 or requested_quantity > 99:
+            messages.error(request, 'Quantity must be between 1 and 99.')
+            return redirect(request.path)
+
+        with transaction.atomic():
+            if product_id:
+                product = get_object_or_404(Product, id=product_id)
+                OrderPlaced.objects.create(
+                    user=user,
+                    customer=customer,
+                    product=product,
+                    quantity=requested_quantity,
+                    price=str(product.price * requested_quantity + 5),
+                )
+            else:
+                carts = list(
+                    Cart.objects.select_for_update().filter(user=user).select_related('product')
+                )
+                if not carts:
+                    messages.info(request, 'Your cart is empty.')
+                    return redirect('carts')
+                for cart in carts:
+                    OrderPlaced.objects.create(
+                        user=user,
+                        customer=customer,
+                        product=cart.product,
+                        quantity=cart.quantity,
+                        price=str(cart.product.price * cart.quantity + 5),
+                    )
+                Cart.objects.filter(pk__in=[cart.pk for cart in carts]).delete()
+
+        messages.success(request, 'Your order has been placed successfully.')
+        return redirect('orders')
     
     if product_id:
         product = get_object_or_404(Product, id=product_id)
@@ -1068,6 +1192,7 @@ def about_us(request):
     """Render the About Us page"""
     return render(request, 'app/about.html')
 
+@rate_limit('contact', limit=5, window=60 * 60, identity_field='email')
 def contact_us(request):
     """Render the Contact Us page and handle form submission"""
     if request.method == 'POST':

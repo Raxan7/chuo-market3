@@ -1,6 +1,8 @@
 # affiliates/admin.py
 from django.contrib import admin
 from .models import Affiliate, Referral, ClickTracking, PayoutRequest
+from django.db import transaction
+from django.utils import timezone
 
 @admin.register(Affiliate)
 class AffiliateAdmin(admin.ModelAdmin):
@@ -62,9 +64,27 @@ class PayoutRequestAdmin(admin.ModelAdmin):
     approve_payouts.short_description = "Approve selected payout requests"
     
     def mark_as_paid(self, request, queryset):
-        from django.utils import timezone
-        queryset.update(status='paid', processed_at=timezone.now())
-        self.message_user(request, f"{queryset.count()} payout requests have been marked as paid.")
+        paid_count = 0
+        with transaction.atomic():
+            for payout in queryset.select_related('affiliate').select_for_update():
+                if payout.status == PayoutRequest.PayoutStatus.PAID:
+                    continue
+                affiliate = Affiliate.objects.select_for_update().get(pk=payout.affiliate_id)
+                if payout.amount > affiliate.balance:
+                    self.message_user(
+                        request,
+                        f"Skipped payout #{payout.pk}: amount exceeds current affiliate balance.",
+                        level='warning',
+                    )
+                    continue
+                payout.status = PayoutRequest.PayoutStatus.PAID
+                payout.processed_at = timezone.now()
+                payout.save(update_fields=['status', 'processed_at'])
+                affiliate.balance -= payout.amount
+                affiliate.total_paid += payout.amount
+                affiliate.save(update_fields=['balance', 'total_paid'])
+                paid_count += 1
+        self.message_user(request, f"{paid_count} payout requests have been marked as paid.")
     mark_as_paid.short_description = "Mark selected payout requests as paid"
     
     def reject_payouts(self, request, queryset):

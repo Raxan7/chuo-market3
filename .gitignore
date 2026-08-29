@@ -3,6 +3,8 @@
 __pycache__
 db.json
 media/
+private_media/
+db_backup/
 staticfiles/
 *.sqlite3
 *.log

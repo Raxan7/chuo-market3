@@ -23,13 +23,16 @@
                 <div class="my-3">
                   <label for="quantity">Quantity:</label>
                   <!-- Adjust these links to update quantity if needed -->
-                  <a href="#" class="minus-cart btn" pid="{{ cart_item.item.id }}"><i class="fas fa-minus-square fa-lg"></i></a>
+                  <button type="button" class="minus-cart btn" data-pid="{{ cart_item.item.id }}" aria-label="Decrease quantity"><i class="fas fa-minus-square fa-lg"></i></button>
                   <span class="quantity">{{cart_item.quantity}}</span>
-                  <a href="#" class="plus-cart btn" pid="{{ cart_item.item.id }}"><i class="fas fa-plus-square fa-lg"></i></a>
+                  <button type="button" class="plus-cart btn" data-pid="{{ cart_item.item.id }}" aria-label="Increase quantity"><i class="fas fa-plus-square fa-lg"></i></button>
               </div>
               
                 <div class="d-flex justify-content-between">
-                  <a href="{% url 'remove-cart' pk=cart_item.item.id %}" class="btn btn-sm btn-secondary mr-3">Remove item</a>
+                  <form method="post" action="{% url 'remove-cart' pk=cart_item.item.id %}" class="d-inline">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-sm btn-secondary mr-3">Remove item</button>
+                  </form>
                   <p class="mb-0"><span><strong>TSh {{ cart_item.price }}</strong></span></p> <!-- Display price here -->
                 </div>
               </div>
@@ -76,6 +79,7 @@
 </div>
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<input type="hidden" id="cart-csrf-token" value="{{ csrf_token }}">
 
 
 <script>
@@ -83,12 +87,13 @@
     // Plus button click
     $(document).on("click", ".plus-cart", function(event) {
       event.preventDefault();
-      var pid = $(this).attr("pid");
+      var pid = $(this).data("pid");
       $.ajax({
-        type: "GET",
-        url: "/plus_cart/",
+        type: "POST",
+        url: "{% url 'plus_cart' %}",
         data: {
-          'pid': pid
+          'pid': pid,
+          'csrfmiddlewaretoken': $('#cart-csrf-token').val()
         },
         success: function(data) {
           console.log('Plus Cart function called successfully.');
@@ -103,12 +108,13 @@
     // Minus button click
     $(document).on("click", ".minus-cart", function(event) {
       event.preventDefault();
-      var pid = $(this).attr("pid");
+      var pid = $(this).data("pid");
       $.ajax({
-        type: "GET",
-        url: "/minus_cart/",
+        type: "POST",
+        url: "{% url 'minus_cart' %}",
         data: {
-          'pid': pid
+          'pid': pid,
+          'csrfmiddlewaretoken': $('#cart-csrf-token').val()
         },
         success: function(data) {
           console.log('Minus Cart function called successfully.');

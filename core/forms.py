@@ -1,23 +1,40 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
-from .models import Product, Blog, Subscription, SubscriptionPayment, Customer, AccountDeletionRequest
+from .models import (
+    Product, Blog, Subscription, SubscriptionPayment, Customer,
+    AccountDeletionRequest, UserNewsletterPreference,
+)
 from tinymce.widgets import TinyMCE
 from core.utils import clean_phone_number
 from .image_utils import convert_to_webp, optimize_image
 
 class RegistrationForm(UserCreationForm):
     email = forms.EmailField(max_length=254, help_text='Required. Inform a valid email address.')
+    newsletter_opt_in = forms.BooleanField(
+        required=False,
+        label='Send me useful course, job and marketplace updates',
+    )
     
     class Meta:
         model = User
-        fields = ('username', 'email', 'password1', 'password2')
+        fields = ('username', 'email', 'password1', 'password2', 'newsletter_opt_in')
+
+    def clean_email(self):
+        email = self.cleaned_data['email'].strip().lower()
+        if User.objects.filter(email__iexact=email).exists():
+            raise forms.ValidationError('An account with this email already exists.')
+        return email
         
     def save(self, commit=True):
         user = super().save(commit=False)
         user.email = self.cleaned_data['email']
         if commit:
             user.save()
+            UserNewsletterPreference.objects.update_or_create(
+                user=user,
+                defaults={'newsletter': bool(self.cleaned_data.get('newsletter_opt_in'))},
+            )
         return user
 
 

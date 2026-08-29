@@ -6,6 +6,7 @@ from django.conf import settings
 from decimal import Decimal
 import csv
 import os
+from django.db import transaction
 
 class Command(BaseCommand):
     help = 'Process affiliate payouts that are approved and generate CSV reports'
@@ -42,7 +43,8 @@ class Command(BaseCommand):
         # Generate CSV file for accounting
         timestamp = timezone.now().strftime("%Y%m%d_%H%M%S")
         filename = f"affiliate_payouts_{timestamp}.csv"
-        file_path = os.path.join(settings.MEDIA_ROOT, 'reports', filename)
+        reports_root = os.path.join(settings.PRIVATE_MEDIA_ROOT, 'reports')
+        file_path = os.path.join(reports_root, filename)
         
         # Ensure directory exists
         os.makedirs(os.path.dirname(file_path), exist_ok=True)
@@ -75,16 +77,25 @@ class Command(BaseCommand):
                 
                 # Process payout if not dry run
                 if not dry_run and status == 'approved':
-                    # Mark as paid
-                    payout.status = 'paid'
-                    payout.processed_at = timezone.now()
-                    payout.save()
-                    
-                    # Update affiliate balance
-                    affiliate.balance -= payout.amount
-                    affiliate.total_paid += payout.amount
-                    affiliate.save()
-                    
+                    with transaction.atomic():
+                        locked_payout = PayoutRequest.objects.select_for_update().get(pk=payout.pk)
+                        if locked_payout.status != PayoutRequest.PayoutStatus.APPROVED:
+                            continue
+                        locked_affiliate = Affiliate.objects.select_for_update().get(pk=affiliate.pk)
+                        if locked_payout.amount > locked_affiliate.balance:
+                            self.stderr.write(
+                                self.style.ERROR(
+                                    f"Skipping payout {locked_payout.pk}: amount exceeds current balance"
+                                )
+                            )
+                            continue
+                        locked_payout.status = PayoutRequest.PayoutStatus.PAID
+                        locked_payout.processed_at = timezone.now()
+                        locked_payout.save(update_fields=['status', 'processed_at'])
+                        locked_affiliate.balance -= locked_payout.amount
+                        locked_affiliate.total_paid += locked_payout.amount
+                        locked_affiliate.save(update_fields=['balance', 'total_paid'])
+
                     processed_count += 1
                     total_amount += payout.amount
             

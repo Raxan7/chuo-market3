@@ -8,6 +8,7 @@ from .views import (
 )
 from .notifications import send_test_notification, send_notification_to_user, send_notification_to_group
 from .help_views import help_center
+from .rate_limit import rate_limit
 
 urlpatterns = [
     path('', views.home, name='home'),
@@ -22,6 +23,7 @@ urlpatterns = [
     
     # Product detail paths - support both slug and pk for backward compatibility
     path('product/<slug:slug>/', views.product_detail, name='product-detail'),
+    path('product/<slug:slug>/contact-seller/', views.seller_contact, name='seller-contact'),
     path('product-detail/<int:pk>/', views.product_detail, name='product-detail-by-id'),  # Keep old URL pattern for backwards compatibility
     
     # Product edit/delete paths
@@ -38,6 +40,7 @@ urlpatterns = [
     path('newsletter/confirm-unsubscribe/<str:token>/', views.newsletter_confirm_unsubscribe, name='newsletter_confirm_unsubscribe'),
     path('address/', views.address, name='address'),
     path('orders/', views.orders, name='orders'),
+    path('private-payment-proof/<path:path>', views.private_payment_proof, name='private_payment_proof'),
     path('mobile/', views.mobile, name='mobile'),
     path('logout/', views.user_logout, name='logout'),
     path('login/', views.user_login, name='login'),
@@ -64,7 +67,13 @@ urlpatterns = [
     ),
     
     # Password reset URLs
-    path('password_reset/', auth_views.PasswordResetView.as_view(template_name='app/password_reset.html'), name='password_reset'),
+    path(
+        'password_reset/',
+        rate_limit('password-reset', limit=5, window=60 * 60, identity_field='email')(
+            auth_views.PasswordResetView.as_view(template_name='app/password_reset.html')
+        ),
+        name='password_reset',
+    ),
     path('password_reset/done/', auth_views.PasswordResetDoneView.as_view(template_name='app/password_reset_done.html'), name='password_reset_done'),
     path('reset/<uidb64>/<token>/', auth_views.PasswordResetConfirmView.as_view(template_name='app/password_reset_confirm.html'), name='password_reset_confirm'),
     path('reset/done/', auth_views.PasswordResetCompleteView.as_view(template_name='app/password_reset_complete.html'), name='password_reset_complete'),

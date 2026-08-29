@@ -1,10 +1,12 @@
 from django.contrib.auth.decorators import login_required
-from .models import Affiliate, Referral
+from .models import Affiliate, Referral, PayoutRequest
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import HttpResponse, JsonResponse
 from django.urls import reverse
 from django.contrib.auth.models import User
 from django.views.decorators.http import require_POST
+from django.db import transaction
+from django.db.models import Sum
 import uuid
 import json
 
@@ -47,16 +49,28 @@ def register_affiliate(request):
 
 
 @login_required
+@require_POST
 def request_payout(request):
-    affiliate = Affiliate.objects.get(user=request.user)
-    
-    if affiliate.balance > 0:
-        # Integrate with Stripe/PayPal here
-        print(f"Paying out ${affiliate.balance} to {affiliate.user.email}")
-        affiliate.balance = 0
-        affiliate.save()
-        return HttpResponse("Payout request submitted!")
-    return HttpResponse("No balance available for payout.")
+    with transaction.atomic():
+        affiliate = Affiliate.objects.select_for_update().get(user=request.user)
+        reserved = PayoutRequest.objects.filter(
+            affiliate=affiliate,
+            status__in=[PayoutRequest.PayoutStatus.PENDING, PayoutRequest.PayoutStatus.APPROVED],
+        ).aggregate(total=Sum('amount'))['total'] or 0
+        available = affiliate.balance - reserved
+
+        if available <= 0:
+            return HttpResponse("No balance available for payout.", status=400)
+
+        payment_method = affiliate.payment_method or 'manual_review'
+        PayoutRequest.objects.create(
+            affiliate=affiliate,
+            amount=available,
+            payment_method=payment_method,
+            payment_details=affiliate.payment_details or {},
+        )
+
+    return HttpResponse("Payout request submitted for review.")
 
 
 def referral_link(request, username=None, product_id=None):
