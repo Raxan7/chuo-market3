@@ -7,40 +7,84 @@
 {% block main-content %}
 <div class="container py-5">
     <div class="row">
-        <div class="col-md-8 mx-auto">
-            <!-- Course Summary Card -->
-            <div class="card shadow-sm mb-4">
-                <div class="card-body">
+        <div class="col-lg-8 mx-auto">
+            <div class="card shadow-sm mb-4 border-0">
+                <div class="card-body p-4">
                     <div class="d-flex align-items-start gap-3">
                         {% if course.image %}
-                            <img src="{{ course.image.url }}" alt="{{ course.title }}"
-                                 class="rounded" style="width: 120px; height: 80px; object-fit: cover;">
-                        {% else %}
-                            <div class="rounded bg-light d-flex align-items-center justify-content-center"
-                                 style="width: 120px; height: 80px;">
-                                <i class="fas fa-book-open fa-2x text-secondary"></i>
-                            </div>
+                            <img src="{{ course.image.url }}" alt="{{ course.title }}" class="rounded" style="width:120px;height:80px;object-fit:cover;">
                         {% endif %}
                         <div class="flex-grow-1">
-                            <h4 class="mb-1">{{ course.title }}</h4>
-                            <p class="text-muted mb-1 small">{{ course.summary|striptags|truncatewords:30 }}</p>
-                            <p class="mb-0"><strong>{% trans "Price" %}:</strong> {{ course_price }} <small>TZS</small></p>
+                            <p class="text-muted small mb-1">{% trans "Full course" %}</p>
+                            <h1 class="h4 mb-2">{{ course.title }}</h1>
+                            {% if module_credit %}
+                            <div class="alert alert-success py-2 mb-2">
+                                {% trans "Your completed module purchases count toward the full course." %}<br>
+                                <strong>{% trans "Module credit" %}: TSh {{ module_credit|floatformat:0 }}</strong>
+                            </div>
+                            <div class="small text-muted"><s>TSh {{ full_course_price|floatformat:0 }}</s></div>
+                            {% endif %}
+                            <div class="h3 mb-0">TSh {{ course_price|floatformat:0 }}</div>
+                            <div class="small text-muted">{% trans "Amount due for full access" %}</div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Online Payment Option -->
-            {% if snippe_configured %}
-            <div class="card shadow-sm border-primary">
+            {% if course_price <= 0 %}
+            <form method="post" action="{% url 'lms:course_payment_init' slug=course.slug %}" class="card shadow-sm border-success mb-4">
+                {% csrf_token %}
+                <div class="card-body text-center p-4">
+                    <h2 class="h4">{% trans "Your module payments cover this course" %}</h2>
+                    <p>{% trans "Unlock full-course access now at no additional cost." %}</p>
+                    <button class="btn btn-success btn-lg" type="submit">{% trans "Unlock Full Course" %}</button>
+                </div>
+            </form>
+            {% elif snippe_configured %}
+            <div class="card shadow-sm border-primary mb-4">
                 <div class="card-header bg-primary text-white">
-                    <h3 class="mb-0"><i class="fas fa-bolt me-2"></i>{% trans "Pay Online — Instant Access" %}</h3>
+                    <h2 class="h4 mb-0"><i class="fas fa-bolt me-2"></i>{% trans "Pay online — instant access" %}</h2>
                 </div>
                 <div class="card-body text-center py-4">
-                    <p class="mb-3">{% trans "Pay now via mobile money or card and get instant access to all course modules." %}</p>
-                    <a href="{% url 'lms:course_payment_init' slug=course.slug %}" class="btn btn-lg btn-success px-5">
-                        <i class="fas fa-credit-card me-2"></i>{% trans "Pay Now" %}
-                    </a>
+                    <p class="mb-3">{% trans "Pay securely by mobile money or card. The course unlocks automatically after payment confirmation." %}</p>
+                    <form method="post" action="{% url 'lms:course_payment_init' slug=course.slug %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-lg btn-success px-5">
+                            <i class="fas fa-credit-card me-2"></i>{% trans "Pay" %} TSh {{ course_price|floatformat:0 }}
+                        </button>
+                    </form>
+                    <p class="small text-muted mt-2 mb-0">{% trans "Please tap once. If a checkout already exists, ChuoSmart will reuse it instead of creating a duplicate payment." %}</p>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if payment_methods %}
+            <div class="card shadow-sm border-0">
+                <div class="card-header"><h2 class="h5 mb-0">{% trans "Manual payment" %}</h2></div>
+                <div class="card-body">
+                    <p class="text-muted">{% trans "Use this only if online checkout is unavailable. An instructor or administrator must verify the proof before access is granted." %}</p>
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label class="form-label" for="payment_method">{% trans "Payment method" %}</label>
+                            <select class="form-select" id="payment_method" name="payment_method" required>
+                                <option value="">{% trans "Choose a payment method" %}</option>
+                                {% for method in payment_methods %}
+                                <option value="{{ method.id }}">{{ method.name }} — {{ method.payment_number }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="payment_proof">{% trans "Payment proof" %}</label>
+                            <input class="form-control" type="file" id="payment_proof" name="payment_proof" accept="image/*" required>
+                            <div class="form-text">{% trans "Payment proofs are stored privately and can only be viewed by authorized users." %}</div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="payment_notes">{% trans "Notes (optional)" %}</label>
+                            <textarea class="form-control" id="payment_notes" name="payment_notes" rows="2"></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-outline-primary">{% trans "Submit payment proof" %}</button>
+                    </form>
                 </div>
             </div>
             {% endif %}

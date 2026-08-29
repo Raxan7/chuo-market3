@@ -81,6 +81,8 @@ urlpatterns = [
     path('certificates/<str:certificate_id>/', views.certificate_detail, name='certificate_detail'),
     path('certificates/<str:certificate_id>/download/', views.download_certificate, name='certificate_download'),
     path('certificates/<str:certificate_id>/pay/', views.certificate_payment_init, name='certificate_payment'),
+    path('certificates/<str:certificate_id>/pay/success/', views.certificate_payment_success, name='certificate_payment_success'),
+    path('certificates/<str:certificate_id>/pay/status/', views.certificate_payment_status, name='certificate_payment_status'),
 
     # Snippe webhook (no CSRF, external calls)
     path('webhooks/snippe/', views.snippe_webhook, name='snippe_webhook'),
@@ -100,6 +102,7 @@ urlpatterns = [
     path('courses/<slug:slug>/payment/pending/', views.payment_pending, name='payment_pending'),
     path('courses/<slug:slug>/payment/pay-online/', views.course_payment_init, name='course_payment_init'),
     path('courses/<slug:slug>/payment/success/', views.course_payment_success, name='course_payment_success'),
+    path('courses/<slug:slug>/payment/status/', views.course_payment_status, name='course_payment_status'),
     
     # Module access payment (pay-first, in-system request)
     path('courses/<slug:course_slug>/modules/<int:module_id>/access/', 
@@ -108,6 +111,8 @@ urlpatterns = [
          views.module_payment_init, name='module_payment_init'),
     path('courses/<slug:course_slug>/modules/<int:module_id>/access/success/', 
          views.module_payment_success, name='module_payment_success'),
+    path('courses/<slug:course_slug>/modules/<int:module_id>/access/status/',
+         views.module_payment_status, name='module_payment_status'),
     
     # Instructor payment methods
     path('instructor/payment-methods/', views.instructor_payment_methods, name='instructor_payment_methods'),

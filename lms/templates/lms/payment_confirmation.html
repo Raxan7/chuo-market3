@@ -1,0 +1,80 @@
+{% extends 'app/base.html' %}
+{% load i18n %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block main-content %}
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-lg-7">
+      <div class="card shadow-sm border-0">
+        <div class="card-body p-4 p-md-5 text-center">
+          <div id="paymentPending">
+            <div class="spinner-border text-primary mb-3" role="status" aria-hidden="true"></div>
+            <h1 class="h3 mb-2">{{ title }}</h1>
+            <p class="text-muted mb-1">{{ item_title }}</p>
+            <p class="mb-0">{% trans "Do not pay again. We are waiting for the secure payment confirmation." %}</p>
+          </div>
+          <div id="paymentSuccess" class="d-none">
+            <div class="display-5 text-success mb-3"><i class="fas fa-check-circle"></i></div>
+            <h2 class="h3">{% trans "Payment confirmed" %}</h2>
+            <p>{% trans "Your access has been unlocked automatically." %}</p>
+            <a href="{{ success_url }}" class="btn btn-success btn-lg">{{ success_label }}</a>
+          </div>
+          <div id="paymentFailed" class="d-none">
+            <div class="display-5 text-danger mb-3"><i class="fas fa-times-circle"></i></div>
+            <h2 class="h3">{% trans "Payment not completed" %}</h2>
+            <p id="paymentFailureMessage" class="text-muted"></p>
+            <a href="javascript:history.back()" class="btn btn-outline-primary">{% trans "Return to payment" %}</a>
+          </div>
+          {% if payment %}
+          <p class="small text-muted mt-4 mb-0">{% trans "ChuoSmart payment reference" %}: #{{ payment.id }}</p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock main-content %}
+
+{% block extra_scripts %}
+{{ block.super }}
+<script>
+(function () {
+  const statusUrl = "{{ status_url|escapejs }}";
+  const pending = document.getElementById('paymentPending');
+  const success = document.getElementById('paymentSuccess');
+  const failed = document.getElementById('paymentFailed');
+  const failureMessage = document.getElementById('paymentFailureMessage');
+  let attempts = 0;
+
+  async function checkStatus() {
+    attempts += 1;
+    try {
+      const response = await fetch(statusUrl, {credentials: 'same-origin', headers: {'Accept': 'application/json'}});
+      if (!response.ok) throw new Error('status request failed');
+      const data = await response.json();
+      if (data.status === 'completed') {
+        pending.classList.add('d-none');
+        success.classList.remove('d-none');
+        return;
+      }
+      if (['failed', 'cancelled', 'expired'].includes(data.status)) {
+        pending.classList.add('d-none');
+        failed.classList.remove('d-none');
+        failureMessage.textContent = data.message || '{% trans "The payment was not completed. You can safely try again." %}';
+        return;
+      }
+    } catch (error) {
+      // Keep the page useful if a single status request fails.
+    }
+    if (attempts < 30) {
+      window.setTimeout(checkStatus, 2000);
+    } else {
+      pending.querySelector('p.mb-0').textContent = '{% trans "Confirmation is taking longer than expected. You can leave this page safely; access will unlock automatically when the provider confirms payment." %}';
+    }
+  }
+  checkStatus();
+})();
+</script>
+{% endblock extra_scripts %}

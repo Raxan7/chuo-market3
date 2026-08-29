@@ -497,42 +497,55 @@ class CoursePaymentTests(TestCase):
     # ── CoursePayment model ──────────────────────────────────────────
 
     @override_settings(SNIPPE_API_KEY='test_key')
-    @override_settings(CERTIFICATE_PRICE=15000)
     def test_course_payment_init_creates_payment_record(self):
-        """course_payment_init should create a CoursePayment and attempt Snippe redirect"""
+        """course_payment_init creates the local record before redirecting to Snippe."""
+        from unittest.mock import patch
+
         self.client.login(username='student', password='testpassword')
-        # Before the call, no payments exist
-        self.assertEqual(
-            CoursePayment.objects.filter(user=self.student_user, course=self.paid_course).count(), 0,
-        )
-        # Mock the Snippe API call — the view will fail because test has no real API
-        # But we can verify the view redirects to payment_form on failure
-        response = self.client.get(
-            reverse('lms:course_payment_init', kwargs={'slug': self.paid_course.slug}),
-            follow=True,
-        )
-        # It should fall back to payment form (Snippe returns error in test)
-        self.assertIn('payment', response.request['PATH_INFO'])
+        mock_response = type('FakeResponse', (), {'json': lambda self: {
+            'code': 201,
+            'data': {
+                'reference': 'sess_course_123',
+                'checkout_url': 'https://pay.snippe.sh/sess_course_123',
+                'payment_link_url': 'https://pay.snippe.sh/l/sess_course_123',
+            },
+        }})()
+        with patch('lms.views.requests.post', return_value=mock_response) as mock_post:
+            response = self.client.post(
+                reverse('lms:course_payment_init', kwargs={'slug': self.paid_course.slug}),
+            )
+
+        self.assertEqual(response.status_code, 302)
+        payment = CoursePayment.objects.get(user=self.student_user, course=self.paid_course)
+        self.assertEqual(payment.snippe_session_id, 'sess_course_123')
+        self.assertEqual(payment.status, 'pending')
+        payload = mock_post.call_args.kwargs['json']
+        self.assertEqual(payload['metadata']['payment_id'], payment.pk)
+
+    def test_course_payment_init_rejects_get(self):
+        self.client.login(username='student', password='testpassword')
+        response = self.client.get(reverse('lms:course_payment_init', kwargs={'slug': self.paid_course.slug}))
+        self.assertEqual(response.status_code, 405)
 
     @override_settings(SNIPPE_API_KEY='')
     def test_course_payment_init_falls_back_when_snippe_unconfigured(self):
         """When Snippe is not configured, redirect back to payment form"""
         self.client.login(username='student', password='testpassword')
-        response = self.client.get(
+        response = self.client.post(
             reverse('lms:course_payment_init', kwargs={'slug': self.paid_course.slug}),
             follow=True,
         )
         self.assertEqual(response.status_code, 200)
         self.assertIn('payment', response.request['PATH_INFO'])
 
-    def test_course_payment_success_without_payment_shows_form(self):
-        """course_payment_success without completed payment should redirect back"""
+    def test_course_payment_success_without_payment_shows_confirmation(self):
+        """The return URL should be safe even when the webhook has not arrived yet."""
         self.client.login(username='student', password='testpassword')
         response = self.client.get(
             reverse('lms:course_payment_success', kwargs={'slug': self.paid_course.slug}),
-            follow=True,
         )
-        self.assertIn('payment', response.request['PATH_INFO'])
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Do not pay again')
 
     def test_course_payment_success_with_completed_payment_creates_enrollment(self):
         """course_payment_success with completed CoursePayment should create approved enrollment"""
@@ -561,8 +574,8 @@ class CoursePaymentTests(TestCase):
             reverse('lms:payment_form', kwargs={'slug': self.paid_course.slug}),
         )
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'Pay Online')
-        self.assertContains(response, '25000.00')
+        self.assertContains(response, 'Pay online')
+        self.assertContains(response, '25000')
 
     @override_settings(SNIPPE_API_KEY='')
     def test_payment_form_hides_online_button_when_snippe_not_configured(self):
@@ -573,7 +586,7 @@ class CoursePaymentTests(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.assertNotContains(response, 'Pay Now')
-        self.assertNotContains(response, 'Pay Online')
+        self.assertNotContains(response, 'Pay online')
 
     # ── Webhook handling for course payments ─────────────────────────
 
@@ -770,7 +783,7 @@ class ModulePaymentTests(TestCase):
         )
         self.course.instructors.add(self.instructor_profile)
 
-        # Module with price set (should show Request Access button)
+        # Module with price set (should show Unlock Module button)
         self.priced_module = CourseModule.objects.create(
             course=self.course,
             title='Priced Module',
@@ -786,7 +799,7 @@ class ModulePaymentTests(TestCase):
             order=0,
         )
 
-        # Module WITHOUT price (should NOT show Request Access button)
+        # Module WITHOUT price (should NOT show Unlock Module button)
         self.free_module = CourseModule.objects.create(
             course=self.course,
             title='Unpriced Module',
@@ -796,16 +809,16 @@ class ModulePaymentTests(TestCase):
 
         self.client.login(username='module_student', password='testpassword')
 
-    # ── Request Access button visibility ─────────────────────────────
+    # ── Unlock Module button visibility ─────────────────────────────
 
     def test_course_detail_shows_request_access_button_for_priced_module(self):
-        """Module with a price should show Request Access button"""
+        """Module with a price should show Unlock Module button"""
         response = self.client.get(reverse('lms:course_detail', kwargs={'slug': self.course.slug}))
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'Request Access')
+        self.assertContains(response, 'Unlock Module')
 
     def test_course_detail_hides_request_access_for_unpriced_module(self):
-        """Module without a price should NOT show Request Access button"""
+        """Module without a price should NOT show Unlock Module button"""
         # Use a course containing only an unpriced module
         unpriced_course = Course.objects.create(
             title='Unpriced Course',
@@ -822,10 +835,10 @@ class ModulePaymentTests(TestCase):
         )
         response = self.client.get(reverse('lms:course_detail', kwargs={'slug': unpriced_course.slug}))
         self.assertEqual(response.status_code, 200)
-        self.assertNotContains(response, 'Request Access')
+        self.assertNotContains(response, 'Unlock Module')
 
     def test_request_access_hidden_when_already_has_access(self):
-        """Request Access should not show if the user already has full-course access"""
+        """Unlock Module should not show if the user already has full-course access"""
         # Enroll student as approved
         CourseEnrollment.objects.create(
             student=self.student_profile,
@@ -835,7 +848,7 @@ class ModulePaymentTests(TestCase):
         )
         response = self.client.get(reverse('lms:course_detail', kwargs={'slug': self.course.slug}))
         self.assertEqual(response.status_code, 200)
-        self.assertNotContains(response, 'Request Access')
+        self.assertNotContains(response, 'Unlock Module')
 
     # ── Module access payment page ───────────────────────────────────
 
@@ -891,7 +904,7 @@ class ModulePaymentTests(TestCase):
             },
         }})()
         with patch('lms.views.requests.post', return_value=mock_response) as mock_post:
-            response = self.client.get(reverse('lms:module_payment_init', kwargs={
+            response = self.client.post(reverse('lms:module_payment_init', kwargs={
                 'course_slug': self.course.slug,
                 'module_id': self.priced_module.id,
             }))
@@ -909,12 +922,19 @@ class ModulePaymentTests(TestCase):
     @override_settings(SNIPPE_API_KEY='')
     def test_module_payment_init_falls_back_when_snippe_unconfigured(self):
         """When Snippe is not configured, redirect back to the payment page"""
-        response = self.client.get(reverse('lms:module_payment_init', kwargs={
+        response = self.client.post(reverse('lms:module_payment_init', kwargs={
             'course_slug': self.course.slug,
             'module_id': self.priced_module.id,
         }), follow=True)
         self.assertEqual(response.status_code, 200)
         self.assertIn('access', response.request['PATH_INFO'])
+
+    def test_module_payment_init_rejects_get(self):
+        response = self.client.get(reverse('lms:module_payment_init', kwargs={
+            'course_slug': self.course.slug,
+            'module_id': self.priced_module.id,
+        }))
+        self.assertEqual(response.status_code, 405)
 
     # ── Module payment success ───────────────────────────────────────
 
@@ -956,8 +976,8 @@ class ModulePaymentTests(TestCase):
         # Should have been redirected to course detail
         self.assertIn(self.course.slug, response.request['PATH_INFO'])
 
-    def test_module_payment_success_without_completed_payment_redirects_back(self):
-        """On success callback, without a completed payment, redirect back to payment page"""
+    def test_module_payment_success_without_completed_payment_shows_confirmation(self):
+        """Without a webhook confirmation, show a safe polling screen instead of encouraging re-payment."""
         response = self.client.get(reverse('lms:module_payment_success', kwargs={
             'course_slug': self.course.slug,
             'module_id': self.priced_module.id,
@@ -972,7 +992,7 @@ class ModulePaymentTests(TestCase):
     # ── Pending request state in course detail ───────────────────────
 
     def test_pending_request_shows_waiting_on_course_detail(self):
-        """A pending ModuleAccessRequest should show 'Waiting for access grant' on the course page"""
+        """A pending ModuleAccessRequest should show 'Confirming payment' on the course page"""
         ModuleAccessRequest.objects.create(
             student=self.student_profile,
             module=self.priced_module,
@@ -981,11 +1001,11 @@ class ModulePaymentTests(TestCase):
         )
         response = self.client.get(reverse('lms:course_detail', kwargs={'slug': self.course.slug}))
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'Waiting for access grant')
+        self.assertContains(response, 'Confirming payment')
         self.assertContains(response, 'Payment successful')
 
     def test_approved_request_shows_approved_on_course_detail(self):
-        """An approved ModuleAccessRequest should unlock the module (no Request Access shown)"""
+        """An approved ModuleAccessRequest should unlock the module (no Unlock Module shown)"""
         # Create an approved request AND a grant
         ModuleAccessRequest.objects.create(
             student=self.student_profile,
@@ -1001,8 +1021,8 @@ class ModulePaymentTests(TestCase):
         )
         response = self.client.get(reverse('lms:course_detail', kwargs={'slug': self.course.slug}))
         self.assertEqual(response.status_code, 200)
-        # Approved module should be accessible - no 'Request Access' anywhere
-        self.assertNotContains(response, 'Request Access')
+        # Approved module should be accessible - no 'Unlock Module' anywhere
+        self.assertNotContains(response, 'Unlock Module')
 
     # ── ModuleAccessRequest model approve/reject ─────────────────────
 
@@ -1205,13 +1225,13 @@ class ModulePaymentTests(TestCase):
         self.assertNotContains(response, 'Complete the previous module first')
 
     def test_student_sees_request_access_for_module_after_skip_assessment(self):
-        """A regular student sees 'Request Access' for the paid module after a skip_assessment module"""
+        """A regular student sees 'Unlock Module' for the paid module after a skip_assessment module"""
         course, overview, paid = self._course_with_skip_assessment_then_paid()
         # student_user is already logged in and NOT enrolled in this course
         response = self.client.get(reverse('lms:course_detail', kwargs={'slug': course.slug}))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Free access')
-        self.assertContains(response, 'Request Access')
+        self.assertContains(response, 'Unlock Module')
         self.assertContains(response, str(paid.price))
 
     # ── Webhook handling for module payments ─────────────────────────
@@ -1346,7 +1366,7 @@ class ModulePaymentTests(TestCase):
 )
 class ModuleAccessRequestAfterManualGrantTests(TestCase):
     """A student with a manual ModuleAccessGrant for module N who completes it
-    should see a 'Request Access' button for module N+1 (priced module)."""
+    should see a 'Unlock Module' button for module N+1 (priced module)."""
 
     def setUp(self):
         self.client = Client()
@@ -1418,7 +1438,7 @@ class ModuleAccessRequestAfterManualGrantTests(TestCase):
 
     @override_settings(CEREBRAS_API_KEY=None, CEREBRAS_STRICT_ASSESSMENTS=False)
     def test_request_access_hidden_until_previous_module_completed(self):
-        """Request Access must be hidden for module 2 until module 1 is completed."""
+        """Unlock Module must be hidden for module 2 until module 1 is completed."""
         ModuleAccessGrant.objects.create(
             student=self.student_profile,
             module=self.module_1,
@@ -1431,12 +1451,12 @@ class ModuleAccessRequestAfterManualGrantTests(TestCase):
 
         response = self.client.get(reverse('lms:course_detail', kwargs={'slug': self.course.slug}))
         self.assertEqual(response.status_code, 200)
-        self.assertNotContains(response, 'Request Access — 15000.00')
+        self.assertNotContains(response, 'Unlock Module — 15000.00')
         self.assertContains(response, 'Previous module required')
 
     @override_settings(CEREBRAS_API_KEY=None, CEREBRAS_STRICT_ASSESSMENTS=False)
     def test_request_access_shown_after_completing_granted_module(self):
-        """After completing module 1 (granted), module 2 should show Request Access."""
+        """After completing module 1 (granted), module 2 should show Unlock Module."""
         ModuleAccessGrant.objects.create(
             student=self.student_profile,
             module=self.module_1,
@@ -1463,7 +1483,7 @@ class ModuleAccessRequestAfterManualGrantTests(TestCase):
 
         response = self.client.get(reverse('lms:course_detail', kwargs={'slug': self.course.slug}))
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'Request Access')
+        self.assertContains(response, 'Unlock Module')
         self.assertContains(response, '15000.00')
 
 

@@ -19,7 +19,19 @@ from .models import (
     InstructorRequest, ContentAccess, ModuleAccessGrant, SiteSettings, AdExemptUser, PaymentMethod,
     ModuleProgress, CertificateTemplate, StudentCertificate, CoursePayment, CertificatePayment,
     ModulePayment, ModuleAccessRequest,
+    SnippeWebhookEvent,
 )
+
+
+@admin.register(SnippeWebhookEvent)
+class SnippeWebhookEventAdmin(admin.ModelAdmin):
+    list_display = ('event_id', 'event_type', 'payment_type', 'status', 'received_at', 'processed_at')
+    list_filter = ('status', 'event_type', 'payment_type', 'received_at')
+    search_fields = ('event_id', 'provider_reference', 'payload_hash')
+    readonly_fields = (
+        'event_id', 'event_type', 'payment_type', 'provider_reference',
+        'payload_hash', 'status', 'error', 'received_at', 'processed_at',
+    )
 
 
 class CourseModuleInline(admin.TabularInline):

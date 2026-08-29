@@ -4,6 +4,8 @@ Views for the LMS application
 import hmac
 import json
 import time
+from datetime import timedelta
+from decimal import Decimal, InvalidOperation
 
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse, reverse_lazy
@@ -20,7 +22,8 @@ from django.views.generic import (
     
     ListView, DetailView, CreateView, UpdateView, DeleteView, FormView, TemplateView, View
 )
-from django.db.models import Q, Count, Avg
+from django.db.models import Q, Count, Avg, Sum
+from django.db import transaction, IntegrityError
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from django.conf import settings
@@ -33,6 +36,7 @@ from .models import (
     Grade, Semester, CourseEnrollment, ActivityLog, InstructorRequest, SiteSettings,
     AdExemptUser, PaymentMethod, ModuleProgress, CertificateTemplate, StudentCertificate,
     CoursePayment, CertificatePayment, ModuleAccessGrant, ModulePayment, ModuleAccessRequest,
+    SnippeWebhookEvent,
 )
 from .forms import (
     LMSProfileForm, CourseForm, CourseModuleForm, CourseContentForm,
@@ -2165,6 +2169,7 @@ def download_certificate(request, certificate_id):
 
 
 @login_required(login_url='login')
+@require_POST
 def certificate_payment_init(request, certificate_id):
     """Initiate a Snippe session to pay for certificate download."""
     certificate = get_object_or_404(
@@ -2183,13 +2188,22 @@ def certificate_payment_init(request, certificate_id):
         messages.info(request, _("You have already paid for this certificate."))
         return redirect('lms:certificate_download', certificate_id=certificate.certificate_id)
 
+    reusable_payment = CertificatePayment.objects.filter(
+        certificate=certificate,
+        user=request.user,
+        status='pending',
+        checkout_url__gt='',
+        created_at__gte=timezone.now() - timedelta(minutes=50),
+    ).order_by('-created_at').first()
+    if reusable_payment:
+        return redirect(reusable_payment.checkout_url)
+
     snippe_api_key = getattr(settings, 'SNIPPE_API_KEY', '')
     if not snippe_api_key:
         messages.error(request, _("Payment system is not configured. Please try again later."))
         return redirect('lms:certificate_detail', certificate_id=certificate.certificate_id)
 
     # Determine price: template-specific or default
-    from decimal import Decimal
     template = certificate.template
     if template and template.certificate_price:
         amount = int(template.certificate_price)
@@ -2197,7 +2211,7 @@ def certificate_payment_init(request, certificate_id):
         amount = getattr(settings, 'CERTIFICATE_PRICE', 15000)
 
     redirect_url = request.build_absolute_uri(
-        reverse('lms:certificate_detail', kwargs={'certificate_id': certificate.certificate_id})
+        reverse('lms:certificate_payment_success', kwargs={'certificate_id': certificate.certificate_id})
     )
     webhook_url = request.build_absolute_uri(reverse('lms:snippe_webhook'))
     # Snippe requires HTTPS for webhook URLs
@@ -2210,6 +2224,13 @@ def certificate_payment_init(request, certificate_id):
         customer_phone = request.user.customer.phone_number or ''
     except Exception:
         pass
+
+    payment = CertificatePayment.objects.create(
+        user=request.user,
+        certificate=certificate,
+        amount=amount,
+        status='pending',
+    )
 
     session_payload = {
         "amount": amount,
@@ -2224,6 +2245,8 @@ def certificate_payment_init(request, certificate_id):
         "webhook_url": webhook_url,
         "description": f"Certificate: {certificate.course.title}",
         "metadata": {
+            "payment_type": "certificate",
+            "payment_id": payment.pk,
             "certificate_id": certificate.certificate_id,
             "user_id": request.user.id,
         },
@@ -2244,83 +2267,99 @@ def certificate_payment_init(request, certificate_id):
 
         if data.get("code") == 201:
             session_data = data["data"]
-            CertificatePayment.objects.create(
-                user=request.user,
-                certificate=certificate,
-                snippe_session_id=session_data.get("reference", ""),
-                amount=amount,
-                status='pending',
-                checkout_url=session_data.get("checkout_url", ""),
-                payment_link_url=session_data.get("payment_link_url", ""),
-            )
-            return redirect(session_data["checkout_url"])
+            checkout_url = session_data.get("checkout_url", "")
+            if not checkout_url:
+                payment.status = 'failed'
+                payment.failure_reason = 'Payment provider did not return a checkout URL.'
+                payment.save(update_fields=['status', 'failure_reason', 'updated_at'])
+                messages.error(request, _("Payment provider returned an invalid checkout session."))
+                return redirect('lms:certificate_detail', certificate_id=certificate.certificate_id)
+            payment.snippe_session_id = session_data.get("reference", "")
+            payment.checkout_url = checkout_url
+            payment.payment_link_url = session_data.get("payment_link_url", "")
+            payment.save(update_fields=[
+                'snippe_session_id', 'checkout_url', 'payment_link_url', 'updated_at',
+            ])
+            return redirect(checkout_url)
         else:
             err_msg = data.get("message", _("Unknown error"))
+            payment.status = 'failed'
+            payment.failure_reason = str(err_msg)
+            payment.save(update_fields=['status', 'failure_reason', 'updated_at'])
             messages.error(request, _(f"Payment failed: {err_msg}"))
             return redirect('lms:certificate_detail', certificate_id=certificate.certificate_id)
 
-    except requests.RequestException:
+    except (requests.RequestException, ValueError, KeyError) as exc:
+        payment.status = 'failed'
+        payment.failure_reason = f'Payment session error: {exc}'
+        payment.save(update_fields=['status', 'failure_reason', 'updated_at'])
         messages.error(request, _("Payment service is temporarily unavailable. Please try again later."))
         return redirect('lms:certificate_detail', certificate_id=certificate.certificate_id)
+
+
+@login_required(login_url='login')
+def certificate_payment_success(request, certificate_id):
+    certificate = get_object_or_404(StudentCertificate, certificate_id=certificate_id, student=request.user)
+    payment = CertificatePayment.objects.filter(
+        user=request.user, certificate=certificate,
+    ).order_by('-created_at').first()
+    return render(request, 'lms/payment_confirmation.html', {
+        'title': _("Confirming certificate payment"),
+        'item_title': certificate.course.title,
+        'payment': payment,
+        'status_url': reverse('lms:certificate_payment_status', kwargs={'certificate_id': certificate.certificate_id}),
+        'success_url': reverse('lms:certificate_detail', kwargs={'certificate_id': certificate.certificate_id}),
+        'success_label': _("Download certificate"),
+    })
+
+
+@login_required(login_url='login')
+def certificate_payment_status(request, certificate_id):
+    certificate = get_object_or_404(StudentCertificate, certificate_id=certificate_id, student=request.user)
+    payment = CertificatePayment.objects.filter(
+        user=request.user, certificate=certificate,
+    ).order_by('-created_at').first()
+    return JsonResponse({
+        'status': payment.status if payment else 'missing',
+        'message': payment.failure_reason if payment and payment.status in {'failed', 'cancelled', 'expired'} else '',
+        'success_url': reverse('lms:certificate_detail', kwargs={'certificate_id': certificate.certificate_id}),
+    })
 
 
 @csrf_exempt
 @require_POST
 def snippe_webhook(request):
-    """Handle Snippe webhook events.
-
-    Supports both current (2026-01-25) envelope format:
-        { id, type, data: { reference, status, amount, metadata, ... } }
-    and legacy (2026-01-01) flat format:
-        { event, reference, status, amount, metadata, ... }
-
-    Events handled:
-        payment.completed  -> status='completed'
-        payment.failed     -> status='failed'
-        payment.cancelled  -> status='cancelled'
-        payment.voided     -> status='cancelled'
-        payment.expired    -> status='expired'
-
-    Valid state transitions (ONLY):
-        pending -> completed | cancelled | failed | expired
-        (all other transitions are rejected and logged)
-    """
+    """Process signed Snippe payment webhooks safely and idempotently."""
+    import hashlib
     import logging
-    import time
-    logger = logging.getLogger(__name__)
 
+    logger = logging.getLogger(__name__)
     signing_key = getattr(settings, 'SNIPPE_WEBHOOK_SECRET', '')
     signature = request.headers.get('X-Webhook-Signature', '')
     timestamp_header = request.headers.get('X-Webhook-Timestamp', '')
     raw_body = request.body
 
-    # ── Config checks ────────────────────────────────────────────
     if not signing_key:
         logger.warning("Snippe webhook secret not configured")
         return HttpResponse(status=500)
-
-    if not signature:
-        logger.warning("Snippe webhook missing X-Webhook-Signature header")
+    if not signature or not timestamp_header:
+        logger.warning("Snippe webhook missing signature or timestamp")
         return HttpResponse(status=400)
 
-    if not timestamp_header:
-        logger.warning("Snippe webhook missing X-Webhook-Timestamp header")
-        return HttpResponse(status=400)
-
-    # ── Replay attack prevention ─────────────────────────────────
     try:
         event_time = int(timestamp_header)
-        if int(time.time()) - event_time > 300:
-            logger.warning("Snippe webhook timestamp too old (replay?)")
+        if abs(int(time.time()) - event_time) > 300:
+            logger.warning("Snippe webhook timestamp outside replay window")
             return HttpResponse(status=400)
     except ValueError:
         logger.warning("Snippe webhook invalid timestamp header")
         return HttpResponse(status=400)
 
-    # ── Signature verification ───────────────────────────────────
-    import hashlib
-    import hmac
-    body_str = raw_body.decode('utf-8')
+    try:
+        body_str = raw_body.decode('utf-8')
+    except UnicodeDecodeError:
+        return HttpResponse(status=400)
+
     message = f"{timestamp_header}.{body_str}"
     expected_sig = hmac.new(
         signing_key.encode(), message.encode(), hashlib.sha256,
@@ -2329,69 +2368,76 @@ def snippe_webhook(request):
         logger.warning("Snippe webhook signature verification failed")
         return HttpResponse(status=400)
 
-    # ── Parse payload ────────────────────────────────────────────
     try:
         payload = json.loads(body_str)
-    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-        logger.error("Snippe webhook invalid body: %s", exc)
+    except json.JSONDecodeError as exc:
+        logger.error("Snippe webhook invalid JSON: %s", exc)
         return HttpResponse(status=400)
 
-    # ── Detect format: current envelope vs legacy flat ───────────
-    if 'type' in payload and 'data' in payload:
-        event_id = payload.get('id', '')
-        event_type = payload['type']
+    if 'type' in payload and isinstance(payload.get('data'), dict):
+        event_id = str(payload.get('id') or '')
+        event_type = str(payload.get('type') or '')
         event_data = payload['data']
     elif 'event' in payload:
-        event_id = payload.get('reference', '')
-        event_type = payload['event']
+        event_id = str(payload.get('reference') or '')
+        event_type = str(payload.get('event') or '')
         event_data = payload
     else:
         logger.warning("Snippe webhook unrecognised payload format")
         return HttpResponse(status=200)
 
-    logger.info(
-        "Snippe webhook received: event=%s id=%s ref=%s",
-        event_type, event_id, event_data.get('reference', ''),
-    )
+    metadata = dict(event_data.get('metadata') or {})
+    url_meta = event_data.get('url_metadata')
+    if isinstance(url_meta, dict):
+        metadata.update(url_meta)
 
-    # ── Extract common fields ────────────────────────────────────
-    metadata = event_data.get('metadata', {}) or {}
-    if 'url_metadata' in event_data:
-        url_meta = event_data['url_metadata']
-        if isinstance(url_meta, dict):
-            metadata.update(url_meta)
-
-    payment_type = metadata.get('payment_type', 'certificate')
+    payment_type = str(metadata.get('payment_type') or 'certificate')
     certificate_id = metadata.get('certificate_id')
     course_id = metadata.get('course_id')
     module_id = metadata.get('module_id')
     user_id = metadata.get('user_id')
-    payment_reference = event_data.get('reference', '')
-    failure_reason = event_data.get('failure_reason', '')
+    internal_payment_id = metadata.get('payment_id')
+    payment_reference = str(event_data.get('reference') or '')
+    failure_reason = str(event_data.get('failure_reason') or '')
+    payload_hash = hashlib.sha256(raw_body).hexdigest()
+    event_key = event_id or f"payload:{payload_hash}"
 
-    amount_value = None
     try:
-        amount_value = event_data['amount']['value']
-    except (KeyError, TypeError):
-        pass
+        webhook_event, created = SnippeWebhookEvent.objects.get_or_create(
+            event_id=event_key,
+            defaults={
+                'event_type': event_type,
+                'payment_type': payment_type,
+                'provider_reference': payment_reference,
+                'payload_hash': payload_hash,
+                'status': 'processing',
+            },
+        )
+    except IntegrityError:
+        webhook_event = SnippeWebhookEvent.objects.get(event_id=event_key)
+        created = False
 
-    if not user_id:
-        logger.info("Snippe webhook missing user_id in metadata — nothing to update")
+    if not created:
+        if webhook_event.status in {'processed', 'rejected', 'ignored'}:
+            logger.info("Snippe webhook duplicate event ignored: %s", event_key)
+            return HttpResponse(status=200)
+        # A failed event can be retried by the provider. A currently-processing
+        # duplicate is ignored unless it has been stuck for more than 5 minutes.
+        if webhook_event.status == 'processing':
+            age = timezone.now() - webhook_event.received_at
+            if age.total_seconds() < 300:
+                return HttpResponse(status=200)
+        webhook_event.status = 'processing'
+        webhook_event.error = ''
+        webhook_event.save(update_fields=['status', 'error'])
+
+    def finish_event(status, error=''):
+        webhook_event.status = status
+        webhook_event.error = error[:4000]
+        webhook_event.processed_at = timezone.now()
+        webhook_event.save(update_fields=['status', 'error', 'processed_at'])
         return HttpResponse(status=200)
 
-    if payment_type == 'course_enrollment' and not course_id:
-        logger.info("Snippe webhook missing course_id for course_enrollment — nothing to update")
-        return HttpResponse(status=200)
-
-    if payment_type == 'module_access' and not module_id:
-        logger.info("Snippe webhook missing module_id for module_access — nothing to update")
-        return HttpResponse(status=200)
-
-    if payment_type not in ('course_enrollment', 'module_access') and not certificate_id:
-        logger.info("Snippe webhook missing certificate_id in metadata — nothing to update")
-        return HttpResponse(status=200)
-
-    # ── Map event type to payment status ─────────────────────────
     status_map = {
         'payment.completed': 'completed',
         'payment.failed': 'failed',
@@ -2401,274 +2447,159 @@ def snippe_webhook(request):
     }
     new_status = status_map.get(event_type)
     if not new_status:
-        logger.info("Snippe webhook unhandled event type: %s", event_type)
-        return HttpResponse(status=200)
+        return finish_event('ignored', f'Unhandled event type: {event_type}')
 
-    if payment_type == 'course_enrollment':
-        # ── Handle course enrollment payment ─────────────────────
-        # Idempotency check
-        if event_id and CoursePayment.objects.filter(
-            webhook_event_id=event_id,
-        ).exists():
-            logger.info(
-                "Snippe webhook course payment event already processed: event=%s course=%s user=%s",
-                event_id, course_id, user_id,
-            )
-            return HttpResponse(status=200)
+    if not user_id:
+        return finish_event('ignored', 'Missing user_id metadata')
+    if payment_type == 'course_enrollment' and not course_id:
+        return finish_event('ignored', 'Missing course_id metadata')
+    if payment_type == 'module_access' and not module_id:
+        return finish_event('ignored', 'Missing module_id metadata')
+    if payment_type not in ('course_enrollment', 'module_access') and not certificate_id:
+        return finish_event('ignored', 'Missing certificate_id metadata')
 
-        try:
-            payment = CoursePayment.objects.filter(
-                course_id=course_id,
-                user_id=user_id,
-            ).latest('created_at')
-
-            old_status = payment.status
-
-            if old_status == new_status:
-                logger.info(
-                    "Snippe webhook duplicate event: course=%s user=%s already %s",
-                    course_id, user_id, new_status,
-                )
-                return HttpResponse(status=200)
-
-            if old_status != 'pending':
-                logger.warning(
-                    "Snippe webhook REJECTED transition from %s to %s: "
-                    "course=%s user=%s ref=%s event=%s "
-                    "(only pending→* allowed)",
-                    old_status, new_status, course_id, user_id,
-                    payment_reference, event_id,
-                )
-                return HttpResponse(status=200)
-
-            # Apply the transition
-            payment.status = new_status
-            payment.snippe_reference = payment_reference
-            if event_id:
-                payment.webhook_event_id = event_id
-            if failure_reason:
-                payment.failure_reason = failure_reason
-            if amount_value is not None:
-                payment.amount = amount_value
-            payment.save()
-
-            # On completed payment, auto-create/approve enrollment
-            if new_status == 'completed':
-                try:
-                    user = User.objects.get(id=user_id)
-                    if hasattr(user, 'lms_profile'):
-                        profile = user.lms_profile
-                    else:
-                        profile = LMSProfile.objects.create(user=user, role='student')
-
-                    enrollment, created = CourseEnrollment.objects.get_or_create(
-                        student=profile,
-                        course_id=course_id,
-                        defaults={
-                            'payment_status': 'approved',
-                            'payment_date': timezone.now(),
-                        }
-                    )
-                    if not created and enrollment.payment_status != 'approved':
-                        enrollment.payment_status = 'approved'
-                        enrollment.payment_date = timezone.now()
-                        enrollment.save()
-                    
-                    logger.info("Course enrollment approved: course=%s user=%s", course_id, user_id)
-                except User.DoesNotExist:
-                    logger.warning("Snippe webhook user not found for course payment: user=%s", user_id)
-
-            if new_status in ('failed', 'cancelled', 'expired'):
-                logger.info(
-                    "Course payment %s: course=%s user=%s ref=%s reason=%s",
-                    new_status, course_id, user_id, payment_reference,
-                    failure_reason or 'none',
-                )
-            else:
-                logger.info(
-                    "Course payment %s: course=%s user=%s ref=%s",
-                    new_status, course_id, user_id, payment_reference,
-                )
-
-        except CoursePayment.DoesNotExist:
-            logger.warning(
-                "Snippe webhook no course payment found for course=%s user=%s — skipping",
-                course_id, user_id,
-            )
-
-    elif payment_type == 'module_access':
-        # ── Handle module access payment ─────────────────────────
-        # Idempotency check
-        if event_id and ModulePayment.objects.filter(
-            webhook_event_id=event_id,
-        ).exists():
-            logger.info(
-                "Snippe webhook module payment event already processed: event=%s module=%s user=%s",
-                event_id, module_id, user_id,
-            )
-            return HttpResponse(status=200)
-
-        try:
-            payment = ModulePayment.objects.filter(
-                module_id=module_id,
-                user_id=user_id,
-            ).latest('created_at')
-
-            old_status = payment.status
-
-            if old_status == new_status:
-                logger.info(
-                    "Snippe webhook duplicate event: module=%s user=%s already %s",
-                    module_id, user_id, new_status,
-                )
-                return HttpResponse(status=200)
-
-            if old_status != 'pending':
-                logger.warning(
-                    "Snippe webhook REJECTED transition from %s to %s: "
-                    "module=%s user=%s ref=%s event=%s "
-                    "(only pending→* allowed)",
-                    old_status, new_status, module_id, user_id,
-                    payment_reference, event_id,
-                )
-                return HttpResponse(status=200)
-
-            # Apply the transition
-            payment.status = new_status
-            payment.snippe_reference = payment_reference
-            if event_id:
-                payment.webhook_event_id = event_id
-            if failure_reason:
-                payment.failure_reason = failure_reason
-            if amount_value is not None:
-                payment.amount = amount_value
-            payment.save()
-
-            # On completed payment, auto-grant module access (no admin approval needed)
-            if new_status == 'completed':
-                try:
-                    user = User.objects.get(id=user_id)
-                    if hasattr(user, 'lms_profile'):
-                        profile = user.lms_profile
-                    else:
-                        profile = LMSProfile.objects.create(user=user, role='student')
-
-                    request_obj = ModuleAccessRequest.objects.get_or_create(
-                        student=profile,
-                        module_id=module_id,
-                        defaults={
-                            'payment': payment,
-                            'status': 'pending',
-                            'notes': _('Paid via Snippe. Access granted automatically.'),
-                        },
-                    )[0]
-                    if request_obj.status == 'pending':
-                        request_obj.payment = payment
-                        request_obj.save(update_fields=['payment', 'updated_at'])
-                        request_obj.approve()
-                        logger.info(
-                            "Module access auto-granted on completed payment: module=%s user=%s request=%s",
-                            module_id, user_id, request_obj.id,
-                        )
-                    else:
-                        logger.info(
-                            "Module access request created/updated: module=%s user=%s request=%s status=%s",
-                            module_id, user_id, request_obj.id, request_obj.status,
-                        )
-                except User.DoesNotExist:
-                    logger.warning(
-                        "Snippe webhook user not found for module payment: user=%s",
-                        user_id,
-                    )
-
-            if new_status in ('failed', 'cancelled', 'expired'):
-                logger.info(
-                    "Module payment %s: module=%s user=%s ref=%s reason=%s",
-                    new_status, module_id, user_id, payment_reference,
-                    failure_reason or 'none',
-                )
-            else:
-                logger.info(
-                    "Module payment %s: module=%s user=%s ref=%s",
-                    new_status, module_id, user_id, payment_reference,
-                )
-
-        except ModulePayment.DoesNotExist:
-            logger.warning(
-                "Snippe webhook no module payment found for module=%s user=%s — skipping",
-                module_id, user_id,
-            )
-
+    amount_value = None
+    currency = ''
+    raw_amount = event_data.get('amount')
+    if isinstance(raw_amount, dict):
+        raw_value = raw_amount.get('value')
+        currency = str(raw_amount.get('currency') or event_data.get('currency') or '').upper()
     else:
-        # ── Handle certificate payment (existing flow) ───────────
-        # Idempotency: reject events we've already processed
-        if event_id and CertificatePayment.objects.filter(
-            webhook_event_id=event_id,
-        ).exists():
-            logger.info(
-                "Snippe webhook event already processed: event=%s cert=%s user=%s",
-                event_id, certificate_id, user_id,
-            )
-            return HttpResponse(status=200)
-
+        raw_value = raw_amount
+        currency = str(event_data.get('currency') or '').upper()
+    if raw_value is not None:
         try:
-            payment = CertificatePayment.objects.filter(
-                certificate__certificate_id=certificate_id,
-                user_id=user_id,
-            ).latest('created_at')
+            amount_value = Decimal(str(raw_value))
+        except (InvalidOperation, TypeError, ValueError):
+            return finish_event('rejected', f'Invalid amount value: {raw_value!r}')
 
-            old_status = payment.status
+    def find_payment(model, target_field, target_value):
+        qs = model.objects.select_for_update().filter(
+            user_id=user_id,
+            **{target_field: target_value},
+        )
+        if internal_payment_id:
+            payment = qs.filter(pk=internal_payment_id).first()
+            if payment:
+                return payment
+            return None
+        if payment_reference:
+            payment = qs.filter(snippe_session_id=payment_reference).first()
+            if payment:
+                return payment
+        # Compatibility only for sessions created before payment_id metadata was added.
+        logger.warning(
+            "Snippe webhook using legacy latest-payment fallback: type=%s user=%s ref=%s",
+            payment_type, user_id, payment_reference,
+        )
+        return qs.order_by('-created_at').first()
 
-            # Skip if already in the target state
-            if old_status == new_status:
-                logger.info(
-                    "Snippe webhook duplicate event: cert=%s user=%s already %s",
-                    certificate_id, user_id, new_status,
+    try:
+        with transaction.atomic():
+            if payment_type == 'course_enrollment':
+                payment = find_payment(CoursePayment, 'course_id', course_id)
+                target_label = f'course={course_id}'
+            elif payment_type == 'module_access':
+                payment = find_payment(ModulePayment, 'module_id', module_id)
+                target_label = f'module={module_id}'
+            else:
+                payment = find_payment(
+                    CertificatePayment,
+                    'certificate__certificate_id',
+                    certificate_id,
                 )
-                return HttpResponse(status=200)
+                target_label = f'certificate={certificate_id}'
 
-            # CRITICAL: ONLY allow transitions from 'pending'.
-            # Once a payment is 'completed', it is FINAL — never overwrite it.
-            if old_status != 'pending':
+            if not payment:
                 logger.warning(
-                    "Snippe webhook REJECTED transition from %s to %s: "
-                    "cert=%s user=%s ref=%s event=%s "
-                    "(only pending→* allowed)",
-                    old_status, new_status, certificate_id, user_id,
-                    payment_reference, event_id,
+                    "Snippe webhook payment record not found: type=%s user=%s payment_id=%s",
+                    payment_type, user_id, internal_payment_id,
                 )
-                return HttpResponse(status=200)
+                return finish_event('ignored', 'Matching payment record not found')
 
-            # Apply the transition
+            if payment.status == new_status:
+                return finish_event('processed')
+            if payment.status != 'pending':
+                return finish_event(
+                    'rejected',
+                    f'Invalid payment transition {payment.status}->{new_status} ({target_label})',
+                )
+
+            if new_status == 'completed':
+                expected_amount = Decimal(str(payment.amount))
+                if amount_value is None:
+                    return finish_event('rejected', 'Completed event missing amount')
+                if amount_value != expected_amount:
+                    logger.error(
+                        "Snippe amount mismatch: expected=%s received=%s %s user=%s",
+                        expected_amount, amount_value, target_label, user_id,
+                    )
+                    return finish_event(
+                        'rejected',
+                        f'Amount mismatch: expected {expected_amount}, received {amount_value}',
+                    )
+                if currency and currency != 'TZS':
+                    return finish_event('rejected', f'Currency mismatch: expected TZS, received {currency}')
+
             payment.status = new_status
             payment.snippe_reference = payment_reference
             if event_id:
                 payment.webhook_event_id = event_id
-            if failure_reason:
-                payment.failure_reason = failure_reason
-            if amount_value is not None:
-                payment.amount = amount_value
-            payment.save()
+            payment.failure_reason = failure_reason if new_status != 'completed' else ''
+            payment.save(update_fields=[
+                'status', 'snippe_reference', 'webhook_event_id',
+                'failure_reason', 'updated_at',
+            ])
 
-            if new_status in ('failed', 'cancelled', 'expired'):
-                logger.info(
-                    "Certificate payment %s: cert=%s user=%s ref=%s reason=%s",
-                    new_status, certificate_id, user_id, payment_reference,
-                    failure_reason or 'none',
+            if new_status == 'completed' and payment_type == 'course_enrollment':
+                user = User.objects.filter(pk=user_id).first()
+                if not user:
+                    return finish_event('rejected', 'Payment user no longer exists')
+                profile, _ = LMSProfile.objects.get_or_create(user=user, defaults={'role': 'student'})
+                enrollment, created_enrollment = CourseEnrollment.objects.get_or_create(
+                    student=profile,
+                    course_id=course_id,
+                    defaults={
+                        'payment_status': 'approved',
+                        'payment_date': timezone.now(),
+                    },
                 )
-            else:
-                logger.info(
-                    "Certificate payment %s: cert=%s user=%s ref=%s",
-                    new_status, certificate_id, user_id, payment_reference,
+                if not created_enrollment and enrollment.payment_status != 'approved':
+                    enrollment.payment_status = 'approved'
+                    enrollment.payment_date = timezone.now()
+                    enrollment.save(update_fields=['payment_status', 'payment_date'])
+
+            if new_status == 'completed' and payment_type == 'module_access':
+                user = User.objects.filter(pk=user_id).first()
+                if not user:
+                    return finish_event('rejected', 'Payment user no longer exists')
+                profile, _ = LMSProfile.objects.get_or_create(user=user, defaults={'role': 'student'})
+                access_request, _ = ModuleAccessRequest.objects.get_or_create(
+                    student=profile,
+                    module_id=module_id,
+                    defaults={
+                        'payment': payment,
+                        'status': 'pending',
+                        'notes': _('Paid via Snippe. Access granted automatically.'),
+                    },
                 )
+                if access_request.status == 'pending':
+                    access_request.payment = payment
+                    access_request.save(update_fields=['payment', 'updated_at'])
+                    access_request.approve()
 
-        except CertificatePayment.DoesNotExist:
-            logger.warning(
-                "Snippe webhook no payment found for cert=%s user=%s — skipping",
-                certificate_id, user_id,
-            )
-
-    return HttpResponse(status=200)
+        logger.info(
+            "Snippe webhook processed: event=%s type=%s payment_type=%s user=%s",
+            event_key, event_type, payment_type, user_id,
+        )
+        return finish_event('processed')
+    except Exception as exc:
+        logger.exception("Snippe webhook processing failed: event=%s", event_key)
+        webhook_event.status = 'failed'
+        webhook_event.error = str(exc)[:4000]
+        webhook_event.processed_at = timezone.now()
+        webhook_event.save(update_fields=['status', 'error', 'processed_at'])
+        return HttpResponse(status=500)
 
 
 @login_required(login_url='login')
@@ -3082,7 +3013,7 @@ def payment_form(request, slug):
             messages.error(request, _("Please select a payment method."))
         else:
             try:
-                payment_method = PaymentMethod.objects.get(id=payment_method_id)
+                payment_method = payment_methods.get(id=payment_method_id)
                 # If not enrolled, create enrollment now
                 if not enrollment:
                     enrollment = CourseEnrollment.objects.create(
@@ -3110,6 +3041,14 @@ def payment_form(request, slug):
             except PaymentMethod.DoesNotExist:
                 messages.error(request, _("Invalid payment method selected."))
 
+    # Credit completed module purchases toward the full-course upgrade.
+    module_credit = ModulePayment.objects.filter(
+        user=request.user, module__course=course, status='completed',
+    ).aggregate(total=Sum('amount'))['total'] or Decimal('0')
+    full_price = Decimal(str(course.price or 0))
+    module_credit = min(module_credit, full_price)
+    amount_due = max(full_price - module_credit, Decimal('0'))
+
     # Check if Snippe is configured for online payment
     snippe_configured = bool(getattr(settings, 'SNIPPE_API_KEY', ''))
 
@@ -3117,7 +3056,9 @@ def payment_form(request, slug):
         'course': course,
         'enrollment': enrollment,
         'payment_methods': payment_methods,
-        'course_price': course.price,
+        'course_price': amount_due,
+        'full_course_price': full_price,
+        'module_credit': module_credit,
         'snippe_configured': snippe_configured,
     })
 
@@ -3159,31 +3100,69 @@ def payment_pending(request, slug):
 
 
 @login_required(login_url='login')
+@require_POST
 def course_payment_init(request, slug):
-    """Initiate a Snippe session to pay for a paid course (pay-first model)."""
+    """Initiate a Snippe session for a paid course using an exact local payment record."""
     course = get_object_or_404(Course, slug=slug)
 
     if course.is_free:
         messages.warning(request, _("This is a free course and does not require payment."))
         return redirect('lms:course_detail', slug=course.slug)
 
-    # Check if already enrolled with approved payment
-    if hasattr(request.user, 'lms_profile'):
-        profile = request.user.lms_profile
-        enrollment = CourseEnrollment.objects.filter(student=profile, course=course).first()
-        if enrollment and enrollment.payment_status == 'approved':
-            messages.info(request, _("You already have access to this course."))
-            return redirect('lms:course_detail', slug=course.slug)
+    profile, _ = LMSProfile.objects.get_or_create(user=request.user, defaults={'role': 'student'})
+    enrollment = CourseEnrollment.objects.filter(student=profile, course=course).first()
+    if enrollment and enrollment.payment_status == 'approved':
+        messages.info(request, _("You already have access to this course."))
+        return redirect('lms:course_detail', slug=course.slug)
 
     snippe_api_key = getattr(settings, 'SNIPPE_API_KEY', '')
     if not snippe_api_key:
         messages.error(request, _("Online payment is not configured. Please use manual payment."))
         return redirect('lms:payment_form', slug=course.slug)
 
-    amount = int(course.price) if course.price else 0
-    if amount <= 0:
-        messages.error(request, _("Invalid course price."))
+    module_credit = ModulePayment.objects.filter(
+        user=request.user,
+        module__course=course,
+        status='completed',
+    ).aggregate(total=Sum('amount'))['total'] or Decimal('0')
+    full_price = Decimal(str(course.price or 0))
+    module_credit = min(module_credit, full_price)
+    amount_due = max(full_price - module_credit, Decimal('0'))
+
+    if amount_due <= 0:
+        if not enrollment:
+            CourseEnrollment.objects.create(
+                student=profile,
+                course=course,
+                payment_status='approved',
+                payment_date=timezone.now(),
+                payment_notes=_('Full-course access granted from completed module-payment credits.'),
+            )
+        else:
+            enrollment.payment_status = 'approved'
+            enrollment.payment_date = timezone.now()
+            enrollment.payment_notes = _('Full-course access granted from completed module-payment credits.')
+            enrollment.save(update_fields=['payment_status', 'payment_date', 'payment_notes'])
+        messages.success(request, _("Your previous module payments cover the full course. Full access is now unlocked."))
         return redirect('lms:course_detail', slug=course.slug)
+
+    reusable_payment = CoursePayment.objects.filter(
+        user=request.user,
+        course=course,
+        status='pending',
+        amount=amount_due,
+        checkout_url__gt='',
+        created_at__gte=timezone.now() - timedelta(minutes=50),
+    ).order_by('-created_at').first()
+    if reusable_payment:
+        return redirect(reusable_payment.checkout_url)
+
+    payment = CoursePayment.objects.create(
+        user=request.user,
+        course=course,
+        amount=amount_due,
+        status='pending',
+    )
 
     redirect_url = request.build_absolute_uri(
         reverse('lms:course_payment_success', kwargs={'slug': course.slug})
@@ -3200,7 +3179,7 @@ def course_payment_init(request, slug):
         pass
 
     session_payload = {
-        "amount": amount,
+        "amount": int(amount_due),
         "currency": "TZS",
         "allowed_methods": ["mobile_money", "card"],
         "customer": {
@@ -3213,6 +3192,7 @@ def course_payment_init(request, slug):
         "description": f"Enrollment: {course.title}",
         "metadata": {
             "payment_type": "course_enrollment",
+            "payment_id": payment.pk,
             "course_id": course.id,
             "user_id": request.user.id,
         },
@@ -3230,70 +3210,64 @@ def course_payment_init(request, slug):
             timeout=30,
         )
         data = resp.json()
+        if data.get("code") != 201:
+            raise ValueError(data.get("message") or "Payment provider rejected the session")
 
-        if data.get("code") == 201:
-            session_data = data["data"]
-            CoursePayment.objects.create(
-                user=request.user,
-                course=course,
-                snippe_session_id=session_data.get("reference", ""),
-                amount=amount,
-                status='pending',
-                checkout_url=session_data.get("checkout_url", ""),
-                payment_link_url=session_data.get("payment_link_url", ""),
-            )
-            return redirect(session_data["checkout_url"])
-        else:
-            err_msg = data.get("message", _("Unknown error"))
-            messages.error(request, _(f"Payment failed: {err_msg}"))
-            return redirect('lms:payment_form', slug=course.slug)
+        session_data = data.get("data") or {}
+        checkout_url = session_data.get("checkout_url", "")
+        if not checkout_url:
+            raise ValueError("Payment provider did not return a checkout URL")
 
-    except requests.RequestException:
+        payment.snippe_session_id = session_data.get("reference", "")
+        payment.checkout_url = checkout_url
+        payment.payment_link_url = session_data.get("payment_link_url", "")
+        payment.save(update_fields=[
+            'snippe_session_id', 'checkout_url', 'payment_link_url', 'updated_at',
+        ])
+        return redirect(checkout_url)
+    except (requests.RequestException, ValueError, KeyError) as exc:
+        payment.status = 'failed'
+        payment.failure_reason = f'Payment session error: {exc}'
+        payment.save(update_fields=['status', 'failure_reason', 'updated_at'])
         messages.error(request, _("Payment service is temporarily unavailable. Please try again later."))
         return redirect('lms:payment_form', slug=course.slug)
 
 
 @login_required(login_url='login')
 def course_payment_success(request, slug):
-    """Callback after Snippe checkout redirect — user lands here after paying."""
+    """Return landing page after Snippe; webhook remains the source of truth."""
     course = get_object_or_404(Course, slug=slug)
+    profile, _ = LMSProfile.objects.get_or_create(user=request.user, defaults={'role': 'student'})
 
-    if not hasattr(request.user, 'lms_profile'):
-        profile = LMSProfile.objects.create(user=request.user, role='student')
-    else:
-        profile = request.user.lms_profile
-
-    # Check if enrollment already exists and is approved (handled by webhook)
+    payment = CoursePayment.objects.filter(user=request.user, course=course).order_by('-created_at').first()
     enrollment = CourseEnrollment.objects.filter(student=profile, course=course).first()
-    if enrollment and enrollment.payment_status == 'approved':
-        messages.success(request, _("Payment confirmed! You now have full access to the course."))
-        return redirect('lms:course_detail', slug=course.slug)
+    if payment and payment.status == 'completed' and (not enrollment or enrollment.payment_status != 'approved'):
+        enrollment, _ = CourseEnrollment.objects.get_or_create(student=profile, course=course)
+        enrollment.payment_status = 'approved'
+        enrollment.payment_date = timezone.now()
+        enrollment.save(update_fields=['payment_status', 'payment_date'])
 
-    # Check if there's a completed payment
-    has_paid = CoursePayment.objects.filter(
-        user=request.user, course=course, status='completed'
-    ).exists()
+    return render(request, 'lms/payment_confirmation.html', {
+        'title': _("Confirming course payment"),
+        'item_title': course.title,
+        'payment': payment,
+        'status_url': reverse('lms:course_payment_status', kwargs={'slug': course.slug}),
+        'success_url': reverse('lms:course_detail', kwargs={'slug': course.slug}),
+        'success_label': _("Start course"),
+    })
 
-    if has_paid:
-        # Webhook should have created the enrollment, but if not, do it now
-        if not enrollment:
-            enrollment = CourseEnrollment.objects.create(
-                student=profile,
-                course=course,
-                payment_status='approved',
-                payment_date=timezone.now(),
-            )
-            messages.success(request, _("Payment confirmed! You now have full access to the course."))
-        else:
-            enrollment.payment_status = 'approved'
-            enrollment.payment_date = timezone.now()
-            enrollment.save()
-            messages.success(request, _("Payment confirmed! You now have full access to the course."))
-        return redirect('lms:course_detail', slug=course.slug)
-    else:
-        # Payment still pending or failed — redirect to payment page
-        messages.info(request, _("Your payment is being processed. If you completed payment, it will be confirmed shortly."))
-        return redirect('lms:payment_form', slug=course.slug)
+
+@login_required(login_url='login')
+def course_payment_status(request, slug):
+    """Small polling endpoint used by the payment confirmation screen."""
+    course = get_object_or_404(Course, slug=slug)
+    payment = CoursePayment.objects.filter(user=request.user, course=course).order_by('-created_at').first()
+    status = payment.status if payment else 'missing'
+    return JsonResponse({
+        'status': status,
+        'message': payment.failure_reason if payment and payment.status in {'failed', 'cancelled', 'expired'} else '',
+        'success_url': reverse('lms:course_detail', kwargs={'slug': course.slug}),
+    })
 
 
 def _user_has_module_access(user, module):
@@ -3367,31 +3341,27 @@ def module_access_payment(request, course_slug, module_id):
 
 
 @login_required(login_url='login')
+@require_POST
 def module_payment_init(request, course_slug, module_id):
-    """Initiate a Snippe session to pay for single-module access."""
+    """Initiate a Snippe session for single-module access."""
     course = get_object_or_404(Course, slug=course_slug)
     module = get_object_or_404(CourseModule, id=module_id, course=course)
 
     if not module.price:
-        messages.error(request, _("Access requests are not available for this module."))
+        messages.error(request, _("This module is not available for individual purchase."))
         return redirect('lms:course_detail', slug=course.slug)
-
     if _user_has_module_access(request.user, module):
         messages.info(request, _("You already have access to this module."))
         return redirect('lms:course_detail', slug=course.slug)
 
-    # Sequential gating: previous module must be accessible first
-    profile = request.user.lms_profile
+    profile, _ = LMSProfile.objects.get_or_create(user=request.user, defaults={'role': 'student'})
     if not module.previous_module_accessible_for_request(profile):
-        messages.error(
-            request,
-            _("You must complete and gain access to the previous module before requesting access to this module."),
-        )
+        messages.error(request, _("Complete the previous module before unlocking this one."))
         return redirect('lms:course_detail', slug=course.slug)
 
     request_obj = ModuleAccessRequest.objects.filter(student=profile, module=module).first()
     if request_obj and request_obj.status == 'approved':
-        messages.info(request, _("You already have approved access to this module."))
+        messages.info(request, _("You already have access to this module."))
         return redirect('lms:course_detail', slug=course.slug)
 
     snippe_api_key = getattr(settings, 'SNIPPE_API_KEY', '')
@@ -3399,16 +3369,31 @@ def module_payment_init(request, course_slug, module_id):
         messages.error(request, _("Online payment is not configured. Please try again later."))
         return redirect('lms:module_access_payment', course_slug=course.slug, module_id=module.id)
 
-    amount = int(module.price) if module.price else 0
+    amount = Decimal(str(module.price or 0))
     if amount <= 0:
         messages.error(request, _("Invalid module price."))
         return redirect('lms:course_detail', slug=course.slug)
 
+    reusable_payment = ModulePayment.objects.filter(
+        user=request.user,
+        module=module,
+        status='pending',
+        amount=amount,
+        checkout_url__gt='',
+        created_at__gte=timezone.now() - timedelta(minutes=50),
+    ).order_by('-created_at').first()
+    if reusable_payment:
+        return redirect(reusable_payment.checkout_url)
+
+    payment = ModulePayment.objects.create(
+        user=request.user,
+        module=module,
+        amount=amount,
+        status='pending',
+    )
+
     redirect_url = request.build_absolute_uri(
-        reverse('lms:module_payment_success', kwargs={
-            'course_slug': course.slug,
-            'module_id': module.id,
-        })
+        reverse('lms:module_payment_success', kwargs={'course_slug': course.slug, 'module_id': module.id})
     )
     webhook_url = request.build_absolute_uri(reverse('lms:snippe_webhook'))
     if webhook_url.startswith('http://'):
@@ -3422,7 +3407,7 @@ def module_payment_init(request, course_slug, module_id):
         pass
 
     session_payload = {
-        "amount": amount,
+        "amount": int(amount),
         "currency": "TZS",
         "allowed_methods": ["mobile_money", "card"],
         "customer": {
@@ -3435,6 +3420,7 @@ def module_payment_init(request, course_slug, module_id):
         "description": f"Module access: {module.title} ({course.title})",
         "metadata": {
             "payment_type": "module_access",
+            "payment_id": payment.pk,
             "module_id": module.id,
             "course_id": course.id,
             "user_id": request.user.id,
@@ -3453,53 +3439,37 @@ def module_payment_init(request, course_slug, module_id):
             timeout=30,
         )
         data = resp.json()
-
-        if data.get("code") == 201:
-            session_data = data["data"]
-            ModulePayment.objects.create(
-                user=request.user,
-                module=module,
-                snippe_session_id=session_data.get("reference", ""),
-                amount=amount,
-                status='pending',
-                checkout_url=session_data.get("checkout_url", ""),
-                payment_link_url=session_data.get("payment_link_url", ""),
-            )
-            return redirect(session_data["checkout_url"])
-        else:
-            err_msg = data.get("message", _("Unknown error"))
-            messages.error(request, _(f"Payment failed: {err_msg}"))
-            return redirect('lms:module_access_payment', course_slug=course.slug, module_id=module.id)
-
-    except requests.RequestException:
+        if data.get("code") != 201:
+            raise ValueError(data.get("message") or "Payment provider rejected the session")
+        session_data = data.get("data") or {}
+        checkout_url = session_data.get("checkout_url", "")
+        if not checkout_url:
+            raise ValueError("Payment provider did not return a checkout URL")
+        payment.snippe_session_id = session_data.get("reference", "")
+        payment.checkout_url = checkout_url
+        payment.payment_link_url = session_data.get("payment_link_url", "")
+        payment.save(update_fields=[
+            'snippe_session_id', 'checkout_url', 'payment_link_url', 'updated_at',
+        ])
+        return redirect(checkout_url)
+    except (requests.RequestException, ValueError, KeyError) as exc:
+        payment.status = 'failed'
+        payment.failure_reason = f'Payment session error: {exc}'
+        payment.save(update_fields=['status', 'failure_reason', 'updated_at'])
         messages.error(request, _("Payment service is temporarily unavailable. Please try again later."))
         return redirect('lms:module_access_payment', course_slug=course.slug, module_id=module.id)
 
 
 @login_required(login_url='login')
 def module_payment_success(request, course_slug, module_id):
-    """Callback after Snippe checkout redirect — user lands here after paying.
-
-    Once the payment is confirmed, the access request is auto-approved and the
-    student is granted module access immediately (no admin approval needed).
-    """
+    """Return landing page after module checkout while webhook confirms payment."""
     course = get_object_or_404(Course, slug=course_slug)
     module = get_object_or_404(CourseModule, id=module_id, course=course)
+    profile, _ = LMSProfile.objects.get_or_create(user=request.user, defaults={'role': 'student'})
 
-    if not hasattr(request.user, 'lms_profile'):
-        profile = LMSProfile.objects.create(user=request.user, role='student')
-    else:
-        profile = request.user.lms_profile
-
-    has_paid = ModulePayment.objects.filter(
-        user=request.user, module=module, status='completed',
-    ).exists()
-
-    if has_paid:
-        payment = ModulePayment.objects.filter(
-            user=request.user, module=module, status='completed',
-        ).first()
-        access_request = ModuleAccessRequest.objects.get_or_create(
+    payment = ModulePayment.objects.filter(user=request.user, module=module).order_by('-created_at').first()
+    if payment and payment.status == 'completed':
+        access_request, _ = ModuleAccessRequest.objects.get_or_create(
             student=profile,
             module=module,
             defaults={
@@ -3507,19 +3477,33 @@ def module_payment_success(request, course_slug, module_id):
                 'status': 'pending',
                 'notes': _('Paid via Snippe. Access granted automatically.'),
             },
-        )[0]
+        )
         if access_request.status == 'pending':
             access_request.payment = payment
             access_request.save(update_fields=['payment', 'updated_at'])
             access_request.approve()
-            messages.success(
-                request,
-                _("Payment successful! Your access to this module has been granted."),
-            )
-        elif access_request.status == 'approved':
-            messages.success(request, _("Payment confirmed! You already have access to this module."))
-        return redirect('lms:course_detail', slug=course.slug)
-    else:
-        # Payment still pending or failed — redirect back to payment page
-        messages.info(request, _("Your payment is being processed. If you completed payment, it will be confirmed shortly."))
-        return redirect('lms:module_access_payment', course_slug=course.slug, module_id=module.id)
+
+    return render(request, 'lms/payment_confirmation.html', {
+        'title': _("Confirming module payment"),
+        'item_title': module.title,
+        'payment': payment,
+        'status_url': reverse('lms:module_payment_status', kwargs={
+            'course_slug': course.slug,
+            'module_id': module.id,
+        }),
+        'success_url': reverse('lms:course_detail', kwargs={'slug': course.slug}),
+        'success_label': _("Start module"),
+    })
+
+
+@login_required(login_url='login')
+def module_payment_status(request, course_slug, module_id):
+    course = get_object_or_404(Course, slug=course_slug)
+    module = get_object_or_404(CourseModule, id=module_id, course=course)
+    payment = ModulePayment.objects.filter(user=request.user, module=module).order_by('-created_at').first()
+    status = payment.status if payment else 'missing'
+    return JsonResponse({
+        'status': status,
+        'message': payment.failure_reason if payment and payment.status in {'failed', 'cancelled', 'expired'} else '',
+        'success_url': reverse('lms:course_detail', kwargs={'slug': course.slug}),
+    })

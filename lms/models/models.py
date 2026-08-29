@@ -1596,6 +1596,35 @@ class CertificatePayment(models.Model):
         return f"{self.user.username} - {self.certificate.certificate_id} - {self.get_status_display()}"
 
 
+class SnippeWebhookEvent(models.Model):
+    """Audit/idempotency record for signed Snippe webhook deliveries."""
+    STATUS_CHOICES = (
+        ('processing', _('Processing')),
+        ('processed', _('Processed')),
+        ('rejected', _('Rejected')),
+        ('ignored', _('Ignored')),
+        ('failed', _('Failed')),
+    )
+
+    event_id = models.CharField(max_length=160, unique=True)
+    event_type = models.CharField(max_length=100, blank=True, default='')
+    payment_type = models.CharField(max_length=50, blank=True, default='')
+    provider_reference = models.CharField(max_length=100, blank=True, default='')
+    payload_hash = models.CharField(max_length=64)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='processing')
+    error = models.TextField(blank=True, default='')
+    received_at = models.DateTimeField(auto_now_add=True)
+    processed_at = models.DateTimeField(blank=True, null=True)
+
+    class Meta:
+        ordering = ['-received_at']
+        verbose_name = _('Snippe Webhook Event')
+        verbose_name_plural = _('Snippe Webhook Events')
+
+    def __str__(self):
+        return f"{self.event_type or 'event'} {self.event_id} ({self.status})"
+
+
 class QuizGenerationJob(models.Model):
     """
     Database-backed queue for AI quiz generation, cPanel friendly.

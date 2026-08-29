@@ -322,9 +322,12 @@
                         <i class="fas fa-download"></i> Download PDF
                     </a>
                 {% elif is_owner and not has_paid and downloads_enabled %}
-                    <a href="{{ pay_url }}" class="cs-btn-primary" id="csPayBtn">
-                        <i class="fas fa-shopping-cart"></i> Pay Tsh {{ certificate_price|floatformat:0 }} &amp; Download
-                    </a>
+                    <form method="post" action="{{ pay_url }}" class="m-0">
+                        {% csrf_token %}
+                        <button type="submit" class="cs-btn-primary border-0" id="csPayBtn">
+                            <i class="fas fa-shopping-cart"></i> Pay Tsh {{ certificate_price|floatformat:0 }} &amp; Download
+                        </button>
+                    </form>
                 {% elif downloads_enabled and not certificate_notice_active %}
                     <a href="{{ download_url }}" class="cs-btn-primary">
                         <i class="fas fa-download"></i> Download PDF
@@ -448,7 +451,10 @@
     {% if is_owner and has_paid %}
         <a href="{{ download_url }}" class="cs-btn-primary"><i class="fas fa-download"></i> Download PDF</a>
     {% elif is_owner and not has_paid and downloads_enabled %}
-        <a href="{{ pay_url }}" class="cs-btn-primary"><i class="fas fa-shopping-cart"></i> Pay Tsh {{ certificate_price|floatformat:0 }}</a>
+        <form method="post" action="{{ pay_url }}" class="m-0 w-100">
+            {% csrf_token %}
+            <button type="submit" class="cs-btn-primary border-0 w-100"><i class="fas fa-shopping-cart"></i> Pay Tsh {{ certificate_price|floatformat:0 }}</button>
+        </form>
     {% endif %}
 </div>
 {% endblock main-content %}
