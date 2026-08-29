@@ -38,6 +38,7 @@ urlpatterns = [
     path('profile/', views.profile, name='profile'),
     path('newsletter-settings/', views.newsletter_settings, name='newsletter_settings'),
     path('newsletter/confirm-unsubscribe/<str:token>/', views.newsletter_confirm_unsubscribe, name='newsletter_confirm_unsubscribe'),
+    path('newsletter/unsubscribe/<str:token>/', views.newsletter_one_click_unsubscribe, name='newsletter_one_click_unsubscribe'),
     path('address/', views.address, name='address'),
     path('orders/', views.orders, name='orders'),
     path('private-payment-proof/<path:path>', views.private_payment_proof, name='private_payment_proof'),

@@ -475,3 +475,69 @@ class AccountDeletionRequest(models.Model):
         return f"{requester} - {self.get_product_display()} ({self.status})"
 
 
+
+class NewsletterJob(models.Model):
+    """Durable queue for content-announcement emails.
+
+    Jobs are created after the publishing transaction commits and processed by
+    ``python manage.py process_newsletter_queue``. This is intentionally
+    database-backed so it works on cPanel/shared hosting without Redis/Celery.
+    """
+    JOB_TYPE_CHOICES = (
+        ('blog', 'Blog'),
+        ('product', 'Product'),
+        ('course', 'Course'),
+        ('course_content', 'Course content'),
+        ('job', 'Job'),
+        ('material', 'Material'),
+    )
+    STATUS_CHOICES = (
+        ('pending', 'Pending'),
+        ('processing', 'Processing'),
+        ('sent', 'Sent'),
+        ('failed', 'Failed'),
+    )
+
+    job_type = models.CharField(max_length=30, choices=JOB_TYPE_CHOICES)
+    object_id = models.PositiveBigIntegerField()
+    related_ids = models.JSONField(default=list, blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    attempts = models.PositiveSmallIntegerField(default=0)
+    max_attempts = models.PositiveSmallIntegerField(default=3)
+    run_after = models.DateTimeField(default=timezone.now)
+    last_error = models.TextField(blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    processed_at = models.DateTimeField(blank=True, null=True)
+
+    class Meta:
+        ordering = ('created_at',)
+        constraints = [
+            models.UniqueConstraint(fields=('job_type', 'object_id'), name='unique_newsletter_job_per_object'),
+        ]
+
+    def __str__(self):
+        return f'{self.job_type}:{self.object_id} ({self.status})'
+
+class NewsletterDelivery(models.Model):
+    """Per-recipient state makes newsletter job retries idempotent."""
+    STATUS_CHOICES = (
+        ('pending', 'Pending'),
+        ('sent', 'Sent'),
+        ('failed', 'Failed'),
+    )
+    job = models.ForeignKey(NewsletterJob, on_delete=models.CASCADE, related_name='deliveries')
+    recipient_email = models.EmailField()
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    attempts = models.PositiveSmallIntegerField(default=0)
+    last_error = models.TextField(blank=True, default='')
+    sent_at = models.DateTimeField(blank=True, null=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=('job', 'recipient_email'), name='unique_newsletter_job_recipient'),
+        ]
+
+    def __str__(self):
+        return f'{self.job_id}:{self.recipient_email} ({self.status})'

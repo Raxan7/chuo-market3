@@ -1,7 +1,6 @@
 """Shared newsletter helpers for content announcement emails."""
 
 import logging
-import threading
 import traceback
 import os
 from collections import OrderedDict
@@ -13,7 +12,6 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core import signing
 from django.core.mail import EmailMultiAlternatives
-from django.db import close_old_connections
 from django.db.models import Count
 from django.template.loader import render_to_string
 from django.urls import reverse
@@ -24,6 +22,7 @@ User = get_user_model()
 logger = logging.getLogger(__name__)
 
 NEWSLETTER_CONFIRM_SALT = 'core.newsletter.confirmation'
+NEWSLETTER_ONE_CLICK_SALT = 'core.newsletter.one-click-unsubscribe'
 
 CATEGORY_CONFIG = OrderedDict([
     ('materials', {
@@ -290,6 +289,7 @@ def send_daily_digest(digest_data, subscriber_email, subscriber_name=''):
         'has_blogs': any(c['key'] == 'blogs' for c in digest_data['categories']),
         'has_products': any(c['key'] == 'products' for c in digest_data['categories']),
         'date': digest_data['date'],
+        'unsubscribe_url': build_one_click_unsubscribe_url(subscriber_email),
     }
 
     try:
@@ -297,28 +297,40 @@ def send_daily_digest(digest_data, subscriber_email, subscriber_name=''):
         plain_message = strip_tags(html_message)
 
         delivery_emails = get_newsletter_delivery_emails(subscriber_email)
-        msg = EmailMultiAlternatives(subject, plain_message, settings.DEFAULT_FROM_EMAIL, delivery_emails)
+        msg = EmailMultiAlternatives(
+            subject,
+            plain_message,
+            settings.DEFAULT_FROM_EMAIL,
+            delivery_emails,
+            headers={
+                'List-Unsubscribe': f'<{context["unsubscribe_url"]}>',
+                'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+            },
+        )
         msg.attach_alternative(html_message, 'text/html')
-        msg.send(fail_silently=True)
+        sent_count = msg.send(fail_silently=False)
+        if sent_count != 1:
+            raise RuntimeError(f'Email backend reported {sent_count} deliveries for {subscriber_email}')
 
         # Log the send
         categories_str = ','.join(digest_data['qualifying_categories'])
-        NewsletterSendLog.objects.create(
+        NewsletterSendLog.objects.update_or_create(
             subscriber_email=subscriber_email,
             sent_date=digest_data['date'],
-            categories=categories_str,
-            status='sent',
+            defaults={'categories': categories_str, 'status': 'sent'},
         )
         logger.info('Daily digest sent to %s (categories: %s)', subscriber_email, categories_str)
         return True
     except Exception as e:
         logger.error('Failed to send daily digest to %s: %s', subscriber_email, e)
         try:
-            NewsletterSendLog.objects.create(
+            NewsletterSendLog.objects.update_or_create(
                 subscriber_email=subscriber_email,
                 sent_date=digest_data['date'],
-                categories=','.join(digest_data['qualifying_categories']),
-                status='failed',
+                defaults={
+                    'categories': ','.join(digest_data['qualifying_categories']),
+                    'status': 'failed',
+                },
             )
         except Exception:
             pass
@@ -467,16 +479,40 @@ def build_related_items(items):
     return related_items
 
 
+def build_one_click_unsubscribe_token(email):
+    return signing.dumps({'email': email.strip().lower()}, salt=NEWSLETTER_ONE_CLICK_SALT)
+
+
+def build_one_click_unsubscribe_url(email):
+    token = build_one_click_unsubscribe_token(email)
+    return build_absolute_url(reverse('newsletter_one_click_unsubscribe', args=[token]))
+
+
+def decode_one_click_unsubscribe_token(token, max_age=60 * 60 * 24 * 365):
+    return signing.loads(token, salt=NEWSLETTER_ONE_CLICK_SALT, max_age=max_age)
+
+
 def send_newsletter_email(recipient, subject, template_name, context):
+    context = dict(context)
+    context['unsubscribe_url'] = build_one_click_unsubscribe_url(recipient.email)
     html_message = render_to_string(template_name, context)
     plain_message = strip_tags(html_message)
     delivery_emails = get_newsletter_delivery_emails(recipient.email)
-    message = EmailMultiAlternatives(subject, plain_message, settings.DEFAULT_FROM_EMAIL, delivery_emails)
+    message = EmailMultiAlternatives(
+        subject, plain_message, settings.DEFAULT_FROM_EMAIL, delivery_emails,
+        headers={
+            'List-Unsubscribe': f'<{context["unsubscribe_url"]}>',
+            'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+        },
+    )
     message.attach_alternative(html_message, 'text/html')
-    message.send(fail_silently=True)
+    sent_count = message.send(fail_silently=False)
+    if sent_count != 1:
+        raise RuntimeError(f'Email backend reported {sent_count} deliveries for {recipient.email}')
+    return sent_count
 
 
-def _send_content_newsletter_sync(instance, content_type, template_name, subject, related_items):
+def _send_content_newsletter_sync(instance, content_type, template_name, subject, related_items, job=None):
     owner = getattr(instance, 'user', None) or getattr(instance, 'author', None)
     owner_id = owner.id if owner and owner.pk else None
     recipients = get_newsletter_recipients(exclude_user_id=owner_id)
@@ -517,12 +553,33 @@ def _send_content_newsletter_sync(instance, content_type, template_name, subject
             'site_name': 'ChuoSmart',
             'site_url': get_site_root_url(),
         }
+        delivery = None
+        if job is not None:
+            from .models import NewsletterDelivery
+            delivery, _ = NewsletterDelivery.objects.get_or_create(
+                job=job, recipient_email=recipient.email.lower(),
+            )
+            if delivery.status == 'sent':
+                continue
+            delivery.attempts += 1
+            delivery.save(update_fields=['attempts', 'updated_at'])
         try:
             send_newsletter_email(recipient, subject, template_name, context)
             sent_count += 1
-        except RuntimeError as exc:
-            logger.warning('Newsletter delivery skipped: %s', exc)
+            if delivery is not None:
+                delivery.status = 'sent'
+                delivery.sent_at = timezone.now()
+                delivery.last_error = ''
+                delivery.save(update_fields=['status', 'sent_at', 'last_error', 'updated_at'])
+        except Exception as exc:
+            logger.warning('Newsletter delivery failed for %s: %s', recipient.email, exc)
+            if delivery is not None:
+                delivery.status = 'failed'
+                delivery.last_error = str(exc)[:4000]
+                delivery.save(update_fields=['status', 'last_error', 'updated_at'])
 
+    if job is not None and job.deliveries.filter(status='failed').exists():
+        raise RuntimeError('One or more newsletter recipients failed; retry will only send failed deliveries.')
     return sent_count
 
 
@@ -538,78 +595,81 @@ def _queue_newsletter_log(instance, content_type, error):
     send_newsletter_log_email(f'Newsletter delivery failure: {content_type}', details)
 
 
-def _run_content_newsletter_async(instance, content_type, template_name, subject, related_items):
-    def worker():
-        close_old_connections()
-        try:
-            _send_content_newsletter_sync(instance, content_type, template_name, subject, related_items)
-        except Exception as exc:
-            _queue_newsletter_log(instance, content_type, exc)
-        finally:
-            close_old_connections()
+def _queue_content_newsletter(instance, job_type, related_items):
+    """Create a durable announcement job instead of a daemon thread."""
+    from .models import NewsletterJob
 
-    thread = threading.Thread(target=worker, daemon=True)
-    thread.start()
+    related_ids = [item.pk for item in related_items if getattr(item, 'pk', None)]
+    job, created = NewsletterJob.objects.get_or_create(
+        job_type=job_type,
+        object_id=instance.pk,
+        defaults={'related_ids': related_ids, 'status': 'pending'},
+    )
+    if not created and job.status == 'failed' and job.attempts < job.max_attempts:
+        job.related_ids = related_ids
+        job.status = 'pending'
+        job.run_after = timezone.now()
+        job.last_error = ''
+        job.save(update_fields=['related_ids', 'status', 'run_after', 'last_error', 'updated_at'])
+    return job
+
+
+def process_newsletter_job(job):
+    """Send one durable content-announcement job. Returns number delivered."""
+    from django.apps import apps
+
+    configs = {
+        'blog': ('core', 'Blog', 'blog post', lambda obj: f'New blog post: {obj.title}'),
+        'product': ('core', 'Product', 'product listing', lambda obj: f'New marketplace listing: {obj.title}'),
+        'course': ('lms', 'Course', 'course', lambda obj: f'New course available: {obj.title}'),
+        'course_content': ('lms', 'CourseContent', 'course lesson', lambda obj: f'New lesson in {obj.module.course.title}: {obj.title}'),
+        'job': ('jobs', 'Job', 'job post', lambda obj: f'New job post: {obj.title}'),
+        'material': ('materials', 'Material', 'material', lambda obj: f'New material added: {obj.title}'),
+    }
+    config = configs.get(job.job_type)
+    if not config:
+        raise ValueError(f'Unsupported newsletter job type: {job.job_type}')
+
+    app_label, model_name, content_type, subject_builder = config
+    model = apps.get_model(app_label, model_name)
+    instance = model.objects.filter(pk=job.object_id).first()
+    if instance is None:
+        logger.warning('Newsletter object disappeared before send: %s:%s', job.job_type, job.object_id)
+        return 0
+
+    related_items = list(model.objects.filter(pk__in=job.related_ids)) if job.related_ids else []
+    return _send_content_newsletter_sync(
+        instance,
+        content_type,
+        'emails/newsletter/content_announcement.html',
+        subject_builder(instance),
+        related_items,
+        job=job,
+    )
 
 
 def send_blog_newsletter(blog, related_blogs):
-    return _run_content_newsletter_async(
-        blog,
-        'blog post',
-        'emails/newsletter/content_announcement.html',
-        f'New blog post: {blog.title}',
-        related_blogs,
-    )
+    return _queue_content_newsletter(blog, 'blog', related_blogs)
 
 
 def send_product_newsletter(product, related_products):
-    return _run_content_newsletter_async(
-        product,
-        'product listing',
-        'emails/newsletter/content_announcement.html',
-        f'New marketplace listing: {product.title}',
-        related_products,
-    )
+    return _queue_content_newsletter(product, 'product', related_products)
 
 
 def send_course_newsletter(course, related_courses):
-    return _run_content_newsletter_async(
-        course,
-        'course',
-        'emails/newsletter/content_announcement.html',
-        f'New course available: {course.title}',
-        related_courses,
-    )
+    return _queue_content_newsletter(course, 'course', related_courses)
 
 
 def send_course_content_newsletter(content, related_contents):
-    return _run_content_newsletter_async(
-        content,
-        'course lesson',
-        'emails/newsletter/content_announcement.html',
-        f'New lesson in {content.module.course.title}: {content.title}',
-        related_contents,
-    )
+    return _queue_content_newsletter(content, 'course_content', related_contents)
 
 
 def send_job_newsletter(job, related_jobs):
-    return _run_content_newsletter_async(
-        job,
-        'job post',
-        'emails/newsletter/content_announcement.html',
-        f'New job post: {job.title}',
-        related_jobs,
-    )
+    return _queue_content_newsletter(job, 'job', related_jobs)
 
 
 def send_material_newsletter(material, related_materials):
-    return _run_content_newsletter_async(
-        material,
-        'material',
-        'emails/newsletter/content_announcement.html',
-        f'New material added: {material.title}',
-        related_materials,
-    )
+    return _queue_content_newsletter(material, 'material', related_materials)
 
 
 def build_newsletter_confirmation_token(user_id, action):

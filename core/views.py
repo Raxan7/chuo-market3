@@ -10,7 +10,8 @@ from django.contrib.auth.models import AnonymousUser
 from django.core.mail import send_mail
 from django.core.paginator import Paginator
 from django.conf import settings
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_POST, require_http_methods
+from django.views.decorators.csrf import csrf_exempt
 from django.core.exceptions import ObjectDoesNotExist
 from django.utils import timezone
 from django.utils.decorators import method_decorator
@@ -22,7 +23,11 @@ from .forms import RegistrationForm, LoginForm, ProductForm, BlogForm, Subscript
 from asgiref.sync import sync_to_async
 from datetime import timedelta
 from core.decorators.customer_required import customer_required, phone_required
-from core.newsletter import decode_newsletter_confirmation_token, send_unsubscribe_confirmation_email
+from core.newsletter import (
+    decode_newsletter_confirmation_token,
+    decode_one_click_unsubscribe_token,
+    send_unsubscribe_confirmation_email,
+)
 from core.rate_limit import rate_limit
 from core.storage import private_payment_storage
 
@@ -78,8 +83,9 @@ def newsletter_settings(request):
             messages.success(request, 'You are subscribed to ChuoSmart newsletter updates.')
             return redirect('newsletter_settings')
         if action == 'unsubscribe':
-            send_unsubscribe_confirmation_email(request.user)
-            messages.info(request, 'Please check your email to confirm the unsubscribe request.')
+            preference.newsletter = False
+            preference.save(update_fields=['newsletter', 'updated_at'])
+            messages.success(request, 'You have been unsubscribed from ChuoSmart newsletter updates.')
             return redirect('newsletter_settings')
 
     return render(request, 'app/newsletter_settings.html', {
@@ -105,6 +111,27 @@ def newsletter_confirm_unsubscribe(request, token):
     preference.save(update_fields=['newsletter', 'updated_at'])
 
     return HttpResponse('You have been unsubscribed from ChuoSmart newsletter emails.')
+
+@csrf_exempt
+@require_http_methods(["GET", "POST"])
+def newsletter_one_click_unsubscribe(request, token):
+    """Signed one-click unsubscribe for both users and email-only subscribers."""
+    try:
+        payload = decode_one_click_unsubscribe_token(token)
+        email = str(payload.get('email') or '').strip().lower()
+    except Exception:
+        return HttpResponse('This unsubscribe link is invalid or expired.', status=400)
+
+    if not email:
+        return HttpResponse('This unsubscribe link is invalid.', status=400)
+
+    NewsletterSubscriber.objects.filter(email__iexact=email).update(is_active=False)
+    user_ids = get_user_model().objects.filter(email__iexact=email).values_list('id', flat=True)
+    UserNewsletterPreference.objects.filter(user_id__in=user_ids).update(
+        newsletter=False, updated_at=timezone.now(),
+    )
+    return HttpResponse('You have been unsubscribed from ChuoSmart marketing emails.')
+
 
 def home(request):
     user = request.user
@@ -1228,12 +1255,15 @@ def contact_us(request):
             # Handle newsletter signup if checked
             if newsletter:
                 # Check if email already exists in subscribers
-                if not NewsletterSubscriber.objects.filter(email=email).exists():
-                    NewsletterSubscriber.objects.create(
-                        name=name,
-                        email=email,
-                        source='contact_form'
-                    )
+                subscriber, _ = NewsletterSubscriber.objects.get_or_create(
+                    email=email,
+                    defaults={'name': name, 'source': 'contact_form'},
+                )
+                if not subscriber.is_active:
+                    subscriber.is_active = True
+                    subscriber.name = name or subscriber.name
+                    subscriber.source = 'contact_form'
+                    subscriber.save(update_fields=['is_active', 'name', 'source', 'last_updated'])
             
             messages.success(request, 'Thank you for reaching out! We will get back to you soon.')
             return redirect('contact')

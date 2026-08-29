@@ -20,7 +20,7 @@ email_logger = logging.getLogger('core.email')
 from .forms import ComposeEmailForm, NewsletterDigestTestForm
 from .models import (
     AccountDeletionRequest, Banners, Blog, Cart, Customer, NewsletterSubscriber,
-    NewsletterSendLog, NewsletterTestSend,
+    NewsletterSendLog, NewsletterTestSend, NewsletterJob, NewsletterDelivery,
     OrderPlaced, Product, SentEmail, Subscription, SubscriptionPayment,
     UserNewsletterPreference,
 )
@@ -39,6 +39,26 @@ admin.site.register(Blog)
 admin.site.register(Subscription)
 admin.site.register(UserNewsletterPreference)
 admin.site.register(NewsletterSubscriber)
+
+
+
+
+class NewsletterDeliveryInline(admin.TabularInline):
+    model = NewsletterDelivery
+    extra = 0
+    can_delete = False
+    readonly_fields = ('recipient_email', 'status', 'attempts', 'last_error', 'sent_at', 'updated_at')
+
+
+@admin.register(NewsletterJob)
+class NewsletterJobAdmin(admin.ModelAdmin):
+    list_display = ('job_type', 'object_id', 'status', 'attempts', 'created_at', 'processed_at')
+    list_filter = ('status', 'job_type', 'created_at')
+    readonly_fields = ('job_type', 'object_id', 'related_ids', 'attempts', 'last_error', 'created_at', 'updated_at', 'processed_at')
+    inlines = (NewsletterDeliveryInline,)
+
+    def has_add_permission(self, request):
+        return False
 
 
 @admin.register(NewsletterSendLog)
