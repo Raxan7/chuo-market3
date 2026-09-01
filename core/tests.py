@@ -1,4 +1,4 @@
-from django.test import TestCase, Client
+from django.test import TestCase, Client, override_settings
 from django.urls import reverse
 from django.contrib.auth.models import User
 
@@ -75,3 +75,19 @@ class SecurityRegressionTests(TestCase):
             {'head': 'Nope', 'body': 'Nope'},
         )
         self.assertEqual(response.status_code, 403)
+
+
+class PasswordResetEmailRegressionTest(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username='reset-user', email='reset@example.com', password='password12345'
+        )
+
+    @override_settings(EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend')
+    def test_password_reset_uses_project_email_template_and_sends(self):
+        from django.core import mail
+        response = self.client.post(reverse('password_reset'), {'email': self.user.email})
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn('reset/', mail.outbox[0].body)
+        self.assertEqual(mail.outbox[0].to, [self.user.email])

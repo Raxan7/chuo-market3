@@ -12,6 +12,7 @@ back to development settings. At minimum configure:
 - `SECRET_KEY`
 - `DB_NAME`, `DB_USER`, `DB_PASSWORD`
 - `SUPPORT_EMAIL_HOST_PASSWORD`
+- `ADMIN_EMAIL` (where employer-verification alerts should go)
 - `SNIPPE_API_KEY`, `SNIPPE_WEBHOOK_SECRET`
 
 Use `env.production.example` as the non-secret reference.
@@ -27,6 +28,7 @@ python manage.py migrate
 python manage.py migrate_private_payment_proofs --dry-run
 python manage.py migrate_private_payment_proofs
 python manage.py collectstatic --noinput
+python manage.py test core.tests jobs.tests
 ```
 
 Restart the WSGI/Gunicorn application after migrations and static collection.
@@ -39,7 +41,7 @@ python manage.py email_diagnostics --to you@example.com --send
 ```
 
 Production should report the SMTP backend rather than Django's console backend.
-The command deliberately does not print the SMTP password.
+The command deliberately does not print the SMTP password. It also reports pending/failed newsletter jobs and warns when the oldest queued job has been waiting more than 15 minutes.
 
 ## 4. Newsletter queue
 
@@ -105,3 +107,19 @@ git revert <newest-commit> ... <oldest-commit>
 
 Database migrations should only be reversed after reviewing whether production
 data was written into the new tables/fields.
+
+
+## 9. Employer/job smoke test
+
+After migration, verify the complete revenue-critical path with two test accounts:
+
+1. employer creates a company;
+2. employer submits verification documents;
+3. staff approves the verification request in Django admin;
+4. employer creates a job and confirms its visibility says Public;
+5. student can open and apply to the job;
+6. employer can open the applications page and the applicant detail;
+7. changing application status sends a transactional email (check `logs/email.log` if delivery fails);
+8. the student dashboard Career tab shows saved jobs, applications, and recommendations.
+
+Do not deploy a jobs release based only on a successful job-row insert. The public listing, application route, employer review page, and notification path must all work together.
