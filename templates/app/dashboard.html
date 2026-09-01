@@ -68,7 +68,7 @@
                     <h1 class="h2 mb-1">My Dashboard</h1>
                     <p class="text-muted mb-0">Continue learning and manage what you publish on ChuoSmart.</p>
                 </div>
-                <a href="{% url 'lms:course_list' %}" class="btn btn-primary"><i class="fas fa-search me-2"></i>Find a course</a>
+                <div class="d-flex gap-2"><a href="{% url 'jobs:job_list' %}" class="btn btn-outline-primary"><i class="fas fa-briefcase me-2"></i>Find opportunities</a><a href="{% url 'lms:course_list' %}" class="btn btn-primary"><i class="fas fa-graduation-cap me-2"></i>Build skills</a></div>
             </div>
 
             {% if continue_course %}
@@ -95,7 +95,7 @@
                 <div class="col-6 col-lg-3"><div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="small text-muted">Courses</div><div class="h3 mb-0">{{ enrolled_courses_count }}</div></div></div></div>
                 <div class="col-6 col-lg-3"><div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="small text-muted">Completed</div><div class="h3 mb-0">{{ completed_courses_count }}</div></div></div></div>
                 <div class="col-6 col-lg-3"><div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="small text-muted">Certificates</div><div class="h3 mb-0">{{ certificate_count }}</div></div></div></div>
-                <div class="col-6 col-lg-3"><div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="small text-muted">Published items</div><div class="h3 mb-0">{{ product_count|add:blog_count|add:material_count }}</div></div></div></div>
+                <div class="col-6 col-lg-3"><div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="small text-muted">Job applications</div><div class="h3 mb-0">{{ job_application_count }}</div></div></div></div>
             </div>
 
             <div class="dashboard-container">
@@ -151,6 +151,17 @@
                                 role="tab">
                             <i class="fas fa-graduation-cap me-2"></i> My Courses
                             <span class="badge bg-secondary rounded-pill badge-count">{{ enrolled_courses_count }}</span>
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link {% if active_tab == 'career' %}active{% endif %}"
+                                id="career-tab"
+                                data-bs-toggle="pill"
+                                data-bs-target="#career"
+                                type="button"
+                                role="tab">
+                            <i class="fas fa-briefcase me-2"></i> Career
+                            <span class="badge bg-secondary rounded-pill badge-count">{{ job_application_count }}</span>
                         </button>
                     </li>
                 </ul>
@@ -409,6 +420,51 @@
                                 Complete your courses to earn certificates.
                             </div>
                         {% endif %}
+                    </div>
+
+                    <!-- Career Tab -->
+                    <div class="tab-pane fade {% if active_tab == 'career' %}show active{% endif %}" id="career" role="tabpanel">
+                        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-4">
+                            <div>
+                                <h4 class="mb-1">Career next steps</h4>
+                                <p class="text-muted mb-0">Use your learning progress and preferences to move toward real opportunities.</p>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <a href="{% url 'jobs:job_preferences' %}" class="btn btn-outline-primary">Career preferences</a>
+                                <a href="{% url 'jobs:job_list' %}" class="btn btn-primary">Browse all jobs</a>
+                            </div>
+                        </div>
+
+                        {% if not career_profile_complete %}
+                        <div class="alert alert-info d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
+                            <span><strong>Improve your matches.</strong> Add preferred roles, locations, industries or skills.</span>
+                            <a href="{% url 'jobs:job_preferences' %}" class="btn btn-sm btn-primary">Complete career profile</a>
+                        </div>
+                        {% endif %}
+
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-6"><div class="card h-100"><div class="card-body"><div class="small text-muted">Saved opportunities</div><div class="h3 mb-2">{{ saved_jobs_count }}</div><a href="{% url 'jobs:saved_jobs' %}">Review saved jobs</a></div></div></div>
+                            <div class="col-md-6"><div class="card h-100"><div class="card-body"><div class="small text-muted">Applications submitted</div><div class="h3 mb-2">{{ job_application_count }}</div><a href="{% url 'jobs:my_applications' %}">Track applications</a></div></div></div>
+                        </div>
+
+                        <h5 class="mb-3">Recommended opportunities</h5>
+                        <div class="row row-cols-1 row-cols-md-2 g-3 mb-5">
+                            {% for job in recommended_jobs %}
+                            <div class="col"><div class="card h-100 content-card"><div class="card-body"><div class="small text-muted mb-1">{% if job.company %}{{ job.company.name }}{% else %}ChuoSmart opportunity{% endif %}</div><h5 class="card-title">{{ job.title }}</h5><div class="small text-muted mb-3">{{ job.location }} · {{ job.get_job_type_display }} · Deadline {{ job.application_deadline|date:"M d, Y" }}</div><a href="{% url 'jobs:job_detail' job.id %}" class="btn btn-sm btn-primary">View opportunity</a></div></div></div>
+                            {% empty %}
+                            <div class="col-12"><div class="alert alert-light border">No matching public jobs right now. Update your preferences or browse all opportunities.</div></div>
+                            {% endfor %}
+                        </div>
+
+                        <h5 class="mb-3">Recent applications</h5>
+                        <div class="list-group">
+                            {% for application in recent_applications %}
+                            <a href="{% url 'jobs:application_detail' application.id %}" class="list-group-item list-group-item-action d-flex justify-content-between gap-3">
+                                <span><strong>{{ application.job.title }}</strong><br><small class="text-muted">{% if application.job.company %}{{ application.job.company.name }} · {% endif %}Applied {{ application.applied_date|date:"M d, Y" }}</small></span>
+                                <span class="badge bg-{{ application.get_status_color }} align-self-center">{{ application.get_status_display }}</span>
+                            </a>
+                            {% empty %}<div class="text-muted">You have not submitted any applications yet.</div>{% endfor %}
+                        </div>
                     </div>
                 </div>
             </div>

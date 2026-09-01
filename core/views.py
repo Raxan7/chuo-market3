@@ -1805,11 +1805,78 @@ def user_dashboard(request):
     certificates = StudentCertificate.objects.filter(
         student=user
     ).select_related('course', 'template').order_by('-issued_at')
+
+    # Career layer: connect learning activity to live opportunities instead of
+    # sending users to a separate, disconnected jobs product.
+    from jobs.models import Job, JobApplication, SavedJob, JobSearchPreference
+
+    recent_applications = (
+        JobApplication.objects.filter(applicant=user)
+        .select_related('job', 'job__company')
+        .order_by('-applied_date')[:5]
+    )
+    application_count = JobApplication.objects.filter(applicant=user).count()
+    saved_jobs_count = SavedJob.objects.filter(user=user).count()
+    preference = (
+        JobSearchPreference.objects.filter(user=user)
+        .prefetch_related('industries', 'skills')
+        .first()
+    )
+
+    recommended_jobs = (
+        Job.public_queryset()
+        .exclude(applications__applicant=user)
+        .select_related('company', 'industry')
+        .prefetch_related('skills')
+    )
+    career_filter = Q()
+    has_career_filter = False
+    if preference:
+        for location in [v.strip() for v in preference.locations.split(',') if v.strip()]:
+            career_filter |= Q(location__icontains=location)
+            has_career_filter = True
+        job_types = [v.strip() for v in preference.job_types.split(',') if v.strip()]
+        if job_types:
+            career_filter |= Q(job_type__in=job_types)
+            has_career_filter = True
+        experience_levels = [v.strip() for v in preference.experience_levels.split(',') if v.strip()]
+        if experience_levels:
+            career_filter |= Q(experience_level__in=experience_levels)
+            has_career_filter = True
+        for keyword in [v.strip() for v in preference.keywords.split(',') if v.strip()]:
+            career_filter |= (
+                Q(title__icontains=keyword)
+                | Q(description__icontains=keyword)
+                | Q(requirements__icontains=keyword)
+                | Q(company__name__icontains=keyword)
+            )
+            has_career_filter = True
+        industry_ids = list(preference.industries.values_list('id', flat=True))
+        if industry_ids:
+            career_filter |= Q(industry_id__in=industry_ids)
+            has_career_filter = True
+        skill_ids = list(preference.skills.values_list('id', flat=True))
+        if skill_ids:
+            career_filter |= Q(skills__id__in=skill_ids)
+            has_career_filter = True
+        if preference.salary_min is not None:
+            career_filter |= Q(salary_max__gte=preference.salary_min)
+            has_career_filter = True
+
+    if has_career_filter:
+        recommended_jobs = recommended_jobs.filter(career_filter).distinct()
+    recommended_jobs = recommended_jobs.order_by('-is_featured', '-posted_date')[:6]
+    career_profile_complete = bool(
+        preference and (
+            preference.locations or preference.job_types or preference.keywords
+            or preference.industries.exists() or preference.skills.exists()
+        )
+    )
     
     # Learners should land on learning first; creators can still switch tabs.
     default_tab = 'courses' if enrolled_courses_data else 'products'
     active_tab = request.GET.get('tab', default_tab)
-    allowed_tabs = {'products', 'blogs', 'materials', 'courses'}
+    allowed_tabs = {'products', 'blogs', 'materials', 'courses', 'career'}
     if active_tab not in allowed_tabs:
         active_tab = default_tab
 
@@ -1831,6 +1898,11 @@ def user_dashboard(request):
         'completed_courses_count': len(completed_courses),
         'certificate_count': certificates.count(),
         'continue_course': continue_course,
+        'recommended_jobs': recommended_jobs,
+        'recent_applications': recent_applications,
+        'job_application_count': application_count,
+        'saved_jobs_count': saved_jobs_count,
+        'career_profile_complete': career_profile_complete,
     }
     return render(request, 'app/dashboard.html', context)
 
