@@ -1,6 +1,9 @@
 from django.conf import settings
 from django.core.mail import send_mail
 from django.core.management.base import BaseCommand, CommandError
+from django.utils import timezone
+
+from core.models import NewsletterJob, NewsletterDelivery
 
 
 class Command(BaseCommand):
@@ -26,6 +29,24 @@ class Command(BaseCommand):
         }
         for key, value in rows.items():
             self.stdout.write(f'{key}={value}')
+
+        pending_jobs = NewsletterJob.objects.filter(status='pending').count()
+        failed_jobs = NewsletterJob.objects.filter(status='failed').count()
+        pending_deliveries = NewsletterDelivery.objects.filter(status='pending').count()
+        failed_deliveries = NewsletterDelivery.objects.filter(status='failed').count()
+        oldest_pending = NewsletterJob.objects.filter(status='pending').order_by('created_at').first()
+        self.stdout.write(f'NEWSLETTER_PENDING_JOBS={pending_jobs}')
+        self.stdout.write(f'NEWSLETTER_FAILED_JOBS={failed_jobs}')
+        self.stdout.write(f'NEWSLETTER_PENDING_DELIVERIES={pending_deliveries}')
+        self.stdout.write(f'NEWSLETTER_FAILED_DELIVERIES={failed_deliveries}')
+        if oldest_pending:
+            age = timezone.now() - oldest_pending.created_at
+            self.stdout.write(f'NEWSLETTER_OLDEST_PENDING_MINUTES={int(age.total_seconds() // 60)}')
+            if age.total_seconds() > 15 * 60:
+                self.stderr.write(self.style.WARNING(
+                    'Newsletter queue has been pending for more than 15 minutes. '
+                    'Ensure process_newsletter_queue is running from cron.'
+                ))
 
         if 'console.EmailBackend' in backend:
             self.stderr.write(self.style.WARNING('Console email backend is active; messages will not leave the server.'))

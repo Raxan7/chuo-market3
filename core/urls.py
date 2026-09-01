@@ -1,6 +1,7 @@
 from django.urls import path
 from . import views
 from django.contrib.auth import views as auth_views
+from django.conf import settings
 from .views import (
     add_product, add_blog, create_blog, blog_list, blog_detail, products_by_category, 
     about_us, contact_us, privacy_policy, terms_of_service, clean_all_blog_content, 
@@ -71,7 +72,12 @@ urlpatterns = [
     path(
         'password_reset/',
         rate_limit('password-reset', limit=5, window=60 * 60, identity_field='email')(
-            auth_views.PasswordResetView.as_view(template_name='app/password_reset.html')
+            auth_views.PasswordResetView.as_view(
+                template_name='app/password_reset.html',
+                email_template_name='email/password_reset_email.txt',
+                html_email_template_name='email/password_reset_email.html',
+                from_email=settings.DEFAULT_FROM_EMAIL,
+            )
         ),
         name='password_reset',
     ),
