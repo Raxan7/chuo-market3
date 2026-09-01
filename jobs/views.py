@@ -4,7 +4,7 @@ from django.contrib import messages
 from django.db.models import Q
 from django.utils.translation import gettext_lazy as _
 from django.utils import timezone
-from django.http import JsonResponse, Http404
+from django.http import JsonResponse, Http404, FileResponse
 from django.core.paginator import Paginator
 from django.views.decorators.csrf import csrf_protect
 from django.urls import reverse
@@ -15,10 +15,10 @@ from django.conf import settings
 from django.db.models import Count
 from django.http import HttpResponseForbidden
 from django.views.decorators.http import require_POST
-from django.core.mail import send_mail
+from core.emailing import send_transactional_email
 
 from .models import (
-    Company, Job, JobApplication, SavedJob, JobSearchPreference,
+    Company, CompanyVerificationRequest, Job, JobApplication, SavedJob, JobSearchPreference,
     Industry, Skill, ApiConfiguration
 )
 from .forms import (
@@ -212,7 +212,7 @@ def job_detail(request, job_id):
         'user_has_applied': user_has_applied,
         'user_has_saved': user_has_saved,
         'similar_jobs': similar_jobs,
-        'application_form': JobApplicationForm() if request.user.is_authenticated and not user_has_applied else None,
+        'application_form': JobApplicationForm() if request.user.is_authenticated and job.is_public and job.is_active and not job.is_expired() and not user_has_applied else None,
         'is_owner_or_admin': is_owner_or_admin,
         'visibility_label': job.visibility_label,
     }
@@ -285,69 +285,60 @@ def job_detail(request, job_id):
 @csrf_protect
 def apply_for_job(request, job_id):
     job = get_object_or_404(Job.objects.select_related('company', 'industry'), id=job_id)
-    
-    # If it's an external job, redirect to the external URL
-    if job.job_posting_type == 'external' and job.external_url:
-        return redirect(job.external_url)
-    
-    # Only allow applying to internal jobs
-    if job.job_posting_type == 'external':
-        messages.error(request, _('This job is hosted on an external platform.'))
+
+    if not job.is_public or not job.is_active or job.is_expired():
+        raise Http404(_('Job not available'))
+    if job.created_by_id == request.user.id:
+        messages.info(request, _('You cannot apply to your own job posting.'))
         return redirect('jobs:job_detail', job_id=job.id)
-    
-    # Check if user has already applied
+
+    if job.job_posting_type == 'external':
+        if job.external_url:
+            return redirect(job.external_url)
+        messages.error(request, _('This external job is missing its application link.'))
+        return redirect('jobs:job_detail', job_id=job.id)
+
     if JobApplication.objects.filter(job=job, applicant=request.user).exists():
         messages.warning(request, _('You have already applied for this job.'))
         return redirect('jobs:job_detail', job_id=job.id)
-    
+
     if request.method == 'POST':
         form = JobApplicationForm(request.POST, request.FILES, job=job, user=request.user)
         if form.is_valid():
             application = form.save()
-            
-            # Send email notification to employer
             if job.company and job.company.email:
-                subject = _('New Application for: {0}').format(job.title)
-                message = _('''
-                Hello {0},
-                
-                A new application has been submitted for your job posting: {1}
-                
-                Applicant: {2}
-                Contact: {3}
-                
-                You can review this application in your employer dashboard.
-                
-                Best regards,
-                ChuoMarket Jobs Team
-                ''').format(job.company.name, job.title, request.user.get_full_name() or request.user.username, application.phone_number)
-                
-                send_mail(
-                    subject,
-                    message,
-                    settings.DEFAULT_FROM_EMAIL,
-                    [job.company.email],
-                    fail_silently=True,
+                send_transactional_email(
+                    subject=_('New Application for: {0}').format(job.title),
+                    message=_(
+                        'Hello {company},\n\nA new application has been submitted for "{job}".\n\n'
+                        'Applicant: {applicant}\nContact: {phone}\n\n'
+                        'Log in to ChuoSmart to review the application.'
+                    ).format(
+                        company=job.company.name,
+                        job=job.title,
+                        applicant=request.user.get_full_name() or request.user.username,
+                        phone=application.phone_number or request.user.email,
+                    ),
+                    recipients=[job.company.email],
                 )
-            
             messages.success(request, _('Your application has been submitted successfully!'))
             return redirect('jobs:application_submitted', job_id=job.id)
     else:
         form = JobApplicationForm(job=job, user=request.user)
-    
+
     recommendations = []
     try:
         from .recommendations import get_recommendations
         recommendations = get_recommendations(job)
-    except Exception as e:
-        logger.error('Failed to get course recommendations for job %s: %s', job.id, e)
+    except Exception as exc:
+        logger.error('Failed to get course recommendations for job %s: %s', job.id, exc)
 
-    context = {
+    return render(request, 'jobs/job_apply.html', {
         'form': form,
         'job': job,
         'course_recommendations': recommendations,
-    }
-    return render(request, 'jobs/job_apply.html', context)
+    })
+
 @login_required
 def application_submitted(request, job_id):
     job = get_object_or_404(Job, id=job_id)
@@ -484,31 +475,65 @@ def delete_company(request, company_id):
 @login_required
 def company_dashboard(request, company_id):
     company = get_object_or_404(Company, id=company_id)
-    
-    # Check if user is the owner
     if company.created_by != request.user and not request.user.is_superuser:
         return HttpResponseForbidden(_('You do not have permission to view this company dashboard.'))
-    
-    # Get company jobs
+
     jobs = Job.objects.filter(company=company).order_by('-posted_date')
-    
-    # Get application statistics
-    total_applications = JobApplication.objects.filter(job__company=company).count()
-    
-    # Applications by status
-    applications_by_status = JobApplication.objects.filter(job__company=company).values('status').annotate(count=Count('id'))
-    
-    context = {
+    applications = JobApplication.objects.filter(job__company=company).select_related('job', 'applicant')
+    applications_by_status = applications.values('status').annotate(count=Count('id')).order_by('status')
+    pending_verification = company.verification_requests.filter(status='pending').first()
+
+    return render(request, 'jobs/company_dashboard.html', {
         'company': company,
         'jobs': jobs,
-        'total_applications': total_applications,
+        'active_jobs': jobs.filter(is_active=True),
+        'total_applications': applications.count(),
+        'recent_applications': applications.order_by('-applied_date')[:8],
         'applications_by_status': applications_by_status,
-    }
-    return render(request, 'jobs/company_dashboard.html', context)
+        'pending_verification': pending_verification,
+    })
+
+
+def company_detail(request, company_id):
+    company = get_object_or_404(Company.objects.select_related('created_by'), id=company_id)
+    owner_or_admin = request.user.is_authenticated and (
+        request.user.is_superuser or company.created_by_id == request.user.id
+    )
+    if not company.is_verified and not owner_or_admin:
+        raise Http404(_('Company not available'))
+    jobs = Job.public_queryset().filter(company=company).select_related('industry').order_by('-posted_date')
+    return render(request, 'jobs/company_detail.html', {'company': company, 'jobs': jobs})
+
+
+@login_required
+def private_verification_document(request, file_path):
+    if not request.user.is_staff and not request.user.is_superuser:
+        return HttpResponseForbidden(_('Only staff can access verification documents.'))
+    normalized = file_path.replace('\\', '/').lstrip('/')
+    if '..' in normalized.split('/'):
+        raise Http404()
+    request_exists = CompanyVerificationRequest.objects.filter(
+        Q(business_certificate=normalized) | Q(tin_certificate=normalized)
+    ).exists()
+    if not request_exists:
+        raise Http404()
+    from .storage import private_verification_storage
+    try:
+        handle = private_verification_storage.open(normalized, 'rb')
+    except FileNotFoundError:
+        raise Http404()
+    return FileResponse(handle, as_attachment=False, filename=normalized.rsplit('/', 1)[-1])
 
 # Job CRUD views
 @login_required
 def create_job(request):
+    initial = {}
+    requested_company_id = request.GET.get('company')
+    if requested_company_id:
+        company = Company.objects.filter(id=requested_company_id, created_by=request.user).first()
+        if company:
+            initial['company'] = company
+
     if request.method == 'POST':
         form = JobForm(request.POST, user=request.user)
         if form.is_valid():
@@ -518,50 +543,37 @@ def create_job(request):
             job.created_by = request.user
             job.save()
             form.save_m2m()
-
             if job.is_public:
                 messages.success(request, _('Job posted successfully and is live.'))
             else:
-                messages.info(request, _('Job saved. It will be visible once your account is verified.'))
+                messages.info(request, _(
+                    'Job saved successfully. Current visibility: {0}. Complete employer verification to publish it.'
+                ).format(job.visibility_label))
             return redirect('jobs:my_jobs')
     else:
-        form = JobForm(user=request.user)
-    
-    return render(
-        request,
-        'jobs/job_form.html',
-        {
-            'form': form,
-            'is_create': True,
-        },
-    )
+        form = JobForm(user=request.user, initial=initial)
+
+    return render(request, 'jobs/job_form.html', {'form': form, 'is_create': True})
 
 @login_required
 def edit_job(request, job_id):
     job = get_object_or_404(Job, id=job_id)
-    
-    # Check if user is the owner
     if job.created_by != request.user and not request.user.is_superuser:
         return HttpResponseForbidden(_('You do not have permission to edit this job.'))
-    
+
     if request.method == 'POST':
         form = JobForm(request.POST, instance=job, user=request.user)
         if form.is_valid():
-            form.save()
-            messages.success(request, _('Job updated successfully.'))
+            job = form.save()
+            if job.is_public:
+                messages.success(request, _('Job updated successfully and is live.'))
+            else:
+                messages.info(request, _('Job updated. Current visibility: {0}.').format(job.visibility_label))
             return redirect('jobs:my_jobs')
     else:
         form = JobForm(instance=job, user=request.user)
-    
-    return render(
-        request,
-        'jobs/job_form.html',
-        {
-            'form': form,
-            'job': job,
-            'is_create': False,
-        },
-    )
+
+    return render(request, 'jobs/job_form.html', {'form': form, 'job': job, 'is_create': False})
 
 @login_required
 def delete_job(request, job_id):
@@ -595,81 +607,65 @@ def my_jobs(request):
 @login_required
 def job_applications(request, job_id):
     job = get_object_or_404(Job, id=job_id)
-    
-    # Check if user is the owner
     if job.created_by != request.user and not request.user.is_superuser:
         return HttpResponseForbidden(_('You do not have permission to view applications for this job.'))
-    
-    applications = JobApplication.objects.filter(job=job).order_by('-applied_date')
-    
-    # Filter by status if provided
+
+    applications = JobApplication.objects.filter(job=job).select_related('applicant').order_by('-applied_date')
     status = request.GET.get('status')
-    if status:
+    valid_statuses = {choice[0] for choice in JobApplication._meta.get_field('status').choices}
+    if status in valid_statuses:
         applications = applications.filter(status=status)
-    
-    context = {
+    else:
+        status = ''
+
+    return render(request, 'jobs/job_applications.html', {
         'job': job,
         'applications': applications,
         'status_filter': status,
-    }
-    return render(request, 'jobs/job_applications.html', context)
+        'status_choices': JobApplication._meta.get_field('status').choices,
+    })
 
 @login_required
 def application_detail(request, application_id):
-    application = get_object_or_404(JobApplication, id=application_id)
-    
-    # Check if user is the employer or the applicant
+    application = get_object_or_404(
+        JobApplication.objects.select_related('job', 'job__company', 'applicant'),
+        id=application_id,
+    )
     is_employer = application.job.created_by == request.user
     is_applicant = application.applicant == request.user
-    
     if not (is_employer or is_applicant or request.user.is_superuser):
         return HttpResponseForbidden(_('You do not have permission to view this application.'))
-    
-    if request.method == 'POST' and is_employer:
+
+    if request.method == 'POST' and (is_employer or request.user.is_superuser):
         form = ApplicationStatusUpdateForm(request.POST, instance=application)
         if form.is_valid():
-            form.save()
+            application = form.save()
             messages.success(request, _('Application status updated.'))
-            
-            # Send email notification to applicant
-            subject = _('Your application status has been updated')
-            message = _('''
-            Hello {0},
-            
-            Your application for the position "{1}" at {2} has been updated.
-            
-            New status: {3}
-            
-            Please log in to your account to view more details.
-            
-            Best regards,
-            ChuoMarket Jobs Team
-            ''').format(
-                application.applicant.get_full_name() or application.applicant.username,
-                application.job.title,
-                application.job.company.name,
-                application.get_status_display()
-            )
-            
-            send_mail(
-                subject,
-                message,
-                settings.DEFAULT_FROM_EMAIL,
-                [application.applicant.email],
-                fail_silently=True,
-            )
-            
+            if application.applicant.email:
+                company_name = application.job.company.name if application.job.company else 'the employer'
+                send_transactional_email(
+                    subject=_('Your application status has been updated'),
+                    message=_(
+                        'Hello {name},\n\nYour application for "{job}" at {company} has been updated.\n\n'
+                        'New status: {status}\n\nLog in to ChuoSmart to view your application.'
+                    ).format(
+                        name=application.applicant.get_full_name() or application.applicant.username,
+                        job=application.job.title,
+                        company=company_name,
+                        status=application.get_status_display(),
+                    ),
+                    recipients=[application.applicant.email],
+                )
             return redirect('jobs:application_detail', application_id=application.id)
     else:
-        form = ApplicationStatusUpdateForm(instance=application) if is_employer else None
-    
-    context = {
+        form = ApplicationStatusUpdateForm(instance=application) if (is_employer or request.user.is_superuser) else None
+
+    return render(request, 'jobs/application_detail.html', {
         'application': application,
         'form': form,
         'is_employer': is_employer,
         'is_applicant': is_applicant,
-    }
-    return render(request, 'jobs/application_detail.html', context)
+    })
 
 # Search preferences views
 @login_required
@@ -695,56 +691,44 @@ def job_preferences(request):
 @login_required
 def request_company_verification(request, company_id):
     company = get_object_or_404(Company, id=company_id)
-    
-    # Check if user is the owner
     if company.created_by != request.user:
         return HttpResponseForbidden(_('You do not have permission to request verification for this company.'))
-    
-    # Check if company is already verified
     if company.is_verified:
         messages.info(request, _('This company is already verified.'))
         return redirect('jobs:company_dashboard', company_id=company.id)
-    
+
+    pending = company.verification_requests.filter(status='pending').first()
     if request.method == 'POST':
+        if pending:
+            messages.info(request, _('A verification request is already pending review.'))
+            return redirect('jobs:company_dashboard', company_id=company.id)
         form = CompanyVerificationRequestForm(request.POST, request.FILES)
         if form.is_valid():
-            # Save verification documents
-            # In a real implementation, you would save these files
-            # and create a verification request record
-            
-            # Send email to admin
-            subject = _('New Company Verification Request: {0}').format(company.name)
-            message = _('''
-            A new company verification request has been submitted:
-            
-            Company: {0}
-            Requested by: {1} ({2})
-            
-            Please review this request in the admin panel.
-            ''').format(
-                company.name,
-                request.user.get_full_name() or request.user.username,
-                request.user.email
+            verification = form.save(commit=False)
+            verification.company = company
+            verification.requested_by = request.user
+            verification.save()
+            send_transactional_email(
+                subject=_('New Company Verification Request: {0}').format(company.name),
+                message=_(
+                    'A company verification request was submitted.\n\nCompany: {company}\nRequested by: {user} ({email})\n\nReview it in Django admin.'
+                ).format(
+                    company=company.name,
+                    user=request.user.get_full_name() or request.user.username,
+                    email=request.user.email,
+                ),
+                recipients=[settings.ADMIN_EMAIL],
             )
-            
-            send_mail(
-                subject,
-                message,
-                settings.DEFAULT_FROM_EMAIL,
-                [settings.ADMIN_EMAIL], # You need to define this in settings
-                fail_silently=True,
-            )
-            
-            messages.success(request, _('Verification request submitted successfully. We will review your documents and update your company status.'))
+            messages.success(request, _('Verification request submitted. We will notify you after review.'))
             return redirect('jobs:company_dashboard', company_id=company.id)
     else:
         form = CompanyVerificationRequestForm()
-    
-    context = {
+
+    return render(request, 'jobs/request_verification.html', {
         'form': form,
         'company': company,
-    }
-    return render(request, 'jobs/request_verification.html', context)
+        'pending_verification': pending,
+    })
 
 
 # Maintenance endpoint: deactivate expired jobs and fetch new ones

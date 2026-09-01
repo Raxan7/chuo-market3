@@ -1,0 +1,10 @@
+{% extends "jobs/base.html" %}
+{% block job_content %}
+<div class="row justify-content-center"><div class="col-lg-8"><div class="card"><div class="card-body p-4">
+<h2 class="h4">Verify {{ company.name }}</h2><p class="text-muted">Upload business evidence for staff review. Documents are stored outside public media and are accessible only to ChuoSmart staff.</p>
+{% if pending_verification %}<div class="alert alert-warning">A request is already pending since {{ pending_verification.requested_at|date:"M d, Y" }}.</div>{% else %}
+<form method="post" enctype="multipart/form-data">{% csrf_token %}{{ form.non_field_errors }}
+{% for field in form %}<div class="mb-3"><label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}{% for error in field.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}</div>{% endfor %}
+<div class="d-flex gap-2"><button class="btn btn-primary" type="submit">Submit for review</button><a class="btn btn-outline-secondary" href="{% url 'jobs:company_dashboard' company.id %}">Cancel</a></div></form>{% endif %}
+</div></div></div></div>
+{% endblock %}

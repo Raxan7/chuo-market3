@@ -5,7 +5,7 @@ from django.utils import timezone
 from django.contrib.auth.models import User
 from tinymce.widgets import TinyMCE
 from .models import (
-    Company, Job, JobApplication, JobSearchPreference,
+    Company, CompanyVerificationRequest, Job, JobApplication, JobSearchPreference,
     Industry, Skill, JOB_TYPE_CHOICES, EXPERIENCE_LEVEL_CHOICES
 )
 
@@ -28,16 +28,22 @@ class CompanyForm(forms.ModelForm):
 
 
 class JobForm(forms.ModelForm):
-    """Form for creating and updating jobs"""
+    """Employer-safe form for creating and updating jobs."""
     skills = forms.ModelMultipleChoiceField(
         queryset=Skill.objects.all(),
         widget=forms.CheckboxSelectMultiple,
-        required=False
+        required=False,
     )
-    
+
     class Meta:
         model = Job
-        exclude = ['views_count', 'applications_count', 'created_by', 'source', 'external_id']
+        fields = [
+            'title', 'description', 'company', 'industry', 'location', 'is_remote',
+            'salary_min', 'salary_max', 'salary_currency', 'job_type',
+            'experience_level', 'requirements', 'responsibilities', 'benefits',
+            'application_deadline', 'is_active', 'skills', 'job_posting_type',
+            'external_url',
+        ]
         widgets = {
             'title': forms.TextInput(attrs={'placeholder': _('Job Title')}),
             'description': forms.Textarea(attrs={'rows': 5, 'placeholder': _('Detailed job description...')}),
@@ -49,41 +55,47 @@ class JobForm(forms.ModelForm):
             'salary_min': forms.NumberInput(attrs={'placeholder': _('Minimum Salary')}),
             'salary_max': forms.NumberInput(attrs={'placeholder': _('Maximum Salary')}),
         }
-    
+
     def __init__(self, *args, **kwargs):
         self.user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
-        
-        # Make company field optional and filter to those created by the current user
         self.fields['company'].required = False
         if self.user and not self.user.is_superuser:
             self.fields['company'].queryset = Company.objects.filter(created_by=self.user)
-    
+
     def clean_application_deadline(self):
         deadline = self.cleaned_data.get('application_deadline')
         if deadline and deadline < timezone.now():
             raise forms.ValidationError(_('Application deadline cannot be in the past.'))
         return deadline
-    
+
     def clean(self):
         cleaned_data = super().clean()
         salary_min = cleaned_data.get('salary_min')
         salary_max = cleaned_data.get('salary_max')
-        
-        if salary_min and salary_max and salary_min > salary_max:
+        posting_type = cleaned_data.get('job_posting_type')
+        external_url = cleaned_data.get('external_url')
+        company = cleaned_data.get('company')
+
+        if salary_min is not None and salary_max is not None and salary_min > salary_max:
             self.add_error('salary_max', _('Maximum salary must be greater than or equal to minimum salary.'))
-        
+        if posting_type == 'external' and not external_url:
+            self.add_error('external_url', _('External application URL is required for an external job.'))
+        if company and self.user and not self.user.is_superuser and company.created_by_id != self.user.id:
+            self.add_error('company', _('You can only post jobs for your own company profiles.'))
         return cleaned_data
-    
+
     def save(self, commit=True):
         job = super().save(commit=False)
         if self.user and not job.created_by_id:
             job.created_by = self.user
-        
+        # Featured placement is a platform-controlled/paid entitlement, never a self-service checkbox.
+        if not (self.user and self.user.is_superuser):
+            if not job.pk:
+                job.is_featured = False
         if commit:
             job.save()
             self.save_m2m()
-        
         return job
 
 
@@ -216,19 +228,29 @@ class ApplicationStatusUpdateForm(forms.ModelForm):
         }
 
 
-class CompanyVerificationRequestForm(forms.Form):
-    """Form for requesting company verification"""
-    business_certificate = forms.FileField(
-        label=_('Business Registration Certificate'),
-        help_text=_('Upload a copy of your business registration certificate')
-    )
-    tin_certificate = forms.FileField(
-        label=_('TIN Certificate'),
-        required=False,
-        help_text=_('Upload a copy of your TIN certificate (optional)')
-    )
-    verification_notes = forms.CharField(
-        label=_('Additional Notes'),
-        required=False,
-        widget=forms.Textarea(attrs={'rows': 3, 'placeholder': _('Any additional information to support your verification')}),
-    )
+class CompanyVerificationRequestForm(forms.ModelForm):
+    """Persisted company verification request with basic upload validation."""
+    class Meta:
+        model = CompanyVerificationRequest
+        fields = ['business_certificate', 'tin_certificate', 'verification_notes']
+        widgets = {
+            'verification_notes': forms.Textarea(attrs={
+                'rows': 3,
+                'placeholder': _('Any additional information to support your verification'),
+            }),
+        }
+
+    def clean(self):
+        cleaned_data = super().clean()
+        allowed_extensions = {'.pdf', '.png', '.jpg', '.jpeg'}
+        max_size = 10 * 1024 * 1024
+        from pathlib import Path
+        for field_name in ('business_certificate', 'tin_certificate'):
+            upload = cleaned_data.get(field_name)
+            if not upload:
+                continue
+            if Path(upload.name).suffix.lower() not in allowed_extensions:
+                self.add_error(field_name, _('Upload a PDF, PNG, JPG or JPEG file.'))
+            if upload.size > max_size:
+                self.add_error(field_name, _('File must be 10 MB or smaller.'))
+        return cleaned_data

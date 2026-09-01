@@ -2,6 +2,7 @@ import logging
 from django.contrib import admin
 from django.shortcuts import get_object_or_404
 from django.utils.translation import gettext_lazy as _
+from django.utils import timezone
 from django.contrib import messages
 from django.http import HttpResponseRedirect
 from django.urls import path, reverse
@@ -9,7 +10,7 @@ from django.template.response import TemplateResponse
 from .models import (
     Company, Industry, Skill, Job, JobApplication, 
     SavedJob, JobSearchPreference, ApiConfiguration, ApiRequestLog, UserJobApproval,
-    JobCourseRecommendation,
+    JobCourseRecommendation, CompanyVerificationRequest,
 )
 from .api_integration import fetch_jobs_from_api
 from .recommendations import get_recommendations
@@ -33,6 +34,52 @@ class CompanyAdmin(admin.ModelAdmin):
             'fields': ('is_verified', 'created_by', 'created_at', 'updated_at')
         }),
     )
+
+    def save_model(self, request, obj, form, change):
+        super().save_model(request, obj, form, change)
+        if obj.is_verified:
+            approval, _ = UserJobApproval.objects.get_or_create(user=obj.created_by)
+            if not approval.is_approved:
+                approval.is_approved = True
+                approval.approved_by = request.user
+                approval.approved_date = timezone.now()
+                approval.reason = approval.reason or 'Approved through verified company.'
+                approval.save(update_fields=['is_approved', 'approved_by', 'approved_date', 'reason'])
+
+
+@admin.register(CompanyVerificationRequest)
+class CompanyVerificationRequestAdmin(admin.ModelAdmin):
+    list_display = ('company', 'requested_by', 'status', 'requested_at', 'reviewed_by', 'reviewed_at')
+    list_filter = ('status', 'requested_at', 'reviewed_at')
+    search_fields = ('company__name', 'requested_by__username', 'requested_by__email')
+    readonly_fields = ('requested_at', 'reviewed_at', 'reviewed_by')
+    actions = ('approve_requests', 'reject_requests')
+
+    @admin.action(description='Approve selected verification requests')
+    def approve_requests(self, request, queryset):
+        count = 0
+        for verification in queryset.select_related('company', 'requested_by'):
+            verification.status = 'approved'
+            verification.reviewed_by = request.user
+            verification.reviewed_at = timezone.now()
+            verification.save(update_fields=['status', 'reviewed_by', 'reviewed_at'])
+            company = verification.company
+            if not company.is_verified:
+                company.is_verified = True
+                company.save(update_fields=['is_verified', 'updated_at'])
+            approval, _ = UserJobApproval.objects.get_or_create(user=verification.requested_by)
+            approval.is_approved = True
+            approval.approved_by = request.user
+            approval.approved_date = timezone.now()
+            approval.reason = approval.reason or 'Approved after company verification.'
+            approval.save(update_fields=['is_approved', 'approved_by', 'approved_date', 'reason'])
+            count += 1
+        self.message_user(request, f'Approved {count} verification request(s).', level=messages.SUCCESS)
+
+    @admin.action(description='Reject selected verification requests')
+    def reject_requests(self, request, queryset):
+        count = queryset.update(status='rejected', reviewed_by=request.user, reviewed_at=timezone.now())
+        self.message_user(request, f'Rejected {count} verification request(s).', level=messages.WARNING)
 
 
 @admin.register(Industry)
@@ -162,6 +209,7 @@ class JobAdmin(admin.ModelAdmin):
         return TemplateResponse(
             request, 'admin/jobs/job_recommendations.html', context
         )
+@admin.register(JobApplication)
 class JobApplicationAdmin(admin.ModelAdmin):
     list_display = ('job', 'applicant', 'status', 'applied_date')
     list_filter = ('status', 'applied_date')

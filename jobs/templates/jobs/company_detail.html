@@ -1,0 +1,18 @@
+{% extends "jobs/base.html" %}
+{% load sanitize_tags %}
+{% block job_content %}
+<div class="card mb-4"><div class="card-body p-4">
+  <div class="d-flex align-items-start gap-3">
+    {% if company.logo %}<img src="{{ company.logo.url }}" alt="{{ company.name }}" style="width:88px;height:88px;object-fit:contain" class="border rounded bg-white">{% endif %}
+    <div><h2 class="mb-1">{{ company.name }} {% if company.is_verified %}<span class="badge bg-success fs-6">Verified</span>{% endif %}</h2>
+    <div class="text-muted mb-2">{{ company.city }}{% if company.city and company.country %}, {% endif %}{{ company.country }}</div>
+    {% if company.website %}<a href="{{ company.website|safe_href }}" target="_blank" rel="noopener">Company website</a>{% endif %}</div>
+  </div>
+  {% if company.description %}<div class="mt-4">{{ company.description|sanitize }}</div>{% endif %}
+</div></div>
+<h3 class="h5 mb-3">Open opportunities</h3>
+<div class="list-group">
+{% for job in jobs %}<a class="list-group-item list-group-item-action" href="{% url 'jobs:job_detail' job.id %}"><strong>{{ job.title }}</strong><div class="small text-muted">{{ job.location }} · {{ job.get_job_type_display }} · Deadline {{ job.application_deadline|date:"M d, Y" }}</div></a>
+{% empty %}<div class="card"><div class="card-body text-muted">No public jobs from this company right now.</div></div>{% endfor %}
+</div>
+{% endblock %}

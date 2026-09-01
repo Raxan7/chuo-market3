@@ -7,6 +7,8 @@ from django.urls import reverse
 from tinymce.models import HTMLField
 from django.core.validators import MinValueValidator
 
+from .storage import private_verification_storage
+
 # Job Types
 JOB_TYPE_CHOICES = [
     ('full_time', _('Full Time')),
@@ -62,6 +64,48 @@ class Company(models.Model):
     
     def get_absolute_url(self):
         return reverse('jobs:company_detail', args=[str(self.id)])
+
+
+class CompanyVerificationRequest(models.Model):
+    """Persisted employer-verification workflow and supporting documents."""
+    STATUS_CHOICES = [
+        ('pending', _('Pending')),
+        ('approved', _('Approved')),
+        ('rejected', _('Rejected')),
+    ]
+
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='verification_requests')
+    requested_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='company_verification_requests')
+    business_certificate = models.FileField(
+        _('Business Registration Certificate'),
+        upload_to='jobs/verifications/business/',
+        storage=private_verification_storage,
+    )
+    tin_certificate = models.FileField(
+        _('TIN Certificate'),
+        upload_to='jobs/verifications/tin/',
+        storage=private_verification_storage,
+        blank=True,
+        null=True,
+    )
+    verification_notes = models.TextField(_('Applicant Notes'), blank=True)
+    status = models.CharField(_('Status'), max_length=20, choices=STATUS_CHOICES, default='pending')
+    admin_notes = models.TextField(_('Reviewer Notes'), blank=True)
+    requested_at = models.DateTimeField(auto_now_add=True)
+    reviewed_at = models.DateTimeField(blank=True, null=True)
+    reviewed_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True,
+        related_name='reviewed_company_verification_requests',
+    )
+
+    class Meta:
+        ordering = ['-requested_at']
+
+    def __str__(self):
+        return f"{self.company.name} - {self.get_status_display()}"
 
 
 class Industry(models.Model):

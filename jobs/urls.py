@@ -19,11 +19,15 @@ urlpatterns = [
     # User applications
     path('my-applications/', views.my_applications, name='my_applications'),
     
+    # Staff-only verification documents
+    path('private-verification-documents/<path:file_path>', views.private_verification_document, name='private_verification_document'),
+
     # Company management
     path('my-companies/', views.my_companies, name='my_companies'),
     path('company/create/', views.create_company, name='create_company'),
     path('company/<int:company_id>/edit/', views.edit_company, name='edit_company'),
     path('company/<int:company_id>/delete/', views.delete_company, name='delete_company'),
+    path('company/<int:company_id>/', views.company_detail, name='company_detail'),
     path('company/<int:company_id>/dashboard/', views.company_dashboard, name='company_dashboard'),
     path('company/<int:company_id>/verify/', views.request_company_verification, name='request_verification'),
     

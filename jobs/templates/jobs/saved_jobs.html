@@ -39,7 +39,7 @@
                 </div>
                 <div class="d-flex justify-content-between align-items-center mt-3">
                     <div>
-                        <small class="text-muted">Saved {{ saved_job.created_at|timesince }} ago</small>
+                        <small class="text-muted">Saved {{ saved_job.posted_date|timesince }} ago</small>
                     </div>
                     <div>
                         {% if saved_job.job.source != 'internal' %}
@@ -85,7 +85,7 @@
                         <h6 class="card-subtitle mb-2 text-muted">{{ job.company.name }}</h6>
                         <p class="card-text">{{ job.description|sanitize|truncatewords:15 }}</p>
                         <div class="d-flex justify-content-between align-items-center mt-auto">
-                            <small class="text-muted">{{ job.created_at|timesince }} ago</small>
+                            <small class="text-muted">{{ job.posted_date|timesince }} ago</small>
                             <a href="{% url 'jobs:job_detail' job.id %}" class="btn btn-sm btn-outline-primary">View</a>
                         </div>
                     </div>

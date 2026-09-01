@@ -436,19 +436,6 @@
                         <small class="text-muted d-block mt-1">Job will be visible immediately if your account is verified.</small>
                     </div>
                 </div>
-                <div class="col-lg-6">
-                    <div class="form-check form-switch">
-                        {{ form.is_featured }}
-                        <label class="form-check-label fw-500" for="{{ form.is_featured.id_for_label }}">
-                            <i class="bi bi-star me-1"></i>Featured Listing
-                        </label>
-                        {% if form.is_featured.errors %}
-                            <div class="invalid-feedback d-block">
-                                {% for error in form.is_featured.errors %}{{ error }}{% endfor %}
-                            </div>
-                        {% endif %}
-                        <small class="text-muted d-block mt-1">Featured jobs appear at the top of listings.</small>
-                    </div>
                 </div>
             </div>
         </div>
