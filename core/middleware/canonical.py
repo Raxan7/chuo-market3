@@ -12,15 +12,14 @@ class CanonicalDomainMiddleware:
         self.get_response = get_response
         # Define the canonical domain from settings, or use the first allowed host
         self.canonical_domain = getattr(settings, 'CANONICAL_DOMAIN', settings.ALLOWED_HOSTS[0])
-        self.enforce_ssl = getattr(settings, 'ENFORCE_SSL', not settings.DEBUG)
+        self.enforce_ssl = getattr(settings, 'ENFORCE_SSL', True)
     
     def __call__(self, request):
         """
         If the request's host doesn't match the canonical domain,
         redirect to the same path on the canonical domain.
         """
-        # Never redirect in DEBUG mode to allow local testing
-        if settings.DEBUG:
+        if not getattr(settings, 'CANONICAL_REDIRECT_ENABLED', False):
             return self.get_response(request)
             
         host = request.get_host().split(':')[0]

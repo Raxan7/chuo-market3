@@ -74,3 +74,5 @@ CERTIFICATE_PRICE = 15000
 CERTIFICATE_SIGNING_SECRET = 'test-secret'
 EMAIL_BACKEND = 'django.core.mail.backends.locmem.EmailBackend'
 CANONICAL_DOMAIN = 'testserver'
+
+CANONICAL_REDIRECT_ENABLED = False

@@ -1,6 +1,7 @@
 from .base import *
 
 DEBUG = True
+CANONICAL_REDIRECT_ENABLED = False
 
 ALLOWED_HOSTS = ['localhost', '127.0.0.1', '[::1]', 'chuosmart.com', 'www.chuosmart.com']
 

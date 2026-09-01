@@ -1,3 +1,5 @@
+from unittest import mock
+
 from django.test import TestCase, Client, override_settings
 from django.urls import reverse
 from django.contrib.auth.models import User
@@ -44,14 +46,17 @@ class SecurityRegressionTests(TestCase):
         self.other = User.objects.create_user(
             username='other', email='other@example.com', password='password12345'
         )
-        self.product = Product.objects.create(
-            user=self.other,
-            title='Test product',
-            category='El',
-            description='Test',
-            price=1000,
-            image='product_images/test.jpg',
-        )
+        # Product.save() generates a WebP derivative. The regression tests do
+        # not need filesystem image processing, so isolate that side effect.
+        with mock.patch('core.image_utils.optimize_image', return_value=None):
+            self.product = Product.objects.create(
+                user=self.other,
+                title='Test product',
+                category='El',
+                description='Test',
+                price=1000,
+                image='product_images/test.jpg',
+            )
         self.client.login(username='buyer', password='password12345')
 
     def test_newsletter_is_opt_in_by_default(self):

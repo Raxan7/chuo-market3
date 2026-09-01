@@ -3,6 +3,7 @@ from django.core.exceptions import ImproperlyConfigured
 import os
 
 DEBUG = False
+CANONICAL_REDIRECT_ENABLED = True
 
 ALLOWED_HOSTS = [
     'chuosmart.com',

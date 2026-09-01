@@ -15,6 +15,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 SECRET_KEY = os.getenv('SECRET_KEY')
 
 CANONICAL_DOMAIN = 'chuosmart.com'
+# Canonical redirects are enabled explicitly by production settings. Do not
+# infer this from DEBUG because Django's test runner temporarily forces DEBUG=False.
+CANONICAL_REDIRECT_ENABLED = False
 
 INSTALLED_APPS = [
     'django.contrib.admin',

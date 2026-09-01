@@ -14,6 +14,14 @@ def convert_images_to_webp(apps, schema_editor):
         # Import the Product model from the migration state
         Product = apps.get_model('core', 'Product')
         
+        # This historical migration originally ran before the image_webp
+        # field was added in 0016. Fresh databases therefore cannot query that
+        # field at this point in the migration graph. Treat this migration as
+        # a safe no-op when the historical model does not contain the field.
+        field_names = {field.name for field in Product._meta.get_fields()}
+        if 'image_webp' not in field_names:
+            return
+
         # Try to import the image optimizer
         try:
             from core.utils.image_optimizer import optimize_image
@@ -44,7 +52,10 @@ def convert_images_to_webp(apps, schema_editor):
 def reverse_migration(apps, schema_editor):
     """Reverse the migration by removing all WebP images."""
     Product = apps.get_model('core', 'Product')
-    
+    field_names = {field.name for field in Product._meta.get_fields()}
+    if 'image_webp' not in field_names:
+        return
+
     # Set all WebP images to None
     Product.objects.update(image_webp=None)
 

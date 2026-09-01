@@ -20,14 +20,16 @@ class CanonicalDomainMiddleware:
         self.local_hosts = {'localhost', '127.0.0.1', '::1'}
         
     def __call__(self, request):
-        # Never redirect in DEBUG mode to allow local testing and prevent browser caching issues
-        if settings.DEBUG:
+        # Redirect behavior is an explicit production concern. Django's test
+        # runner temporarily sets DEBUG=False, so DEBUG must not be used as the
+        # switch or every test request to the default host (testserver) becomes
+        # a 301 to chuosmart.com.
+        if not getattr(settings, 'CANONICAL_REDIRECT_ENABLED', False):
             return self.get_response(request)
-            
+
         host = request.get_host().split(':')[0]
 
-        # If not on the canonical domain and not in DEBUG mode
-        if host != self.canonical_domain and not settings.DEBUG:
+        if host != self.canonical_domain:
             # Build the new URL using the canonical domain
             scheme = 'https'  # We always want HTTPS for production
             new_url = f"{scheme}://{self.canonical_domain}{request.path}"
@@ -50,10 +52,12 @@ class TrailingSlashMiddleware:
         self.get_response = get_response
         
     def __call__(self, request):
-        # Disable permanent trailing slash redirects in DEBUG mode to avoid browser caching loops
-        if settings.DEBUG:
+        # Keep canonical URL enforcement explicitly production-only. Using
+        # DEBUG here breaks Django tests because the test environment forces
+        # DEBUG=False even when development settings were selected.
+        if not getattr(settings, 'CANONICAL_REDIRECT_ENABLED', False):
             return self.get_response(request)
-            
+
         # Skip if this is a file or media URL
         path = request.path
         
