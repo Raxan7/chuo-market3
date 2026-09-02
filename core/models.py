@@ -678,7 +678,6 @@ class MarketingDelivery(models.Model):
         ]
         indexes = [
             models.Index(fields=('status', 'run_after'), name='marketing_queue_idx'),
-            models.Index(fields=('recipient_email', 'sent_at'), name='marketing_email_sent_idx'),
         ]
 
     def save(self, *args, **kwargs):

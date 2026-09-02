@@ -50,6 +50,13 @@ class Command(BaseCommand):
                     'Ensure process_newsletter_queue is running from cron.'
                 ))
 
+        self.stdout.write(f"MARKETING_FROM_EMAIL={getattr(settings, 'MARKETING_FROM_EMAIL', settings.DEFAULT_FROM_EMAIL)}")
+        self.stdout.write(f"MARKETING_BURST_CAP={getattr(settings, 'MARKETING_EMAIL_BURST_CAP', '')}")
+        self.stdout.write(f"MARKETING_TEN_MINUTE_CAP={getattr(settings, 'MARKETING_EMAIL_TEN_MINUTE_CAP', '')}")
+        self.stdout.write(f"MARKETING_HOURLY_CAP={getattr(settings, 'MARKETING_EMAIL_HOURLY_CAP', '')}")
+        self.stdout.write(f"MARKETING_DAILY_CAP={getattr(settings, 'MARKETING_EMAIL_DAILY_CAP', '')}")
+        self.stdout.write(f"CONTENT_MARKETING_CAMPAIGN_GAP_HOURS={getattr(settings, 'CONTENT_MARKETING_CAMPAIGN_GAP_HOURS', '')}")
+
         marketing_active = MarketingCampaign.objects.filter(status__in=['scheduled', 'queued', 'sending']).count()
         marketing_pending = MarketingDelivery.objects.filter(status='pending').count()
         marketing_failed = MarketingDelivery.objects.filter(status='failed').count()

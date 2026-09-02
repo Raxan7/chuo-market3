@@ -37,6 +37,15 @@ def normalize_email(email):
     return (email or '').strip().lower()
 
 
+def marketing_from_email():
+    """Use a separately configurable From identity for promotional mail."""
+    return getattr(settings, 'MARKETING_FROM_EMAIL', '').strip() or settings.DEFAULT_FROM_EMAIL
+
+
+def marketing_list_id():
+    return getattr(settings, 'MARKETING_LIST_ID', 'updates.chuosmart.com').strip() or 'updates.chuosmart.com'
+
+
 def suppress_email(email, reason='unsubscribed', source='marketing'):
     email = normalize_email(email)
     if not email:
@@ -115,6 +124,33 @@ def get_campaign_recipients(campaign):
             }
 
     return list(recipients.values())
+
+
+def was_recently_marketed(email, minimum_gap_hours, exclude_campaign_id=None):
+    """Check the frequency cap against every ChuoSmart broadcast path.
+
+    This is called both while materializing an audience and immediately before
+    SMTP delivery so a long-running campaign cannot become stale relative to a
+    newer send.
+    """
+    email = normalize_email(email)
+    if not email or not minimum_gap_hours:
+        return False
+    cutoff = timezone.now() - timedelta(hours=minimum_gap_hours)
+    marketing_qs = MarketingDelivery.objects.filter(
+        recipient_email__iexact=email, status='sent', sent_at__gte=cutoff,
+    )
+    if exclude_campaign_id:
+        marketing_qs = marketing_qs.exclude(campaign_id=exclude_campaign_id)
+    if marketing_qs.exists():
+        return True
+    if NewsletterDelivery.objects.filter(
+        recipient_email__iexact=email, status='sent', sent_at__gte=cutoff,
+    ).exists():
+        return True
+    return NewsletterSendLog.objects.filter(
+        subscriber_email__iexact=email, status='sent', sent_at__gte=cutoff,
+    ).exists()
 
 
 def prepare_campaign(campaign):
@@ -233,13 +269,15 @@ def render_campaign_message(campaign, email, display_name='there', connection=No
     message = EmailMultiAlternatives(
         campaign.subject,
         plain_message,
-        settings.DEFAULT_FROM_EMAIL,
+        marketing_from_email(),
         get_newsletter_delivery_emails(email),
         connection=connection,
         reply_to=[getattr(settings, 'MARKETING_REPLY_TO', '').strip()] if getattr(settings, 'MARKETING_REPLY_TO', '').strip() else None,
         headers={
             'List-Unsubscribe': f'<{unsubscribe_url}>',
             'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+            'List-ID': f'ChuoSmart Updates <{marketing_list_id()}>',
+            'Precedence': 'bulk',
             'X-ChuoSmart-Campaign-ID': str(campaign.pk),
         },
     )
@@ -261,6 +299,14 @@ def send_delivery(delivery, connection=None):
     if not is_marketing_allowed(email):
         delivery.status = 'suppressed'
         delivery.last_error = 'Recipient unsubscribed or is suppressed before send.'
+        delivery.save(update_fields=['status', 'last_error', 'updated_at'])
+        return False
+
+    if was_recently_marketed(
+        email, delivery.campaign.minimum_gap_hours, exclude_campaign_id=delivery.campaign_id
+    ):
+        delivery.status = 'skipped'
+        delivery.last_error = 'Skipped by send-time marketing frequency cap.'
         delivery.save(update_fields=['status', 'last_error', 'updated_at'])
         return False
 
@@ -307,7 +353,16 @@ def refresh_campaign_stats(campaign_id):
 
 
 def queue_due_campaigns(limit=10):
-    """Move due scheduled/queued campaigns into the durable delivery queue."""
+    """Move due campaigns into delivery, serializing broadcasts by default.
+
+    Serial preparation is an important deliverability guard: frequency caps are
+    evaluated after the previous broadcast has actually finished, instead of
+    preparing several overlapping 6,000-recipient audiences at once.
+    """
+    if getattr(settings, 'MARKETING_SERIALIZE_CAMPAIGNS', True):
+        if MarketingCampaign.objects.filter(status='sending').exists():
+            return 0
+        limit = 1
     now = timezone.now()
     ids = list(
         MarketingCampaign.objects.filter(

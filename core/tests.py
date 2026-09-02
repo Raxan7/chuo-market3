@@ -207,3 +207,140 @@ class MarketingEngineRegressionTests(TestCase):
         self.assertEqual(len(mail.outbox), 1)
         self.assertIn('List-Unsubscribe', mail.outbox[0].extra_headers)
         self.assertIn('Open ChuoSmart', mail.outbox[0].alternatives[0].content)
+
+
+@override_settings(
+    EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend',
+    NEWSLETTER_DEBUG=False,
+    CANONICAL_DOMAIN='testserver',
+    CONTENT_MARKETING_CAMPAIGN_GAP_HOURS=48,
+    CONTENT_MARKETING_RECIPIENT_GAP_HOURS=48,
+    CONTENT_MARKETING_INCLUDE_COURSE_CONTENT=False,
+)
+class ContentMarketingOrchestrationTests(TestCase):
+    def setUp(self):
+        from core.models import UserNewsletterPreference
+
+        self.author = User.objects.create_user(
+            username='content-author', email='author@example.com', password='password12345'
+        )
+        self.recipient = User.objects.create_user(
+            username='content-reader', email='reader@example.com', password='password12345'
+        )
+        UserNewsletterPreference.objects.update_or_create(
+            user=self.recipient, defaults={'newsletter': True}
+        )
+
+    def _blogs(self):
+        from datetime import timedelta
+        from core.models import Blog
+
+        older = Blog.objects.create(title='Older useful post', content='Older body', author=self.author)
+        newer = Blog.objects.create(title='Newest useful post', content='Newest body', author=self.author)
+        Blog.objects.filter(pk=older.pk).update(created_at=timezone.now() - timedelta(days=10))
+        Blog.objects.filter(pk=newer.pk).update(created_at=timezone.now() - timedelta(hours=1))
+        older.refresh_from_db()
+        newer.refresh_from_db()
+        return older, newer
+
+    def test_database_backfill_schedules_newest_content_first(self):
+        from core.content_marketing import rebalance_content_schedule, sync_content_jobs
+        from core.models import NewsletterJob
+
+        older, newer = self._blogs()
+        sync_content_jobs(include_types=['blog'])
+        rebalance_content_schedule()
+
+        older_job = NewsletterJob.objects.get(job_type='blog', object_id=older.pk)
+        newer_job = NewsletterJob.objects.get(job_type='blog', object_id=newer.pk)
+        self.assertLess(newer_job.run_after, older_job.run_after)
+
+    def test_content_worker_creates_campaign_without_bulk_smtp_send(self):
+        from django.core import mail
+        from django.core.management import call_command
+        from core.content_marketing import sync_content_jobs
+        from core.models import MarketingCampaign
+
+        _, newer = self._blogs()
+        sync_content_jobs(include_types=['blog'])
+        call_command('process_newsletter_queue', limit=1, reconcile_limit=50)
+
+        campaign = MarketingCampaign.objects.get(name__startswith=f'[AUTO-CONTENT:blog:{newer.pk}]')
+        self.assertIn(campaign.status, {'queued', 'scheduled'})
+        self.assertEqual(len(mail.outbox), 0)
+
+
+@override_settings(
+    EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend',
+    NEWSLETTER_DEBUG=False,
+    CANONICAL_DOMAIN='testserver',
+    MARKETING_EMAIL_BURST_CAP=1,
+    MARKETING_EMAIL_TEN_MINUTE_CAP=15,
+    MARKETING_EMAIL_HOURLY_CAP=100,
+    MARKETING_EMAIL_DAILY_CAP=1500,
+    MARKETING_EMAIL_SECONDS_BETWEEN_SENDS=0,
+)
+class MarketingDeliverabilityGuardTests(TestCase):
+    def setUp(self):
+        from core.models import UserNewsletterPreference
+
+        self.users = []
+        for index in range(2):
+            user = User.objects.create_user(
+                username=f'warm-{index}', email=f'warm-{index}@example.com', password='password12345'
+            )
+            UserNewsletterPreference.objects.update_or_create(
+                user=user, defaults={'newsletter': True}
+            )
+            self.users.append(user)
+
+    def _campaign(self, name='Warm campaign', gap=0):
+        from core.models import MarketingCampaign
+        return MarketingCampaign.objects.create(
+            name=name,
+            kind='announcement',
+            audience='registered_users',
+            subject='Useful ChuoSmart update',
+            preheader='A useful update',
+            headline='Something useful for you',
+            body='This is a useful and relevant ChuoSmart update.',
+            cta_text='Open ChuoSmart',
+            cta_url='https://chuosmart.com/',
+            status='queued',
+            last_test_sent_at=timezone.now(),
+            minimum_gap_hours=gap,
+        )
+
+    def test_worker_enforces_burst_cap_even_when_cli_limit_is_higher(self):
+        from django.core import mail
+        from django.core.management import call_command
+        from core.models import MarketingDelivery
+
+        campaign = self._campaign()
+        call_command('process_marketing_queue', limit=10, campaign_limit=5)
+
+        self.assertEqual(MarketingDelivery.objects.filter(campaign=campaign, status='sent').count(), 1)
+        self.assertEqual(len(mail.outbox), 1)
+
+    def test_send_time_frequency_cap_stops_stale_queued_delivery(self):
+        from django.core import mail
+        from core.marketing import prepare_campaign, send_delivery
+        from core.models import MarketingDelivery
+
+        campaign = self._campaign(name='Prepared first', gap=24)
+        prepare_campaign(campaign)
+        delivery = campaign.deliveries.get(recipient_email=self.users[0].email)
+
+        other = self._campaign(name='Intervening campaign', gap=0)
+        MarketingDelivery.objects.create(
+            campaign=other,
+            user=self.users[0],
+            recipient_email=self.users[0].email,
+            status='sent',
+            sent_at=timezone.now(),
+        )
+
+        self.assertFalse(send_delivery(delivery))
+        delivery.refresh_from_db()
+        self.assertEqual(delivery.status, 'skipped')
+        self.assertEqual(len(mail.outbox), 0)

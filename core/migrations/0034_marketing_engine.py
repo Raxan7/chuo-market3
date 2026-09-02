@@ -84,8 +84,4 @@ class Migration(migrations.Migration):
             model_name='marketingdelivery',
             index=models.Index(fields=['status', 'run_after'], name='marketing_queue_idx'),
         ),
-        migrations.AddIndex(
-            model_name='marketingdelivery',
-            index=models.Index(fields=['recipient_email', 'sent_at'], name='marketing_email_sent_idx'),
-        ),
     ]

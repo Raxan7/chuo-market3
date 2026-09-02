@@ -167,3 +167,54 @@ After migration, verify the complete revenue-critical path with two test account
 8. the student dashboard Career tab shows saved jobs, applications, and recommendations.
 
 Do not deploy a jobs release based only on a successful job-row insert. The public listing, application route, employer review page, and notification path must all work together.
+
+## Marketing/content email orchestration
+
+ChuoSmart's content email path is deliberately two-stage. `process_newsletter_queue`
+reconciles published database content and turns only the newest due content item into
+a marketing campaign. `process_marketing_queue` then sends that campaign to opted-in
+recipients using durable rows, suppression checks, retry backoff and global rate caps.
+Publishing a blog/job/course/product/material never sends thousands of emails inside
+the HTTP request.
+
+One-time after deployment/backfill:
+
+```bash
+python manage.py sync_marketing_content_queue --preview 30
+```
+
+This scans the real database and creates missing content queue rows newest-first.
+Previously processed content is not reset or resent. Expired/private jobs and inactive
+materials are excluded. Course lessons are intentionally excluded by default because
+broadcasting every lesson is too noisy; set `CONTENT_MARKETING_INCLUDE_COURSE_CONTENT=true`
+only if that behavior is explicitly wanted.
+
+Recommended cron jobs (every minute):
+
+```bash
+python manage.py process_newsletter_queue --limit 1
+python manage.py process_marketing_queue --limit 10
+```
+
+The marketing worker still enforces `MARKETING_EMAIL_BURST_CAP`, rolling ten-minute,
+hourly and daily caps even if a larger CLI `--limit` is supplied. Automatic content
+campaigns are serialized, and recipients are re-checked for consent, suppression and
+frequency caps immediately before SMTP delivery.
+
+Start conservatively. The supplied production defaults are intentionally a warm-up
+profile rather than a maximum-throughput profile. Increase them only after confirming
+the SMTP provider quota and reviewing domain reputation/complaints.
+
+### Recovering a failed `0034_marketing_engine` on MariaDB
+
+If the first Patch 7 migration failed with MariaDB error 1071 (`Specified key was too
+long`) before Django recorded the migration as applied, Patch 8 removes the unnecessary
+wide email+timestamp index. Repair the partial tables before rerunning migrate:
+
+```bash
+python manage.py repair_marketing_migration
+python manage.py migrate
+```
+
+The repair command refuses to drop tables containing rows unless `--force` is supplied.
+Do not use `--force` unless you have inspected that data and know it is disposable.

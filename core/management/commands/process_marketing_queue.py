@@ -1,6 +1,7 @@
 import logging
 import smtplib
-from datetime import timedelta
+import time
+from datetime import timedelta, timezone as dt_timezone
 
 from django.conf import settings
 from django.core.mail import get_connection
@@ -10,7 +11,7 @@ from django.db.models import F
 from django.utils import timezone
 
 from core.marketing import queue_due_campaigns, refresh_campaign_stats, send_delivery, suppress_email
-from core.models import MarketingCampaign, MarketingDelivery
+from core.models import MarketingCampaign, MarketingDelivery, NewsletterDelivery, NewsletterSendLog
 
 logger = logging.getLogger('core.email')
 
@@ -74,8 +75,55 @@ class Command(BaseCommand):
                 delivery.save(update_fields=['status', 'attempts', 'last_error', 'updated_at'])
                 return delivery
 
+    def _rate_budget(self, requested_limit):
+        """Apply a domain-wide warm-up budget before touching SMTP."""
+        now = timezone.now()
+        burst_cap = max(1, int(getattr(settings, 'MARKETING_EMAIL_BURST_CAP', 3)))
+        ten_minute_cap = max(1, int(getattr(settings, 'MARKETING_EMAIL_TEN_MINUTE_CAP', 15)))
+        hourly_cap = max(1, int(getattr(settings, 'MARKETING_EMAIL_HOURLY_CAP', 100)))
+        daily_cap = max(1, int(getattr(settings, 'MARKETING_EMAIL_DAILY_CAP', 1500)))
+        ten_cutoff = now - timedelta(minutes=10)
+        hour_cutoff = now - timedelta(hours=1)
+        sent_ten_minutes = (
+            MarketingDelivery.objects.filter(status='sent', sent_at__gte=ten_cutoff).count()
+            + NewsletterDelivery.objects.filter(status='sent', sent_at__gte=ten_cutoff).count()
+            + NewsletterSendLog.objects.filter(status='sent', sent_at__gte=ten_cutoff).count()
+        )
+        sent_hour = (
+            MarketingDelivery.objects.filter(status='sent', sent_at__gte=hour_cutoff).count()
+            + NewsletterDelivery.objects.filter(status='sent', sent_at__gte=hour_cutoff).count()
+            + NewsletterSendLog.objects.filter(status='sent', sent_at__gte=hour_cutoff).count()
+        )
+        local_now = timezone.localtime(now) if timezone.is_aware(now) else now
+        day_start_local = local_now.replace(hour=0, minute=0, second=0, microsecond=0)
+        day_start = day_start_local.astimezone(dt_timezone.utc) if timezone.is_aware(day_start_local) else day_start_local
+        sent_day = (
+            MarketingDelivery.objects.filter(status='sent', sent_at__gte=day_start).count()
+            + NewsletterDelivery.objects.filter(status='sent', sent_at__gte=day_start).count()
+            + NewsletterSendLog.objects.filter(status='sent', sent_at__gte=day_start).count()
+        )
+        remaining_ten_minutes = max(0, ten_minute_cap - sent_ten_minutes)
+        remaining_hour = max(0, hourly_cap - sent_hour)
+        remaining_day = max(0, daily_cap - sent_day)
+        return min(requested_limit, burst_cap, remaining_ten_minutes, remaining_hour, remaining_day), {
+            'burst_cap': burst_cap, 'ten_minute_cap': ten_minute_cap,
+            'hourly_cap': hourly_cap, 'daily_cap': daily_cap,
+            'sent_ten_minutes': sent_ten_minutes, 'sent_hour': sent_hour, 'sent_day': sent_day,
+            'remaining_ten_minutes': remaining_ten_minutes,
+            'remaining_hour': remaining_hour, 'remaining_day': remaining_day,
+        }
+
     def handle(self, *args, **options):
-        limit = max(1, min(int(options['limit']), 1000))
+        requested_limit = max(1, min(int(options['limit']), 1000))
+        limit, budget = self._rate_budget(requested_limit)
+        if limit <= 0:
+            self.stdout.write(
+                'Marketing rate cap reached: '
+                f"10m={budget['sent_ten_minutes']}/{budget['ten_minute_cap']}, "
+                f"hour={budget['sent_hour']}/{budget['hourly_cap']}, "
+                f"day={budget['sent_day']}/{budget['daily_cap']}. No SMTP connection opened."
+            )
+            return
         campaign_limit = max(1, min(int(options['campaign_limit']), 50))
         retry_base = max(1, int(options['retry_base_minutes']))
 
@@ -85,6 +133,12 @@ class Command(BaseCommand):
         for campaign_id in MarketingCampaign.objects.filter(status='sending').values_list('id', flat=True)[:200]:
             refresh_campaign_stats(campaign_id)
         self.stdout.write(f'Prepared {prepared} campaign(s); recovered {recovered} stale delivery row(s).')
+        self.stdout.write(
+            f"Rate budget this run: {limit} message(s); "
+            f"10m={budget['sent_ten_minutes']}/{budget['ten_minute_cap']}, "
+            f"hour={budget['sent_hour']}/{budget['hourly_cap']}, "
+            f"day={budget['sent_day']}/{budget['daily_cap']}."
+        )
 
         connection = get_connection(fail_silently=False)
         processed = 0
@@ -166,6 +220,10 @@ class Command(BaseCommand):
                         sent += 1
                     else:
                         suppressed += 1
+
+                pause_seconds = max(0.0, float(getattr(settings, 'MARKETING_EMAIL_SECONDS_BETWEEN_SENDS', 1)))
+                if pause_seconds and processed < limit:
+                    time.sleep(min(pause_seconds, 10.0))
 
             for campaign_id in touched_campaigns:
                 refresh_campaign_stats(campaign_id)
