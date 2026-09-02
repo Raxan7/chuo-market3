@@ -90,15 +90,37 @@ def classify_smtp_recipient_refusal(exc):
 
 
 
-def get_marketing_connection(fail_silently=False):
-    """Return the SMTP connection dedicated to marketing mail.
+SAFE_LOCAL_EMAIL_BACKENDS = {
+    'django.core.mail.backends.locmem.EmailBackend',
+    'django.core.mail.backends.console.EmailBackend',
+    'django.core.mail.backends.dummy.EmailBackend',
+}
+SMTP_EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 
-    If MARKETING_EMAIL_* variables are not set, values fall back to the normal
-    Django email settings. This lets ChuoSmart move bulk/promotional traffic to
-    a dedicated provider without changing password resets or job notifications.
+
+def get_marketing_connection(fail_silently=False):
+    """Return the email connection used by marketing mail.
+
+    Production may use a dedicated MARKETING_EMAIL_* SMTP transport. During
+    development/tests, however, Django often overrides EMAIL_BACKEND to a safe
+    local backend. Marketing must follow that runtime override instead of using
+    the SMTP value that base settings computed earlier; otherwise a test run can
+    accidentally send real email.
     """
+    base_backend = getattr(settings, 'EMAIL_BACKEND', SMTP_EMAIL_BACKEND)
+    backend = getattr(settings, 'MARKETING_EMAIL_BACKEND', '') or base_backend
+
+    # Never let a test/development process escape to SMTP while Django itself
+    # is configured for an in-memory, console, or dummy backend. Production
+    # uses the SMTP backend, so dedicated marketing SMTP remains unaffected.
+    if base_backend in SAFE_LOCAL_EMAIL_BACKENDS:
+        backend = base_backend
+
+    if backend != SMTP_EMAIL_BACKEND:
+        return get_connection(backend=backend, fail_silently=fail_silently)
+
     return get_connection(
-        backend=getattr(settings, 'MARKETING_EMAIL_BACKEND', settings.EMAIL_BACKEND),
+        backend=backend,
         fail_silently=fail_silently,
         host=getattr(settings, 'MARKETING_EMAIL_HOST', settings.EMAIL_HOST),
         port=getattr(settings, 'MARKETING_EMAIL_PORT', settings.EMAIL_PORT),

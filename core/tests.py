@@ -101,6 +101,7 @@ class PasswordResetEmailRegressionTest(TestCase):
 
 @override_settings(
     EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend',
+    MARKETING_EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend',
     NEWSLETTER_DEBUG=False,
     CANONICAL_DOMAIN='testserver',
 )
@@ -276,6 +277,7 @@ class ContentMarketingOrchestrationTests(TestCase):
 
 @override_settings(
     EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend',
+    MARKETING_EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend',
     NEWSLETTER_DEBUG=False,
     CANONICAL_DOMAIN='testserver',
     MARKETING_EMAIL_BURST_CAP=1,
@@ -352,6 +354,7 @@ class MarketingDeliverabilityGuardTests(TestCase):
 
 @override_settings(
     EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend',
+    MARKETING_EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend',
     NEWSLETTER_DEBUG=False,
     CANONICAL_DOMAIN='testserver',
     CONTENT_MARKETING_DIGEST_SIZE=12,
@@ -522,6 +525,28 @@ class MarketingDedicatedSmtpTests(TestCase):
         self.assertEqual(kwargs['password'], 'marketing-secret')
         self.assertTrue(kwargs['use_tls'])
         self.assertFalse(kwargs['use_ssl'])
+
+    @override_settings(
+        EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend',
+        MARKETING_EMAIL_BACKEND='django.core.mail.backends.smtp.EmailBackend',
+        MARKETING_EMAIL_HOST='should-never-connect.example.com',
+        MARKETING_EMAIL_HOST_USER='should-never-connect',
+        MARKETING_EMAIL_HOST_PASSWORD='should-never-connect',
+    )
+    def test_safe_runtime_backend_prevents_real_marketing_smtp_escape(self):
+        from core.marketing import get_marketing_connection
+
+        with mock.patch('core.marketing.get_connection') as get_connection_mock:
+            get_marketing_connection(fail_silently=False)
+
+        kwargs = get_connection_mock.call_args.kwargs
+        self.assertEqual(
+            kwargs['backend'],
+            'django.core.mail.backends.locmem.EmailBackend',
+        )
+        self.assertNotIn('host', kwargs)
+        self.assertNotIn('username', kwargs)
+        self.assertNotIn('password', kwargs)
 
     @override_settings(
         EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend',

@@ -28,3 +28,5 @@ SESSION_COOKIE_SECURE = False
 X_FRAME_OPTIONS = 'SAMEORIGIN'
 
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+# Keep marketing mail local in development even when base settings default to SMTP.
+MARKETING_EMAIL_BACKEND = EMAIL_BACKEND
