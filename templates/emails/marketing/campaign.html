@@ -1,0 +1,41 @@
+{% load sanitize_tags %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ subject }}</title>
+</head>
+<body style="margin:0;padding:0;background:#f5f7fb;font-family:Arial,Helvetica,sans-serif;color:#172033;">
+  {% if preheader %}<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">{{ preheader }}</div>{% endif %}
+  <div style="max-width:680px;margin:0 auto;padding:24px 10px;">
+    <div style="background:#ffffff;border:1px solid #e8edf5;border-radius:20px;overflow:hidden;box-shadow:0 10px 34px rgba(15,23,42,.07);">
+      <div style="padding:28px 30px 14px;">
+        <div style="font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#6c4dff;">ChuoSmart</div>
+        <p style="margin:18px 0 8px;font-size:16px;line-height:1.6;color:#536079;">Hi {{ display_name }},</p>
+        <h1 style="margin:0 0 16px;font-size:30px;line-height:1.2;color:#151b2b;">{{ headline }}</h1>
+      </div>
+
+      {% if hero_image_url %}
+      <div style="padding:0 30px 22px;">
+        <img src="{{ hero_image_url |safe_src }}" alt="" style="display:block;width:100%;max-width:620px;border-radius:14px;object-fit:cover;">
+      </div>
+      {% endif %}
+
+      <div style="padding:0 30px 14px;font-size:16px;line-height:1.75;color:#48546a;">{{ body|linebreaksbr }}</div>
+
+      {% if cta_text and cta_url %}
+      <div style="padding:8px 30px 30px;">
+        <a href="{{ cta_url |safe_href }}" style="display:inline-block;background:#6c4dff;color:#ffffff;text-decoration:none;padding:13px 21px;border-radius:12px;font-size:15px;font-weight:700;">{{ cta_text }}</a>
+      </div>
+      {% endif %}
+
+      <div style="border-top:1px solid #edf0f6;padding:22px 30px 28px;font-size:12px;line-height:1.7;color:#7c879c;">
+        <p style="margin:0 0 8px;">You are receiving this because marketing/newsletter emails are enabled for this address on ChuoSmart.</p>
+        <p style="margin:0 0 8px;"><a href="{{ unsubscribe_url |safe_href }}" style="color:#5f46d8;">Unsubscribe from marketing emails</a></p>
+        <p style="margin:0;">{{ business_address }}</p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

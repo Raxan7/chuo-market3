@@ -3,7 +3,9 @@ from django.core.mail import send_mail
 from django.core.management.base import BaseCommand, CommandError
 from django.utils import timezone
 
-from core.models import NewsletterJob, NewsletterDelivery
+from core.models import (
+    NewsletterJob, NewsletterDelivery, MarketingCampaign, MarketingDelivery, MarketingSuppression,
+)
 
 
 class Command(BaseCommand):
@@ -46,6 +48,24 @@ class Command(BaseCommand):
                 self.stderr.write(self.style.WARNING(
                     'Newsletter queue has been pending for more than 15 minutes. '
                     'Ensure process_newsletter_queue is running from cron.'
+                ))
+
+        marketing_active = MarketingCampaign.objects.filter(status__in=['scheduled', 'queued', 'sending']).count()
+        marketing_pending = MarketingDelivery.objects.filter(status='pending').count()
+        marketing_failed = MarketingDelivery.objects.filter(status='failed').count()
+        marketing_suppressed = MarketingSuppression.objects.filter(is_active=True).count()
+        oldest_marketing = MarketingDelivery.objects.filter(status='pending').order_by('created_at').first()
+        self.stdout.write(f'MARKETING_ACTIVE_CAMPAIGNS={marketing_active}')
+        self.stdout.write(f'MARKETING_PENDING_DELIVERIES={marketing_pending}')
+        self.stdout.write(f'MARKETING_FAILED_DELIVERIES={marketing_failed}')
+        self.stdout.write(f'MARKETING_ACTIVE_SUPPRESSIONS={marketing_suppressed}')
+        if oldest_marketing:
+            age = timezone.now() - oldest_marketing.created_at
+            self.stdout.write(f'MARKETING_OLDEST_PENDING_MINUTES={int(age.total_seconds() // 60)}')
+            if age.total_seconds() > 15 * 60:
+                self.stderr.write(self.style.WARNING(
+                    'Marketing queue has been pending for more than 15 minutes. '
+                    'Ensure process_marketing_queue is running from cron.'
                 ))
 
         if 'console.EmailBackend' in backend:

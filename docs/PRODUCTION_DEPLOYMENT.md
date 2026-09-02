@@ -58,6 +58,50 @@ already marked sent.
 If the project still uses the daily digest command, schedule it separately; the
 content-announcement queue and daily digest serve different purposes.
 
+
+## 4A. Marketing campaign engine
+
+ChuoSmart marketing campaigns are separate from transactional email and from the
+content-announcement newsletter queue. Create campaigns in Django admin under
+**Marketing campaigns**. Use **Send a test ... to my admin email** first, then
+either schedule the campaign or select **Queue selected campaign(s) for sending**.
+
+The engine only materializes opted-in recipients, deduplicates email addresses,
+re-checks consent immediately before each send, honors the suppression list and
+a per-campaign frequency cap, and stores one durable delivery row per recipient.
+It supports pause/resume/cancel, exponential retry, stale-worker recovery and
+halts immediately on SMTP authentication failure so a bad credential cannot burn
+through thousands of attempts.
+
+Run this command every minute from cPanel cron:
+
+```bash
+python manage.py process_marketing_queue --limit 10
+```
+
+For roughly 6,000 contacts, start conservatively (the default is 10 messages per
+worker run) and set `MARKETING_EMAIL_MAX_PER_RUN` from the SMTP provider's
+documented hourly/daily sending limit. Increase only after confirming the provider
+is accepting the traffic without throttling.
+
+Suggested production variables:
+
+```text
+MARKETING_EMAIL_MAX_PER_RUN=10
+MARKETING_EMAIL_RETRY_BASE_MINUTES=10
+MARKETING_EMAIL_STALE_MINUTES=30
+```
+
+Never use the marketing engine for password resets, payment messages, or job
+application notifications. Those remain transactional and should send immediately.
+
+Before sending a large campaign, verify the sending domain has valid SPF, DKIM and
+DMARC records and confirm the SMTP provider's hourly/daily limit. The engine uses
+Django's email backend abstraction, so you can later move bulk mail to a dedicated
+provider without changing campaign/audience logic. Keep `MARKETING_REPLY_TO` on a
+monitored address and set `MARKETING_BUSINESS_ADDRESS` to the business contact
+address you want displayed in marketing footers.
+
 ## 5. Payment verification
 
 Snippe webhook deliveries must be configured to the project's

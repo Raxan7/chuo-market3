@@ -28,6 +28,7 @@ from core.newsletter import (
     decode_one_click_unsubscribe_token,
     send_unsubscribe_confirmation_email,
 )
+from core.marketing import suppress_email, unsuppress_email
 from core.rate_limit import rate_limit
 from core.storage import private_payment_storage
 
@@ -80,11 +81,13 @@ def newsletter_settings(request):
         if action == 'subscribe':
             preference.newsletter = True
             preference.save(update_fields=['newsletter', 'updated_at'])
+            unsuppress_email(request.user.email)
             messages.success(request, 'You are subscribed to ChuoSmart newsletter updates.')
             return redirect('newsletter_settings')
         if action == 'unsubscribe':
             preference.newsletter = False
             preference.save(update_fields=['newsletter', 'updated_at'])
+            suppress_email(request.user.email, source='newsletter_settings')
             messages.success(request, 'You have been unsubscribed from ChuoSmart newsletter updates.')
             return redirect('newsletter_settings')
 
@@ -109,6 +112,9 @@ def newsletter_confirm_unsubscribe(request, token):
     preference, _ = UserNewsletterPreference.objects.get_or_create(user_id=user_id)
     preference.newsletter = False
     preference.save(update_fields=['newsletter', 'updated_at'])
+    user = get_user_model().objects.filter(pk=user_id).only('email').first()
+    if user and user.email:
+        suppress_email(user.email, source='newsletter_confirmation')
 
     return HttpResponse('You have been unsubscribed from ChuoSmart newsletter emails.')
 
@@ -130,6 +136,7 @@ def newsletter_one_click_unsubscribe(request, token):
     UserNewsletterPreference.objects.filter(user_id__in=user_ids).update(
         newsletter=False, updated_at=timezone.now(),
     )
+    suppress_email(email, source='one_click_unsubscribe')
     return HttpResponse('You have been unsubscribed from ChuoSmart marketing emails.')
 
 
@@ -637,10 +644,13 @@ def customerregistration(request):
                 user = form.save(commit=False)
                 user.is_active = True  # Activate account immediately - no email verification required
                 user.save()
+                opted_in = bool(form.cleaned_data.get('newsletter_opt_in'))
                 UserNewsletterPreference.objects.update_or_create(
                     user=user,
-                    defaults={'newsletter': bool(form.cleaned_data.get('newsletter_opt_in'))},
+                    defaults={'newsletter': opted_in},
                 )
+                if opted_in:
+                    unsuppress_email(user.email)
                 # Customer profile will be created by signal handler
 
                 logger.info("User %s registered successfully and is now active", user.username)
@@ -1258,6 +1268,7 @@ def contact_us(request):
                     subscriber.name = name or subscriber.name
                     subscriber.source = 'contact_form'
                     subscriber.save(update_fields=['is_active', 'name', 'source', 'last_updated'])
+                unsuppress_email(email)
             
             messages.success(request, 'Thank you for reaching out! We will get back to you soon.')
             return redirect('contact')

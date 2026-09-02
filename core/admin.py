@@ -4,7 +4,7 @@ import traceback
 from datetime import datetime, timezone as dt_timezone
 
 from django.conf import settings
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.contrib.auth.models import User
 from django.core.mail import BadHeaderError, EmailMultiAlternatives
 from django.core.mail.backends.smtp import EmailBackend
@@ -21,10 +21,12 @@ from .forms import ComposeEmailForm, NewsletterDigestTestForm
 from .models import (
     AccountDeletionRequest, Banners, Blog, Cart, Customer, NewsletterSubscriber,
     NewsletterSendLog, NewsletterTestSend, NewsletterJob, NewsletterDelivery,
+    MarketingCampaign, MarketingDelivery, MarketingSuppression,
     OrderPlaced, Product, SentEmail, Subscription, SubscriptionPayment,
     UserNewsletterPreference,
 )
 from .newsletter import get_daily_digest_data, get_site_root_url, send_daily_digest
+from .marketing import send_test_campaign
 
 
 class OrderPlacedAdmin(admin.ModelAdmin):
@@ -81,6 +83,148 @@ class NewsletterTestSendAdmin(admin.ModelAdmin):
 
     def has_change_permission(self, request, obj=None):
         return False
+
+
+
+
+class MarketingDeliveryInline(admin.TabularInline):
+    model = MarketingDelivery
+    extra = 0
+    can_delete = False
+    fields = ('recipient_email', 'recipient_name', 'status', 'attempts', 'max_attempts', 'last_error', 'sent_at')
+    readonly_fields = fields
+    show_change_link = True
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(MarketingCampaign)
+class MarketingCampaignAdmin(admin.ModelAdmin):
+    list_display = (
+        'name', 'kind', 'audience', 'status', 'scheduled_for', 'total_recipients',
+        'sent_count', 'failed_count', 'skipped_count', 'created_at',
+    )
+    list_filter = ('status', 'kind', 'audience', 'created_at', 'scheduled_for')
+    search_fields = ('name', 'subject', 'headline')
+    date_hierarchy = 'created_at'
+    inlines = (MarketingDeliveryInline,)
+    actions = ('queue_campaigns', 'pause_campaigns', 'resume_campaigns', 'cancel_campaigns', 'send_test_to_me')
+    readonly_fields = (
+        'created_by', 'status', 'total_recipients', 'sent_count', 'failed_count', 'skipped_count',
+        'last_test_sent_at', 'prepared_at', 'started_at', 'completed_at', 'created_at', 'updated_at',
+    )
+    fieldsets = (
+        ('Campaign', {'fields': ('name', 'kind', 'audience', 'status', 'scheduled_for')}),
+        ('Message', {'fields': ('subject', 'preheader', 'headline', 'body', 'hero_image_url', 'cta_text', 'cta_url')}),
+        ('Delivery controls', {'fields': ('minimum_gap_hours', 'max_attempts')}),
+        ('Performance', {'fields': (
+            'total_recipients', 'sent_count', 'failed_count', 'skipped_count',
+            'last_test_sent_at', 'prepared_at', 'started_at', 'completed_at',
+        )}),
+        ('Audit', {'fields': ('created_by', 'created_at', 'updated_at')}),
+    )
+
+    def save_model(self, request, obj, form, change):
+        if not obj.created_by_id:
+            obj.created_by = request.user
+        message_fields = {
+            'kind', 'audience', 'subject', 'preheader', 'headline', 'body', 'hero_image_url', 'cta_text', 'cta_url',
+        }
+        if change and message_fields.intersection(form.changed_data):
+            # Any content/audience change invalidates the previous test-send approval.
+            obj.last_test_sent_at = None
+        if not obj.prepared_at and obj.status not in ('cancelled', 'completed'):
+            obj.status = 'scheduled' if (obj.scheduled_for and obj.last_test_sent_at) else 'draft'
+        super().save_model(request, obj, form, change)
+
+    def get_readonly_fields(self, request, obj=None):
+        fields = list(super().get_readonly_fields(request, obj))
+        if obj and obj.prepared_at:
+            fields += [
+                'name', 'kind', 'audience', 'subject', 'preheader', 'headline', 'body',
+                'hero_image_url', 'cta_text', 'cta_url', 'scheduled_for', 'minimum_gap_hours', 'max_attempts',
+            ]
+        return tuple(dict.fromkeys(fields))
+
+    @admin.action(description='Queue selected campaign(s) for sending')
+    def queue_campaigns(self, request, queryset):
+        eligible = queryset.filter(
+            prepared_at__isnull=True,
+            status__in=['draft', 'scheduled'],
+            last_test_sent_at__isnull=False,
+        )
+        queued = eligible.update(status='queued', scheduled_for=None)
+        blocked = queryset.filter(last_test_sent_at__isnull=True).count()
+        self.message_user(request, f'{queued} campaign(s) queued. The cron worker will prepare recipients and send in batches.')
+        if blocked:
+            self.message_user(request, f'{blocked} campaign(s) were not queued because no test email has been sent yet.', level=messages.WARNING)
+
+    @admin.action(description='Pause selected campaign(s)')
+    def pause_campaigns(self, request, queryset):
+        updated = queryset.filter(status__in=['queued', 'sending', 'scheduled']).update(status='paused')
+        self.message_user(request, f'{updated} campaign(s) paused.')
+
+    @admin.action(description='Resume selected paused campaign(s)')
+    def resume_campaigns(self, request, queryset):
+        updated = 0
+        for campaign in queryset.filter(status='paused'):
+            campaign.status = 'sending' if campaign.prepared_at else 'queued'
+            campaign.save(update_fields=['status', 'updated_at'])
+            updated += 1
+        self.message_user(request, f'{updated} campaign(s) resumed.')
+
+    @admin.action(description='Cancel selected campaign(s)')
+    def cancel_campaigns(self, request, queryset):
+        updated = queryset.exclude(status='completed').update(status='cancelled')
+        self.message_user(request, f'{updated} campaign(s) cancelled. Queued deliveries will not be sent.')
+
+    @admin.action(description='Send a test of selected campaign(s) to my admin email')
+    def send_test_to_me(self, request, queryset):
+        if not request.user.email:
+            self.message_user(request, 'Your admin account has no email address.', level=messages.ERROR)
+            return
+        sent = 0
+        for campaign in queryset[:5]:
+            try:
+                send_test_campaign(campaign, request.user.email, request.user.first_name or request.user.username)
+            except Exception as exc:
+                email_logger.exception('Marketing test send failed for campaign %s', campaign.pk)
+                self.message_user(request, f'Test failed for {campaign.name}: {exc}', level=messages.ERROR)
+            else:
+                sent += 1
+                campaign.last_test_sent_at = timezone.now()
+                if campaign.scheduled_for and not campaign.prepared_at:
+                    campaign.status = 'scheduled'
+                    campaign.save(update_fields=['last_test_sent_at', 'status', 'updated_at'])
+                else:
+                    campaign.save(update_fields=['last_test_sent_at', 'updated_at'])
+        if sent:
+            self.message_user(request, f'Sent {sent} marketing test email(s) to {request.user.email}.')
+
+
+@admin.register(MarketingDelivery)
+class MarketingDeliveryAdmin(admin.ModelAdmin):
+    list_display = ('campaign', 'recipient_email', 'status', 'attempts', 'sent_at', 'updated_at')
+    list_filter = ('status', 'campaign', 'sent_at')
+    search_fields = ('recipient_email', 'recipient_name', 'campaign__name')
+    readonly_fields = (
+        'campaign', 'user', 'recipient_email', 'recipient_name', 'status', 'attempts',
+        'max_attempts', 'run_after', 'last_error', 'sent_at', 'created_at', 'updated_at',
+    )
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(MarketingSuppression)
+class MarketingSuppressionAdmin(admin.ModelAdmin):
+    list_display = ('email', 'reason', 'source', 'is_active', 'created_at', 'updated_at')
+    list_filter = ('is_active', 'reason', 'created_at')
+    search_fields = ('email', 'source')
 
 
 @admin.register(SubscriptionPayment)

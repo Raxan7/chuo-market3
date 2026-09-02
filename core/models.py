@@ -541,3 +541,149 @@ class NewsletterDelivery(models.Model):
 
     def __str__(self):
         return f'{self.job_id}:{self.recipient_email} ({self.status})'
+
+class MarketingSuppression(models.Model):
+    """Email addresses that must never receive ChuoSmart marketing campaigns."""
+    REASON_CHOICES = (
+        ('unsubscribed', 'Unsubscribed'),
+        ('bounce', 'Hard bounce'),
+        ('complaint', 'Spam complaint'),
+        ('manual', 'Manual suppression'),
+    )
+
+    email = models.EmailField(unique=True)
+    reason = models.CharField(max_length=20, choices=REASON_CHOICES, default='unsubscribed')
+    source = models.CharField(max_length=100, blank=True, default='')
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ('email',)
+
+    def save(self, *args, **kwargs):
+        self.email = (self.email or '').strip().lower()
+        return super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f'{self.email} ({self.reason})'
+
+
+class MarketingCampaign(models.Model):
+    """Admin-authored, scheduled marketing campaign with durable per-recipient delivery state."""
+    AUDIENCE_CHOICES = (
+        ('all_opted_in', 'All opted-in contacts'),
+        ('registered_users', 'Registered users who opted in'),
+        ('website_subscribers', 'Website newsletter subscribers'),
+    )
+    KIND_CHOICES = (
+        ('announcement', 'Announcement'),
+        ('product', 'Product'),
+        ('service', 'Service'),
+        ('course', 'Course'),
+        ('career', 'Career / jobs'),
+        ('promotion', 'Promotion'),
+        ('reengagement', 'Re-engagement'),
+    )
+    STATUS_CHOICES = (
+        ('draft', 'Draft'),
+        ('scheduled', 'Scheduled'),
+        ('queued', 'Queued'),
+        ('sending', 'Sending'),
+        ('paused', 'Paused'),
+        ('completed', 'Completed'),
+        ('cancelled', 'Cancelled'),
+    )
+
+    name = models.CharField(max_length=180, help_text='Internal campaign name.')
+    kind = models.CharField(max_length=20, choices=KIND_CHOICES, default='announcement')
+    audience = models.CharField(max_length=30, choices=AUDIENCE_CHOICES, default='all_opted_in')
+    subject = models.CharField(max_length=255)
+    preheader = models.CharField(max_length=255, blank=True, default='')
+    headline = models.CharField(max_length=255)
+    body = models.TextField(help_text='Main marketing message. Plain text is rendered safely with paragraphs.')
+    hero_image_url = models.URLField(blank=True, default='', help_text='Optional HTTPS image URL for the campaign hero.')
+    cta_text = models.CharField(max_length=80, blank=True, default='')
+    cta_url = models.URLField(blank=True, default='')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft')
+    scheduled_for = models.DateTimeField(blank=True, null=True)
+    minimum_gap_hours = models.PositiveSmallIntegerField(
+        default=24,
+        help_text='Frequency cap. Set 0 only for genuinely urgent campaigns.',
+    )
+    max_attempts = models.PositiveSmallIntegerField(default=5)
+    created_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True, related_name='marketing_campaigns_created'
+    )
+    total_recipients = models.PositiveIntegerField(default=0)
+    sent_count = models.PositiveIntegerField(default=0)
+    failed_count = models.PositiveIntegerField(default=0)
+    skipped_count = models.PositiveIntegerField(default=0)
+    last_test_sent_at = models.DateTimeField(blank=True, null=True)
+    prepared_at = models.DateTimeField(blank=True, null=True)
+    started_at = models.DateTimeField(blank=True, null=True)
+    completed_at = models.DateTimeField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ('-created_at',)
+
+    def clean(self):
+        super().clean()
+        if self.cta_text and not self.cta_url:
+            raise ValidationError({'cta_url': 'CTA URL is required when CTA text is set.'})
+        if self.cta_url and not self.cta_text:
+            raise ValidationError({'cta_text': 'CTA text is required when a CTA URL is set.'})
+        if self.status == 'scheduled' and not self.scheduled_for:
+            raise ValidationError({'scheduled_for': 'Choose a send time for a scheduled campaign.'})
+
+    def __str__(self):
+        return f'{self.name} ({self.status})'
+
+
+class MarketingDelivery(models.Model):
+    """Durable per-recipient state for a marketing campaign."""
+    STATUS_CHOICES = (
+        ('pending', 'Pending'),
+        ('sending', 'Sending'),
+        ('sent', 'Sent'),
+        ('failed', 'Failed'),
+        ('skipped', 'Skipped'),
+        ('suppressed', 'Suppressed'),
+    )
+
+    campaign = models.ForeignKey(MarketingCampaign, on_delete=models.CASCADE, related_name='deliveries')
+    user = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True, related_name='marketing_deliveries'
+    )
+    recipient_email = models.EmailField()
+    recipient_name = models.CharField(max_length=180, blank=True, default='')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    attempts = models.PositiveSmallIntegerField(default=0)
+    max_attempts = models.PositiveSmallIntegerField(default=5)
+    run_after = models.DateTimeField(default=timezone.now)
+    last_error = models.TextField(blank=True, default='')
+    sent_at = models.DateTimeField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ('created_at',)
+        constraints = [
+            models.UniqueConstraint(
+                fields=('campaign', 'recipient_email'),
+                name='unique_marketing_campaign_recipient',
+            ),
+        ]
+        indexes = [
+            models.Index(fields=('status', 'run_after'), name='marketing_queue_idx'),
+            models.Index(fields=('recipient_email', 'sent_at'), name='marketing_email_sent_idx'),
+        ]
+
+    def save(self, *args, **kwargs):
+        self.recipient_email = (self.recipient_email or '').strip().lower()
+        return super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f'{self.campaign_id}:{self.recipient_email} ({self.status})'

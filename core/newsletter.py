@@ -367,6 +367,13 @@ def send_daily_digest_all_subscribers(target_date=None):
         if user.email:
             all_emails.add(user.email.lower())
 
+    # Honor the central marketing suppression list across all newsletter paths.
+    from .models import MarketingSuppression
+    suppressed_emails = {
+        email.lower() for email in MarketingSuppression.objects.filter(is_active=True).values_list('email', flat=True)
+    }
+    all_emails.difference_update(suppressed_emails)
+
     # Get already-sent for today
     already_sent = set(
         NewsletterSendLog.objects.filter(
@@ -446,10 +453,13 @@ def send_newsletter_log_email(subject, details):
 
 
 def get_newsletter_recipients(exclude_user_id=None):
+    from .models import MarketingSuppression
+
+    suppressed = MarketingSuppression.objects.filter(is_active=True).values_list('email', flat=True)
     recipients = User.objects.filter(
         is_active=True,
         email__isnull=False,
-    ).exclude(email='').filter(newsletter_preference__newsletter=True).distinct()
+    ).exclude(email='').filter(newsletter_preference__newsletter=True).exclude(email__in=suppressed).distinct()
 
     if exclude_user_id:
         recipients = recipients.exclude(pk=exclude_user_id)
