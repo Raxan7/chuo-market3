@@ -29,14 +29,15 @@ class Command(BaseCommand):
 
         existing = set(connection.introspection.table_names())
         models = [MarketingDelivery, MarketingCampaign, MarketingSuppression]
-        present = [model for model in models if model._meta.db_table in existing]
-        if not present:
+        present_models = [model for model in models if model._meta.db_table in existing]
+        present_tables = {model._meta.db_table for model in present_models}
+        if not present_models:
             self.stdout.write('No partial marketing tables were found. You can run python manage.py migrate.')
             return
 
         counts = {}
         with connection.cursor() as cursor:
-            for model in present:
+            for model in present_models:
                 table = connection.ops.quote_name(model._meta.db_table)
                 cursor.execute(f'SELECT COUNT(*) FROM {table}')
                 counts[model._meta.db_table] = int(cursor.fetchone()[0])
@@ -54,10 +55,18 @@ class Command(BaseCommand):
         # the migration was never recorded as applied.
         with connection.schema_editor() as schema_editor:
             for model in models:
-                if model._meta.db_table in present:
+                if model._meta.db_table in present_tables:
                     self.stdout.write(f'Dropping partial table {model._meta.db_table} ...')
                     schema_editor.delete_model(model)
 
+        remaining = present_tables.intersection(connection.introspection.table_names())
+        if remaining:
+            raise CommandError(
+                'Marketing migration repair did not fully remove the partial schema. '
+                f'Remaining table(s): {sorted(remaining)}. Do not run migrate until these are resolved.'
+            )
+
         self.stdout.write(self.style.SUCCESS(
-            'Partial marketing schema removed. Rerun python manage.py migrate; the corrected 0034 migration can now apply cleanly.'
+            'Partial marketing schema removed and verified. Rerun python manage.py migrate; '
+            'the corrected 0034 migration can now apply cleanly.'
         ))
