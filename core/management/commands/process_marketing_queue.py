@@ -1,6 +1,7 @@
 import logging
 import smtplib
 import time
+from pathlib import Path
 from datetime import timedelta, timezone as dt_timezone
 
 from django.conf import settings
@@ -10,7 +11,13 @@ from django.db import transaction
 from django.db.models import F
 from django.utils import timezone
 
-from core.marketing import queue_due_campaigns, refresh_campaign_stats, send_delivery, suppress_email
+from core.marketing import (
+    classify_smtp_recipient_refusal,
+    queue_due_campaigns,
+    refresh_campaign_stats,
+    send_delivery,
+    suppress_email,
+)
 from core.models import MarketingCampaign, MarketingDelivery, NewsletterDelivery, NewsletterSendLog
 
 logger = logging.getLogger('core.email')
@@ -114,6 +121,31 @@ class Command(BaseCommand):
         }
 
     def handle(self, *args, **options):
+        """Serialize SMTP workers across cron/manual invocations on this host."""
+        try:
+            import fcntl
+        except ImportError:
+            return self._handle_locked(*args, **options)
+
+        lock_dir = Path(getattr(settings, 'BASE_DIR', '.')) / 'logs'
+        lock_dir.mkdir(parents=True, exist_ok=True)
+        lock_path = lock_dir / 'marketing_worker.lock'
+        lock_handle = lock_path.open('a+')
+        try:
+            try:
+                fcntl.flock(lock_handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except BlockingIOError:
+                self.stdout.write('Another marketing SMTP worker is already active; this run exits without sending.')
+                return
+            return self._handle_locked(*args, **options)
+        finally:
+            try:
+                fcntl.flock(lock_handle.fileno(), fcntl.LOCK_UN)
+            except Exception:
+                pass
+            lock_handle.close()
+
+    def _handle_locked(self, *args, **options):
         requested_limit = max(1, min(int(options['limit']), 1000))
         limit, budget = self._rate_budget(requested_limit)
         if limit <= 0:
@@ -145,6 +177,7 @@ class Command(BaseCommand):
         sent = 0
         failed = 0
         suppressed = 0
+        policy_rejections = 0
         touched_campaigns = set()
 
         try:
@@ -178,23 +211,49 @@ class Command(BaseCommand):
                     refresh_campaign_stats(delivery.campaign_id)
                     raise CommandError('SMTP authentication failed. Marketing queue halted; remaining recipients were not attempted.')
                 except smtplib.SMTPRecipientsRefused as exc:
-                    refusal_codes = [value[0] for value in exc.recipients.values() if value]
-                    if refusal_codes and all(int(code) >= 500 for code in refusal_codes):
-                        suppress_email(delivery.recipient_email, reason='bounce', source='smtp_hard_bounce')
+                    classification, refusal_codes, refusal_text = classify_smtp_recipient_refusal(exc)
+                    if classification == 'hard_bounce':
+                        suppress_email(delivery.recipient_email, reason='bounce', source='smtp_hard_bounce_confirmed')
                         delivery.status = 'suppressed'
-                        delivery.last_error = f'Permanent recipient rejection: {exc}'[:4000]
+                        delivery.last_error = f'Confirmed invalid recipient: {exc}'[:4000]
                         delivery.save(update_fields=['status', 'last_error', 'updated_at'])
                         suppressed += 1
                         self.stderr.write(self.style.WARNING(
-                            f'Hard bounce suppressed {delivery.recipient_email}; it will not be retried.'
+                            f'Confirmed hard bounce suppressed {delivery.recipient_email}; it will not be retried.'
                         ))
                         continue
+
                     failed += 1
-                    backoff_minutes = min(24 * 60, retry_base * (2 ** max(0, delivery.attempts - 1)))
+                    if classification == 'policy':
+                        policy_rejections += 1
+                        backoff_minutes = max(
+                            int(getattr(settings, 'MARKETING_EMAIL_POLICY_RETRY_MINUTES', 60)),
+                            retry_base,
+                        )
+                        delivery.last_error = (
+                            f'SMTP policy/ambiguous recipient rejection codes={refusal_codes}: {refusal_text or exc}'
+                        )[:4000]
+                    else:
+                        backoff_minutes = min(24 * 60, retry_base * (2 ** max(0, delivery.attempts - 1)))
+                        delivery.last_error = f'Temporary recipient rejection: {exc}'[:4000]
                     delivery.status = 'failed'
                     delivery.run_after = timezone.now() + timedelta(minutes=backoff_minutes)
-                    delivery.last_error = str(exc)[:4000]
                     delivery.save(update_fields=['status', 'run_after', 'last_error', 'updated_at'])
+
+                    breaker = max(1, int(getattr(
+                        settings, 'MARKETING_EMAIL_POLICY_FAILURE_CIRCUIT_BREAKER', 3
+                    )))
+                    if classification == 'policy' and policy_rejections >= breaker:
+                        refresh_campaign_stats(delivery.campaign_id)
+                        MarketingCampaign.objects.filter(pk=delivery.campaign_id).update(
+                            status='paused', updated_at=timezone.now()
+                        )
+                        raise CommandError(
+                            f'Marketing campaign #{delivery.campaign_id} was PAUSED after '
+                            f'{policy_rejections} consecutive SMTP policy rejections. Recipients were NOT '
+                            'permanently suppressed. Verify the marketing-shaped SMTP path and sender '
+                            'reputation/authentication before resuming the campaign.'
+                        )
                 except Exception as exc:
                     failed += 1
                     backoff_minutes = min(24 * 60, retry_base * (2 ** max(0, delivery.attempts - 1)))
@@ -218,6 +277,7 @@ class Command(BaseCommand):
                 else:
                     if delivered:
                         sent += 1
+                        policy_rejections = 0
                     else:
                         suppressed += 1
 

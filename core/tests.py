@@ -215,6 +215,7 @@ class MarketingEngineRegressionTests(TestCase):
     CANONICAL_DOMAIN='testserver',
     CONTENT_MARKETING_CAMPAIGN_GAP_HOURS=48,
     CONTENT_MARKETING_RECIPIENT_GAP_HOURS=48,
+    CONTENT_MARKETING_DIGEST_SIZE=12,
     CONTENT_MARKETING_INCLUDE_COURSE_CONTENT=False,
 )
 class ContentMarketingOrchestrationTests(TestCase):
@@ -243,6 +244,7 @@ class ContentMarketingOrchestrationTests(TestCase):
         newer.refresh_from_db()
         return older, newer
 
+    @override_settings(CONTENT_MARKETING_DIGEST_SIZE=1)
     def test_database_backfill_schedules_newest_content_first(self):
         from core.content_marketing import rebalance_content_schedule, sync_content_jobs
         from core.models import NewsletterJob
@@ -265,8 +267,10 @@ class ContentMarketingOrchestrationTests(TestCase):
         sync_content_jobs(include_types=['blog'])
         call_command('process_newsletter_queue', limit=1, reconcile_limit=50)
 
-        campaign = MarketingCampaign.objects.get(name__startswith=f'[AUTO-CONTENT:blog:{newer.pk}]')
+        campaign = MarketingCampaign.objects.get(name__startswith='[AUTO-DIGEST:')
         self.assertIn(campaign.status, {'queued', 'scheduled'})
+        self.assertIn('Newest useful post', campaign.body)
+        self.assertIn('Older useful post', campaign.body)
         self.assertEqual(len(mail.outbox), 0)
 
 
@@ -344,3 +348,136 @@ class MarketingDeliverabilityGuardTests(TestCase):
         delivery.refresh_from_db()
         self.assertEqual(delivery.status, 'skipped')
         self.assertEqual(len(mail.outbox), 0)
+
+
+@override_settings(
+    EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend',
+    NEWSLETTER_DEBUG=False,
+    CANONICAL_DOMAIN='testserver',
+    CONTENT_MARKETING_DIGEST_SIZE=12,
+    CONTENT_MARKETING_CAMPAIGN_GAP_HOURS=24,
+    CONTENT_MARKETING_RECIPIENT_GAP_HOURS=48,
+    MARKETING_EMAIL_BURST_CAP=3,
+    MARKETING_EMAIL_TEN_MINUTE_CAP=15,
+    MARKETING_EMAIL_HOURLY_CAP=100,
+    MARKETING_EMAIL_DAILY_CAP=1500,
+    MARKETING_EMAIL_SECONDS_BETWEEN_SENDS=0,
+)
+class MarketingAutomationRecoveryTests(TestCase):
+    def setUp(self):
+        from core.models import UserNewsletterPreference
+
+        self.author = User.objects.create_user(
+            username='auto-author', email='auto-author@example.com', password='password12345'
+        )
+        self.recipient = User.objects.create_user(
+            username='auto-recipient', email='auto-recipient@example.com', password='password12345'
+        )
+        UserNewsletterPreference.objects.update_or_create(
+            user=self.recipient, defaults={'newsletter': True}
+        )
+
+    def test_generic_550_is_policy_not_hard_bounce(self):
+        from core.marketing import classify_smtp_refusal_data
+        self.assertEqual(
+            classify_smtp_refusal_data([550], ['Message rejected by outbound policy']),
+            'policy',
+        )
+
+    def test_explicit_missing_mailbox_is_hard_bounce(self):
+        from core.marketing import classify_smtp_refusal_data
+        self.assertEqual(
+            classify_smtp_refusal_data([550], ['5.1.1 The email account that you tried to reach does not exist']),
+            'hard_bounce',
+        )
+
+    def test_unified_engine_creates_digest_and_sends(self):
+        from django.core import mail
+        from django.core.management import call_command
+        from core.models import Blog, MarketingCampaign, MarketingDelivery
+
+        Blog.objects.create(title='Automated useful update', content='Useful content', author=self.author)
+        call_command('run_email_marketing_engine', send_limit=10, digest_size=12, reconcile_limit=250)
+
+        campaign = MarketingCampaign.objects.get(name__startswith='[AUTO-DIGEST:')
+        delivery = MarketingDelivery.objects.get(campaign=campaign, recipient_email=self.recipient.email)
+        self.assertEqual(delivery.status, 'sent')
+        self.assertEqual(campaign.sent_count, 1)
+        self.assertEqual(len(mail.outbox), 1)
+
+    @override_settings(MARKETING_EMAIL_POLICY_FAILURE_CIRCUIT_BREAKER=3)
+    def test_worker_does_not_suppress_generic_550_policy_rejection(self):
+        import smtplib
+        from django.core.management import call_command
+        from core.marketing import prepare_campaign
+        from core.models import MarketingCampaign, MarketingSuppression
+
+        campaign = MarketingCampaign.objects.create(
+            name='Policy refusal test', kind='announcement', audience='registered_users',
+            subject='Test', headline='Test', body='Test', status='queued',
+            last_test_sent_at=timezone.now(), minimum_gap_hours=0,
+        )
+        prepare_campaign(campaign)
+
+        fake_message = mock.Mock()
+        fake_message.send.side_effect = smtplib.SMTPRecipientsRefused({
+            self.recipient.email: (550, b'Message rejected by outbound policy')
+        })
+        with mock.patch('core.marketing.render_campaign_message', return_value=fake_message):
+            call_command('process_marketing_queue', limit=1, campaign_limit=1)
+
+        delivery = campaign.deliveries.get(recipient_email=self.recipient.email)
+        self.assertEqual(delivery.status, 'failed')
+        self.assertFalse(MarketingSuppression.objects.filter(
+            email=self.recipient.email, is_active=True
+        ).exists())
+
+    def test_worker_suppresses_explicit_nonexistent_mailbox(self):
+        import smtplib
+        from django.core.management import call_command
+        from core.marketing import prepare_campaign
+        from core.models import MarketingCampaign, MarketingSuppression
+
+        campaign = MarketingCampaign.objects.create(
+            name='Confirmed bounce test', kind='announcement', audience='registered_users',
+            subject='Test', headline='Test', body='Test', status='queued',
+            last_test_sent_at=timezone.now(), minimum_gap_hours=0,
+        )
+        prepare_campaign(campaign)
+
+        fake_message = mock.Mock()
+        fake_message.send.side_effect = smtplib.SMTPRecipientsRefused({
+            self.recipient.email: (550, b'5.1.1 The email account that you tried to reach does not exist')
+        })
+        with mock.patch('core.marketing.render_campaign_message', return_value=fake_message):
+            call_command('process_marketing_queue', limit=1, campaign_limit=1)
+
+        delivery = campaign.deliveries.get(recipient_email=self.recipient.email)
+        self.assertEqual(delivery.status, 'suppressed')
+        self.assertTrue(MarketingSuppression.objects.filter(
+            email=self.recipient.email, is_active=True, source='smtp_hard_bounce_confirmed'
+        ).exists())
+
+    def test_legacy_ambiguous_bounce_can_be_released_for_retry(self):
+        from django.core.management import call_command
+        from core.models import MarketingCampaign, MarketingDelivery, MarketingSuppression
+
+        campaign = MarketingCampaign.objects.create(
+            name='Legacy bounce test', kind='announcement', audience='registered_users',
+            subject='Test', headline='Test', body='Test', status='sending',
+            last_test_sent_at=timezone.now(), minimum_gap_hours=0,
+        )
+        delivery = MarketingDelivery.objects.create(
+            campaign=campaign, user=self.recipient, recipient_email=self.recipient.email,
+            status='suppressed', attempts=1, last_error="Permanent recipient rejection: (550, b'Message rejected')",
+        )
+        suppression = MarketingSuppression.objects.create(
+            email=self.recipient.email, reason='bounce', source='smtp_hard_bounce', is_active=True,
+        )
+
+        call_command('repair_marketing_suppressions', apply=True)
+        suppression.refresh_from_db()
+        delivery.refresh_from_db()
+        self.assertFalse(suppression.is_active)
+        self.assertEqual(delivery.status, 'failed')
+        self.assertEqual(delivery.attempts, 0)

@@ -47,7 +47,7 @@ class Command(BaseCommand):
             if age.total_seconds() > 15 * 60:
                 self.stderr.write(self.style.WARNING(
                     'Newsletter queue has been pending for more than 15 minutes. '
-                    'Ensure process_newsletter_queue is running from cron.'
+                    'Ensure run_email_marketing_engine is running from cron.'
                 ))
 
         self.stdout.write(f"MARKETING_FROM_EMAIL={getattr(settings, 'MARKETING_FROM_EMAIL', settings.DEFAULT_FROM_EMAIL)}")
@@ -56,6 +56,7 @@ class Command(BaseCommand):
         self.stdout.write(f"MARKETING_HOURLY_CAP={getattr(settings, 'MARKETING_EMAIL_HOURLY_CAP', '')}")
         self.stdout.write(f"MARKETING_DAILY_CAP={getattr(settings, 'MARKETING_EMAIL_DAILY_CAP', '')}")
         self.stdout.write(f"CONTENT_MARKETING_CAMPAIGN_GAP_HOURS={getattr(settings, 'CONTENT_MARKETING_CAMPAIGN_GAP_HOURS', '')}")
+        self.stdout.write(f"CONTENT_MARKETING_DIGEST_SIZE={getattr(settings, 'CONTENT_MARKETING_DIGEST_SIZE', '')}")
 
         marketing_active = MarketingCampaign.objects.filter(status__in=['scheduled', 'queued', 'sending']).count()
         marketing_pending = MarketingDelivery.objects.filter(status='pending').count()
@@ -72,7 +73,7 @@ class Command(BaseCommand):
             if age.total_seconds() > 15 * 60:
                 self.stderr.write(self.style.WARNING(
                     'Marketing queue has been pending for more than 15 minutes. '
-                    'Ensure process_marketing_queue is running from cron.'
+                    'Ensure run_email_marketing_engine is running from cron.'
                 ))
 
         if 'console.EmailBackend' in backend:

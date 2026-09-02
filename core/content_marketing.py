@@ -3,13 +3,13 @@
 The content queue is intentionally two-stage:
 
 1. ``NewsletterJob`` stores one durable row per published content object.
-2. When a content slot becomes due, that row is converted into one
-   ``MarketingCampaign``. Recipient delivery is then handled by the throttled
-   marketing worker.
+2. Due rows are grouped newest-first into a useful digest ``MarketingCampaign``.
+3. Recipient delivery is handled separately by the throttled marketing worker.
 
-This means publishing content never sends thousands of emails inside a web
-request, the newest eligible content can be prioritized ahead of old backlog,
-and global marketing consent/rate limits apply to every broadcast.
+Publishing content therefore never sends thousands of emails inside a web
+request. New content moves to the front of the unsent inventory, historical
+content is grouped instead of producing hundreds of individual broadcasts, and
+all marketing consent/rate limits still apply at recipient send time.
 """
 
 from datetime import datetime, timedelta
@@ -18,6 +18,7 @@ import logging
 from django.apps import apps
 from django.conf import settings
 from django.db import transaction
+from django.db.models import Q
 from django.utils import timezone
 from django.utils.html import strip_tags
 from django.utils.text import Truncator
@@ -28,6 +29,7 @@ from .newsletter import build_absolute_url
 logger = logging.getLogger('core.email')
 
 AUTO_CONTENT_PREFIX = '[AUTO-CONTENT:'
+AUTO_DIGEST_PREFIX = '[AUTO-DIGEST:'
 
 CONTENT_CONFIG = {
     'blog': {
@@ -56,6 +58,15 @@ CONTENT_CONFIG = {
     },
 }
 
+DIGEST_LABELS = {
+    'job': 'Jobs & opportunities',
+    'course': 'Courses',
+    'course_content': 'Learning updates',
+    'material': 'Resources',
+    'blog': 'Updates',
+    'product': 'Marketplace',
+}
+
 
 def _aware_floor():
     value = datetime(1970, 1, 1)
@@ -74,6 +85,10 @@ def content_marketing_types():
     if getattr(settings, 'CONTENT_MARKETING_INCLUDE_COURSE_CONTENT', False):
         types.append('course_content')
     return tuple(types)
+
+
+def digest_size():
+    return max(1, min(int(getattr(settings, 'CONTENT_MARKETING_DIGEST_SIZE', 12)), 30))
 
 
 def is_content_marketable(job_type, instance):
@@ -136,8 +151,8 @@ def discover_content_newest_first(include_types=None, limit=None):
 def sync_content_jobs(include_types=None, limit=None):
     """Backfill missing durable content jobs from the actual database.
 
-    Already-sent content is never reset, which prevents historical duplicate
-    broadcasts when this reconciliation command is run repeatedly.
+    Already-processed content is never reset. This keeps reconciliation safe to
+    run every minute while still discovering newly-published database rows.
     """
     if include_types is None and not getattr(settings, 'CONTENT_MARKETING_INCLUDE_COURSE_CONTENT', False):
         NewsletterJob.objects.filter(
@@ -152,11 +167,7 @@ def sync_content_jobs(include_types=None, limit=None):
         _, was_created = NewsletterJob.objects.get_or_create(
             job_type=job_type,
             object_id=object_id,
-            defaults={
-                'related_ids': [],
-                'status': 'pending',
-                'run_after': timezone.now(),
-            },
+            defaults={'related_ids': [], 'status': 'pending', 'run_after': timezone.now()},
         )
         created += int(was_created)
         existing += int(not was_created)
@@ -164,7 +175,7 @@ def sync_content_jobs(include_types=None, limit=None):
 
 
 def _pending_content_jobs_newest_first():
-    """Resolve queue rows to current objects so stale/hidden content is excluded."""
+    """Resolve queue rows to current objects so stale/private content is excluded."""
     result = []
     queryset = NewsletterJob.objects.filter(
         job_type__in=content_marketing_types(),
@@ -175,7 +186,6 @@ def _pending_content_jobs_newest_first():
             continue
         instance = get_content_instance(job.job_type, job.object_id)
         if not is_content_marketable(job.job_type, instance):
-            # Do not leave expired/private/deleted content permanently blocking the queue.
             job.status = 'sent'
             job.processed_at = timezone.now()
             job.last_error = 'Skipped: content is no longer eligible for public marketing.'
@@ -187,7 +197,9 @@ def _pending_content_jobs_newest_first():
 
 
 def auto_content_campaigns():
-    return MarketingCampaign.objects.filter(name__startswith=AUTO_CONTENT_PREFIX)
+    return MarketingCampaign.objects.filter(
+        Q(name__startswith=AUTO_CONTENT_PREFIX) | Q(name__startswith=AUTO_DIGEST_PREFIX)
+    )
 
 
 def active_auto_content_campaign_exists():
@@ -195,15 +207,16 @@ def active_auto_content_campaign_exists():
 
 
 def rebalance_content_schedule(now=None):
-    """Schedule backlog newest-first without materializing recipient rows.
+    """Schedule unsent inventory in digest-sized batches, newest first.
 
-    A newly-created item moves to the earliest unmaterialized slot. Older
-    backlog is pushed later, so current content stays current while nothing is
-    lost from the durable database queue.
+    Every item is still durable in ``NewsletterJob``, but a batch shares one
+    planned campaign slot. This prevents a 700-item backlog from turning into
+    years of one-email-per-item broadcasts.
     """
     now = now or timezone.now()
-    gap_hours = max(1, int(getattr(settings, 'CONTENT_MARKETING_CAMPAIGN_GAP_HOURS', 48)))
+    gap_hours = max(1, int(getattr(settings, 'CONTENT_MARKETING_CAMPAIGN_GAP_HOURS', 24)))
     gap = timedelta(hours=gap_hours)
+    batch_size = digest_size()
 
     latest = auto_content_campaigns().exclude(status='cancelled').order_by('-scheduled_for', '-created_at').first()
     anchor = now
@@ -214,12 +227,18 @@ def rebalance_content_schedule(now=None):
     rows = _pending_content_jobs_newest_first()
     changed = 0
     for position, (_, job, _) in enumerate(rows):
-        planned = anchor + (gap * position)
+        planned = anchor + (gap * (position // batch_size))
         if job.run_after != planned:
             job.run_after = planned
             job.save(update_fields=['run_after', 'updated_at'])
             changed += 1
-    return {'scheduled': len(rows), 'changed': changed, 'anchor': anchor}
+    return {
+        'scheduled': len(rows),
+        'changed': changed,
+        'anchor': anchor,
+        'digest_size': batch_size,
+        'campaign_slots': (len(rows) + batch_size - 1) // batch_size,
+    }
 
 
 def _image_url(instance):
@@ -270,7 +289,8 @@ def _campaign_body(job_type, instance):
         if location:
             extras.append(f'Location: {location}')
         if deadline:
-            extras.append(f'Apply before: {timezone.localtime(deadline).strftime("%d %b %Y") if timezone.is_aware(deadline) else deadline.strftime("%d %b %Y")}')
+            value = timezone.localtime(deadline) if timezone.is_aware(deadline) else deadline
+            extras.append(f'Apply before: {value.strftime("%d %b %Y")}')
     elif job_type == 'course':
         if getattr(instance, 'is_free', False):
             extras.append('This course is currently available free on ChuoSmart.')
@@ -305,7 +325,7 @@ def find_auto_campaign_for_job(job):
 
 
 def materialize_job_as_campaign(job):
-    """Convert one due content queue row into a throttled MarketingCampaign."""
+    """Backward-compatible single-content materializer used by older callers/tests."""
     instance = get_content_instance(job.job_type, job.object_id)
     if not is_content_marketable(job.job_type, instance):
         job.status = 'sent'
@@ -324,8 +344,7 @@ def materialize_job_as_campaign(job):
 
     config = CONTENT_CONFIG[job.job_type]
     title = str(getattr(instance, 'title', instance))
-    marker = _auto_campaign_name(job)
-    campaign_name = f'{marker} {title}'[:180]
+    campaign_name = f'{_auto_campaign_name(job)} {title}'[:180]
     scheduled_for = max(job.run_after or timezone.now(), timezone.now())
 
     with transaction.atomic():
@@ -344,8 +363,6 @@ def materialize_job_as_campaign(job):
             scheduled_for=scheduled_for,
             minimum_gap_hours=max(1, int(getattr(settings, 'CONTENT_MARKETING_RECIPIENT_GAP_HOURS', 48))),
             max_attempts=max(1, int(getattr(settings, 'MARKETING_EMAIL_MAX_ATTEMPTS', 5))),
-            # System-generated campaigns use a fixed trusted template and therefore do
-            # not require the human admin test gate used for manually-authored copy.
             last_test_sent_at=timezone.now(),
         )
         job.status = 'sent'
@@ -355,12 +372,116 @@ def materialize_job_as_campaign(job):
     return campaign
 
 
-def due_content_job():
-    """Return the newest due eligible content job, or None."""
+def due_content_jobs(limit=None):
+    """Return the newest due batch of eligible content jobs."""
     if active_auto_content_campaign_exists():
-        return None
+        return []
     now = timezone.now()
-    for _, job, _ in _pending_content_jobs_newest_first():
+    size = max(1, min(int(limit or digest_size()), 30))
+    due = []
+    for _, job, instance in _pending_content_jobs_newest_first():
         if job.run_after <= now:
-            return job
-    return None
+            due.append((job, instance))
+            if len(due) >= size:
+                break
+    return due
+
+
+def due_content_job():
+    """Backward-compatible single due job accessor."""
+    rows = due_content_jobs(limit=1)
+    return rows[0][0] if rows else None
+
+
+def _digest_subject(entries):
+    types = [job.job_type for job, _ in entries]
+    count = len(entries)
+    if types and all(value == 'job' for value in types):
+        return f'{count} fresh opportunities on ChuoSmart'
+    if types and all(value == 'course' for value in types):
+        return f'{count} learning opportunities on ChuoSmart'
+    if types and all(value == 'product' for value in types):
+        return f'{count} fresh marketplace picks on ChuoSmart'
+    return "What's new on ChuoSmart: opportunities, learning and resources"
+
+
+def _digest_body(entries):
+    grouped = {}
+    for job, instance in entries:
+        grouped.setdefault(job.job_type, []).append(instance)
+
+    parts = [
+        'Here are the newest useful things on ChuoSmart. We group updates into one digest so you get value without unnecessary email noise.'
+    ]
+    for job_type in ('job', 'course', 'material', 'blog', 'product', 'course_content'):
+        instances = grouped.get(job_type) or []
+        if not instances:
+            continue
+        lines = [DIGEST_LABELS[job_type]]
+        for instance in instances:
+            title = Truncator(str(getattr(instance, 'title', instance))).chars(110)
+            lines.append(f'• {title}')
+        parts.append('\n'.join(lines))
+    parts.append('Open ChuoSmart to see the full details and the latest additions.')
+    return '\n\n'.join(parts)
+
+
+def materialize_jobs_as_digest(entries):
+    """Convert a due content batch into one campaign and consume all rows atomically."""
+    valid = []
+    now = timezone.now()
+    for job, instance in entries:
+        if is_content_marketable(job.job_type, instance):
+            valid.append((job, instance))
+        else:
+            job.status = 'sent'
+            job.processed_at = now
+            job.last_error = 'Skipped: content is no longer eligible for public marketing.'
+            job.save(update_fields=['status', 'processed_at', 'last_error', 'updated_at'])
+
+    if not valid:
+        return None
+
+    job_ids = [job.pk for job, _ in valid]
+    first_id, last_id = max(job_ids), min(job_ids)
+    marker = f'{AUTO_DIGEST_PREFIX}{first_id}-{last_id}:{len(valid)}]'
+    existing = MarketingCampaign.objects.filter(name__startswith=marker).order_by('id').first()
+    if existing:
+        NewsletterJob.objects.filter(pk__in=job_ids).update(
+            status='sent', processed_at=now,
+            last_error=f'Already represented by marketing campaign #{existing.pk}.',
+            updated_at=now,
+        )
+        return existing
+
+    types = {job.job_type for job, _ in valid}
+    kind = CONTENT_CONFIG[next(iter(types))]['kind'] if len(types) == 1 else 'announcement'
+    newest_instance = valid[0][1]
+    scheduled_for = max(min(job.run_after for job, _ in valid), now)
+    subject = _digest_subject(valid)[:255]
+
+    with transaction.atomic():
+        campaign = MarketingCampaign.objects.create(
+            name=f'{marker} {subject}'[:180],
+            kind=kind,
+            audience='all_opted_in',
+            subject=subject,
+            preheader=f'{len(valid)} fresh ChuoSmart updates in one useful digest'[:255],
+            headline='Fresh opportunities and resources for you',
+            body=_digest_body(valid),
+            hero_image_url=_image_url(newest_instance),
+            cta_text='Explore ChuoSmart',
+            cta_url=build_absolute_url('/'),
+            status='queued' if scheduled_for <= now else 'scheduled',
+            scheduled_for=scheduled_for,
+            minimum_gap_hours=max(1, int(getattr(settings, 'CONTENT_MARKETING_RECIPIENT_GAP_HOURS', 48))),
+            max_attempts=max(1, int(getattr(settings, 'MARKETING_EMAIL_MAX_ATTEMPTS', 5))),
+            last_test_sent_at=now,
+        )
+        NewsletterJob.objects.filter(pk__in=job_ids).update(
+            status='sent',
+            processed_at=now,
+            last_error=f'Queued in digest marketing campaign #{campaign.pk}.',
+            updated_at=now,
+        )
+    return campaign

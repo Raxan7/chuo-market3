@@ -8,8 +8,8 @@ from django.utils import timezone
 
 from core.content_marketing import (
     active_auto_content_campaign_exists,
-    due_content_job,
-    materialize_job_as_campaign,
+    due_content_jobs,
+    materialize_jobs_as_digest,
     rebalance_content_schedule,
     sync_content_jobs,
 )
@@ -20,15 +20,20 @@ logger = logging.getLogger('core.email')
 
 class Command(BaseCommand):
     help = (
-        'Reconcile published ChuoSmart content and convert due content jobs into '
-        'throttled marketing campaigns. Recipient SMTP delivery is handled by '
-        'process_marketing_queue.'
+        'Reconcile published ChuoSmart content and convert due rows into '
+        'throttled digest marketing campaigns. Recipient SMTP delivery is '
+        'handled by process_marketing_queue.'
     )
 
     def add_arguments(self, parser):
         parser.add_argument(
             '--limit', type=int, default=1,
-            help='Maximum due content campaigns to materialize in this run. Serial safety normally limits this to one.',
+            help='Maximum digest campaigns to materialize in this run. Serial safety normally limits this to one.',
+        )
+        parser.add_argument(
+            '--digest-size', type=int,
+            default=getattr(settings, 'CONTENT_MARKETING_DIGEST_SIZE', 12),
+            help='Maximum content items grouped into one automatic digest.',
         )
         parser.add_argument(
             '--reconcile-limit', type=int,
@@ -43,6 +48,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         limit = max(1, min(int(options['limit']), 10))
+        digest_size = max(1, min(int(options['digest_size']), 30))
         retry_delay = max(1, int(options['retry_delay_minutes']))
         reconcile_limit = None if options['backfill_all'] else max(1, int(options['reconcile_limit']))
 
@@ -50,10 +56,11 @@ class Command(BaseCommand):
         schedule = rebalance_content_schedule()
         self.stdout.write(
             f"Content reconciliation: created={sync['created']}, existing={sync['existing']}; "
-            f"scheduled backlog={schedule['scheduled']}."
+            f"scheduled backlog={schedule['scheduled']} across {schedule['campaign_slots']} digest slot(s) "
+            f"(up to {schedule['digest_size']} items each)."
         )
 
-        # Recover conversion jobs abandoned by a killed cron process. This stage
+        # Recover content rows abandoned by a killed cron process. This stage
         # never sends recipient email itself.
         NewsletterJob.objects.filter(
             status='processing',
@@ -64,50 +71,65 @@ class Command(BaseCommand):
         if active_auto_content_campaign_exists():
             self.stdout.write(
                 'An automatic content campaign is already scheduled/queued/sending/paused; '
-                'older content remains safely in the database queue.'
+                'the remaining content inventory stays queued and will advance after it finishes.'
             )
             return
 
-        processed = 0
-        while processed < limit:
-            candidate = due_content_job()
-            if candidate is None:
+        processed_campaigns = 0
+        consumed_rows = 0
+        while processed_campaigns < limit:
+            entries = due_content_jobs(limit=digest_size)
+            if not entries:
                 break
 
+            ids = [job.pk for job, _ in entries]
             with transaction.atomic():
-                job = NewsletterJob.objects.select_for_update().get(pk=candidate.pk)
-                if job.status not in ('pending', 'failed') or job.run_after > timezone.now():
-                    continue
-                job.status = 'processing'
-                job.attempts += 1
-                job.last_error = ''
-                job.save(update_fields=['status', 'attempts', 'last_error', 'updated_at'])
+                jobs = list(NewsletterJob.objects.select_for_update().filter(pk__in=ids))
+                locked = {job.pk: job for job in jobs}
+                eligible_entries = []
+                for job, instance in entries:
+                    current = locked.get(job.pk)
+                    if not current:
+                        continue
+                    if current.status not in ('pending', 'failed') or current.run_after > timezone.now():
+                        continue
+                    current.status = 'processing'
+                    current.attempts += 1
+                    current.last_error = ''
+                    current.save(update_fields=['status', 'attempts', 'last_error', 'updated_at'])
+                    eligible_entries.append((current, instance))
+
+            if not eligible_entries:
+                break
 
             try:
-                campaign = materialize_job_as_campaign(job)
+                campaign = materialize_jobs_as_digest(eligible_entries)
             except Exception as exc:
-                logger.exception('Content marketing conversion job %s failed', job.pk)
-                job.status = 'failed'
-                job.last_error = str(exc)[:4000]
-                job.run_after = timezone.now() + timedelta(minutes=retry_delay)
-                job.save(update_fields=['status', 'last_error', 'run_after', 'updated_at'])
-                self.stderr.write(self.style.WARNING(f'Content job {job.pk} failed: {exc}'))
+                logger.exception('Content marketing digest conversion failed for rows %s', ids)
+                NewsletterJob.objects.filter(pk__in=[job.pk for job, _ in eligible_entries]).update(
+                    status='failed',
+                    last_error=str(exc)[:4000],
+                    run_after=timezone.now() + timedelta(minutes=retry_delay),
+                )
+                self.stderr.write(self.style.WARNING(f'Content digest failed: {exc}'))
             else:
+                consumed_rows += len(eligible_entries)
                 if campaign is None:
                     self.stdout.write(self.style.WARNING(
-                        f'Content job {job.pk} was skipped because the content is no longer marketable.'
+                        f'Skipped {len(eligible_entries)} content row(s) because none remained marketable.'
                     ))
                 else:
                     self.stdout.write(self.style.SUCCESS(
-                        f'Content job {job.pk} -> marketing campaign #{campaign.pk} ({campaign.subject})'
+                        f'{len(eligible_entries)} content row(s) -> marketing campaign #{campaign.pk} ({campaign.subject})'
                     ))
-            processed += 1
+            processed_campaigns += 1
 
-            # Only one automatic content broadcast may exist at once. This keeps
-            # newer content from creating overlapping 6,000-recipient campaigns.
+            # Only one automatic broadcast may exist at once. The delivery
+            # worker drains it before the next digest is created.
             if active_auto_content_campaign_exists():
                 break
 
         self.stdout.write(
-            f'Converted {processed} content queue row(s). Run process_marketing_queue for controlled recipient delivery.'
+            f'Converted {consumed_rows} content queue row(s) into {processed_campaigns} digest campaign(s). '
+            'Run process_marketing_queue for controlled recipient delivery.'
         )

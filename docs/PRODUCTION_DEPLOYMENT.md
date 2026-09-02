@@ -43,20 +43,17 @@ python manage.py email_diagnostics --to you@example.com --send
 Production should report the SMTP backend rather than Django's console backend.
 The command deliberately does not print the SMTP password. It also reports pending/failed newsletter jobs and warns when the oldest queued job has been waiting more than 15 minutes.
 
-## 4. Newsletter queue
+## 4. Marketing automation queue
 
-Publishing content now creates durable database jobs. Run this command from cron:
+Publishing content creates durable database inventory. Production should use the
+unified engine command from cron instead of separately coordinating two workers:
 
 ```bash
-python manage.py process_newsletter_queue --limit 50
+python manage.py run_email_marketing_engine --send-limit 10
 ```
 
-A five-minute cPanel cron is a reasonable starting point. The command recovers
-stale processing jobs and retries failed recipients without re-sending recipients
-already marked sent.
-
-If the project still uses the daily digest command, schedule it separately; the
-content-announcement queue and daily digest serve different purposes.
+The command reconciles new content, creates the next due digest when no automatic
+campaign is active, and sends only the current rate-budgeted SMTP batch.
 
 
 ## 4A. Marketing campaign engine
@@ -73,11 +70,14 @@ It supports pause/resume/cancel, exponential retry, stale-worker recovery and
 halts immediately on SMTP authentication failure so a bad credential cannot burn
 through thousands of attempts.
 
-Run this command every minute from cPanel cron:
+Run the unified command every minute from cPanel cron:
 
 ```bash
-python manage.py process_marketing_queue --limit 10
+python manage.py run_email_marketing_engine --send-limit 10
 ```
+
+Use `python manage.py marketing_status` at any time to inspect the active campaign,
+pending/sent/failed delivery counts, recent SMTP errors and the next queued content item.
 
 For roughly 6,000 contacts, start conservatively (the default is 10 messages per
 worker run) and set `MARKETING_EMAIL_MAX_PER_RUN` from the SMTP provider's
@@ -170,12 +170,12 @@ Do not deploy a jobs release based only on a successful job-row insert. The publ
 
 ## Marketing/content email orchestration
 
-ChuoSmart's content email path is deliberately two-stage. `process_newsletter_queue`
-reconciles published database content and turns only the newest due content item into
-a marketing campaign. `process_marketing_queue` then sends that campaign to opted-in
-recipients using durable rows, suppression checks, retry backoff and global rate caps.
-Publishing a blog/job/course/product/material never sends thousands of emails inside
-the HTTP request.
+ChuoSmart's content email path remains two-stage internally, but production operates it
+through one unified command. Database content is reconciled newest-first and grouped into
+digest-sized campaign slots instead of producing one campaign per content row. The delivery
+stage then sends only opted-in recipients using durable rows, suppression checks, retry
+backoff and global rate caps. Publishing a blog/job/course/product/material never sends
+thousands of emails inside the HTTP request.
 
 One-time after deployment/backfill:
 
@@ -189,15 +189,17 @@ materials are excluded. Course lessons are intentionally excluded by default bec
 broadcasting every lesson is too noisy; set `CONTENT_MARKETING_INCLUDE_COURSE_CONTENT=true`
 only if that behavior is explicitly wanted.
 
-Recommended cron jobs (every minute):
+Recommended cron job (every minute):
 
 ```bash
-python manage.py process_newsletter_queue --limit 1
-python manage.py process_marketing_queue --limit 10
+DJANGO_ENV=production python manage.py run_email_marketing_engine --send-limit 10
 ```
 
+Do not run the old two marketing cron entries at the same time as the unified one.
+The unified worker is easier to observe and cannot forget one half of the pipeline.
+
 The marketing worker still enforces `MARKETING_EMAIL_BURST_CAP`, rolling ten-minute,
-hourly and daily caps even if a larger CLI `--limit` is supplied. Automatic content
+hourly and daily caps even if a larger CLI `--limit` is supplied. Automatic digest
 campaigns are serialized, and recipients are re-checked for consent, suppression and
 frequency caps immediately before SMTP delivery.
 

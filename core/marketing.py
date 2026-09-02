@@ -32,6 +32,54 @@ from .newsletter import build_one_click_unsubscribe_url, get_newsletter_delivery
 logger = logging.getLogger('core.email')
 User = get_user_model()
 
+HARD_BOUNCE_MARKERS = (
+    '5.1.1', '5.1.0', 'user unknown', 'unknown user', 'no such user',
+    'mailbox does not exist', 'address does not exist', 'recipient does not exist',
+    'invalid recipient', 'recipient not found', 'account that you tried to reach does not exist',
+)
+
+POLICY_MARKERS = (
+    'spam', 'policy', 'reputation', 'blocked', 'blacklist', 'relay', 'authentication',
+    'unauthenticated', 'rate limit', 'too many', 'quota', 'prohibited', 'suspicious',
+    'temporarily deferred', 'try again later',
+)
+
+
+def classify_smtp_refusal_data(codes, messages):
+    """Conservatively classify SMTP refusal metadata.
+
+    Only explicit nonexistent-mailbox signals are considered hard bounces. A
+    generic 5xx is a sender/policy problem until proven otherwise.
+    """
+    normalized_codes = [int(code) for code in codes if code is not None]
+    text = ' | '.join(str(message or '').lower() for message in messages)
+    if any(marker in text for marker in HARD_BOUNCE_MARKERS):
+        return 'hard_bounce'
+    if any(code and code < 500 for code in normalized_codes):
+        return 'transient'
+    if any(marker in text for marker in POLICY_MARKERS):
+        return 'policy'
+    if normalized_codes and all(code >= 500 for code in normalized_codes):
+        return 'policy'
+    return 'transient'
+
+
+def classify_smtp_recipient_refusal(exc):
+    values = list(getattr(exc, 'recipients', {}).values())
+    codes = []
+    messages = []
+    for value in values:
+        if not value:
+            continue
+        code = int(value[0]) if value[0] is not None else 0
+        raw = value[1] if len(value) > 1 else ''
+        if isinstance(raw, bytes):
+            raw = raw.decode('utf-8', errors='replace')
+        codes.append(code)
+        messages.append(str(raw))
+    return classify_smtp_refusal_data(codes, messages), codes, ' | '.join(messages).lower()
+
+
 
 def normalize_email(email):
     return (email or '').strip().lower()

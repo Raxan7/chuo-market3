@@ -20,7 +20,8 @@ class Command(BaseCommand):
         schedule = rebalance_content_schedule()
         self.stdout.write(self.style.SUCCESS(
             f"Content queue synchronized: created={result['created']}, existing={result['existing']}, "
-            f"pending/scheduled={schedule['scheduled']}."
+            f"pending/scheduled={schedule['scheduled']} across {schedule['campaign_slots']} digest slot(s) "
+            f"(up to {schedule['digest_size']} items each)."
         ))
         rows = _pending_content_jobs_newest_first()[:max(0, int(options['preview']))]
         for published_at, job, instance in rows:
