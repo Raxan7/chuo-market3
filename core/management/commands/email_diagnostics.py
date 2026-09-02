@@ -50,6 +50,13 @@ class Command(BaseCommand):
                     'Ensure run_email_marketing_engine is running from cron.'
                 ))
 
+        self.stdout.write(f"MARKETING_EMAIL_BACKEND={getattr(settings, 'MARKETING_EMAIL_BACKEND', settings.EMAIL_BACKEND)}")
+        self.stdout.write(f"MARKETING_EMAIL_HOST={getattr(settings, 'MARKETING_EMAIL_HOST', settings.EMAIL_HOST)}")
+        self.stdout.write(f"MARKETING_EMAIL_PORT={getattr(settings, 'MARKETING_EMAIL_PORT', settings.EMAIL_PORT)}")
+        self.stdout.write(f"MARKETING_EMAIL_HOST_USER={getattr(settings, 'MARKETING_EMAIL_HOST_USER', settings.EMAIL_HOST_USER)}")
+        self.stdout.write(f"MARKETING_EMAIL_PASSWORD_CONFIGURED={bool(getattr(settings, 'MARKETING_EMAIL_HOST_PASSWORD', ''))}")
+        self.stdout.write(f"MARKETING_EMAIL_USE_SSL={getattr(settings, 'MARKETING_EMAIL_USE_SSL', settings.EMAIL_USE_SSL)}")
+        self.stdout.write(f"MARKETING_EMAIL_USE_TLS={getattr(settings, 'MARKETING_EMAIL_USE_TLS', settings.EMAIL_USE_TLS)}")
         self.stdout.write(f"MARKETING_FROM_EMAIL={getattr(settings, 'MARKETING_FROM_EMAIL', settings.DEFAULT_FROM_EMAIL)}")
         self.stdout.write(f"MARKETING_BURST_CAP={getattr(settings, 'MARKETING_EMAIL_BURST_CAP', '')}")
         self.stdout.write(f"MARKETING_TEN_MINUTE_CAP={getattr(settings, 'MARKETING_EMAIL_TEN_MINUTE_CAP', '')}")

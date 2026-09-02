@@ -481,3 +481,86 @@ class MarketingAutomationRecoveryTests(TestCase):
         self.assertFalse(suppression.is_active)
         self.assertEqual(delivery.status, 'failed')
         self.assertEqual(delivery.attempts, 0)
+
+
+class MarketingDedicatedSmtpTests(TestCase):
+    def test_sender_suspension_is_not_a_hard_bounce(self):
+        from core.marketing import classify_smtp_refusal_data
+        self.assertEqual(
+            classify_smtp_refusal_data(
+                [550], ['Outgoing mail from "chuosmart.com" has been suspended.']
+            ),
+            'sender_suspended',
+        )
+
+    @override_settings(
+        EMAIL_BACKEND='django.core.mail.backends.smtp.EmailBackend',
+        EMAIL_HOST='transactional.example.com',
+        EMAIL_PORT=465,
+        EMAIL_HOST_USER='support@chuosmart.com',
+        EMAIL_HOST_PASSWORD='transactional-secret',
+        EMAIL_USE_SSL=True,
+        EMAIL_USE_TLS=False,
+        EMAIL_TIMEOUT=30,
+        MARKETING_EMAIL_BACKEND='django.core.mail.backends.smtp.EmailBackend',
+        MARKETING_EMAIL_HOST='marketing.example.com',
+        MARKETING_EMAIL_PORT=587,
+        MARKETING_EMAIL_HOST_USER='marketing-user',
+        MARKETING_EMAIL_HOST_PASSWORD='marketing-secret',
+        MARKETING_EMAIL_USE_SSL=False,
+        MARKETING_EMAIL_USE_TLS=True,
+        MARKETING_EMAIL_TIMEOUT=20,
+    )
+    def test_marketing_connection_uses_dedicated_smtp_settings(self):
+        from core.marketing import get_marketing_connection
+        with mock.patch('core.marketing.get_connection') as get_connection_mock:
+            get_marketing_connection(fail_silently=False)
+        kwargs = get_connection_mock.call_args.kwargs
+        self.assertEqual(kwargs['host'], 'marketing.example.com')
+        self.assertEqual(kwargs['port'], 587)
+        self.assertEqual(kwargs['username'], 'marketing-user')
+        self.assertEqual(kwargs['password'], 'marketing-secret')
+        self.assertTrue(kwargs['use_tls'])
+        self.assertFalse(kwargs['use_ssl'])
+
+    @override_settings(
+        EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend',
+        MARKETING_EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend',
+        CANONICAL_DOMAIN='testserver',
+        MARKETING_EMAIL_BURST_CAP=3,
+        MARKETING_EMAIL_TEN_MINUTE_CAP=15,
+        MARKETING_EMAIL_HOURLY_CAP=100,
+        MARKETING_EMAIL_DAILY_CAP=1500,
+        MARKETING_EMAIL_SECONDS_BETWEEN_SENDS=0,
+    )
+    def test_sender_suspension_pauses_campaign_without_suppressing_recipient(self):
+        import smtplib
+        from django.core.management import call_command
+        from django.core.management.base import CommandError
+        from core.marketing import prepare_campaign
+        from core.models import MarketingCampaign, MarketingSuppression, UserNewsletterPreference
+
+        user = User.objects.create_user(
+            username='suspension-test', email='suspension@example.com', password='password12345'
+        )
+        UserNewsletterPreference.objects.update_or_create(user=user, defaults={'newsletter': True})
+        campaign = MarketingCampaign.objects.create(
+            name='Suspension test', kind='announcement', audience='registered_users',
+            subject='Test', headline='Test', body='Test', status='queued',
+            last_test_sent_at=timezone.now(), minimum_gap_hours=0,
+        )
+        prepare_campaign(campaign)
+        fake_message = mock.Mock()
+        fake_message.send.side_effect = smtplib.SMTPRecipientsRefused({
+            user.email: (550, b'Outgoing mail from "chuosmart.com" has been suspended.')
+        })
+        with mock.patch('core.marketing.render_campaign_message', return_value=fake_message):
+            with self.assertRaises(CommandError):
+                call_command('process_marketing_queue', limit=3, campaign_limit=1)
+
+        campaign.refresh_from_db()
+        delivery = campaign.deliveries.get(recipient_email=user.email)
+        self.assertEqual(campaign.status, 'paused')
+        self.assertEqual(delivery.status, 'failed')
+        self.assertIn('GLOBAL SENDER SUSPENSION', delivery.last_error)
+        self.assertFalse(MarketingSuppression.objects.filter(email=user.email, is_active=True).exists())

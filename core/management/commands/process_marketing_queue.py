@@ -5,14 +5,15 @@ from pathlib import Path
 from datetime import timedelta, timezone as dt_timezone
 
 from django.conf import settings
-from django.core.mail import get_connection
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 from django.db.models import F
 from django.utils import timezone
 
 from core.marketing import (
+    classify_smtp_refusal_data,
     classify_smtp_recipient_refusal,
+    get_marketing_connection,
     queue_due_campaigns,
     refresh_campaign_stats,
     send_delivery,
@@ -172,7 +173,7 @@ class Command(BaseCommand):
             f"day={budget['sent_day']}/{budget['daily_cap']}."
         )
 
-        connection = get_connection(fail_silently=False)
+        connection = get_marketing_connection(fail_silently=False)
         processed = 0
         sent = 0
         failed = 0
@@ -212,6 +213,24 @@ class Command(BaseCommand):
                     raise CommandError('SMTP authentication failed. Marketing queue halted; remaining recipients were not attempted.')
                 except smtplib.SMTPRecipientsRefused as exc:
                     classification, refusal_codes, refusal_text = classify_smtp_recipient_refusal(exc)
+                    if classification == 'sender_suspended':
+                        retry_at = timezone.now() + timedelta(hours=12)
+                        delivery.status = 'failed'
+                        delivery.run_after = retry_at
+                        delivery.last_error = (
+                            f'GLOBAL SENDER SUSPENSION codes={refusal_codes}: {refusal_text or exc}'
+                        )[:4000]
+                        delivery.save(update_fields=['status', 'run_after', 'last_error', 'updated_at'])
+                        MarketingCampaign.objects.filter(pk=delivery.campaign_id).update(
+                            status='paused', updated_at=timezone.now()
+                        )
+                        refresh_campaign_stats(delivery.campaign_id)
+                        raise CommandError(
+                            'Marketing campaign paused immediately because the SMTP provider reported that '
+                            'outgoing mail for the sender/domain is suspended. No further recipients were '
+                            'attempted and nobody was suppressed. Restore provider sending or configure '
+                            'MARKETING_EMAIL_* to use a dedicated marketing SMTP service before resuming.'
+                        )
                     if classification == 'hard_bounce':
                         suppress_email(delivery.recipient_email, reason='bounce', source='smtp_hard_bounce_confirmed')
                         delivery.status = 'suppressed'
@@ -253,6 +272,29 @@ class Command(BaseCommand):
                             f'{policy_rejections} consecutive SMTP policy rejections. Recipients were NOT '
                             'permanently suppressed. Verify the marketing-shaped SMTP path and sender '
                             'reputation/authentication before resuming the campaign.'
+                        )
+                except (smtplib.SMTPSenderRefused, smtplib.SMTPDataError) as exc:
+                    code = getattr(exc, 'smtp_code', 0) or 0
+                    raw_error = getattr(exc, 'smtp_error', '') or str(exc)
+                    if isinstance(raw_error, bytes):
+                        raw_error = raw_error.decode('utf-8', errors='replace')
+                    classification = classify_smtp_refusal_data([code], [raw_error])
+                    failed += 1
+                    delivery.status = 'failed'
+                    delivery.run_after = timezone.now() + timedelta(hours=12)
+                    delivery.last_error = (
+                        f'SMTP sender/data rejection code={code}: {raw_error}'
+                    )[:4000]
+                    delivery.save(update_fields=['status', 'run_after', 'last_error', 'updated_at'])
+                    if classification in ('sender_suspended', 'policy'):
+                        MarketingCampaign.objects.filter(pk=delivery.campaign_id).update(
+                            status='paused', updated_at=timezone.now()
+                        )
+                        refresh_campaign_stats(delivery.campaign_id)
+                        raise CommandError(
+                            'Marketing campaign paused because SMTP rejected the sender/message at provider '
+                            'policy level. No further recipients were attempted. Verify the dedicated '
+                            'MARKETING_EMAIL_* transport and sender/domain approval before resuming.'
                         )
                 except Exception as exc:
                     failed += 1

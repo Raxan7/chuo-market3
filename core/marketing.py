@@ -11,7 +11,7 @@ from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.core.mail import EmailMultiAlternatives
+from django.core.mail import EmailMultiAlternatives, get_connection
 from django.db import transaction
 from django.db.models import Count, Q
 from django.template.loader import render_to_string
@@ -38,6 +38,11 @@ HARD_BOUNCE_MARKERS = (
     'invalid recipient', 'recipient not found', 'account that you tried to reach does not exist',
 )
 
+SENDER_SUSPENSION_MARKERS = (
+    'outgoing mail from', 'has been suspended', 'sending has been suspended',
+    'outbound mail suspended', 'sender suspended', 'domain suspended',
+)
+
 POLICY_MARKERS = (
     'spam', 'policy', 'reputation', 'blocked', 'blacklist', 'relay', 'authentication',
     'unauthenticated', 'rate limit', 'too many', 'quota', 'prohibited', 'suspicious',
@@ -53,6 +58,9 @@ def classify_smtp_refusal_data(codes, messages):
     """
     normalized_codes = [int(code) for code in codes if code is not None]
     text = ' | '.join(str(message or '').lower() for message in messages)
+    if ('suspend' in text and ('outgoing mail' in text or 'outbound mail' in text or 'sender' in text or 'domain' in text)) \
+            or ('outgoing mail from' in text and 'suspended' in text):
+        return 'sender_suspended'
     if any(marker in text for marker in HARD_BOUNCE_MARKERS):
         return 'hard_bounce'
     if any(code and code < 500 for code in normalized_codes):
@@ -80,6 +88,26 @@ def classify_smtp_recipient_refusal(exc):
     return classify_smtp_refusal_data(codes, messages), codes, ' | '.join(messages).lower()
 
 
+
+
+def get_marketing_connection(fail_silently=False):
+    """Return the SMTP connection dedicated to marketing mail.
+
+    If MARKETING_EMAIL_* variables are not set, values fall back to the normal
+    Django email settings. This lets ChuoSmart move bulk/promotional traffic to
+    a dedicated provider without changing password resets or job notifications.
+    """
+    return get_connection(
+        backend=getattr(settings, 'MARKETING_EMAIL_BACKEND', settings.EMAIL_BACKEND),
+        fail_silently=fail_silently,
+        host=getattr(settings, 'MARKETING_EMAIL_HOST', settings.EMAIL_HOST),
+        port=getattr(settings, 'MARKETING_EMAIL_PORT', settings.EMAIL_PORT),
+        username=getattr(settings, 'MARKETING_EMAIL_HOST_USER', settings.EMAIL_HOST_USER),
+        password=getattr(settings, 'MARKETING_EMAIL_HOST_PASSWORD', settings.EMAIL_HOST_PASSWORD),
+        use_tls=getattr(settings, 'MARKETING_EMAIL_USE_TLS', settings.EMAIL_USE_TLS),
+        use_ssl=getattr(settings, 'MARKETING_EMAIL_USE_SSL', settings.EMAIL_USE_SSL),
+        timeout=getattr(settings, 'MARKETING_EMAIL_TIMEOUT', settings.EMAIL_TIMEOUT),
+    )
 
 def normalize_email(email):
     return (email or '').strip().lower()
@@ -334,7 +362,10 @@ def render_campaign_message(campaign, email, display_name='there', connection=No
 
 
 def send_test_campaign(campaign, email, display_name='Team'):
-    message = render_campaign_message(campaign, normalize_email(email), display_name=display_name)
+    connection = get_marketing_connection(fail_silently=False)
+    message = render_campaign_message(
+        campaign, normalize_email(email), display_name=display_name, connection=connection
+    )
     sent = message.send(fail_silently=False)
     if sent != 1:
         raise RuntimeError('Email backend did not confirm the marketing test send.')

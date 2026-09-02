@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
 from django.db.models import Count
@@ -28,6 +29,9 @@ class Command(BaseCommand):
         content_pending = NewsletterJob.objects.filter(status__in=['pending', 'failed', 'processing']).count()
 
         self.stdout.write('=== ChuoSmart marketing status ===')
+        self.stdout.write(f"MARKETING_SMTP_HOST={getattr(settings, 'MARKETING_EMAIL_HOST', settings.EMAIL_HOST)}")
+        self.stdout.write(f"MARKETING_SMTP_USER={getattr(settings, 'MARKETING_EMAIL_HOST_USER', settings.EMAIL_HOST_USER)}")
+        self.stdout.write(f"MARKETING_SMTP_DEDICATED={getattr(settings, 'MARKETING_EMAIL_HOST', settings.EMAIL_HOST) != settings.EMAIL_HOST or getattr(settings, 'MARKETING_EMAIL_HOST_USER', settings.EMAIL_HOST_USER) != settings.EMAIL_HOST_USER}")
         self.stdout.write(f'OPTED_IN_REGISTERED_USERS={opted_in_users}')
         self.stdout.write(f'ACTIVE_NEWSLETTER_SUBSCRIBERS={active_subscribers}')
         self.stdout.write(f'ACTIVE_SUPPRESSIONS={suppressions}')
