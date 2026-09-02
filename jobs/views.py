@@ -1,6 +1,7 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from django.db import transaction
 from django.db.models import Q
 from django.utils.translation import gettext_lazy as _
 from django.utils import timezone
@@ -28,6 +29,7 @@ from .forms import (
 from .api_integration import fetch_all_jobs, fetch_jobs_from_api
 from .models import ApiRequestLog
 import logging
+import uuid
 
 logger = logging.getLogger(__name__)
 
@@ -537,19 +539,59 @@ def create_job(request):
     if request.method == 'POST':
         form = JobForm(request.POST, user=request.user)
         if form.is_valid():
-            job = form.save(commit=False)
-            if not job.source:
-                job.source = 'internal'
-            job.created_by = request.user
-            job.save()
-            form.save_m2m()
-            if job.is_public:
-                messages.success(request, _('Job posted successfully and is live.'))
+            try:
+                # Job persistence must be all-or-nothing. Email/newsletter work is
+                # handled separately by failure-isolated post-commit callbacks.
+                with transaction.atomic():
+                    job = form.save(commit=False)
+                    if not job.source:
+                        job.source = 'internal'
+                    job.created_by = request.user
+                    job.save()
+                    form.save_m2m()
+            except Exception:
+                incident_ref = uuid.uuid4().hex[:10]
+                logger.exception(
+                    'Job creation failed ref=%s user_id=%s company_id=%s',
+                    incident_ref,
+                    request.user.pk,
+                    request.POST.get('company') or None,
+                )
+                form.add_error(
+                    None,
+                    _('We could not save this job right now. Please try again. Reference: {0}').format(incident_ref),
+                )
             else:
-                messages.info(request, _(
-                    'Job saved successfully. Current visibility: {0}. Complete employer verification to publish it.'
-                ).format(job.visibility_label))
-            return redirect('jobs:my_jobs')
+                try:
+                    is_public = job.is_public
+                    visibility_label = job.visibility_label
+                except Exception:
+                    # The database write already succeeded. A visibility lookup must
+                    # not turn that success into a 500 response.
+                    logger.exception('Visibility lookup failed after creating job_id=%s', job.pk)
+                    is_public = False
+                    visibility_label = _('Saved')
+                logger.info(
+                    'Job created successfully job_id=%s user_id=%s company_id=%s public=%s',
+                    job.pk,
+                    request.user.pk,
+                    job.company_id,
+                    is_public,
+                )
+                if is_public:
+                    messages.success(request, _('Job posted successfully and is live.'))
+                else:
+                    messages.info(request, _(
+                        'Job saved successfully. Current visibility: {0}. Complete employer verification to publish it.'
+                    ).format(visibility_label))
+                return redirect('jobs:my_jobs')
+        else:
+            logger.warning(
+                'Job form rejected user_id=%s fields=%s errors=%s',
+                request.user.pk,
+                sorted(request.POST.keys()),
+                {field: [str(error) for error in errors] for field, errors in form.errors.items()},
+            )
     else:
         form = JobForm(user=request.user, initial=initial)
 
@@ -564,12 +606,42 @@ def edit_job(request, job_id):
     if request.method == 'POST':
         form = JobForm(request.POST, instance=job, user=request.user)
         if form.is_valid():
-            job = form.save()
-            if job.is_public:
-                messages.success(request, _('Job updated successfully and is live.'))
+            try:
+                with transaction.atomic():
+                    job = form.save()
+            except Exception:
+                incident_ref = uuid.uuid4().hex[:10]
+                logger.exception(
+                    'Job update failed ref=%s job_id=%s user_id=%s',
+                    incident_ref,
+                    job.pk,
+                    request.user.pk,
+                )
+                form.add_error(
+                    None,
+                    _('We could not save these job changes right now. Please try again. Reference: {0}').format(incident_ref),
+                )
             else:
-                messages.info(request, _('Job updated. Current visibility: {0}.').format(job.visibility_label))
-            return redirect('jobs:my_jobs')
+                try:
+                    is_public = job.is_public
+                    visibility_label = job.visibility_label
+                except Exception:
+                    logger.exception('Visibility lookup failed after updating job_id=%s', job.pk)
+                    is_public = False
+                    visibility_label = _('Saved')
+                if is_public:
+                    messages.success(request, _('Job updated successfully and is live.'))
+                else:
+                    messages.info(request, _('Job updated. Current visibility: {0}.').format(visibility_label))
+                return redirect('jobs:my_jobs')
+        else:
+            logger.warning(
+                'Job edit form rejected job_id=%s user_id=%s fields=%s errors=%s',
+                job.pk,
+                request.user.pk,
+                sorted(request.POST.keys()),
+                {field: [str(error) for error in errors] for field, errors in form.errors.items()},
+            )
     else:
         form = JobForm(instance=job, user=request.user)
 

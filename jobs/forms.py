@@ -60,6 +60,11 @@ class JobForm(forms.ModelForm):
         self.user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
         self.fields['company'].required = False
+        # Be backward-compatible with older/cached job forms. These fields have
+        # safe model defaults and should not block a valid employer submission
+        # simply because an older client omitted them.
+        self.fields['salary_currency'].required = False
+        self.fields['job_posting_type'].required = False
         if self.user and not self.user.is_superuser:
             self.fields['company'].queryset = Company.objects.filter(created_by=self.user)
 
@@ -68,6 +73,22 @@ class JobForm(forms.ModelForm):
         if deadline and deadline < timezone.now():
             raise forms.ValidationError(_('Application deadline cannot be in the past.'))
         return deadline
+
+    def clean_salary_currency(self):
+        value = (self.cleaned_data.get('salary_currency') or '').strip()
+        if value:
+            return value.upper()
+        if self.instance and getattr(self.instance, 'salary_currency', None):
+            return self.instance.salary_currency
+        return 'TZS'
+
+    def clean_job_posting_type(self):
+        value = self.cleaned_data.get('job_posting_type')
+        if value in {'internal', 'external'}:
+            return value
+        if self.instance and getattr(self.instance, 'job_posting_type', None):
+            return self.instance.job_posting_type
+        return 'internal'
 
     def clean(self):
         cleaned_data = super().clean()
