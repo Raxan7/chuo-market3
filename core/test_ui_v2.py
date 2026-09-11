@@ -45,7 +45,7 @@ class ChuoSmartUIV2RoutingTests(TestCase):
     def test_global_navigation_exposes_individual_learning(self):
         response = self.client.get(reverse('home'))
         self.assertContains(response, 'For Individuals')
-        self.assertContains(response, '>Courses<', html=True)
+        self.assertContains(response, '<strong>Courses</strong>', html=True)
         self.assertContains(response, 'Free Courses')
 
     def test_static_sitemap_includes_business_routes(self):
