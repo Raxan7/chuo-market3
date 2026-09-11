@@ -839,3 +839,249 @@ html[data-cs-theme="dark"] body.cs-v2-site .course-card-uniform,
 html[data-cs-theme="midnight"] body.cs-v2-site .course-card-uniform {
   background: var(--cs-surface); color: var(--cs-ink);
 }
+
+/* Patch 18 — semantic contrast hardening
+   Keep Bootstrap/LMS semantic components readable in every ChuoSmart theme.
+   Foreground/background pairs are selected to meet WCAG AA contrast for normal text. */
+:root,
+html[data-cs-theme="light"] {
+  --cs-action-bg: #5b45dc;
+  --cs-action-hover: #4933c7;
+  --cs-action-text: #ffffff;
+
+  --cs-info-bg: #e9f3ff;
+  --cs-info-border: #b9d8ff;
+  --cs-info-text: #174b7a;
+  --cs-info-solid: #1f6f9f;
+
+  --cs-success-bg: #e8f7f1;
+  --cs-success-border: #addfca;
+  --cs-success-text: #145b45;
+  --cs-success-solid: #167a59;
+
+  --cs-warning-bg: #fff5da;
+  --cs-warning-border: #f2d27d;
+  --cs-warning-text: #5c4300;
+  --cs-warning-solid: #e7a71f;
+  --cs-warning-solid-text: #211600;
+
+  --cs-danger-bg: #fdecef;
+  --cs-danger-border: #efb9c2;
+  --cs-danger-text: #7c2634;
+  --cs-danger-solid: #b93f52;
+}
+
+html[data-cs-theme="dark"] {
+  --cs-action-bg: #6c4dff;
+  --cs-action-hover: #5a3ee0;
+  --cs-action-text: #ffffff;
+
+  --cs-info-bg: #102a42;
+  --cs-info-border: #285e87;
+  --cs-info-text: #d9efff;
+  --cs-info-solid: #1f6f9f;
+
+  --cs-success-bg: #102f26;
+  --cs-success-border: #2d705c;
+  --cs-success-text: #cff7e9;
+  --cs-success-solid: #167a59;
+
+  --cs-warning-bg: #332813;
+  --cs-warning-border: #72591e;
+  --cs-warning-text: #ffe3a3;
+  --cs-warning-solid: #e7a71f;
+  --cs-warning-solid-text: #211600;
+
+  --cs-danger-bg: #3a171d;
+  --cs-danger-border: #7e3340;
+  --cs-danger-text: #ffd6dc;
+  --cs-danger-solid: #b93f52;
+}
+
+html[data-cs-theme="midnight"] {
+  --cs-action-bg: #6c4dff;
+  --cs-action-hover: #593cdf;
+  --cs-action-text: #ffffff;
+
+  --cs-info-bg: #0d2741;
+  --cs-info-border: #255b89;
+  --cs-info-text: #d8ecff;
+  --cs-info-solid: #1f6f9f;
+
+  --cs-success-bg: #0d2d25;
+  --cs-success-border: #286c58;
+  --cs-success-text: #ccf8e8;
+  --cs-success-solid: #167a59;
+
+  --cs-warning-bg: #302510;
+  --cs-warning-border: #6d541b;
+  --cs-warning-text: #ffe3a7;
+  --cs-warning-solid: #e7a71f;
+  --cs-warning-solid-text: #211600;
+
+  --cs-danger-bg: #35141d;
+  --cs-danger-border: #78313f;
+  --cs-danger-text: #ffd5dd;
+  --cs-danger-solid: #b93f52;
+}
+
+/* Primary actions: use a contrast-safe action color instead of the lighter decorative accent. */
+html[data-cs-theme] body.cs-v2-site .btn-primary,
+html[data-cs-theme] body.cs-v2-site .cs-v2-primary-btn {
+  --bs-btn-color: var(--cs-action-text);
+  --bs-btn-bg: var(--cs-action-bg);
+  --bs-btn-border-color: var(--cs-action-bg);
+  --bs-btn-hover-color: var(--cs-action-text);
+  --bs-btn-hover-bg: var(--cs-action-hover);
+  --bs-btn-hover-border-color: var(--cs-action-hover);
+  --bs-btn-active-color: var(--cs-action-text);
+  --bs-btn-active-bg: var(--cs-action-hover);
+  --bs-btn-active-border-color: var(--cs-action-hover);
+  color: var(--cs-action-text) !important;
+  background: var(--cs-action-bg) !important;
+  border-color: var(--cs-action-bg) !important;
+}
+html[data-cs-theme] body.cs-v2-site .btn-primary:hover,
+html[data-cs-theme] body.cs-v2-site .btn-primary:focus,
+html[data-cs-theme] body.cs-v2-site .btn-primary:active,
+html[data-cs-theme] body.cs-v2-site .cs-v2-primary-btn:hover,
+html[data-cs-theme] body.cs-v2-site .cs-v2-primary-btn:focus,
+html[data-cs-theme] body.cs-v2-site .cs-v2-primary-btn:active {
+  color: var(--cs-action-text) !important;
+  background: var(--cs-action-hover) !important;
+  border-color: var(--cs-action-hover) !important;
+}
+
+/* Bootstrap alerts are widely used by the LMS. Never let generic paragraph/text-muted
+   rules override the semantic foreground inside an alert. */
+html[data-cs-theme] body.cs-v2-site .alert {
+  border-width: 1px;
+  border-style: solid;
+}
+html[data-cs-theme] body.cs-v2-site .alert-info {
+  --bs-alert-color: var(--cs-info-text);
+  --bs-alert-bg: var(--cs-info-bg);
+  --bs-alert-border-color: var(--cs-info-border);
+  --bs-alert-link-color: var(--cs-info-text);
+  color: var(--cs-info-text) !important;
+  background: var(--cs-info-bg) !important;
+  border-color: var(--cs-info-border) !important;
+}
+html[data-cs-theme] body.cs-v2-site .alert-success {
+  --bs-alert-color: var(--cs-success-text);
+  --bs-alert-bg: var(--cs-success-bg);
+  --bs-alert-border-color: var(--cs-success-border);
+  --bs-alert-link-color: var(--cs-success-text);
+  color: var(--cs-success-text) !important;
+  background: var(--cs-success-bg) !important;
+  border-color: var(--cs-success-border) !important;
+}
+html[data-cs-theme] body.cs-v2-site .alert-warning {
+  --bs-alert-color: var(--cs-warning-text);
+  --bs-alert-bg: var(--cs-warning-bg);
+  --bs-alert-border-color: var(--cs-warning-border);
+  --bs-alert-link-color: var(--cs-warning-text);
+  color: var(--cs-warning-text) !important;
+  background: var(--cs-warning-bg) !important;
+  border-color: var(--cs-warning-border) !important;
+}
+html[data-cs-theme] body.cs-v2-site .alert-danger {
+  --bs-alert-color: var(--cs-danger-text);
+  --bs-alert-bg: var(--cs-danger-bg);
+  --bs-alert-border-color: var(--cs-danger-border);
+  --bs-alert-link-color: var(--cs-danger-text);
+  color: var(--cs-danger-text) !important;
+  background: var(--cs-danger-bg) !important;
+  border-color: var(--cs-danger-border) !important;
+}
+html[data-cs-theme] body.cs-v2-site .alert-primary {
+  color: var(--cs-ink) !important;
+  background: var(--cs-purple-soft) !important;
+  border-color: var(--cs-purple) !important;
+}
+html[data-cs-theme] body.cs-v2-site .alert-secondary {
+  color: var(--cs-ink) !important;
+  background: var(--cs-subtle-bg) !important;
+  border-color: var(--cs-border-strong) !important;
+}
+html[data-cs-theme] body.cs-v2-site .alert p,
+html[data-cs-theme] body.cs-v2-site .alert .alert-heading,
+html[data-cs-theme] body.cs-v2-site .alert strong,
+html[data-cs-theme] body.cs-v2-site .alert .alert-link,
+html[data-cs-theme] body.cs-v2-site .alert .text-muted,
+html[data-cs-theme] body.cs-v2-site .alert small {
+  color: inherit !important;
+}
+html[data-cs-theme] body.cs-v2-site .alert .text-muted,
+html[data-cs-theme] body.cs-v2-site .alert small {
+  opacity: .84;
+}
+html[data-cs-theme] body.cs-v2-site .alert .alert-link {
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* Semantic utility backgrounds and badges used throughout legacy LMS templates. */
+html[data-cs-theme] body.cs-v2-site .bg-info,
+html[data-cs-theme] body.cs-v2-site .text-bg-info {
+  color: #ffffff !important;
+  background-color: var(--cs-info-solid) !important;
+}
+html[data-cs-theme] body.cs-v2-site .bg-success,
+html[data-cs-theme] body.cs-v2-site .text-bg-success {
+  color: #ffffff !important;
+  background-color: var(--cs-success-solid) !important;
+}
+html[data-cs-theme] body.cs-v2-site .bg-warning,
+html[data-cs-theme] body.cs-v2-site .text-bg-warning {
+  color: var(--cs-warning-solid-text) !important;
+  background-color: var(--cs-warning-solid) !important;
+}
+html[data-cs-theme] body.cs-v2-site .bg-danger,
+html[data-cs-theme] body.cs-v2-site .text-bg-danger {
+  color: #ffffff !important;
+  background-color: var(--cs-danger-solid) !important;
+}
+html[data-cs-theme] body.cs-v2-site .badge.bg-warning.text-dark,
+html[data-cs-theme] body.cs-v2-site .badge.text-bg-warning {
+  color: var(--cs-warning-solid-text) !important;
+}
+html[data-cs-theme] body.cs-v2-site .badge.bg-info.text-dark {
+  color: #ffffff !important;
+}
+
+/* Bootstrap 5 subtle semantic utilities can otherwise remain bright in dark themes. */
+html[data-cs-theme] body.cs-v2-site .bg-info-subtle { background-color: var(--cs-info-bg) !important; }
+html[data-cs-theme] body.cs-v2-site .bg-success-subtle { background-color: var(--cs-success-bg) !important; }
+html[data-cs-theme] body.cs-v2-site .bg-warning-subtle { background-color: var(--cs-warning-bg) !important; }
+html[data-cs-theme] body.cs-v2-site .bg-danger-subtle { background-color: var(--cs-danger-bg) !important; }
+html[data-cs-theme] body.cs-v2-site .text-info-emphasis { color: var(--cs-info-text) !important; }
+html[data-cs-theme] body.cs-v2-site .text-success-emphasis { color: var(--cs-success-text) !important; }
+html[data-cs-theme] body.cs-v2-site .text-warning-emphasis { color: var(--cs-warning-text) !important; }
+html[data-cs-theme] body.cs-v2-site .text-danger-emphasis { color: var(--cs-danger-text) !important; }
+html[data-cs-theme] body.cs-v2-site .border-info-subtle { border-color: var(--cs-info-border) !important; }
+html[data-cs-theme] body.cs-v2-site .border-success-subtle { border-color: var(--cs-success-border) !important; }
+html[data-cs-theme] body.cs-v2-site .border-warning-subtle { border-color: var(--cs-warning-border) !important; }
+html[data-cs-theme] body.cs-v2-site .border-danger-subtle { border-color: var(--cs-danger-border) !important; }
+
+/* Course-detail/card headers use bg-light heavily. Theme them as actual surfaces. */
+html[data-cs-theme] body.cs-v2-site .card-header.bg-light,
+html[data-cs-theme] body.cs-v2-site .card-footer.bg-light,
+html[data-cs-theme] body.cs-v2-site .border.rounded.bg-light {
+  color: var(--cs-ink) !important;
+  background: var(--cs-surface-2) !important;
+  border-color: var(--cs-border) !important;
+}
+html[data-cs-theme] body.cs-v2-site .card-header.bg-light .text-dark,
+html[data-cs-theme] body.cs-v2-site .card-footer.bg-light .text-dark {
+  color: var(--cs-ink) !important;
+}
+
+/* Preserve readable focus indication across all themes. */
+html[data-cs-theme] body.cs-v2-site .btn:focus-visible,
+html[data-cs-theme] body.cs-v2-site a:focus-visible,
+html[data-cs-theme] body.cs-v2-site button:focus-visible {
+  outline: 3px solid var(--cs-cyan);
+  outline-offset: 2px;
+}

@@ -70,6 +70,28 @@ class Command(BaseCommand):
                 else:
                     errors.append(f'Theme contract incomplete: {theme}')
 
+            contrast_contract = all(
+                marker in css
+                for marker in (
+                    '--cs-action-bg:',
+                    '--cs-info-bg:',
+                    '--cs-info-text:',
+                    '--cs-success-bg:',
+                    '--cs-warning-bg:',
+                    '--cs-danger-bg:',
+                    '.alert-info',
+                    '.alert-success',
+                    '.alert-warning',
+                    '.alert-danger',
+                    '.badge.bg-warning.text-dark',
+                    '.card-header.bg-light',
+                )
+            )
+            if contrast_contract:
+                self.stdout.write('THEME_CONTRAST_OK=semantic-components')
+            else:
+                errors.append('Theme contrast contract incomplete: semantic components')
+
         if errors:
             for error in errors:
                 self.stderr.write(self.style.ERROR(error))

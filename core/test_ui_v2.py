@@ -121,3 +121,37 @@ class ChuoSmartUIV2StaticTests(TestCase):
         self.assertIn("chuosmart.theme", javascript)
         self.assertIn("prefers-color-scheme: dark", javascript)
         self.assertIn("chuosmart:themechange", javascript)
+
+
+    def test_v2_theme_assets_define_semantic_contrast_contract(self):
+        css_path = finders.find('chuosmart_v2/css/site.css')
+        self.assertTrue(css_path)
+
+        with open(css_path, encoding='utf-8') as handle:
+            css = handle.read()
+
+        for token in (
+            '--cs-action-bg:',
+            '--cs-info-bg:',
+            '--cs-info-text:',
+            '--cs-success-bg:',
+            '--cs-success-text:',
+            '--cs-warning-bg:',
+            '--cs-warning-text:',
+            '--cs-danger-bg:',
+            '--cs-danger-text:',
+        ):
+            self.assertIn(token, css)
+
+        for selector in (
+            '.alert-info',
+            '.alert-success',
+            '.alert-warning',
+            '.alert-danger',
+            '.badge.bg-warning.text-dark',
+            '.card-header.bg-light',
+        ):
+            self.assertIn(selector, css)
+
+        self.assertIn('.alert p,', css)
+        self.assertIn('color: inherit !important;', css)
