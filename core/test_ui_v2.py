@@ -48,6 +48,20 @@ class ChuoSmartUIV2RoutingTests(TestCase):
         self.assertContains(response, '<strong>Courses</strong>', html=True)
         self.assertContains(response, 'Free Courses')
 
+    def test_global_shell_exposes_multi_theme_controls(self):
+        response = self.client.get(reverse('home'))
+        self.assertContains(response, 'id="csThemeMenuButton"')
+        for theme in ('system', 'light', 'dark', 'midnight'):
+            self.assertContains(response, f'data-cs-theme-choice="{theme}"')
+
+    def test_theme_bootstrap_is_rendered_before_styles(self):
+        response = self.client.get(reverse('home'))
+        html = response.content.decode('utf-8')
+        bootstrap_pos = html.find("chuosmart.theme")
+        stylesheet_pos = html.find("chuosmart_v2/css/site.css")
+        self.assertGreaterEqual(bootstrap_pos, 0)
+        self.assertGreater(stylesheet_pos, bootstrap_pos)
+
     def test_static_sitemap_includes_business_routes(self):
         items = StaticViewSitemap().items()
         self.assertIn('for_business', items)
@@ -89,3 +103,21 @@ class ChuoSmartUIV2StaticTests(TestCase):
         for asset in assets:
             matches = finders.find(asset, all=True)
             self.assertEqual(len(matches), 1, f'{asset} should resolve exactly once, found: {matches}')
+
+
+    def test_v2_theme_assets_define_all_supported_themes(self):
+        css_path = finders.find('chuosmart_v2/css/site.css')
+        js_path = finders.find('chuosmart_v2/js/site.js')
+        self.assertTrue(css_path)
+        self.assertTrue(js_path)
+
+        with open(css_path, encoding='utf-8') as handle:
+            css = handle.read()
+        with open(js_path, encoding='utf-8') as handle:
+            javascript = handle.read()
+
+        self.assertIn('html[data-cs-theme="dark"]', css)
+        self.assertIn('html[data-cs-theme="midnight"]', css)
+        self.assertIn("chuosmart.theme", javascript)
+        self.assertIn("prefers-color-scheme: dark", javascript)
+        self.assertIn("chuosmart:themechange", javascript)

@@ -4,6 +4,27 @@
 {% load sanitize_tags %}
 <html lang="en">
 <head>
+  <script>
+    // Apply the saved appearance before styles paint to avoid a light/dark flash.
+    (function () {
+      var key = 'chuosmart.theme';
+      var preference = 'system';
+      var allowed = ['system', 'light', 'dark', 'midnight'];
+      try {
+        var stored = window.localStorage.getItem(key);
+        if (stored && allowed.indexOf(stored) !== -1) preference = stored;
+      } catch (e) {}
+      var resolved = preference;
+      if (preference === 'system') {
+        resolved = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      }
+      if (['light', 'dark', 'midnight'].indexOf(resolved) === -1) resolved = 'light';
+      var root = document.documentElement;
+      root.setAttribute('data-cs-theme', resolved);
+      root.setAttribute('data-cs-theme-preference', preference);
+      root.style.colorScheme = resolved === 'light' ? 'light' : 'dark';
+    })();
+  </script>
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-T4BGRN2N9W"></script>
   <script>
     window.dataLayer = window.dataLayer || [];
@@ -20,6 +41,8 @@
 
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" id="csThemeColor" content="#ffffff">
   <meta name="description" content="{% block meta_description %}{{ default_meta_description }}{% endblock %}">
   <meta name="keywords" content="{% block meta_keywords %}{{ default_meta_keywords }}{% endblock %}">
   <meta name="author" content="ChuoSmart">
@@ -109,6 +132,43 @@
         </ul>
 
         <div class="cs-v2-nav-actions d-flex align-items-center gap-2">
+          <div class="dropdown cs-v2-theme-picker">
+            <button class="btn cs-v2-theme-toggle dropdown-toggle" id="csThemeMenuButton" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Appearance: System">
+              <i class="fas fa-adjust" data-cs-theme-icon aria-hidden="true"></i>
+              <span class="d-none d-xxl-inline" data-cs-theme-label>System</span>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end cs-v2-theme-menu" aria-labelledby="csThemeMenuButton">
+              <li><h6 class="dropdown-header">Appearance</h6></li>
+              <li>
+                <button class="dropdown-item cs-v2-theme-option" type="button" data-cs-theme-choice="system">
+                  <span class="cs-v2-theme-option-icon"><i class="fas fa-desktop"></i></span>
+                  <span><strong>System</strong><small>Match this device</small></span>
+                  <i class="fas fa-check cs-v2-theme-check" aria-hidden="true"></i>
+                </button>
+              </li>
+              <li>
+                <button class="dropdown-item cs-v2-theme-option" type="button" data-cs-theme-choice="light">
+                  <span class="cs-v2-theme-option-icon"><i class="fas fa-sun"></i></span>
+                  <span><strong>Light</strong><small>Clean enterprise daylight</small></span>
+                  <i class="fas fa-check cs-v2-theme-check" aria-hidden="true"></i>
+                </button>
+              </li>
+              <li>
+                <button class="dropdown-item cs-v2-theme-option" type="button" data-cs-theme-choice="dark">
+                  <span class="cs-v2-theme-option-icon"><i class="fas fa-moon"></i></span>
+                  <span><strong>Dark</strong><small>Low-glare workspace</small></span>
+                  <i class="fas fa-check cs-v2-theme-check" aria-hidden="true"></i>
+                </button>
+              </li>
+              <li>
+                <button class="dropdown-item cs-v2-theme-option" type="button" data-cs-theme-choice="midnight">
+                  <span class="cs-v2-theme-option-icon"><i class="fas fa-star"></i></span>
+                  <span><strong>Midnight</strong><small>Deep ChuoSmart navy</small></span>
+                  <i class="fas fa-check cs-v2-theme-check" aria-hidden="true"></i>
+                </button>
+              </li>
+            </ul>
+          </div>
           {% if user.is_authenticated %}
             <div class="dropdown">
               <button class="btn cs-v2-account-btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">

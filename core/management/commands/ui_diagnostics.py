@@ -5,7 +5,7 @@ from django.urls import reverse
 
 
 class Command(BaseCommand):
-    help = 'Validate Patch 14 UI routes, templates, and uniquely-namespaced static assets.'
+    help = 'Validate ChuoSmart UI routes, templates, themes, and uniquely-namespaced static assets.'
 
     ROUTES = (
         ('home', 'HOME'),
@@ -51,9 +51,28 @@ class Command(BaseCommand):
             else:
                 self.stdout.write(f'STATIC_OK={asset}')
 
+        css_path = finders.find('chuosmart_v2/css/site.css')
+        js_path = finders.find('chuosmart_v2/js/site.js')
+        if css_path and js_path:
+            with open(css_path, encoding='utf-8') as handle:
+                css = handle.read()
+            with open(js_path, encoding='utf-8') as handle:
+                javascript = handle.read()
+            theme_contract = {
+                'system': "chuosmart.theme" in javascript and "prefers-color-scheme: dark" in javascript,
+                'light': 'html[data-cs-theme="light"]' in css,
+                'dark': 'html[data-cs-theme="dark"]' in css,
+                'midnight': 'html[data-cs-theme="midnight"]' in css,
+            }
+            for theme, healthy in theme_contract.items():
+                if healthy:
+                    self.stdout.write(f'THEME_OK={theme}')
+                else:
+                    errors.append(f'Theme contract incomplete: {theme}')
+
         if errors:
             for error in errors:
                 self.stderr.write(self.style.ERROR(error))
             raise CommandError(f'UI diagnostics failed with {len(errors)} issue(s).')
 
-        self.stdout.write(self.style.SUCCESS('UI diagnostics passed: routes, templates and v2 assets are healthy.'))
+        self.stdout.write(self.style.SUCCESS('UI diagnostics passed: routes, templates, themes and v2 assets are healthy.'))
