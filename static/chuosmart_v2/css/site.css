@@ -242,6 +242,18 @@ body.cs-v2-site :focus-visible { outline: 3px solid rgba(91, 93, 247, .28); outl
 
 .cs-v2-individual-section { background: #fff; }
 .cs-v2-individual-header { display: flex; justify-content: space-between; gap: 24px; align-items: end; margin-bottom: 28px; }
+.cs-v2-individual-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 12px; flex-shrink: 0; }
+.cs-v2-learning-empty { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 18px; padding: 24px; border: 1px solid var(--cs-border); border-radius: 20px; background: linear-gradient(135deg, #f8f9ff 0%, #fff 100%); }
+.cs-v2-learning-empty-icon { width: 50px; height: 50px; border-radius: 15px; display: grid; place-items: center; background: var(--cs-purple-soft); color: var(--cs-purple); font-size: 19px; }
+.cs-v2-learning-empty h3 { margin: 0 0 4px; font-size: 18px; color: var(--cs-ink); }
+.cs-v2-learning-empty p { margin: 0; color: var(--cs-muted); font-size: 14px; }
+.cs-v2-individual-paths { margin-top: 30px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.cs-v2-individual-paths > a { display: flex; align-items: center; gap: 12px; min-height: 78px; padding: 14px 16px; border: 1px solid var(--cs-border); border-radius: 16px; background: #fff; color: var(--cs-ink); text-decoration: none; transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease; }
+.cs-v2-individual-paths > a:hover { transform: translateY(-2px); border-color: #d8dcff; box-shadow: 0 12px 28px rgba(15, 23, 42, .07); }
+.cs-v2-individual-paths i { width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; background: var(--cs-purple-soft); color: var(--cs-purple); flex-shrink: 0; }
+.cs-v2-individual-paths span { display: flex; flex-direction: column; min-width: 0; }
+.cs-v2-individual-paths strong { font-size: 14px; }
+.cs-v2-individual-paths small { color: var(--cs-muted); font-size: 11px; margin-top: 2px; }
 .cs-v2-home .course-card,
 .cs-v2-site .course-card { border: 1px solid var(--cs-border) !important; border-radius: 18px !important; box-shadow: var(--cs-shadow-xs) !important; overflow: hidden; background: #fff; }
 .cs-v2-home .course-card:hover,
@@ -424,6 +436,8 @@ body.cs-v2-site .pagination .active .page-link { background: var(--cs-purple); b
   .cs-v2-benefit-list { grid-template-columns: 1fr; }
   .cs-v2-ecosystem-grid { grid-template-columns: 1fr; }
   .cs-v2-individual-header { align-items: flex-start; flex-direction: column; }
+  .cs-v2-individual-actions { justify-content: flex-start; }
+  .cs-v2-individual-paths { grid-template-columns: 1fr 1fr; }
   .cs-v2-business-hero { padding: 64px 0 56px; }
   .cs-v2-business-visual { min-height: 390px; }
   .cs-v2-business-photo { inset: 0 0 38px 0; }
@@ -460,6 +474,11 @@ body.cs-v2-site .pagination .active .page-link { background: var(--cs-purple); b
   .cs-v2-hero-float-a { display: none; }
   .cs-v2-hero-float-b { left: 10px; right: 10px; bottom: 20px; }
   .cs-v2-method-grid, .cs-v2-track-grid, .cs-v2-week-grid, .cs-v2-program-facts { grid-template-columns: 1fr; }
+  .cs-v2-individual-actions { width: 100%; flex-direction: column; align-items: stretch; }
+  .cs-v2-individual-actions > * { width: 100%; justify-content: center; text-align: center; }
+  .cs-v2-individual-paths { grid-template-columns: 1fr; }
+  .cs-v2-learning-empty { grid-template-columns: auto 1fr; }
+  .cs-v2-learning-empty > a { grid-column: 1 / -1; }
   .cs-v2-feature-media { min-height: 360px; }
   .cs-v2-feature-caption { left: 20px; right: 20px; bottom: 19px; }
   .cs-v2-business-visual { min-height: 340px; }

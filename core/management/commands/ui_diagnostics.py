@@ -7,7 +7,13 @@ from django.urls import reverse
 class Command(BaseCommand):
     help = 'Validate Patch 14 UI routes, templates, and uniquely-namespaced static assets.'
 
-    ROUTES = ('home', 'for_business', 'ai_workforce_accelerator')
+    ROUTES = (
+        ('home', 'HOME'),
+        ('for_business', 'FOR_BUSINESS'),
+        ('ai_workforce_accelerator', 'AI_WORKFORCE_ACCELERATOR'),
+        ('lms:course_list', 'COURSE_LIST'),
+        ('lms:lms_home', 'LEARNING_HOME'),
+    )
     TEMPLATES = ('app/base.html', 'app/home.html', 'app/for_business.html', 'app/ai_workforce_accelerator.html')
     ASSETS = (
         'chuosmart_v2/css/site.css',
@@ -22,13 +28,13 @@ class Command(BaseCommand):
         errors = []
         self.stdout.write('=== ChuoSmart UI v2 diagnostics ===')
 
-        for route in self.ROUTES:
+        for route, label in self.ROUTES:
             try:
                 url = reverse(route)
             except Exception as exc:
                 errors.append(f'Route {route}: {exc}')
             else:
-                self.stdout.write(f'ROUTE_{route.upper()}={url}')
+                self.stdout.write(f'ROUTE_{label}={url}')
 
         for template_name in self.TEMPLATES:
             try:

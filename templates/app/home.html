@@ -142,21 +142,45 @@
     </div>
   </section>
 
-  {% if courses %}
   <section class="cs-v2-section cs-v2-individual-section" aria-labelledby="individual-learning-heading">
     <div class="container">
       <div class="cs-v2-individual-header">
-        <div><span class="cs-v2-eyebrow">For individuals</span><h2 class="cs-v2-section-title" id="individual-learning-heading">Keep building practical skills.</h2><p class="cs-v2-section-copy">Explore selected ChuoSmart courses for independent learners.</p></div>
-        <a href="{% url 'lms:course_list' %}" class="cs-v2-secondary-btn">Browse all courses <i class="fas fa-arrow-right ms-2"></i></a>
+        <div>
+          <span class="cs-v2-eyebrow">For individuals</span>
+          <h2 class="cs-v2-section-title" id="individual-learning-heading">Practical courses are still at the heart of ChuoSmart.</h2>
+          <p class="cs-v2-section-copy">Learn independently with free and paid courses, progress at your own pace, unlock eligible modules as you go, and connect learning to jobs and opportunities.</p>
+        </div>
+        <div class="cs-v2-individual-actions">
+          <a href="{% url 'lms:course_list' %}" class="btn cs-v2-primary-btn">Browse courses <i class="fas fa-arrow-right ms-2"></i></a>
+          <a href="{% url 'lms:course_list' %}?pricing=free" class="cs-v2-secondary-btn">Explore free courses</a>
+        </div>
       </div>
+
+      {% if courses %}
       <div class="row g-4" id="home-courses-grid" data-list-items>
-        {% for course in courses|slice:":3" %}
-          <div class="col-lg-4 col-md-6">{% include "lms/partials/_course_card.html" %}</div>
+        {% for course in courses|slice:":6" %}
+          <div class="col-xl-4 col-md-6">{% include "lms/partials/_course_card.html" %}</div>
         {% endfor %}
+      </div>
+      {% else %}
+      <div class="cs-v2-learning-empty">
+        <div class="cs-v2-learning-empty-icon"><i class="fas fa-graduation-cap"></i></div>
+        <div>
+          <h3>Explore ChuoSmart learning</h3>
+          <p>Browse the full learning catalogue to find currently available courses and upcoming programs.</p>
+        </div>
+        <a href="{% url 'lms:course_list' %}" class="cs-v2-secondary-btn">Open course catalogue <i class="fas fa-arrow-right ms-2"></i></a>
+      </div>
+      {% endif %}
+
+      <div class="cs-v2-individual-paths" aria-label="Individual ChuoSmart services">
+        <a href="{% url 'lms:lms_home' %}"><i class="fas fa-book-reader"></i><span><strong>My Learning</strong><small>Continue enrolled courses</small></span></a>
+        <a href="{% url 'jobs:job_list' %}"><i class="fas fa-briefcase"></i><span><strong>Jobs</strong><small>Find opportunities</small></span></a>
+        <a href="{% url 'materials:list' %}"><i class="fas fa-book-open"></i><span><strong>Materials</strong><small>Learning resources</small></span></a>
+        <a href="{% url 'marketplace' %}"><i class="fas fa-store"></i><span><strong>Marketplace</strong><small>Student commerce</small></span></a>
       </div>
     </div>
   </section>
-  {% endif %}
 
   <section class="cs-v2-section-sm cs-v2-section-muted" aria-labelledby="ecosystem-heading">
     <div class="container">

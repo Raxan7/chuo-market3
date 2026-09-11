@@ -77,10 +77,22 @@
         <ul class="navbar-nav mx-xl-auto cs-v2-main-links">
           <li class="nav-item"><a class="nav-link{% if business_surface %} active{% endif %}" href="{% url 'for_business' %}">For Business</a></li>
           <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle{% if '/lms/' in request.path or '/jobs/' in request.path or '/materials/' in request.path or '/marketplace/' in request.path %} active{% endif %}" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">For Individuals</a>
+            <ul class="dropdown-menu cs-v2-dropdown cs-v2-dropdown-individuals">
+              <li><a class="dropdown-item" href="{% url 'lms:course_list' %}"><span class="cs-v2-menu-icon"><i class="fas fa-graduation-cap"></i></span><span><strong>Courses</strong><small>Browse free and paid practical courses</small></span></a></li>
+              <li><a class="dropdown-item" href="{% url 'lms:course_list' %}?pricing=free"><span class="cs-v2-menu-icon"><i class="fas fa-gift"></i></span><span><strong>Free Courses</strong><small>Start learning without payment</small></span></a></li>
+              <li><a class="dropdown-item" href="{% url 'lms:lms_home' %}"><span class="cs-v2-menu-icon"><i class="fas fa-book-reader"></i></span><span><strong>My Learning</strong><small>Continue courses and track progress</small></span></a></li>
+              <li><hr class="dropdown-divider"></li>
+              <li><a class="dropdown-item" href="{% url 'jobs:job_list' %}"><span class="cs-v2-menu-icon"><i class="fas fa-briefcase"></i></span><span><strong>Jobs</strong><small>Discover career opportunities</small></span></a></li>
+              <li><a class="dropdown-item" href="{% url 'materials:list' %}"><span class="cs-v2-menu-icon"><i class="fas fa-book-open"></i></span><span><strong>Materials</strong><small>Access learning resources</small></span></a></li>
+              <li><a class="dropdown-item" href="{% url 'marketplace' %}"><span class="cs-v2-menu-icon"><i class="fas fa-store"></i></span><span><strong>Marketplace</strong><small>Buy and sell in the student community</small></span></a></li>
+            </ul>
+          </li>
+          <li class="nav-item dropdown">
             <a class="nav-link dropdown-toggle{% if 'programs' in request.path %} active{% endif %}" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Programs</a>
             <ul class="dropdown-menu cs-v2-dropdown">
               <li><a class="dropdown-item" href="{% url 'ai_workforce_accelerator' %}"><span class="cs-v2-menu-icon"><i class="fas fa-bolt"></i></span><span><strong>AI Workforce Accelerator</strong><small>Enterprise AI capability program</small></span></a></li>
-              <li><a class="dropdown-item" href="{% url 'lms:course_list' %}"><span class="cs-v2-menu-icon"><i class="fas fa-graduation-cap"></i></span><span><strong>Professional Courses</strong><small>Learn practical, job-relevant skills</small></span></a></li>
+              <li><a class="dropdown-item" href="{% url 'lms:course_list' %}"><span class="cs-v2-menu-icon"><i class="fas fa-graduation-cap"></i></span><span><strong>Professional Courses</strong><small>Practical learning for individual professionals</small></span></a></li>
             </ul>
           </li>
           <li class="nav-item"><a class="nav-link" href="{% url 'for_business' %}#solutions">Solutions</a></li>

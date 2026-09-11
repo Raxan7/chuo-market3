@@ -29,6 +29,25 @@ class ChuoSmartUIV2RoutingTests(TestCase):
         self.assertContains(response, 'Explore ChuoSmart for Business')
         self.assertNotContains(response, 'pagead2.googlesyndication.com')
 
+    def test_home_keeps_individual_learning_first_class(self):
+        response = self.client.get(reverse('home'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'For individuals')
+        self.assertContains(response, 'Practical courses are still at the heart of ChuoSmart.')
+        self.assertContains(response, reverse('lms:course_list'))
+        self.assertContains(response, '?pricing=free')
+        self.assertContains(response, reverse('lms:lms_home'))
+
+    def test_normal_course_catalogue_route_still_works(self):
+        response = self.client.get(reverse('lms:course_list'))
+        self.assertEqual(response.status_code, 200)
+
+    def test_global_navigation_exposes_individual_learning(self):
+        response = self.client.get(reverse('home'))
+        self.assertContains(response, 'For Individuals')
+        self.assertContains(response, '>Courses<', html=True)
+        self.assertContains(response, 'Free Courses')
+
     def test_static_sitemap_includes_business_routes(self):
         items = StaticViewSitemap().items()
         self.assertIn('for_business', items)
