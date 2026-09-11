@@ -1,0 +1,126 @@
+{% extends 'app/base.html' %}
+{% load static %}
+{% block title %}For Business | AI Workforce Transformation{% endblock title %}
+{% block meta_description %}ChuoSmart for Business helps organizations assess AI readiness, train employees by role, apply skills to real work, and measure workforce capability.{% endblock meta_description %}
+{% block meta_keywords %}corporate AI training Tanzania, AI workforce transformation Africa, AI training for employees, ChuoSmart for Business{% endblock meta_keywords %}
+{% block og_title %}ChuoSmart for Business — Build an AI-Ready Workforce{% endblock og_title %}
+{% block og_description %}Assess. Train. Apply. Measure. Certify. A practical approach to building AI capability inside organizations.{% endblock og_description %}
+
+{% block main-content %}
+<div class="cs-v2-shell">
+  <section class="cs-v2-business-hero" aria-labelledby="business-hero-title">
+    <div class="container">
+      <div class="cs-v2-business-hero-grid">
+        <div>
+          <span class="cs-v2-eyebrow">ChuoSmart for Business</span>
+          <h1 id="business-hero-title">Build AI capability your organization can actually use.</h1>
+          <p>We help organizations move from scattered AI experimentation to a workforce that can use AI practically, responsibly and with measurable evidence of capability.</p>
+          <div class="cs-v2-button-row">
+            <a href="{% url 'contact' %}?topic=business" class="btn cs-v2-primary-btn">Talk to our team <i class="fas fa-arrow-right ms-2"></i></a>
+            <a href="{% url 'ai_workforce_accelerator' %}" class="cs-v2-secondary-btn">Explore the flagship program</a>
+          </div>
+          <div class="cs-v2-program-facts" aria-label="AI Workforce Accelerator facts">
+            <div class="cs-v2-program-fact"><i class="far fa-calendar-alt"></i><strong>8 weeks</strong><span>Structured engagement</span></div>
+            <div class="cs-v2-program-fact"><i class="fas fa-users"></i><strong>Up to 50</strong><span>Flagship cohort</span></div>
+            <div class="cs-v2-program-fact"><i class="fas fa-flask"></i><strong>16+ labs</strong><span>Practical work</span></div>
+            <div class="cs-v2-program-fact"><i class="fas fa-route"></i><strong>7 tracks</strong><span>Role-based depth</span></div>
+            <div class="cs-v2-program-fact"><i class="fas fa-chart-line"></i><strong>Measured</strong><span>Before and after</span></div>
+          </div>
+        </div>
+        <div class="cs-v2-business-visual">
+          <div class="cs-v2-business-photo"><img src="{% static 'chuosmart_v2/images/enterprise-team.webp' %}" alt="Professionals reviewing a digital analytics workspace" loading="eager" fetchpriority="high"></div>
+          <div class="cs-v2-floating-proof"><span>Our operating principle</span><strong>Capability over attendance</strong><p>People should demonstrate that they can apply AI to real work.</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="cs-v2-section cs-v2-section-muted" id="solutions" aria-labelledby="solutions-heading">
+    <div class="container">
+      <span class="cs-v2-eyebrow">Enterprise solutions</span>
+      <h2 class="cs-v2-section-title" id="solutions-heading">A workforce transformation engagement, not another video library.</h2>
+      <p class="cs-v2-section-copy">ChuoSmart combines organizational discovery, practical learning, role specialization, assessment and outcomes reporting so the investment has a visible operating model.</p>
+      <div class="cs-v2-solution-grid">
+        <article class="cs-v2-card cs-v2-card-hover cs-v2-solution-card"><span class="cs-v2-track-icon"><i class="fas fa-search"></i></span><h3>AI readiness & workflow mapping</h3><p>Understand current capability, how teams work, where friction exists, and where AI can responsibly create value.</p></article>
+        <article class="cs-v2-card cs-v2-card-hover cs-v2-solution-card"><span class="cs-v2-track-icon"><i class="fas fa-user-graduate"></i></span><h3>AI Workforce Accelerator</h3><p>An eight-week flagship program combining common foundations, role tracks, practical labs, capstones and certification.</p><a class="cs-v2-link-arrow" href="{% url 'ai_workforce_accelerator' %}">View program <i class="fas fa-arrow-right"></i></a></article>
+        <article class="cs-v2-card cs-v2-card-hover cs-v2-solution-card"><span class="cs-v2-track-icon"><i class="fas fa-sliders-h"></i></span><h3>Department & custom programs</h3><p>Adapt delivery around a team’s workflows, risk profile, technology stack and business priorities.</p></article>
+      </div>
+    </div>
+  </section>
+
+  <section class="cs-v2-section" aria-labelledby="journey-heading">
+    <div class="container">
+      <span class="cs-v2-eyebrow">How the engagement works</span>
+      <h2 class="cs-v2-section-title" id="journey-heading">From readiness assessment to workplace impact.</h2>
+      <div class="cs-v2-journey">
+        <div class="cs-v2-journey-step"><span class="cs-v2-step-number">01</span><h3>Assess</h3><p>Baseline capability and workflow discovery.</p></div>
+        <div class="cs-v2-journey-step"><span class="cs-v2-step-number">02</span><h3>Train</h3><p>Common AI foundation plus role-based learning.</p></div>
+        <div class="cs-v2-journey-step"><span class="cs-v2-step-number">03</span><h3>Apply</h3><p>Practical labs, workplace scenarios and projects.</p></div>
+        <div class="cs-v2-journey-step"><span class="cs-v2-step-number">04</span><h3>Measure</h3><p>Capability, progress and workflow outcomes.</p></div>
+        <div class="cs-v2-journey-step"><span class="cs-v2-step-number">05</span><h3>Certify</h3><p>Recognize demonstrated professional competence.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="cs-v2-section cs-v2-section-muted" aria-labelledby="business-tracks-heading">
+    <div class="container">
+      <span class="cs-v2-eyebrow">Role-specific learning</span>
+      <h2 class="cs-v2-section-title" id="business-tracks-heading">The same AI tool means different things to different teams.</h2>
+      <p class="cs-v2-section-copy">Everyone develops a responsible AI foundation. Role tracks then focus the work on decisions, data, customers, operations or technology.</p>
+      <div class="cs-v2-track-grid">
+        <article class="cs-v2-card cs-v2-track-card"><span class="cs-v2-track-icon"><i class="fas fa-user-tie"></i></span><h3>Leadership</h3><p>Decision support, strategic research and adoption.</p></article>
+        <article class="cs-v2-card cs-v2-track-card"><span class="cs-v2-track-icon"><i class="fas fa-chart-pie"></i></span><h3>Finance</h3><p>Analysis, reporting and scenario support.</p></article>
+        <article class="cs-v2-card cs-v2-track-card"><span class="cs-v2-track-icon"><i class="fas fa-users"></i></span><h3>HR & People</h3><p>Recruitment, policy, L&D and workforce productivity.</p></article>
+        <article class="cs-v2-card cs-v2-track-card"><span class="cs-v2-track-icon"><i class="fas fa-handshake"></i></span><h3>Sales</h3><p>Research, meetings, proposals and follow-up.</p></article>
+        <article class="cs-v2-card cs-v2-track-card"><span class="cs-v2-track-icon"><i class="fas fa-bullhorn"></i></span><h3>Marketing</h3><p>Research, content systems and campaign thinking.</p></article>
+        <article class="cs-v2-card cs-v2-track-card"><span class="cs-v2-track-icon"><i class="fas fa-cogs"></i></span><h3>Operations</h3><p>Process mapping, SOPs and workflow automation.</p></article>
+        <article class="cs-v2-card cs-v2-track-card"><span class="cs-v2-track-icon"><i class="fas fa-code"></i></span><h3>Technical / IT</h3><p>Development, APIs, agents, evaluation and controls.</p></article>
+        <article class="cs-v2-card cs-v2-track-card"><span class="cs-v2-track-icon"><i class="fas fa-plus"></i></span><h3>Custom</h3><p>Build around the workflows that matter most to your organization.</p></article>
+      </div>
+    </div>
+  </section>
+
+  <section class="cs-v2-section" aria-labelledby="governance-heading">
+    <div class="container">
+      <div class="cs-v2-governance-split">
+        <div class="cs-v2-governance-image"><img src="{% static 'chuosmart_v2/images/governance.webp' %}" alt="Conceptual illustration of responsible AI, privacy and controlled data use" loading="lazy"></div>
+        <div>
+          <span class="cs-v2-eyebrow">Responsible adoption</span>
+          <h2 class="cs-v2-section-title" id="governance-heading">Productivity without careless data handling.</h2>
+          <p class="cs-v2-section-copy">Serious organizations need more than prompt tips. Responsible AI, verification and human accountability are part of the program from the start.</p>
+          <ul class="cs-v2-check-list">
+            <li><i class="fas fa-check"></i><span>Confidential, personal and sensitive data handling principles.</span></li>
+            <li><i class="fas fa-check"></i><span>Hallucination awareness, source verification and quality control.</span></li>
+            <li><i class="fas fa-check"></i><span>Human oversight for high-impact decisions and workflows.</span></li>
+            <li><i class="fas fa-check"></i><span>Organization-specific AI use guidance and implementation recommendations.</span></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="cs-v2-section cs-v2-section-muted" aria-labelledby="investment-heading">
+    <div class="container">
+      <div class="cs-v2-investment-card">
+        <div>
+          <span class="cs-v2-eyebrow">Flagship engagement</span>
+          <h2 id="investment-heading">A complete 50-person transformation program.</h2>
+          <p>For organizations ready to move beyond awareness, our flagship package is designed for up to 50 employees across an eight-week engagement plus post-program support.</p>
+          <ul class="cs-v2-check-list">
+            <li><i class="fas fa-check"></i><span>Organization discovery and baseline assessment.</span></li>
+            <li><i class="fas fa-check"></i><span>Live learning, role tracks and practical labs.</span></li>
+            <li><i class="fas fa-check"></i><span>Capstones, assessment, certification and management outcomes reporting.</span></li>
+            <li><i class="fas fa-check"></i><span>Smaller paid pilots available for organizations that want to validate value before a wider rollout.</span></li>
+          </ul>
+        </div>
+        <aside class="cs-v2-price-panel">
+          <small>Indicative flagship investment</small>
+          <strong>TZS 50M</strong>
+          <p>Up to 50 participants. Final scope, taxes, customization and commercial terms are confirmed in the proposal.</p>
+          <a class="cs-v2-light-btn" href="{% url 'contact' %}?topic=business">Request a proposal <i class="fas fa-arrow-right ms-2"></i></a>
+        </aside>
+      </div>
+    </div>
+  </section>
+</div>
+{% endblock main-content %}

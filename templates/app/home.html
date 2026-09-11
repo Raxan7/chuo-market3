@@ -1,461 +1,175 @@
 {% extends 'app/base.html' %}
 {% load static %}
 {% load sanitize_tags %}
-{% load markdown_deux_tags %}
-{% block title %}View Courses for Students in Tanzania | Free & Paid{% endblock title %}
-
-{% block meta_description %}View free and paid courses for students in Tanzania. Learn in weeks, access online lessons, and start your next course on ChuoSmart today.{% endblock meta_description %}
-
-{% block meta_keywords %}view course, students free, free view course, view course weeks, course weeks kozi, online courses tanzania, kozi ya bure{% endblock meta_keywords %}
-
-{% block og_title %}View Courses for Students in Tanzania | Free & Paid{% endblock og_title %}
-{% block og_description %}View free and paid courses for students in Tanzania. Learn in weeks and start your next course on ChuoSmart.{% endblock og_description %}
-{% block twitter_title %}View Courses for Students in Tanzania | Free & Paid{% endblock twitter_title %}
-{% block twitter_description %}View free and paid courses for students in Tanzania. Learn in weeks and start your next course on ChuoSmart.{% endblock twitter_description %}
-
-<style>
-  .hover-notification {
-    position: sticky;
-    top: 0;
-    width: 100%;
-    z-index: 1000;
-    display: block;
-  }
-
-  .animated-text {
-    animation: fadeInOut 2s infinite;
-  }
-
-  @keyframes fadeInOut {
-    0%, 100% { opacity: 0; }
-    50% { opacity: 1; }
-  }
-
-  .card-text {
-    margin-bottom: 0.5rem;
-  }
-  .card-text.text-muted {
-    font-size: 0.9rem;
-  }
-  @media (max-width: 768px) {
-    .card {
-      width: 100%;
-    }
-  }
-
-  .carousel-control-prev-icon,
-  .carousel-control-next-icon {
-    background-color: rgb(8, 8, 8); /* Set the icon color to grey */
-    box-shadow: 0 0 10px rgba(255, 255, 255, 0.8); /* Add a shining shadow */
-    border-radius: 50%; /* Optional: Make the shadow circular */
-  }
-</style>
-
-{% block banner_slider %}
-<!-- Notification for missing customer details -->
-{% if user.is_authenticated and not customers %}
-<div class="alert alert-warning hover-notification" role="alert">
-  Please <a href="{% url 'profile' %}" class="alert-link">update your profile</a> to make your shopping and selling experience smooth.
-</div>
-{% endif %}
-
-<style>
-  /* Banner Slider Styles */
-  .banner-slider {
-    position: relative;
-    width: 100%;
-    overflow: hidden;
-    margin: 0 auto;
-  }
-  
-  .banner-container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 0;
-  }
-  
-  .carousel-inner {
-    position: relative;
-    width: 100%;
-    overflow: hidden;
-    border-radius: 8px;
-  }
-  
-  .carousel-item {
-    position: relative;
-    width: 100%;
-    /* Adjust this padding-top percentage based on your desired aspect ratio */
-    /* 25% = 4:1, 33.33% = 3:1, 50% = 2:1, 56.25% = 16:9 (common banner ratio) */
-    padding-top: 33.33%; /* Creates a 3:1 aspect ratio container */
-  }
-  
-  .carousel-item img {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: contain; /* <-- changed from cover */
-    object-position: center;
-  }
- 
-  /* Responsive adjustments */
-  @media (max-width: 992px) {
-    .carousel-item {
-      padding-top: 40%; /* Slightly taller aspect ratio on medium screens */
-    }
-  }
-  
-  @media (max-width: 768px) {
-    .carousel-item {
-      padding-top: 50%; /* Even taller aspect ratio on tablets */
-    }
-  }
-  
-  @media (max-width: 576px) {
-    .carousel-item {
-      padding-top: 60%; /* Tallest aspect ratio on mobile */
-    }
-    .carousel-inner {
-      border-radius: 0; /* Full width on small screens */
-    }
-  }
-</style>
-
-<!-- Banner Slider -->
-<div class="banner-slider">
-  <div class="banner-container">
-    <div id="carouselExampleControls" class="carousel slide" data-bs-ride="carousel">
-      <div class="carousel-inner">
-        {% for banner in banners %}
-          <div class="carousel-item{% if forloop.first %} active{% endif %}">
-            {% load image_tags %}
-{% load sanitize_tags %}
-            {% if forloop.first %}
-              <!-- Don't lazy load the first banner for faster initial display -->
-              {% optimized_img src=banner.image.url alt=banner.title|default:'Banner image' css_class="d-block w-100" lazy=False %}
-            {% else %}
-              {% optimized_img src=banner.image.url alt=banner.title|default:'Banner image' css_class="d-block w-100" lazy=True %}
-            {% endif %}
-          </div>
-        {% endfor %}
-      </div>
-      <a class="carousel-control-prev" href="#carouselExampleControls" role="button" data-bs-slide="prev">
-        <span class="carousel-control-prev-icon" aria-hidden="true"></span>
-        <span class="visually-hidden">Previous</span>
-      </a>
-      <a class="carousel-control-next" href="#carouselExampleControls" role="button" data-bs-slide="next">
-        <span class="carousel-control-next-icon" aria-hidden="true"></span>
-        <span class="visually-hidden">Next</span>
-      </a>
-    </div>
-  </div>
-</div>
-<!-- End Banner Slider -->
-{% endblock banner_slider %}
-
-{% block livesale %}
-<!-- Live Sale Section -->
-<div class="container">
-</div>
-
-
-<!-- End LMS Banner Section -->
-{% endblock livesale %}
+{% block title %}AI Workforce Transformation, Skills & Careers{% endblock title %}
+{% block meta_description %}ChuoSmart helps organizations build AI-capable teams and helps individuals learn practical skills, discover opportunities and grow their careers across Africa.{% endblock meta_description %}
+{% block meta_keywords %}AI workforce training Tanzania, AI skills Africa, corporate AI training, online courses Tanzania, jobs Tanzania, ChuoSmart{% endblock meta_keywords %}
+{% block og_title %}ChuoSmart — Build a Future-Ready Workforce with AI{% endblock og_title %}
+{% block og_description %}Practical AI workforce transformation for organizations, plus skills and career opportunities for ambitious learners.{% endblock og_description %}
+{% block twitter_title %}ChuoSmart — Skills, AI and measurable workplace impact{% endblock twitter_title %}
+{% block twitter_description %}Build AI-capable teams. Learn practical skills. Turn training into measurable workplace impact.{% endblock twitter_description %}
 
 {% block main-content %}
-
-<section class="container mt-4" aria-labelledby="home-learning-heading">
-  <div class="card border-0 shadow-sm overflow-hidden">
-    <div class="card-body p-4 p-lg-5">
-      <div class="row align-items-center g-4">
-        <div class="col-lg-8">
-          <span class="badge bg-primary-subtle text-primary-emphasis mb-3">Learn on ChuoSmart</span>
-          <h1 id="home-learning-heading" class="display-5 fw-bold text-dark mb-3">Practical skills for Tanzania. Learn at your pace. Pay for what you need.</h1>
-          <p class="lead text-muted mb-4">Explore free and paid courses, buy a full course or unlock eligible modules as you progress, and keep learning from your phone or computer.</p>
-          <div class="d-flex flex-column flex-sm-row gap-2">
-            <a href="{% url 'lms:course_list' %}" class="btn btn-primary btn-lg px-4">Explore Courses</a>
-            <a href="{% url 'lms:course_list' %}?pricing=free" class="btn btn-outline-primary btn-lg px-4">Browse Free Courses</a>
-          </div>
-        </div>
-        <div class="col-lg-4">
-          <div class="bg-light rounded-3 p-3 p-md-4">
-            <div class="d-flex gap-2 mb-3"><i class="fas fa-mobile-alt text-primary mt-1" aria-hidden="true"></i><span>Mobile-friendly learning and checkout</span></div>
-            <div class="d-flex gap-2 mb-3"><i class="fas fa-layer-group text-primary mt-1" aria-hidden="true"></i><span>Full-course and pay-as-you-learn options</span></div>
-            <div class="d-flex gap-2"><i class="fas fa-certificate text-primary mt-1" aria-hidden="true"></i><span>Certificates on eligible courses</span></div>
-          </div>
-        </div>
-      </div>
+<div class="cs-v2-home">
+  {% if user.is_authenticated and not customers %}
+  <div class="container pt-3">
+    <div class="alert alert-warning mb-0" role="alert">
+      Complete your <a href="{% url 'profile' %}" class="alert-link">profile</a> to get the best experience across ChuoSmart.
     </div>
   </div>
-</section>
-
-<!-- Marketplace Quick Access Card -->
-<div class="container my-4">
-  <div class="row">
-    <div class="col-12">
-      <a href="{% url 'marketplace' %}" class="text-decoration-none">
-        <div class="card border-0 bg-gradient shadow-sm" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); cursor: pointer; transition: transform 0.3s ease, box-shadow 0.3s ease;" 
-             onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 10px 25px rgba(0,0,0,0.15)';" 
-             onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 0 0 0';">
-          <div class="card-body text-white text-center py-3 px-4">
-            <div class="row align-items-center">
-              <div class="col-auto">
-                <i class="fas fa-shopping-cart fa-2x"></i>
-              </div>
-              <div class="col">
-                <div class="text-start">
-                  <h6 class="mb-0 fw-bold">📦 Student Marketplace</h6>
-                  <small class="text-opacity-75">Buy & sell with fellow students</small>
-                </div>
-              </div>
-              <div class="col-auto">
-                <i class="fas fa-arrow-right"></i>
-              </div>
-            </div>
-          </div>
-        </div>
-      </a>
-    </div>
-  </div>
-</div>
-
-{% if show_list_ads %}
-<div class="container my-4">
-  <div class="row">
-    <div class="col-12">
-      {% include 'app/partials/list_ad_card.html' %}
-    </div>
-  </div>
-</div>
-{% endif %}
-
-<!-- Available Courses Section -->
-<div class="container my-5">
-  {% if courses %}
-    <div class="text-center mb-4">
-      <h2 class="fw-bold">Featured Courses</h2>
-      <p class="text-muted">Discover featured courses selected for learners</p>
-    </div>
-    
-    <!-- Courses Grid -->
-    <div class="row g-4" id="home-courses-grid" data-list-items>
-      {% for course in courses %}
-        <div class="col-lg-4 col-md-6 mb-4">
-          {% include "lms/partials/_course_card.html" %}
-        </div>
-
-        {% if forloop.counter|divisibleby:3 %}
-          {% if forloop.counter|divisibleby:6 %}
-            <div class="col-lg-4 col-md-6 mb-4">
-              {% include 'app/partials/adsterra_ad_card.html' %}
-            </div>
-          {% else %}
-            {% if show_list_ads %}
-              <div class="col-lg-4 col-md-6 mb-4">
-                {% include 'app/partials/list_ad_card.html' %}
-              </div>
-            {% endif %}
-          {% endif %}
-        {% endif %}
-      {% endfor %}
-    </div>
-
-    {% if page_obj and page_obj.has_next %}
-      <div id="home-infinite-scroll-sentinel" class="infinite-scroll-sentinel" data-next-url="{{ next_page_url }}" aria-hidden="true"></div>
-      <div id="home-loading-more" class="text-center text-muted small mt-3 d-none">Loading more courses...</div>
-    {% endif %}
-
-    {% if is_paginated %}
-      <nav class="mt-4" aria-label="Home courses pagination">
-        <ul class="pagination justify-content-center">
-          {% if page_obj.has_previous %}
-            <li class="page-item"><a class="page-link" href="{{ prev_page_url |safe_href }}">Previous</a></li>
-          {% endif %}
-          <li class="page-item active"><span class="page-link">{{ page_obj.number }}</span></li>
-          {% if page_obj.has_next %}
-            <li class="page-item"><a class="page-link" href="{{ next_page_url |safe_href }}">Next</a></li>
-          {% endif %}
-        </ul>
-      </nav>
-    {% endif %}
-    
-    <div class="text-center mt-4">
-      <a href="{% url 'lms:lms_home' %}" class="btn btn-outline-primary btn-lg">
-        <i class="fas fa-graduation-cap me-2"></i> Browse All Courses
-      </a>
-    </div>
-  {% else %}
-    <div class="text-center mt-5">
-      <i class="fas fa-graduation-cap fa-4x text-muted mb-3"></i>
-      <h3>No courses available yet</h3>
-      <p class="text-muted">Check back soon for exciting new courses!</p>
-    </div>
   {% endif %}
-</div>
 
-<!-- Marketplace Promotion Section -->
-<div class="container my-5">
-  <div class="row">
-    <div class="col-md-12">
-      <div class="card shadow border-0 bg-gradient" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-        <div class="card-body text-white text-center p-5">
-          <i class="fas fa-store fa-3x mb-3"></i>
-          <h2 class="fw-bold mb-3">Student Marketplace</h2>
-          <p class="lead mb-4">Buy and sell products with fellow students. Find textbooks, electronics, and more!</p>
-          <div class="row">
-            <div class="col-md-8 offset-md-2">
-              <div class="row text-center">
-                <div class="col-4">
-                  <i class="fas fa-mobile-alt fa-2x mb-2"></i>
-                  <p class="small">Mobile Phones</p>
-                </div>
-                <div class="col-4">
-                  <i class="fas fa-book fa-2x mb-2"></i>
-                  <p class="small">Textbooks</p>
-                </div>
-                <div class="col-4">
-                  <i class="fas fa-laptop fa-2x mb-2"></i>
-                  <p class="small">Electronics</p>
-                </div>
-              </div>
-            </div>
+  <section class="cs-v2-home-hero" aria-labelledby="home-hero-title">
+    <div class="container">
+      <div class="cs-v2-hero-grid">
+        <div class="cs-v2-hero-copy">
+          <span class="cs-v2-eyebrow">AI skills. Real work. Measurable progress.</span>
+          <h1 id="home-hero-title">Build a future-ready workforce <span class="cs-v2-gradient-text">with AI.</span></h1>
+          <p>ChuoSmart helps organizations assess, train and empower their teams with practical AI skills — then measure what changed. Individuals can learn job-relevant skills and move closer to real opportunities.</p>
+          <div class="cs-v2-hero-actions">
+            <a href="{% url 'for_business' %}" class="btn cs-v2-primary-btn">Explore ChuoSmart for Business <i class="fas fa-arrow-right ms-2"></i></a>
+            <a href="{% url 'lms:course_list' %}" class="cs-v2-hero-secondary">Explore learning <i class="fas fa-graduation-cap ms-2"></i></a>
           </div>
-          <a href="{% url 'marketplace' %}" class="btn btn-light btn-lg mt-3">
-            <i class="fas fa-shopping-cart me-2"></i> Visit Marketplace
-          </a>
+          <div class="cs-v2-hero-proof" aria-label="Program highlights">
+            <div class="cs-v2-hero-proof-item"><strong>8 weeks</strong><span>Flagship enterprise accelerator</span></div>
+            <div class="cs-v2-hero-proof-item"><strong>16+ labs</strong><span>Practical workplace challenges</span></div>
+            <div class="cs-v2-hero-proof-item"><strong>7 role tracks</strong><span>Training matched to real work</span></div>
+          </div>
+        </div>
+        <div class="cs-v2-hero-visual" aria-hidden="true">
+          <div class="cs-v2-hero-photo"><img src="{% static 'chuosmart_v2/images/enterprise-team.webp' %}" alt="" loading="eager" fetchpriority="high"></div>
+          <div class="cs-v2-hero-float cs-v2-hero-float-a">
+            <div class="cs-v2-mini-bars"><span></span><span></span><span></span><span></span></div>
+            <strong>Capability, not attendance</strong><small>Track practical performance and improvement</small>
+          </div>
+          <div class="cs-v2-hero-float cs-v2-hero-float-b"><strong>People. Skills. Progress.</strong><small>From learning to workplace outcomes</small></div>
         </div>
       </div>
     </div>
-  </div>
+  </section>
+
+  <section class="cs-v2-industry-strip" aria-label="Industries ChuoSmart is designed to support">
+    <div class="container cs-v2-industry-inner">
+      <span>Designed for ambitious teams across</span>
+      <div class="cs-v2-industry-list">
+        <span>Financial services</span><span>Telecom</span><span>NGOs</span><span>Professional services</span><span>Universities</span><span>Technology</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="cs-v2-section cs-v2-section-muted" aria-labelledby="method-heading">
+    <div class="container">
+      <span class="cs-v2-eyebrow">The ChuoSmart method</span>
+      <h2 class="cs-v2-section-title" id="method-heading">Training should change how work gets done.</h2>
+      <p class="cs-v2-section-copy">Our enterprise approach moves beyond content consumption. We establish a baseline, teach relevant skills, make employees demonstrate them, and give management evidence of progress.</p>
+      <div class="cs-v2-method-grid">
+        <article class="cs-v2-card cs-v2-card-hover cs-v2-method-card"><span class="cs-v2-step-number">01</span><h3>Assess</h3><p>Measure current AI capability and identify high-value workflows.</p></article>
+        <article class="cs-v2-card cs-v2-card-hover cs-v2-method-card"><span class="cs-v2-step-number">02</span><h3>Train</h3><p>Build the core AI skills each employee needs for modern work.</p></article>
+        <article class="cs-v2-card cs-v2-card-hover cs-v2-method-card"><span class="cs-v2-step-number">03</span><h3>Apply</h3><p>Complete practical labs and role-specific workplace challenges.</p></article>
+        <article class="cs-v2-card cs-v2-card-hover cs-v2-method-card"><span class="cs-v2-step-number">04</span><h3>Measure</h3><p>Track capability growth, workflow impact and areas for support.</p></article>
+        <article class="cs-v2-card cs-v2-card-hover cs-v2-method-card"><span class="cs-v2-step-number">05</span><h3>Certify</h3><p>Recognize demonstrated competence — not simply attendance.</p></article>
+      </div>
+    </div>
+  </section>
+
+  <section class="cs-v2-section" aria-labelledby="business-heading">
+    <div class="container">
+      <div class="cs-v2-feature-split">
+        <div class="cs-v2-feature-media">
+          <img src="{% static 'chuosmart_v2/images/workshop.webp' %}" alt="Professionals collaborating during an applied workplace learning session" loading="lazy">
+          <div class="cs-v2-feature-caption"><strong>More than a training library.</strong><span>A structured transformation program built around the work your people actually do.</span></div>
+        </div>
+        <div>
+          <span class="cs-v2-eyebrow">ChuoSmart for Business</span>
+          <h2 class="cs-v2-section-title" id="business-heading">Turn AI potential into practical capability.</h2>
+          <p class="cs-v2-section-copy">Our flagship AI Workforce Accelerator combines live facilitation, structured learning, practical labs, role-based tracks, governance, capstones and management visibility in one engagement.</p>
+          <div class="cs-v2-benefit-list">
+            <div class="cs-v2-benefit"><i class="fas fa-user-check"></i><span><strong>Role-based development</strong><span>Finance, HR, Sales, Marketing, Operations, Leadership and Technical tracks.</span></span></div>
+            <div class="cs-v2-benefit"><i class="fas fa-flask"></i><span><strong>Practical labs</strong><span>Employees solve realistic workplace tasks instead of watching passively.</span></span></div>
+            <div class="cs-v2-benefit"><i class="fas fa-chart-line"></i><span><strong>Measurable outcomes</strong><span>Baseline, practical scores, progress and final capability are visible.</span></span></div>
+            <div class="cs-v2-benefit"><i class="fas fa-shield-alt"></i><span><strong>Responsible AI</strong><span>Data handling, verification, human oversight and governance are built in.</span></span></div>
+          </div>
+          <div class="cs-v2-button-row">
+            <a class="btn cs-v2-primary-btn" href="{% url 'ai_workforce_accelerator' %}">View the program</a>
+            <a class="cs-v2-secondary-btn" href="{% url 'contact' %}?topic=business">Talk to our team</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="cs-v2-section cs-v2-section-muted" aria-labelledby="tracks-heading">
+    <div class="container">
+      <span class="cs-v2-eyebrow">Relevant by role</span>
+      <h2 class="cs-v2-section-title" id="tracks-heading">One AI foundation. Different work realities.</h2>
+      <p class="cs-v2-section-copy">Employees share a common foundation, then deepen their learning through challenges connected to their roles.</p>
+      <div class="cs-v2-track-grid">
+        <article class="cs-v2-card cs-v2-card-hover cs-v2-track-card"><span class="cs-v2-track-icon"><i class="fas fa-user-tie"></i></span><h3>Leadership</h3><p>Decision support, executive research and adoption strategy.</p></article>
+        <article class="cs-v2-card cs-v2-card-hover cs-v2-track-card"><span class="cs-v2-track-icon"><i class="fas fa-chart-bar"></i></span><h3>Finance</h3><p>Analysis, reporting, scenarios and control-aware AI use.</p></article>
+        <article class="cs-v2-card cs-v2-card-hover cs-v2-track-card"><span class="cs-v2-track-icon"><i class="fas fa-users"></i></span><h3>HR & People</h3><p>Recruitment, learning, policy analysis and workforce support.</p></article>
+        <article class="cs-v2-card cs-v2-card-hover cs-v2-track-card"><span class="cs-v2-track-icon"><i class="fas fa-handshake"></i></span><h3>Sales</h3><p>Account research, preparation, proposals and follow-up.</p></article>
+        <article class="cs-v2-card cs-v2-card-hover cs-v2-track-card"><span class="cs-v2-track-icon"><i class="fas fa-bullhorn"></i></span><h3>Marketing</h3><p>Research, campaign systems, content and measurement.</p></article>
+        <article class="cs-v2-card cs-v2-card-hover cs-v2-track-card"><span class="cs-v2-track-icon"><i class="fas fa-project-diagram"></i></span><h3>Operations</h3><p>Process design, SOPs, analysis and workflow automation.</p></article>
+        <article class="cs-v2-card cs-v2-card-hover cs-v2-track-card"><span class="cs-v2-track-icon"><i class="fas fa-code"></i></span><h3>Technical / IT</h3><p>AI-assisted development, APIs, agents and evaluation.</p></article>
+        <article class="cs-v2-card cs-v2-card-hover cs-v2-track-card"><span class="cs-v2-track-icon"><i class="fas fa-sliders-h"></i></span><h3>Custom</h3><p>Adapt the engagement around the organization’s own workflows.</p></article>
+      </div>
+    </div>
+  </section>
+
+  <section class="cs-v2-section" aria-labelledby="outcomes-heading">
+    <div class="container">
+      <div class="cs-v2-outcome-panel">
+        <span class="cs-v2-eyebrow">Management visibility</span>
+        <h2 id="outcomes-heading">Make the investment visible.</h2>
+        <p>Management should be able to see whether people are participating, improving, applying skills and producing workflows worth taking forward.</p>
+        <div class="cs-v2-outcome-grid">
+          <div class="cs-v2-dashboard-mock" aria-label="Illustrative employer dashboard">
+            <div class="cs-v2-dashboard-top"><strong>Workforce capability</strong><span class="cs-v2-dashboard-badge">Illustrative view</span></div>
+            <div class="cs-v2-dashboard-stats">
+              <div class="cs-v2-dashboard-stat"><strong>50</strong><span>Seats</span></div>
+              <div class="cs-v2-dashboard-stat"><strong>47</strong><span>Active learners</span></div>
+              <div class="cs-v2-dashboard-stat"><strong>43</strong><span>On track</span></div>
+            </div>
+            <div class="cs-v2-chart"><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+          </div>
+          <div class="cs-v2-outcome-side">
+            <div class="cs-v2-outcome-side-card"><i class="fas fa-chart-line"></i><strong>Capability progression</strong><span>Compare baseline, current and final competency.</span></div>
+            <div class="cs-v2-outcome-side-card"><i class="fas fa-tasks"></i><strong>Practical performance</strong><span>See submissions, scores, resubmissions and support needs.</span></div>
+            <div class="cs-v2-outcome-side-card"><i class="fas fa-lightbulb"></i><strong>Workflows & capstones</strong><span>Connect learning to concrete workplace opportunities.</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  {% if courses %}
+  <section class="cs-v2-section cs-v2-individual-section" aria-labelledby="individual-learning-heading">
+    <div class="container">
+      <div class="cs-v2-individual-header">
+        <div><span class="cs-v2-eyebrow">For individuals</span><h2 class="cs-v2-section-title" id="individual-learning-heading">Keep building practical skills.</h2><p class="cs-v2-section-copy">Explore selected ChuoSmart courses for independent learners.</p></div>
+        <a href="{% url 'lms:course_list' %}" class="cs-v2-secondary-btn">Browse all courses <i class="fas fa-arrow-right ms-2"></i></a>
+      </div>
+      <div class="row g-4" id="home-courses-grid" data-list-items>
+        {% for course in courses|slice:":3" %}
+          <div class="col-lg-4 col-md-6">{% include "lms/partials/_course_card.html" %}</div>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+  {% endif %}
+
+  <section class="cs-v2-section-sm cs-v2-section-muted" aria-labelledby="ecosystem-heading">
+    <div class="container">
+      <span class="cs-v2-eyebrow">The wider ChuoSmart ecosystem</span>
+      <h2 class="cs-v2-section-title" id="ecosystem-heading">Learning should connect to opportunity.</h2>
+      <div class="cs-v2-ecosystem-grid">
+        <a class="cs-v2-card cs-v2-card-hover cs-v2-ecosystem-card" href="{% url 'jobs:job_list' %}"><i class="fas fa-briefcase"></i><h3>Jobs & opportunities</h3><p>Discover roles and career opportunities in one place.</p><span class="cs-v2-link-arrow">Explore jobs <i class="fas fa-arrow-right"></i></span></a>
+        <a class="cs-v2-card cs-v2-card-hover cs-v2-ecosystem-card" href="{% url 'materials:list' %}"><i class="fas fa-book-open"></i><h3>Learning materials</h3><p>Access useful resources that support continued learning.</p><span class="cs-v2-link-arrow">Browse materials <i class="fas fa-arrow-right"></i></span></a>
+        <a class="cs-v2-card cs-v2-card-hover cs-v2-ecosystem-card" href="{% url 'marketplace' %}"><i class="fas fa-store"></i><h3>Student marketplace</h3><p>Buy and sell through ChuoSmart’s existing commerce community.</p><span class="cs-v2-link-arrow">Visit marketplace <i class="fas fa-arrow-right"></i></span></a>
+      </div>
+    </div>
+  </section>
 </div>
 {% endblock main-content %}
 
-{% block structured_data %}
-{{ home_page_json_ld|json_script:"home-schema" }}
-{% endblock structured_data %}
-
-{% block extra_scripts %}
-{{ block.super }}
-{{ next_page_url|default_if_none:''|json_script:"home-next-page" }}
-<script>
-  document.addEventListener('DOMContentLoaded', function () {
-    const listContainer = document.getElementById('home-courses-grid');
-    const sentinel = document.getElementById('home-infinite-scroll-sentinel');
-    const loadingIndicator = document.getElementById('home-loading-more');
-    const nextUrlEl = document.getElementById('home-next-page');
-    let nextUrl = (function() {
-      if (!nextUrlEl) return null;
-      try {
-        const val = JSON.parse(nextUrlEl.textContent);
-        return val ? val : null;
-      } catch (e) {
-        return nextUrlEl.textContent || null;
-      }
-    })();
-    let isLoading = false;
-
-    if (!listContainer || !sentinel || !nextUrl) {
-      return;
-    }
-
-    const setLoadingState = (loading) => {
-      isLoading = loading;
-      if (loadingIndicator) {
-        loadingIndicator.classList.toggle('d-none', !loading);
-      }
-    };
-
-    const loadMoreCourses = async () => {
-      if (!nextUrl || isLoading) {
-        return;
-      }
-
-      setLoadingState(true);
-
-      try {
-        const response = await fetch(nextUrl, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
-        const html = await response.text();
-        const doc = new DOMParser().parseFromString(html, 'text/html');
-        const incomingContainer = doc.getElementById('home-courses-grid');
-        const incomingSentinel = doc.getElementById('home-infinite-scroll-sentinel');
-
-        if (incomingContainer) {
-          Array.from(incomingContainer.children).forEach((child) => listContainer.appendChild(child));
-          if (window.initializeListAds) {
-            window.initializeListAds(listContainer);
-          }
-        }
-
-        if (incomingSentinel && incomingSentinel.dataset.nextUrl) {
-          nextUrl = incomingSentinel.dataset.nextUrl;
-        } else {
-          nextUrl = null;
-          observer.disconnect();
-          sentinel.remove();
-        }
-      } catch (error) {
-        console.error('Failed to load more courses', error);
-      } finally {
-        setLoadingState(false);
-      }
-    };
-
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          loadMoreCourses();
-        }
-      });
-    }, {
-      root: null,
-      rootMargin: '300px 0px',
-      threshold: 0.1,
-    });
-
-    observer.observe(sentinel);
-  });
-</script>
-<style>
-  .infinite-scroll-sentinel {
-    width: 100%;
-    height: 1px;
-    margin-top: 1rem;
-  }
-
-  /* Course Cards Styles */
-  .course-card {
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
-    border-radius: 15px;
-    overflow: hidden;
-  }
-  
-  .course-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1) !important;
-  }
-  
-  .course-image {
-    height: 200px;
-    object-fit: cover;
-    transition: transform 0.3s ease;
-  }
-  
-  .course-image-placeholder {
-    height: 200px;
-  }
-  
-  .course-card:hover .course-image {
-    transform: scale(1.05);
-  }
-  
-  /* LMS Feature Card Styles */
-  .bg-gradient {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-  }
-
-  @media (max-width: 600px) {
-    .course-card { width: 100%; }
-  }
-</style>
-{% endblock %}
+{% block structured_data %}{{ home_page_json_ld|json_script:"home-schema" }}{% endblock structured_data %}

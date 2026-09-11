@@ -6,10 +6,10 @@ def seo_context(request):
     Add common SEO variables to the context
     """
     site_name = "ChuoSmart"
-    default_description = "View free and paid courses for students in Tanzania. Buy and sell in the student marketplace and discover jobs and internships."
+    default_description = "ChuoSmart helps organizations build practical AI workforce capability and helps individuals learn skills, discover jobs and grow their careers across Africa."
     default_keywords = (
-        "view course, students free, free view course, view course weeks, course weeks kozi, "
-        "online courses tanzania, student marketplace, jobs tanzania"
+        "AI workforce training Tanzania, corporate AI training, online courses Tanzania, "
+        "career opportunities, student marketplace, jobs Tanzania"
     )
 
     # Get domain from settings
@@ -29,8 +29,7 @@ def seo_context(request):
         'url': base_url,
         'logo': logo_url,
         'description': (
-            "Tanzania's first platform to combine online education and "
-            "digital commerce into a single ecosystem"
+            "A skills, career and workforce transformation platform helping people and organizations build practical capability."
         ),
         'foundingDate': '2024',
         'address': {

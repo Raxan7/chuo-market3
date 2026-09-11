@@ -50,14 +50,18 @@ def dashboard_notification(request):
 def site_ad_settings(request):
     """Expose ad toggles and suppress ads on trust-sensitive/high-intent pages."""
     path = request.path.lower()
+    business_surface = path.startswith('/for-business/')
+    premium_surface = path == '/' or business_surface
     sensitive_prefixes = (
         '/login/', '/registration/', '/checkout/', '/cart/', '/profile/',
         '/changepassword/', '/account-deletion-request/', '/lms/certificates/',
-        '/lms/quizzes/', '/lms/quiz',
+        '/lms/quizzes/', '/lms/quiz', '/for-business/',
     )
     sensitive_fragments = ('/payment/', '/access/pay/', '/access/success/', '/access/status/')
+    # The company front door and enterprise surfaces are intentionally ad-free.
+    # Ads remain available on appropriate marketplace/content pages.
     ads_allowed = not (
-        path.startswith(sensitive_prefixes) or any(fragment in path for fragment in sensitive_fragments)
+        path == '/' or path.startswith(sensitive_prefixes) or any(fragment in path for fragment in sensitive_fragments)
     )
     show_list_ads = ads_allowed
     try:
@@ -67,4 +71,9 @@ def site_ad_settings(request):
     except Exception:
         show_list_ads = True
 
-    return {'show_list_ads': show_list_ads and ads_allowed, 'ads_allowed': ads_allowed}
+    return {
+        'show_list_ads': show_list_ads and ads_allowed,
+        'ads_allowed': ads_allowed,
+        'business_surface': business_surface,
+        'premium_surface': premium_surface,
+    }

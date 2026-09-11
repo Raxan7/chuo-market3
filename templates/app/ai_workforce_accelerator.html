@@ -1,0 +1,140 @@
+{% extends 'app/base.html' %}
+{% load static %}
+{% block title %}AI Workforce Accelerator | ChuoSmart for Business{% endblock title %}
+{% block meta_description %}The ChuoSmart AI Workforce Accelerator is an eight-week applied program that helps employees build practical, role-specific and responsible AI capability.{% endblock meta_description %}
+{% block meta_keywords %}AI Workforce Accelerator, enterprise AI course Tanzania, role based AI training, practical AI training Africa{% endblock meta_keywords %}
+{% block og_title %}ChuoSmart AI Workforce Accelerator — Practical. Role-Specific. Measurable.{% endblock og_title %}
+{% block og_description %}An eight-week enterprise AI program built around real work, practical labs, role tracks, responsible AI and measurable capability.{% endblock og_description %}
+
+{% block main-content %}
+<div class="cs-v2-shell">
+  <section class="cs-v2-program-hero" aria-labelledby="program-hero-title">
+    <div class="container">
+      <div class="cs-v2-program-hero-grid">
+        <div>
+          <span class="cs-v2-eyebrow">Flagship enterprise program</span>
+          <h1 id="program-hero-title">AI Workforce Accelerator</h1>
+          <p class="cs-v2-section-copy">An eight-week applied program that helps employees use AI productively, responsibly and in ways connected to the work they already do.</p>
+          <div class="cs-v2-button-row">
+            <a href="{% url 'contact' %}?topic=accelerator" class="btn cs-v2-primary-btn">Request a proposal <i class="fas fa-arrow-right ms-2"></i></a>
+            <a href="{% url 'for_business' %}" class="cs-v2-secondary-btn">Back to For Business</a>
+          </div>
+          <div class="cs-v2-program-facts">
+            <div class="cs-v2-program-fact"><i class="far fa-calendar"></i><strong>8 weeks</strong><span>Applied program</span></div>
+            <div class="cs-v2-program-fact"><i class="fas fa-route"></i><strong>Role-based</strong><span>Learning tracks</span></div>
+            <div class="cs-v2-program-fact"><i class="fas fa-flask"></i><strong>Hands-on</strong><span>Practical projects</span></div>
+            <div class="cs-v2-program-fact"><i class="fas fa-award"></i><strong>Certified</strong><span>Assessed capability</span></div>
+            <div class="cs-v2-program-fact"><i class="fas fa-chart-line"></i><strong>Visible</strong><span>Management outcomes</span></div>
+          </div>
+        </div>
+        <div class="cs-v2-program-media">
+          <img src="{% static 'chuosmart_v2/images/workshop.webp' %}" alt="Facilitator helping professionals complete a practical workplace exercise" loading="eager" fetchpriority="high">
+          <div class="cs-v2-program-media-note"><strong>Learn it. Apply it. Prove it.</strong><span>The program is built around practical capability, not video completion.</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="cs-v2-section" aria-labelledby="program-journey-heading">
+    <div class="container">
+      <span class="cs-v2-eyebrow">Program journey</span>
+      <h2 class="cs-v2-section-title" id="program-journey-heading">Eight weeks from AI awareness to applied capability.</h2>
+      <p class="cs-v2-section-copy">The sequence starts with foundations and progressively moves toward role-specific application, workflow design, governance and capstone delivery.</p>
+      <div class="cs-v2-week-grid">
+        <article class="cs-v2-card cs-v2-week-card"><span>Week 1</span><h3>AI-Ready Professional</h3><p>Models, strengths, limits, human oversight and task selection.</p></article>
+        <article class="cs-v2-card cs-v2-week-card"><span>Week 2</span><h3>Prompting & Problem Structuring</h3><p>Turn vague requests into repeatable, high-quality instructions.</p></article>
+        <article class="cs-v2-card cs-v2-week-card"><span>Week 3</span><h3>Research & Knowledge Work</h3><p>Evidence, documents, synthesis, verification and executive briefs.</p></article>
+        <article class="cs-v2-card cs-v2-week-card"><span>Week 4</span><h3>Data & Decision Support</h3><p>Spreadsheets, patterns, anomalies, scenarios and interpretation.</p></article>
+        <article class="cs-v2-card cs-v2-week-card"><span>Week 5</span><h3>Communication & Productivity</h3><p>Meetings, reports, proposals, presentations and stakeholder communication.</p></article>
+        <article class="cs-v2-card cs-v2-week-card"><span>Week 6</span><h3>Automation & Workflows</h3><p>Triggers, structured workflows, no-code concepts, agents and controls.</p></article>
+        <article class="cs-v2-card cs-v2-week-card"><span>Week 7</span><h3>Role Specialization</h3><p>Deepen application through department-specific professional challenges.</p></article>
+        <article class="cs-v2-card cs-v2-week-card"><span>Week 8</span><h3>Responsible AI & Capstone</h3><p>Governance, final practical, capstone presentation and certification.</p></article>
+      </div>
+    </div>
+  </section>
+
+  <section class="cs-v2-section cs-v2-section-muted" aria-labelledby="program-practice-heading">
+    <div class="container">
+      <div class="cs-v2-feature-split">
+        <div>
+          <span class="cs-v2-eyebrow">Practical by design</span>
+          <h2 class="cs-v2-section-title" id="program-practice-heading">Employees demonstrate the skill.</h2>
+          <p class="cs-v2-section-copy">The learning model uses realistic workplace tasks: research briefs, long documents, data analysis, meetings, reports, workflows, risk reviews and capstones.</p>
+          <ul class="cs-v2-check-list">
+            <li><i class="fas fa-check"></i><span>16+ common practical labs plus role-specific challenges.</span></li>
+            <li><i class="fas fa-check"></i><span>Rubric-based scoring with feedback and resubmission.</span></li>
+            <li><i class="fas fa-check"></i><span>Capstone projects connected to a real or realistic organizational workflow.</span></li>
+            <li><i class="fas fa-check"></i><span>Final practical assessment designed to test transfer, judgement and safety.</span></li>
+          </ul>
+        </div>
+        <div class="cs-v2-feature-media">
+          <img src="{% static 'chuosmart_v2/images/outcomes-dashboard.webp' %}" alt="Executive reviewing an illustrative workforce outcomes dashboard" loading="lazy">
+          <div class="cs-v2-feature-caption"><strong>Evidence management can inspect.</strong><span>Progress, capability, practical performance and projects can be surfaced as outcomes.</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="cs-v2-section" aria-labelledby="program-tracks-heading">
+    <div class="container">
+      <span class="cs-v2-eyebrow">Role tracks</span>
+      <h2 class="cs-v2-section-title" id="program-tracks-heading">Training that follows the job, not the hype cycle.</h2>
+      <div class="cs-v2-track-grid">
+        <article class="cs-v2-card cs-v2-track-card"><span class="cs-v2-track-icon"><i class="fas fa-user-tie"></i></span><h3>Leadership</h3><p>Management briefs, scenarios, strategic research and AI adoption.</p></article>
+        <article class="cs-v2-card cs-v2-track-card"><span class="cs-v2-track-icon"><i class="fas fa-chart-line"></i></span><h3>Finance</h3><p>Analysis, management commentary, scenarios and verification.</p></article>
+        <article class="cs-v2-card cs-v2-track-card"><span class="cs-v2-track-icon"><i class="fas fa-user-friends"></i></span><h3>HR & People</h3><p>Recruitment, policy, learning and responsible people workflows.</p></article>
+        <article class="cs-v2-card cs-v2-track-card"><span class="cs-v2-track-icon"><i class="fas fa-handshake"></i></span><h3>Sales</h3><p>Prospect research, meeting prep, proposals and follow-up.</p></article>
+        <article class="cs-v2-card cs-v2-track-card"><span class="cs-v2-track-icon"><i class="fas fa-bullhorn"></i></span><h3>Marketing</h3><p>Research, campaign thinking, content systems and analytics.</p></article>
+        <article class="cs-v2-card cs-v2-track-card"><span class="cs-v2-track-icon"><i class="fas fa-project-diagram"></i></span><h3>Operations</h3><p>SOPs, process analysis, reporting and workflow automation.</p></article>
+        <article class="cs-v2-card cs-v2-track-card"><span class="cs-v2-track-icon"><i class="fas fa-code"></i></span><h3>Technical / IT</h3><p>AI-assisted development, APIs, agents, evaluation and production controls.</p></article>
+        <article class="cs-v2-card cs-v2-track-card"><span class="cs-v2-track-icon"><i class="fas fa-sliders-h"></i></span><h3>Custom</h3><p>Tailor scenarios and workflows to the organization’s own context.</p></article>
+      </div>
+    </div>
+  </section>
+
+  <section class="cs-v2-section cs-v2-section-muted" aria-labelledby="program-measure-heading">
+    <div class="container">
+      <div class="cs-v2-outcome-panel">
+        <span class="cs-v2-eyebrow">Measure what changes</span>
+        <h2 id="program-measure-heading">The organization gets more than certificates.</h2>
+        <p>Where evidence is available, ChuoSmart can show capability improvement, participation, practical performance, projects and workflow outcomes. Measured and estimated impact should remain clearly separated.</p>
+        <div class="cs-v2-outcome-grid">
+          <div class="cs-v2-dashboard-mock">
+            <div class="cs-v2-dashboard-top"><strong>Illustrative employer view</strong><span class="cs-v2-dashboard-badge">Program data</span></div>
+            <div class="cs-v2-dashboard-stats"><div class="cs-v2-dashboard-stat"><strong>31</strong><span>Baseline</span></div><div class="cs-v2-dashboard-stat"><strong>68</strong><span>Current</span></div><div class="cs-v2-dashboard-stat"><strong>+37</strong><span>Capability points</span></div></div>
+            <div class="cs-v2-chart"><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+          </div>
+          <div class="cs-v2-outcome-side">
+            <div class="cs-v2-outcome-side-card"><i class="fas fa-users-cog"></i><strong>Department comparison</strong><span>Understand where capability is growing and where support is needed.</span></div>
+            <div class="cs-v2-outcome-side-card"><i class="fas fa-flask"></i><strong>Practical evidence</strong><span>Inspect lab performance, attempts and capstone progress.</span></div>
+            <div class="cs-v2-outcome-side-card"><i class="fas fa-file-alt"></i><strong>Executive outcomes report</strong><span>Summarize participation, capability, projects, governance and next steps.</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="cs-v2-section" aria-labelledby="program-investment-heading">
+    <div class="container">
+      <div class="cs-v2-investment-card">
+        <div>
+          <span class="cs-v2-eyebrow">Commercial model</span>
+          <h2 id="program-investment-heading">Start with a pilot or move directly to the flagship cohort.</h2>
+          <p>Organizations can validate the model with a smaller paid pilot, or commission the full eight-week transformation program for up to 50 employees.</p>
+          <ul class="cs-v2-check-list">
+            <li><i class="fas fa-check"></i><span>Paid pilot: typically 10–15 employees over a shorter engagement.</span></li>
+            <li><i class="fas fa-check"></i><span>Flagship: up to 50 employees, eight weeks plus follow-up support.</span></li>
+            <li><i class="fas fa-check"></i><span>100+ employees or complex organizations: custom scope and commercial proposal.</span></li>
+          </ul>
+        </div>
+        <aside class="cs-v2-price-panel">
+          <small>Indicative flagship investment</small>
+          <strong>TZS 50M</strong>
+          <p>The organization is buying the complete engagement — assessment, training, practical work, facilitation, evaluation, management visibility, capstones, certification and outcomes reporting.</p>
+          <a href="{% url 'contact' %}?topic=accelerator" class="cs-v2-light-btn">Request a proposal <i class="fas fa-arrow-right ms-2"></i></a>
+        </aside>
+      </div>
+    </div>
+  </section>
+</div>
+{% endblock main-content %}

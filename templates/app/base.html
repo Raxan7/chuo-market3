@@ -3,540 +3,290 @@
 {% load webpush_notifications %}
 {% load sanitize_tags %}
 <html lang="en">
-  <head>
+<head>
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-T4BGRN2N9W"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-T4BGRN2N9W');
+  </script>
 
-    <!-- Google tag (gtag.js) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-T4BGRN2N9W"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-
-      gtag('config', 'G-T4BGRN2N9W');
-    </script>
-
-    {% if ads_allowed %}
-    <!-- Google AdSense is intentionally excluded from checkout, account, quiz and certificate flows. -->
+  {% if ads_allowed %}
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1815335112679958" crossorigin="anonymous"></script>
     <link rel="dns-prefetch" href="//pagead2.googlesyndication.com">
     <link rel="preconnect" href="https://pagead2.googlesyndication.com" crossorigin>
-    {% endif %}
+  {% endif %}
 
-    <!-- Performance optimizations -->
-    <link rel="dns-prefetch" href="//www.googletagmanager.com">
-    <link rel="preconnect" href="https://www.googletagmanager.com" crossorigin>
-    
-    <!-- Required meta tags -->
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    
-    <!-- SEO Meta Tags -->
-    <meta name="description" content="{% block meta_description %}{{ default_meta_description }}{% endblock %}">
-    <meta name="keywords" content="{% block meta_keywords %}{{ default_meta_keywords }}{% endblock %}">
-    <meta name="author" content="ChuoSmart">
-    <meta name="verified-code" content="b0acd3ef-6b4e-4b75-bb45-59fb65367597">
-    
-    <!-- Open Graph Meta Tags -->
-    <meta property="og:title" content="{% block og_title %}ChuoSmart - College & University Student Marketplace | {% block page_title_og %}{% endblock %}{% endblock %}">
-    <meta property="og:description" content="{% block og_description %}{{ default_meta_description }}{% endblock %}">
-    <meta property="og:image" content="{% block og_image %}{{ base_url }}{% static 'app/images/logo.png' %}{% endblock %}">
-    <meta property="og:url" content="{{ canonical_url }}">
-    <meta property="og:type" content="{% block og_type %}website{% endblock %}">
-    <meta property="og:site_name" content="ChuoSmart">
-    
-    <!-- Twitter Card Tags -->
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="{% block twitter_title %}ChuoSmart - College & University Student Marketplace | {{ page_title|default:'' }}{% endblock %}">
-    <meta name="twitter:description" content="{% block twitter_description %}{{ default_meta_description }}{% endblock %}">
-    <meta name="twitter:image" content="{% block twitter_image %}{{ base_url }}{% static 'app/images/logo.png' %}{% endblock %}">
-    
-    <!-- Canonical URL -->
-    <link rel="canonical" href="{{ canonical_url |safe_href }}">
-    
-    <!-- Preconnect to external domains for faster loading -->
-    <link rel="preconnect" href="https://cdn.jsdelivr.net">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    
-    {% block extra_meta %}{% endblock extra_meta %}
-    
-    <!-- Structured Data for Organization (JSON-LD) -->
-    {{ organization_json_ld|json_script:"org-schema" }}
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="{% block meta_description %}{{ default_meta_description }}{% endblock %}">
+  <meta name="keywords" content="{% block meta_keywords %}{{ default_meta_keywords }}{% endblock %}">
+  <meta name="author" content="ChuoSmart">
+  <meta name="verified-code" content="b0acd3ef-6b4e-4b75-bb45-59fb65367597">
 
-    <!-- Website Structured Data -->
-    {{ website_json_ld|json_script:"website-schema" }}
+  <meta property="og:title" content="{% block og_title %}ChuoSmart — Skills, careers and AI workforce transformation{% endblock %}">
+  <meta property="og:description" content="{% block og_description %}{{ default_meta_description }}{% endblock %}">
+  <meta property="og:image" content="{% block og_image %}{{ base_url }}{% static 'app/images/logo.png' %}{% endblock %}">
+  <meta property="og:url" content="{{ canonical_url }}">
+  <meta property="og:type" content="{% block og_type %}website{% endblock %}">
+  <meta property="og:site_name" content="ChuoSmart">
 
-    {% block structured_data %}{% endblock structured_data %}
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="{% block twitter_title %}ChuoSmart — Skills, careers and AI workforce transformation{% endblock %}">
+  <meta name="twitter:description" content="{% block twitter_description %}{{ default_meta_description }}{% endblock %}">
+  <meta name="twitter:image" content="{% block twitter_image %}{{ base_url }}{% static 'app/images/logo.png' %}{% endblock %}">
+  <link rel="canonical" href="{{ canonical_url|safe_href }}">
 
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  {% block extra_meta %}{% endblock extra_meta %}
 
-    <!-- Font Awesome 5 (CDN - single reference) -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+  {{ organization_json_ld|json_script:"org-schema" }}
+  {{ website_json_ld|json_script:"website-schema" }}
+  {% block structured_data %}{% endblock structured_data %}
 
-    <!--Owl Carousel CSS (local with CDN fallback)-->
-    <link rel="stylesheet" href="{% static 'app/css/owl.carousel.min.css' %}">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+  <link rel="stylesheet" href="{% static 'app/css/owl.carousel.min.css' %}">
+  <link rel="stylesheet" href="{% static 'app/css/base.css' %}">
+  <link rel="stylesheet" href="{% static 'lms/css/lms.css' %}">
+  <link rel="stylesheet" href="{% static 'app/css/style.css' %}">
+  <!-- Patch 14 design layer: intentionally unique static namespace to avoid collectstatic collisions. -->
+  <link rel="stylesheet" href="{% static 'chuosmart_v2/css/site.css' %}">
+  {% block extra_head %}{% endblock %}
 
-    <!--Base CSS (layout, nav, notifications, utilities)-->
-    <link rel="stylesheet" href="{% static 'app/css/base.css' %}">
+  <link rel="icon" href="{% static 'app/images/icon/favicon.ico' %}" type="image/x-icon">
+  {% webpush_header %}
+  <title>ChuoSmart | {% block title %}{% endblock title %}</title>
+</head>
+<body class="cs-v2-site d-flex flex-column min-vh-100{% if business_surface %} cs-v2-business-surface{% endif %}">
+  <a class="cs-v2-skip-link" href="#main-content">Skip to content</a>
 
-    <!--LMS course card styles-->
-    <link rel="stylesheet" href="{% static 'lms/css/lms.css' %}">
+  <nav class="navbar navbar-expand-xl fixed-top cs-v2-nav" aria-label="Main navigation">
+    <div class="container cs-v2-nav-inner">
+      <a class="navbar-brand cs-v2-brand" href="{% url 'home' %}" aria-label="ChuoSmart home">
+        <span class="cs-v2-brand-mark"><img src="{% static 'app/images/logo.png' %}" alt="" width="34" height="34"></span>
+        <span class="cs-v2-brand-copy"><strong>ChuoSmart</strong><small>Skills for a Smarter Africa</small></span>
+      </a>
 
-    <!--Custom Site CSS-->
-    <link rel="stylesheet" href="{% static 'app/css/style.css' %}">
+      <button class="navbar-toggler cs-v2-nav-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavbar" aria-controls="mainNavbar" aria-expanded="false" aria-label="Open navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
 
-    {% block extra_head %}{% endblock %}
+      <div class="collapse navbar-collapse" id="mainNavbar">
+        <ul class="navbar-nav mx-xl-auto cs-v2-main-links">
+          <li class="nav-item"><a class="nav-link{% if business_surface %} active{% endif %}" href="{% url 'for_business' %}">For Business</a></li>
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle{% if 'programs' in request.path %} active{% endif %}" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Programs</a>
+            <ul class="dropdown-menu cs-v2-dropdown">
+              <li><a class="dropdown-item" href="{% url 'ai_workforce_accelerator' %}"><span class="cs-v2-menu-icon"><i class="fas fa-bolt"></i></span><span><strong>AI Workforce Accelerator</strong><small>Enterprise AI capability program</small></span></a></li>
+              <li><a class="dropdown-item" href="{% url 'lms:course_list' %}"><span class="cs-v2-menu-icon"><i class="fas fa-graduation-cap"></i></span><span><strong>Professional Courses</strong><small>Learn practical, job-relevant skills</small></span></a></li>
+            </ul>
+          </li>
+          <li class="nav-item"><a class="nav-link" href="{% url 'for_business' %}#solutions">Solutions</a></li>
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Resources</a>
+            <ul class="dropdown-menu cs-v2-dropdown cs-v2-dropdown-grid">
+              <li><a class="dropdown-item" href="{% url 'jobs:job_list' %}"><span class="cs-v2-menu-icon"><i class="fas fa-briefcase"></i></span><span><strong>Jobs</strong><small>Discover opportunities</small></span></a></li>
+              <li><a class="dropdown-item" href="{% url 'materials:list' %}"><span class="cs-v2-menu-icon"><i class="fas fa-book-open"></i></span><span><strong>Materials</strong><small>Learning resources</small></span></a></li>
+              <li><a class="dropdown-item" href="{% url 'marketplace' %}"><span class="cs-v2-menu-icon"><i class="fas fa-store"></i></span><span><strong>Marketplace</strong><small>Student commerce</small></span></a></li>
+              <li><a class="dropdown-item" href="{% url 'blog_list' %}"><span class="cs-v2-menu-icon"><i class="fas fa-newspaper"></i></span><span><strong>Insights</strong><small>Ideas and updates</small></span></a></li>
+            </ul>
+          </li>
+          <li class="nav-item"><a class="nav-link" href="{% url 'about' %}">About</a></li>
+        </ul>
 
-    <link rel="icon" href="{% static 'app/images/icon/favicon.ico' %}" type="image/x-icon">
-    {% webpush_header %}
-
-    <title>ChuoSmart | {% block title %} {% endblock title %} </title>
-  </head>
-  <body class="d-flex flex-column min-vh-100">
-    <!-- Professional Modern Navbar -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm fixed-top">
-      <div class="container">
-        <!-- Brand Logo with improved styling -->
-        <a class="navbar-brand d-flex align-items-center" href="/" style="font-weight: 600;">
-          <img src="{% static 'app/images/logo.png' %}" alt="ChuoSmart Logo" class="me-2" style="width: 32px; height: 32px;">
-          <span class="d-none d-sm-inline">ChuoSmart</span>
-        </a>
-        <!-- Mobile Toggle Button -->
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavbar" aria-controls="mainNavbar" aria-expanded="false" aria-label="Toggle navigation">
-          <span class="navbar-toggler-icon"></span>
-        </button>
-        <!-- Main Navbar Content -->
-        <div class="collapse navbar-collapse" id="mainNavbar">
-          <!-- Primary Navigation -->
-          <ul class="navbar-nav me-auto">
-            <li class="nav-item">
-              <a class="nav-link {% if request.path == '/' %}active fw-bold{% endif %}" href="{% url 'home' %}">
-                <i class="fas fa-graduation-cap fa-fw me-1 d-lg-none"></i> Home
-              </a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link {% if 'marketplace' in request.path %}active fw-bold{% endif %}" href="{% url 'marketplace' %}">
-                <i class="fas fa-store fa-fw me-1 d-lg-none"></i> Marketplace
-              </a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link {% if 'blog' in request.path %}active fw-bold{% endif %}" href="{% url 'blog_list' %}">
-                <i class="fas fa-newspaper fa-fw me-1 d-lg-none"></i> Blog
-              </a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link {% if 'materials' in request.path %}active fw-bold{% endif %}" href="{% url 'materials:list' %}">
-                <i class="fas fa-link fa-fw me-1 d-lg-none"></i> Materials
-              </a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link {% if 'lms' in request.path %}active fw-bold{% endif %}" href="{% url 'lms:lms_home' %}">
-                <i class="fas fa-book fa-fw me-1 d-lg-none"></i> Learning
-              </a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link {% if 'jobs' in request.path %}active fw-bold{% endif %}" href="{% url 'jobs:job_list' %}">
-                <i class="fas fa-briefcase fa-fw me-1 d-lg-none"></i> Jobs
-              </a>
-            </li>
-          </ul>
-          <!-- Search Form - Enhanced Design -->
-          <form class="d-flex me-2 mb-2 mb-lg-0 navbar-search-form" method="get" action="{% url 'search' %}">
-            <div class="input-group">
-              <input class="form-control border-end-0 navbar-search-input" name="q" type="search" placeholder="Search products, courses, blogs..." aria-label="Search">
-              <button class="btn btn-light border-start-0" type="submit">
-                <i class="fas fa-search"></i>
+        <div class="cs-v2-nav-actions d-flex align-items-center gap-2">
+          {% if user.is_authenticated %}
+            <div class="dropdown">
+              <button class="btn cs-v2-account-btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                <span class="cs-v2-avatar"><i class="fas fa-user"></i></span>
+                <span class="d-none d-xl-inline">{{ request.user.username|truncatechars:18 }}</span>
               </button>
+              <ul class="dropdown-menu dropdown-menu-end cs-v2-account-menu">
+                <li><h6 class="dropdown-header">My ChuoSmart</h6></li>
+                <li><a class="dropdown-item" href="{% url 'user_dashboard' %}"><i class="fas fa-chart-pie fa-fw me-2"></i>Dashboard</a></li>
+                <li><a class="dropdown-item" href="{% url 'lms:lms_home' %}"><i class="fas fa-graduation-cap fa-fw me-2"></i>Learning</a></li>
+                <li><a class="dropdown-item" href="{% url 'jobs:job_list' %}"><i class="fas fa-briefcase fa-fw me-2"></i>Jobs</a></li>
+                <li><a class="dropdown-item" href="{% url 'marketplace' %}"><i class="fas fa-store fa-fw me-2"></i>Marketplace</a></li>
+                <li><a class="dropdown-item" href="{% url 'profile' %}"><i class="fas fa-user-circle fa-fw me-2"></i>Profile</a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item" href="{% url 'logout' %}"><i class="fas fa-sign-out-alt fa-fw me-2"></i>Logout</a></li>
+              </ul>
             </div>
-          </form>
-          <!-- User Actions -->
-          <ul class="navbar-nav">
-            {% if user.is_authenticated %}
-              <!-- Cart with Badge -->
-              <li class="nav-item me-2">
-                <a href="{% url 'carts' %}" class="nav-link position-relative">
-                  <i class="fas fa-shopping-cart fa-fw"></i>
-                  <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="cart-count">
-                    {{ cart_count }}
-                    <span class="visually-hidden">items in cart</span>
-                  </span>
-                </a>
-              </li>
-              <!-- Add Content Dropdown -->
-              <li class="nav-item dropdown me-2">
-                <a class="nav-link dropdown-toggle" href="#" id="addDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                  <i class="fas fa-plus-circle fa-fw"></i> Create
-                </a>
-                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="addDropdown">
-                  <li><a class="dropdown-item" href="{% url 'add_product' %}"><i class="fas fa-box fa-fw me-2"></i> Product</a></li>
-                  <li><a class="dropdown-item" href="{% url 'add_blog' %}"><i class="fas fa-blog fa-fw me-2"></i> Blog Post</a></li>
-                  <li><a class="dropdown-item" href="{% url 'materials:create' %}"><i class="fas fa-link fa-fw me-2"></i> Material</a></li>
-                  <li><a class="dropdown-item" href="{% url 'jobs:create_job' %}"><i class="fas fa-briefcase fa-fw me-2"></i> Job</a></li>
-                </ul>
-              </li>
-              <!-- User Profile Dropdown -->
-              <li class="nav-item dropdown">
-                <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                  <span class="d-none d-lg-inline me-2">{{ request.user.username }}</span>
-                  <i class="fas fa-user-circle fa-fw"></i>
-                </a>
-                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
-                  <li><h6 class="dropdown-header">Welcome, {{ request.user.username }}</h6></li>
-                  <li><hr class="dropdown-divider"></li>
-                  <li><a class="dropdown-item" href="{% url 'user_dashboard' %}"><i class="fas fa-th-large fa-fw me-2"></i> Dashboard</a></li>
-                  <li><a class="dropdown-item" href="{% url 'profile' %}"><i class="fas fa-user fa-fw me-2"></i> Profile</a></li>
-                  <li><a class="dropdown-item" href="{% url 'orders' %}"><i class="fas fa-shopping-bag fa-fw me-2"></i> Orders</a></li>
-                  <li><a class="dropdown-item" href="{% url 'account_deletion_request_chuosmart' %}"><i class="fas fa-user-shield fa-fw me-2"></i> Delete ChuoSmart Data</a></li>
-                  <li><a class="dropdown-item" href="{% url 'account_deletion_request_potea_pata' %}"><i class="fas fa-user-lock fa-fw me-2"></i> Delete Potea Pata Data</a></li>
-                  <li><hr class="dropdown-divider"></li>
-                  <li><a class="dropdown-item" href="{% url 'logout' %}"><i class="fas fa-sign-out-alt fa-fw me-2"></i> Logout</a></li>
-                </ul>
-              </li>
-            {% else %}
-              <!-- Login/Register Links -->
-              <li class="nav-item">
-                <a href="{% url 'login' %}" class="nav-link"><i class="fas fa-sign-in-alt fa-fw me-1"></i> Login</a>
-              </li>
-              <li class="nav-item ms-1">
-                <a href="{% url 'customerregistration' %}" class="btn btn-outline-light">Register</a>
-              </li>
-              <li class="nav-item ms-2">
-                <a href="{% url 'account_deletion_request_chuosmart' %}" class="nav-link">Delete Data</a>
-              </li>
-            {% endif %}
-          </ul>
+          {% else %}
+            <a href="{% url 'login' %}" class="btn cs-v2-login-btn">Login</a>
+          {% endif %}
+          <a href="{% url 'contact' %}?topic=business" class="btn cs-v2-primary-btn cs-v2-nav-cta">Contact Sales <i class="fas fa-arrow-right ms-1"></i></a>
         </div>
       </div>
-    </nav>
-    <!-- Certificate notice banner -->
-    <div id="cs-cert-banner" class="cs-cert-banner">
-      <div class="cs-cert-banner-inner">
-        <div class="cs-cert-banner-icon">
-          <i class="fas fa-info-circle"></i>
+    </div>
+  </nav>
+
+  {% if certificate_notice_active %}
+  <div id="cs-cert-banner" class="cs-v2-system-banner" role="status">
+    <div class="container cs-v2-system-banner-inner">
+      <i class="fas fa-info-circle"></i>
+      <span><strong>Certificate notice:</strong> Eligible certificate downloads are being finalized.</span>
+      <button type="button" onclick="dismissCertBanner()" aria-label="Dismiss certificate notice"><i class="fas fa-times"></i></button>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if certificate_available_announcement %}
+  <div id="cs-cert-available-banner" class="cs-v2-system-banner cs-v2-system-banner-success" role="status">
+    <div class="container cs-v2-system-banner-inner">
+      <i class="fas fa-award"></i>
+      <span><strong>Certificates are available:</strong> Complete eligible courses and download your credential from ChuoSmart.</span>
+      <button type="button" onclick="dismissCertAvailableBanner()" aria-label="Dismiss certificate announcement"><i class="fas fa-times"></i></button>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if messages %}
+  <div class="container cs-v2-message-stack" aria-live="polite">
+    {% for message in messages %}
+      <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
+        {{ message|sanitize }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <main id="main-content" class="content flex-grow-1">
+    {% block banner_slider %}{% endblock banner_slider %}
+    {% block livesale %}{% endblock livesale %}
+    {% block main-content %}{% endblock main-content %}
+  </main>
+
+  <footer class="cs-v2-footer mt-auto">
+    <div class="container">
+      <div class="cs-v2-footer-cta">
+        <div>
+          <span class="cs-v2-eyebrow">ChuoSmart for Business</span>
+          <h2>Build a workforce ready for the AI era.</h2>
+          <p>Assess capability, train by role, apply skills to real work, and measure the outcome.</p>
         </div>
-        <div class="cs-cert-banner-text">
-          <strong>Certificate Downloads Notice:</strong>
-          Certificate downloads are being finalized and will be available from <strong>24 June 2026</strong>.
-          If you have completed your course and passed successfully, your certificate will be ready for download once the certificate release is opened.
-          Thank you for your patience and for learning with ChuoSmart.
+        <a class="btn cs-v2-light-btn" href="{% url 'contact' %}?topic=business">Talk to our team <i class="fas fa-arrow-right ms-2"></i></a>
+      </div>
+
+      <div class="row gy-4 cs-v2-footer-main">
+        <div class="col-lg-4">
+          <a class="cs-v2-footer-brand" href="{% url 'home' %}">
+            <img src="{% static 'app/images/logo.png' %}" alt="" width="40" height="40">
+            <span><strong>ChuoSmart</strong><small>Skills for a Smarter Africa</small></span>
+          </a>
+          <p class="cs-v2-footer-copy">Practical learning, career opportunity and workforce transformation built for Africa.</p>
+          <div class="cs-v2-socials">
+            <a href="https://linkedin.com/company/chuosmart" target="_blank" rel="noopener" aria-label="ChuoSmart on LinkedIn"><i class="fab fa-linkedin-in"></i></a>
+            <a href="https://instagram.com/chuosmart" target="_blank" rel="noopener" aria-label="ChuoSmart on Instagram"><i class="fab fa-instagram"></i></a>
+            <a href="https://twitter.com/chuosmart" target="_blank" rel="noopener" aria-label="ChuoSmart on X"><i class="fab fa-twitter"></i></a>
+          </div>
         </div>
-        <button type="button" class="cs-cert-banner-close" onclick="dismissCertBanner()" aria-label="Dismiss notice">
-          <i class="fas fa-times"></i>
-        </button>
+        <div class="col-6 col-lg-2">
+          <h3>For Business</h3>
+          <a href="{% url 'for_business' %}">Overview</a>
+          <a href="{% url 'ai_workforce_accelerator' %}">AI Accelerator</a>
+          <a href="{% url 'for_business' %}#solutions">Solutions</a>
+          <a href="{% url 'contact' %}?topic=business">Contact Sales</a>
+        </div>
+        <div class="col-6 col-lg-2">
+          <h3>Individuals</h3>
+          <a href="{% url 'lms:course_list' %}">Courses</a>
+          <a href="{% url 'jobs:job_list' %}">Jobs</a>
+          <a href="{% url 'materials:list' %}">Materials</a>
+          <a href="{% url 'marketplace' %}">Marketplace</a>
+        </div>
+        <div class="col-6 col-lg-2">
+          <h3>Company</h3>
+          <a href="{% url 'about' %}">About</a>
+          <a href="{% url 'blog_list' %}">Insights</a>
+          <a href="{% url 'contact' %}">Contact</a>
+          <a href="{% url 'help_center' %}">Help Center</a>
+        </div>
+        <div class="col-6 col-lg-2">
+          <h3>Legal</h3>
+          <a href="{% url 'privacy' %}">Privacy</a>
+          <a href="{% url 'terms' %}">Terms</a>
+          <a href="{% url 'account_deletion_request_chuosmart' %}">Data controls</a>
+        </div>
+      </div>
+      <div class="cs-v2-footer-bottom">
+        <span>&copy; {% now "Y" %} ChuoSmart. All rights reserved.</span>
+        <span>Built in Tanzania. Designed for ambitious teams and learners.</span>
       </div>
     </div>
-    <!-- Certificate downloads live announcement (shows for 48 hours) -->
-    <div id="cs-cert-available-banner" class="cs-cert-available-banner">
-      <div class="cs-cert-banner-inner">
-        <div class="cs-cert-banner-icon" style="background:rgba(255,255,255,0.2);color:#fff;">
-          <i class="fas fa-award"></i>
-        </div>
-        <div class="cs-cert-banner-text">
-          <strong style="color:#fff;">Certificate Downloads Now Available!</strong>
-          You can now download your official certificate for any course you have completed successfully.
-          Head to your dashboard or course page to view and download your certificates.
-          Thank you for learning with ChuoSmart!
-        </div>
-        <button type="button" class="cs-cert-banner-close" onclick="dismissCertAvailableBanner()" aria-label="Dismiss">
-          <i class="fas fa-times"></i>
-        </button>
-      </div>
-    </div>
-    <style>
-      .cs-cert-banner {
-        display: none;
-        background: linear-gradient(135deg, #0F4C5C 0%, #1E6F5C 100%);
-        border-bottom: 3px solid #F5C148;
-        padding: 0;
-        position: relative;
-        z-index: 1020;
-      }
-      .cs-cert-banner-inner {
-        max-width: 1320px;
-        margin: 0 auto;
-        padding: 12px 16px;
-        display: flex;
-        align-items: center;
-        gap: 12px;
-      }
-      .cs-cert-banner-icon {
-        flex: 0 0 36px;
-        width: 36px;
-        height: 36px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: rgba(245, 193, 72, 0.2);
-        color: #F5C148;
-        font-size: 16px;
-      }
-      .cs-cert-banner-text {
-        flex: 1;
-        font-size: 14px;
-        line-height: 1.5;
-        color: rgba(255, 255, 255, 0.92);
-      }
-      .cs-cert-banner-text strong {
-        color: #F5C148;
-      }
-      .cs-cert-banner-close {
-        flex: 0 0 32px;
-        width: 32px;
-        height: 32px;
-        border-radius: 8px;
-        border: none;
-        background: rgba(255, 255, 255, 0.12);
-        color: rgba(255, 255, 255, 0.7);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        font-size: 15px;
-        transition: background 0.15s ease, color 0.15s ease;
-        padding: 0;
-      }
-      .cs-cert-banner-close:hover {
-        background: rgba(255, 255, 255, 0.22);
-        color: #fff;
-      }
-      .cs-cert-available-banner {
-        display: none;
-        background: linear-gradient(135deg, #0d6efd 0%, #1FAA59 100%);
-        border-bottom: 3px solid #F5C148;
-        padding: 0;
-        position: relative;
-        z-index: 1020;
-      }
-      @media (max-width: 767.98px) {
-        .cs-cert-banner-inner {
-          padding: 10px 12px;
-          gap: 10px;
-        }
-        .cs-cert-banner-icon {
-          flex: 0 0 28px;
-          width: 28px;
-          height: 28px;
-          font-size: 13px;
-        }
-        .cs-cert-banner-text {
-          font-size: 13px;
-        }
-      }
-      @media (max-width: 575.98px) {
-        .cs-cert-banner-text {
-          font-size: 12px;
-        }
-        .cs-cert-banner-inner {
-          flex-wrap: wrap;
-        }
-        .cs-cert-banner-close {
-          position: absolute;
-          top: 6px;
-          right: 6px;
-        }
-        .cs-cert-banner-inner {
-          padding-top: 14px;
-          padding-bottom: 10px;
-        }
-      }
-    </style>
-    <script>
-      (function() {
-        var active = {{ certificate_notice_active|lower }};
-        var dismissed = localStorage.getItem('csCertNoticeDismissed');
-        if (active && !dismissed) {
-          document.getElementById('cs-cert-banner').style.display = 'block';
-        }
-      })();
-      function dismissCertBanner() {
-        document.getElementById('cs-cert-banner').style.display = 'none';
-        localStorage.setItem('csCertNoticeDismissed', '1');
-      }
-      (function() {
-        var avail = {{ certificate_available_announcement|lower }};
-        var dismissed = localStorage.getItem('csCertAvailableDismissed');
-        if (avail && !dismissed) {
-          document.getElementById('cs-cert-available-banner').style.display = 'block';
-        }
-      })();
-      function dismissCertAvailableBanner() {
-        document.getElementById('cs-cert-available-banner').style.display = 'none';
-        localStorage.setItem('csCertAvailableDismissed', '1');
-      }
-    </script>
-    <!-- Message container for standard messages -->
-    <div class="container mt-3">
-      {% if messages %}
-        <div id="message-container">
-          {% for message in messages %}
-            <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
-              {{ message|sanitize }}
-              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-          {% endfor %}
-        </div>
-      {% endif %}
-    </div>
-    
-    <div class="content flex-grow-1">
-      {% block banner_slider %} {% endblock banner_slider %}
-      {% block livesale %} {% endblock livesale %}
-      {% block main-content %} {% endblock main-content %}
-    </div>
-    <!-- Start Footer -->
-    <footer class="footer container-fluid bg-dark text-white p-4 mt-5">
-        <div class="container">
-            <div class="row">
-                <div class="col-md-4 mb-3">
-                    <h5 class="mb-3">ChuoSmart</h5>
-                    <p class="small">Tanzania's first platform to combine online education and digital commerce into a single, impactful ecosystem.</p>
-                </div>
-                <div class="col-md-2 mb-3">
-                    <h5 class="mb-3">Company</h5>
-                    <ul class="list-unstyled">
-                        <li><a href="{% url 'about' %}" class="text-white text-decoration-none small">About Us</a></li>
-                        <li><a href="{% url 'contact' %}" class="text-white text-decoration-none small">Contact Us</a></li>
-                        <li><a href="{% url 'blog_list' %}" class="text-white text-decoration-none small">Blog</a></li>
-                    </ul>
-                </div>
-                <div class="col-md-2 mb-3">
-                    <h5 class="mb-3">Support</h5>
-                    <ul class="list-unstyled">
-                        <li><a href="{% url 'help_center' %}" class="text-white text-decoration-none small">Help Center</a></li>
-                        <li><a href="{% url 'privacy' %}" class="text-white text-decoration-none small">Privacy Policy</a></li>
-                        <li><a href="{% url 'terms' %}" class="text-white text-decoration-none small">Terms of Service</a></li>
-                    </ul>
-                </div>
-                <div class="col-md-4 mb-3">
-                    <h5 class="mb-3">Connect with Us</h5>
-                    <div class="d-flex gap-3 mb-3">
-                        <a href="https://instagram.com/chuosmart" target="_blank" class="text-white">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="currentColor" class="bi bi-instagram" viewBox="0 0 16 16">
-                                <path d="M8 0C5.829 0 5.556.01 4.703.048 3.85.088 3.269.222 2.76.42a3.917 3.917 0 0 0-1.417.923A3.927 3.927 0 0 0 .42 2.76C.222 3.268.087 3.85.048 4.7.01 5.555 0 5.827 0 8.001c0 2.172.01 2.444.048 3.297.04.852.174 1.433.372 1.942.205.526.478.972.923 1.417.444.445.89.719 1.416.923.51.198 1.09.333 1.942.372C5.555 15.99 5.827 16 8 16s2.444-.01 3.298-.048c.851-.04 1.434-.174 1.943-.372a3.916 3.916 0 0 0 1.416-.923c.445-.445.718-.891.923-1.417.197-.509.332-1.09.372-1.942C15.99 10.445 16 10.173 16 8s-.01-2.445-.048-3.299c-.04-.851-.175-1.433-.372-1.941a3.926 3.926 0 0 0-.923-1.417A3.911 3.911 0 0 0 13.24.42c-.51-.198-1.092-.333-1.943-.372C10.443.01 10.172 0 7.998 0h.003zm-.717 1.442h.718c2.136 0 2.389.007 3.232.046.78.035 1.204.166 1.486.275.373.145.64.319.92.599.28.28.453.546.598.92.11.281.24.705.275 1.485.039.843.047 1.096.047 3.231s-.008 2.389-.047 3.232c-.035.78-.166 1.203-.275 1.485a2.47 2.47 0 0 1-.599.919c-.28.28-.546.453-.92.598-.28.11-.704.24-1.485.276-.843.038-1.096.047-3.232.047s-2.39-.009-3.233-.047c-.78-.036-1.203-.166-1.485-.276a2.478 2.478 0 0 1-.92-.598 2.48 2.48 0 0 1-.6-.92c-.109-.281-.24-.705-.275-1.485-.038-.843-.046-1.096-.046-3.233 0-2.136.008-2.388.046-3.231.036-.78.166-1.204.276-1.486.145-.373.319-.64.599-.92.28-.28.546-.453.92-.598.282-.11.705-.24 1.485-.276.738-.034 1.024-.044 2.515-.045v.002zm4.988 1.328a.96.96 0 1 0 0 1.92.96.96 0 0 0 0-1.92zm-4.27 1.122a4.109 4.109 0 1 0 0 8.217 4.109 4.109 0 0 0 0-8.217zm0 1.441a2.667 2.667 0 1 1 0 5.334 2.667 2.667 0 0 1 0-5.334z"/>
-                            </svg>
-                        </a>
-                        <a href="https://linkedin.com/company/chuosmart" target="_blank" class="text-white">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="currentColor" class="bi bi-linkedin" viewBox="0 0 16 16">
-                                <path d="M0 1.146C0 .513.526 0 1.175 0h13.65C15.474 0 16 .513 16 1.146v13.708c0 .633-.526 1.146-1.175 1.146H1.175C.526 16 0 15.487 0 14.854V1.146zm4.943 12.248V6.169H2.542v7.225h2.401zm-1.2-8.212c.837 0 1.358-.554 1.358-1.248-.015-.709-.52-1.248-1.342-1.248-.822 0-1.359.54-1.359 1.248 0 .694.521 1.248 1.327 1.248h.016zm4.908 8.212V9.359c0-.216.016-.432.08-.586.173-.431.568-.878 1.232-.878.869 0 1.216.662 1.216 1.634v3.865h2.401V9.25c0-2.22-1.184-3.252-2.764-3.252-1.274 0-1.845.7-2.165 1.193v.025h-.016a5.54 5.54 0 0 1 .016-.025V6.169h-2.4c.03.678 0 7.225 0 7.225h2.4z"/>
-                            </svg>
-                        </a>
-                        <a href="https://twitter.com/chuosmart" target="_blank" class="text-white">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="currentColor" class="bi bi-twitter" viewBox="0 0 16 16">
-                                <path d="M5.026 15c6.038 0 9.341-5.003 9.341-9.334 0-.14 0-.282-.006-.422A6.685 6.685 0 0 0 16 3.542a6.658 6.658 0 0 1-1.889.518 3.301 3.301 0 0 0 1.447-1.817 6.533 6.533 0 0 1-2.087.793A3.286 3.286 0 0 0 7.875 6.03a9.325 9.325 0 0 1-6.767-3.429 3.289 3.289 0 0 0 1.018 4.382A3.323 3.323 0 0 1 .64 6.575v.045a3.288 3.288 0 0 0 2.632 3.218 3.203 3.203 0 0 1-.865.115 3.23 3.23 0 0 1-.614-.057 3.283 3.283 0 0 0 3.067 2.277A6.588 6.588 0 0 1 .78 13.58a6.32 6.32 0 0 1-.78-.045A9.344 9.344 0 0 0 5.026 15z"/>
-                            </svg>
-                        </a>
-                    </div>
-                </div>
-            </div>
-            <hr class="my-3">
-            <div class="text-center">
-                <small>Copyright &copy; {% now "Y" %} ChuoSmart. All rights reserved.</small>
-            </div>
-        </div>
-    </footer> <!-- End Footer -->
+  </footer>
 
-    
-    <!-- Mobile Bottom Navigation -->
-    <div class="mobile-bottom-nav">
-      <a href="/" class="mobile-nav-item active">
-        <i class="fas fa-graduation-cap"></i>
-        <span>Home</span>
-      </a>
-      <a href="{% url 'marketplace' %}" class="mobile-nav-item">
-        <i class="fas fa-store"></i>
-        <span>Shop</span>
-      </a>
-      <a href="{% url 'blog_list' %}" class="mobile-nav-item">
-        <i class="fas fa-newspaper"></i>
-        <span>Blog</span>
-      </a>
-      <a href="{% url 'jobs:job_list' %}" class="mobile-nav-item">
-        <i class="fas fa-briefcase"></i>
-        <span>Jobs</span>
-      </a>
-      <a href="{% url 'carts' %}" class="mobile-nav-item">
-        <i class="fas fa-shopping-cart"></i>
-        <span>Cart <span class="badge bg-danger cart-badge" id="mobile-cart-count">{{ cart_count }}</span></span>
-      </a>
-      <a href="#" class="mobile-nav-item" id="mobile-search-toggle">
-        <i class="fas fa-search"></i>
-        <span>Search</span>
-      </a>
-    </div>
-    
-    <!-- Mobile Search Overlay -->
-    <div id="mobile-search-overlay" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0,0,0,0.9); z-index: 1001; padding: 20px;">
-      <button id="close-search" style="position: absolute; top: 20px; right: 20px; background: transparent; border: none; color: white; font-size: 20px;"><i class="fas fa-times"></i></button>
-      <form class="mobile-search-form" method="get" action="{% url 'search' %}">
-        <input class="form-control me-2" name="q" type="search" placeholder="Search products, courses, blogs..." aria-label="Search">
-        <button class="btn btn-warning" type="submit">Search</button>
-      </form>
-    </div>
+  {% if not premium_surface %}
+  <div class="mobile-bottom-nav cs-v2-mobile-bottom-nav" aria-label="Mobile shortcuts">
+    <a href="{% url 'home' %}" class="mobile-nav-item{% if request.path == '/' %} active{% endif %}"><i class="fas fa-home"></i><span>Home</span></a>
+    <a href="{% url 'lms:lms_home' %}" class="mobile-nav-item{% if '/lms/' in request.path %} active{% endif %}"><i class="fas fa-graduation-cap"></i><span>Learn</span></a>
+    <a href="{% url 'jobs:job_list' %}" class="mobile-nav-item{% if '/jobs/' in request.path %} active{% endif %}"><i class="fas fa-briefcase"></i><span>Jobs</span></a>
+    <a href="{% url 'marketplace' %}" class="mobile-nav-item{% if '/marketplace/' in request.path %} active{% endif %}"><i class="fas fa-store"></i><span>Shop</span></a>
+    {% if user.is_authenticated %}
+      <a href="{% url 'profile' %}" class="mobile-nav-item{% if '/profile/' in request.path %} active{% endif %}"><i class="fas fa-user"></i><span>Profile</span></a>
+    {% else %}
+      <a href="{% url 'login' %}" class="mobile-nav-item"><i class="fas fa-user"></i><span>Login</span></a>
+    {% endif %}
+  </div>
+  {% endif %}
 
-    <!-- Jquery -->
-    <script src="https://code.jquery.com/jquery-3.5.1.min.js" integrity="sha256-9/aliU8dGd2tb6OSsuzixeV4y/faTqgFtohetphbbj0=" crossorigin="anonymous"></script>
-    <!-- Bootstrap Bundle with Popper -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
+  <script src="https://code.jquery.com/jquery-3.5.1.min.js" integrity="sha256-9/aliU8dGd2tb6OSsuzixeV4y/faTqgFtohetphbbj0=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/OwlCarousel2/2.3.4/owl.carousel.min.js"></script>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/OwlCarousel2/2.3.4/owl.carousel.min.js"></script>
-
-    <!-- Pass Django template variables to JavaScript -->
-    <script id="csrf-token-global" type="application/json">"{{ csrf_token|escapejs }}"</script>
-    <script>
-      window.CSRF_TOKEN = JSON.parse(document.getElementById('csrf-token-global').textContent);
-    </script>
-
-    <!-- Password visibility toggle -->
-    <script>
+  <script id="csrf-token-global" type="application/json">"{{ csrf_token|escapejs }}"</script>
+  <script>window.CSRF_TOKEN = JSON.parse(document.getElementById('csrf-token-global').textContent);</script>
+  <script>
     function togglePasswordVisibility(inputId, iconId) {
-        var input = document.getElementById(inputId);
-        var icon = document.getElementById(iconId);
-        if (input.type === 'password') {
-            input.type = 'text';
-            icon.className = 'fas fa-eye-slash';
-        } else {
-            input.type = 'password';
-            icon.className = 'fas fa-eye';
-        }
+      const input = document.getElementById(inputId);
+      const icon = document.getElementById(iconId);
+      if (!input || !icon) return;
+      if (input.type === 'password') { input.type = 'text'; icon.className = 'fas fa-eye-slash'; }
+      else { input.type = 'password'; icon.className = 'fas fa-eye'; }
     }
-    </script>
+    function dismissCertBanner() {
+      const el = document.getElementById('cs-cert-banner');
+      if (el) el.style.display = 'none';
+      try { localStorage.setItem('csCertNoticeDismissed', '1'); } catch (e) {}
+    }
+    function dismissCertAvailableBanner() {
+      const el = document.getElementById('cs-cert-available-banner');
+      if (el) el.style.display = 'none';
+      try { localStorage.setItem('csCertAvailableDismissed', '1'); } catch (e) {}
+    }
+    (function () {
+      try {
+        if (localStorage.getItem('csCertNoticeDismissed')) {
+          const el = document.getElementById('cs-cert-banner'); if (el) el.style.display = 'none';
+        }
+        if (localStorage.getItem('csCertAvailableDismissed')) {
+          const el = document.getElementById('cs-cert-available-banner'); if (el) el.style.display = 'none';
+        }
+      } catch (e) {}
+    })();
+  </script>
+  <script src="{% static 'app/js/myscript.js' %}"></script>
+  <script src="{% static 'app/js/base.js' %}"></script>
+  <script src="{% static 'chuosmart_v2/js/site.js' %}"></script>
+  {% block extra_scripts %}{% endblock extra_scripts %}
+  {% block postloadjs %}{% endblock postloadjs %}
 
-    <!-- Site-specific JS -->
-    <script src="{% static 'app/js/myscript.js' %}"></script>
-    <!-- Base JS (cart count, mobile nav, etc.) -->
-    <script src="{% static 'app/js/base.js' %}"></script>
-    {% block extra_scripts %}{% endblock extra_scripts %}
-    
-    {% if user.is_authenticated %}
-    <!-- Session keep-alive script for logged-in users -->
-    <!-- Session keep-alive is handled by the LMS endpoint via app JS; no static file needed here. -->
-    {% endif %}
-
-    {% block postloadjs %}
-    <!-- Custom JavaScript that can be overridden by child templates -->
-    {% endblock postloadjs %}
-
-    {% if user.is_authenticated %}
-    <div id="notification-permission" style="display:none;">
-      <div class="notification-card">
-        <div class="notification-header">
-          <div class="d-flex align-items-center gap-2">
-            <img src="{% static 'app/images/logo.png' %}" alt="ChuoSmart" style="height: 24px;">
-            <strong>ChuoSmart Notifications</strong>
-          </div>
-          <button type="button" class="btn-close" onclick="document.getElementById('notification-permission').style.display='none'" aria-label="Close"></button>
-        </div>
-        <div class="notification-body">
-          <p class="mb-3">Stay updated with the latest products, courses, and messages by enabling notifications.</p>
-          <div class="notification-actions">
-            <button onclick="document.getElementById('notification-permission').style.display='none'" class="btn btn-outline-secondary">Later</button>
-            {% webpush_button with_class="btn btn-primary" %}
-          </div>
-        </div>
+  {% if user.is_authenticated %}
+  <div id="notification-permission" style="display:none;">
+    <div class="notification-card">
+      <div class="notification-header">
+        <div class="d-flex align-items-center gap-2"><img src="{% static 'app/images/logo.png' %}" alt="ChuoSmart" style="height:24px;"><strong>ChuoSmart Notifications</strong></div>
+        <button type="button" class="btn-close" onclick="document.getElementById('notification-permission').style.display='none'" aria-label="Close"></button>
+      </div>
+      <div class="notification-body">
+        <p class="mb-3">Stay updated with learning, opportunities and important account activity.</p>
+        <div class="notification-actions"><button onclick="document.getElementById('notification-permission').style.display='none'" class="btn btn-outline-secondary">Later</button>{% webpush_button with_class="btn btn-primary" %}</div>
       </div>
     </div>
-    {% endif %}
-    
-  </body>
+  </div>
+  {% endif %}
+</body>
 </html>

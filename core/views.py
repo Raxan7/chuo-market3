@@ -198,20 +198,35 @@ def home(request):
         'home_page_json_ld': {
             '@context': 'https://schema.org',
             '@type': 'WebPage',
-            'name': 'View Courses for Students in Tanzania',
+            'name': 'ChuoSmart — Skills, careers and AI workforce transformation',
             'description': (
-                'View free and paid courses for students in Tanzania. '
-                'Learn in weeks, access online lessons, and start your next course.'
+                'Build practical skills, discover career opportunities, and help organizations '
+                'develop measurable AI workforce capability.'
             ),
             'inLanguage': 'en',
             'about': [
-                'Online courses',
-                'Student learning',
-                'Education in Tanzania',
+                'AI workforce transformation',
+                'Professional learning',
+                'Career opportunities in Tanzania',
             ],
         },
     }
     return render(request, 'app/home.html', context)
+
+
+def for_business(request):
+    """Public enterprise landing page.
+
+    This surface is intentionally model-light so it remains available even when
+    the enterprise cohort application is deployed independently.
+    """
+    return render(request, 'app/for_business.html')
+
+
+def ai_workforce_accelerator(request):
+    """Public overview of ChuoSmart's flagship enterprise AI program."""
+    return render(request, 'app/ai_workforce_accelerator.html')
+
 
 def marketplace(request):
     """Marketplace page showing all products"""

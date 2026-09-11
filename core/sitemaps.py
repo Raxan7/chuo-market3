@@ -73,7 +73,7 @@ class StaticViewSitemap(ChuoSmartSitemap):
     changefreq = 'monthly'
 
     def items(self):
-        return ['home', 'about', 'contact', 'privacy', 'terms']
+        return ['home', 'for_business', 'ai_workforce_accelerator', 'about', 'contact', 'privacy', 'terms']
 
     def location(self, item):
         return reverse(item)

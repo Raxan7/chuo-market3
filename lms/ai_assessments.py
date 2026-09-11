@@ -74,26 +74,24 @@ def collect_module_learning_context(module, student=None):
 
 
 def _get_existing_assessment_quiz(module, student=None):
-    """
-    Always return the shared non-personalized quiz for this module.
-    The student argument is accepted only for backward compatibility.
-    """
-    return Quiz.objects.filter(
-        module=module,
-        generated_for__isnull=True,
-        draft=False,
-    ).order_by('id').first()
+    """Return the active assessment quiz for this module/student scope."""
+    qs = Quiz.objects.filter(module=module, draft=False)
+    if student is None:
+        qs = qs.filter(generated_for__isnull=True)
+    else:
+        qs = qs.filter(generated_for=student)
+    return qs.order_by('id').first()
 
 
 def _create_assessment_quiz(module, student=None):
-    """Create a shared quiz shell."""
+    """Create an assessment shell, personalized when a learner is supplied."""
     return Quiz.objects.create(
         course=module.course,
         module=module,
-        generated_for=None,
+        generated_for=student,
         title=f"{module.title} Mastery Check",
         description=(
-            "AI-generated assessment based on this module's content. "
+            "Assessment based on this module's content. "
             "Score 70% or higher to unlock the next module."
         ),
         category='practice',
@@ -108,19 +106,18 @@ def _create_assessment_quiz(module, student=None):
 
 
 def _get_or_create_assessment_quiz(module, student=None):
-    """
-    Get or create one shared quiz per module.
-    Also archives duplicate shared quizzes because MariaDB may not enforce partial unique constraints.
-    """
-    existing = _get_existing_assessment_quiz(module)
+    """Get/create one active assessment per module and learner scope."""
+    existing = _get_existing_assessment_quiz(module, student=student)
+    scope = Quiz.objects.filter(module=module, draft=False)
+    if student is None:
+        scope = scope.filter(generated_for__isnull=True)
+    else:
+        scope = scope.filter(generated_for=student)
+
     if existing:
-        Quiz.objects.filter(
-            module=module,
-            generated_for__isnull=True,
-            draft=False,
-        ).exclude(pk=existing.pk).update(
+        scope.exclude(pk=existing.pk).update(
             draft=True,
-            generation_message='Archived duplicate shared AI quiz.',
+            generation_message='Archived duplicate assessment quiz.',
         )
         return existing, False
 
@@ -128,7 +125,7 @@ def _get_or_create_assessment_quiz(module, student=None):
         'course': module.course,
         'title': f"{module.title} Mastery Check",
         'description': (
-            "AI-generated assessment based on this module's content. "
+            "Assessment based on this module's content. "
             "Score 70% or higher to unlock the next module."
         ),
         'category': 'practice',
@@ -143,30 +140,28 @@ def _get_or_create_assessment_quiz(module, student=None):
     try:
         quiz, created = Quiz.objects.get_or_create(
             module=module,
-            generated_for=None,
+            generated_for=student,
             draft=False,
             defaults=defaults,
         )
     except IntegrityError:
-        quiz = _get_existing_assessment_quiz(module)
+        quiz = _get_existing_assessment_quiz(module, student=student)
         if quiz is None:
             raise
         created = False
 
-    Quiz.objects.filter(
-        module=module,
-        generated_for__isnull=True,
-        draft=False,
-    ).exclude(pk=quiz.pk).update(
+    scope.exclude(pk=quiz.pk).update(
         draft=True,
-        generation_message='Archived duplicate shared AI quiz.',
+        generation_message='Archived duplicate assessment quiz.',
     )
 
     if created:
-        _log_assessment_event(f"Created shared AI quiz shell for module {module.id}.")
+        scope_label = f'learner {student.id}' if student else 'shared'
+        _log_assessment_event(
+            f"Created {scope_label} AI quiz shell for module {module.id}."
+        )
 
     return quiz, created
-
 
 def _mark_quiz_generation_state(quiz, status, message=''):
     quiz.generation_status = status
@@ -529,7 +524,7 @@ def ensure_module_assessment(module, student=None, question_count=DEFAULT_QUESTI
         )
         return None
 
-    existing = _get_existing_assessment_quiz(module)
+    existing = _get_existing_assessment_quiz(module, student=student)
 
     if existing and existing.questions.exists() and not force and existing.generation_status == 'ready':
         logger.info(
@@ -588,6 +583,38 @@ def ensure_module_assessment(module, student=None, question_count=DEFAULT_QUESTI
         raise RuntimeError(str(msg))
 
     if status != 'success' or not raw_payload:
+        if not getattr(settings, 'CEREBRAS_STRICT_ASSESSMENTS', True):
+            from .management.commands.fallback_pending_quiz_jobs import build_fallback_questions
+
+            fallback_questions = build_fallback_questions(module)[:question_count]
+            with transaction.atomic():
+                existing.questions.all().delete()
+                for order, item in enumerate(fallback_questions, start=1):
+                    question = MCQuestion.objects.create(
+                        quiz=existing,
+                        content=item['question'],
+                        explanation=item['explanation'],
+                        order=order,
+                    )
+                    for choice_index, choice_text in enumerate(item['choices']):
+                        Choice.objects.create(
+                            question=question,
+                            content=choice_text,
+                            correct=choice_index == item['correct_index'],
+                        )
+            _mark_quiz_generation_state(
+                existing,
+                'ready',
+                'Fallback assessment is ready. AI generation can be retried later.',
+            )
+            existing.ai_generated = False
+            existing.save(update_fields=['ai_generated'])
+            logger.warning(
+                'Using deterministic fallback assessment module_id=%s student_id=%s status=%s',
+                module.id, getattr(student, 'id', None), status,
+            )
+            return existing
+
         error_message = (
             f"AI quiz generation failed for module {module.id} "
             f"with status '{status}': {msg}"
@@ -700,6 +727,18 @@ def queue_module_assessment_generation(module, student=None, question_count=DEFA
         )
         return None
 
+    # Development/offline safety: when strict AI assessments are disabled and
+    # no provider key is configured, build a deterministic assessment now.
+    # This keeps learning flows usable without external network calls.
+    if not getattr(settings, 'CEREBRAS_API_KEY', None) and not getattr(
+        settings, 'CEREBRAS_STRICT_ASSESSMENTS', True
+    ):
+        return ensure_module_assessment(
+            module, student=student, question_count=question_count, force=force
+        )
+
+    # The database-backed production queue currently generates one shared quiz
+    # per module. Personalized offline assessments above remain learner-scoped.
     quiz = _get_existing_assessment_quiz(module)
 
     if quiz and quiz.generation_status == 'ready' and quiz.questions.exists() and not force:

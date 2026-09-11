@@ -2566,7 +2566,7 @@ def snippe_webhook(request):
                 user = User.objects.filter(pk=user_id).first()
                 if not user:
                     return finish_event('rejected', 'Payment user no longer exists')
-                profile, _ = LMSProfile.objects.get_or_create(user=user, defaults={'role': 'student'})
+                profile, profile_created = LMSProfile.objects.get_or_create(user=user, defaults={'role': 'student'})
                 enrollment, created_enrollment = CourseEnrollment.objects.get_or_create(
                     student=profile,
                     course_id=course_id,
@@ -2584,8 +2584,8 @@ def snippe_webhook(request):
                 user = User.objects.filter(pk=user_id).first()
                 if not user:
                     return finish_event('rejected', 'Payment user no longer exists')
-                profile, _ = LMSProfile.objects.get_or_create(user=user, defaults={'role': 'student'})
-                access_request, _ = ModuleAccessRequest.objects.get_or_create(
+                profile, profile_created = LMSProfile.objects.get_or_create(user=user, defaults={'role': 'student'})
+                access_request, access_request_created = ModuleAccessRequest.objects.get_or_create(
                     student=profile,
                     module_id=module_id,
                     defaults={
@@ -3128,7 +3128,7 @@ def course_payment_init(request, slug):
         messages.warning(request, _("This is a free course and does not require payment."))
         return redirect('lms:course_detail', slug=course.slug)
 
-    profile, _ = LMSProfile.objects.get_or_create(user=request.user, defaults={'role': 'student'})
+    profile, profile_created = LMSProfile.objects.get_or_create(user=request.user, defaults={'role': 'student'})
     enrollment = CourseEnrollment.objects.filter(student=profile, course=course).first()
     if enrollment and enrollment.payment_status == 'approved':
         messages.info(request, _("You already have access to this course."))
@@ -3256,12 +3256,12 @@ def course_payment_init(request, slug):
 def course_payment_success(request, slug):
     """Return landing page after Snippe; webhook remains the source of truth."""
     course = get_object_or_404(Course, slug=slug)
-    profile, _ = LMSProfile.objects.get_or_create(user=request.user, defaults={'role': 'student'})
+    profile, profile_created = LMSProfile.objects.get_or_create(user=request.user, defaults={'role': 'student'})
 
     payment = CoursePayment.objects.filter(user=request.user, course=course).order_by('-created_at').first()
     enrollment = CourseEnrollment.objects.filter(student=profile, course=course).first()
     if payment and payment.status == 'completed' and (not enrollment or enrollment.payment_status != 'approved'):
-        enrollment, _ = CourseEnrollment.objects.get_or_create(student=profile, course=course)
+        enrollment, enrollment_created = CourseEnrollment.objects.get_or_create(student=profile, course=course)
         enrollment.payment_status = 'approved'
         enrollment.payment_date = timezone.now()
         enrollment.save(update_fields=['payment_status', 'payment_date'])
@@ -3373,7 +3373,7 @@ def module_payment_init(request, course_slug, module_id):
         messages.info(request, _("You already have access to this module."))
         return redirect('lms:course_detail', slug=course.slug)
 
-    profile, _ = LMSProfile.objects.get_or_create(user=request.user, defaults={'role': 'student'})
+    profile, profile_created = LMSProfile.objects.get_or_create(user=request.user, defaults={'role': 'student'})
     if not module.previous_module_accessible_for_request(profile):
         messages.error(request, _("Complete the previous module before unlocking this one."))
         return redirect('lms:course_detail', slug=course.slug)
@@ -3484,11 +3484,11 @@ def module_payment_success(request, course_slug, module_id):
     """Return landing page after module checkout while webhook confirms payment."""
     course = get_object_or_404(Course, slug=course_slug)
     module = get_object_or_404(CourseModule, id=module_id, course=course)
-    profile, _ = LMSProfile.objects.get_or_create(user=request.user, defaults={'role': 'student'})
+    profile, profile_created = LMSProfile.objects.get_or_create(user=request.user, defaults={'role': 'student'})
 
     payment = ModulePayment.objects.filter(user=request.user, module=module).order_by('-created_at').first()
     if payment and payment.status == 'completed':
-        access_request, _ = ModuleAccessRequest.objects.get_or_create(
+        access_request, access_request_created = ModuleAccessRequest.objects.get_or_create(
             student=profile,
             module=module,
             defaults={
