@@ -1085,3 +1085,326 @@ html[data-cs-theme] body.cs-v2-site button:focus-visible {
   outline: 3px solid var(--cs-cyan);
   outline-offset: 2px;
 }
+
+/* PATCH 19 — LMS COURSE DETAIL LAYOUT RHYTHM
+   ---------------------------------------------------------------
+   Purpose:
+   - Improve visual distribution on course pages.
+   - Give cards/alerts/modules breathing room.
+   - Preserve Patch 17 themes and Patch 18 contrast rules.
+   - Avoid touching payment/enrollment/application behavior.
+   --------------------------------------------------------------- */
+
+.cs-v2-course-detail {
+    --cs-course-space-xs: 0.5rem;
+    --cs-course-space-sm: 0.75rem;
+    --cs-course-space-md: 1rem;
+    --cs-course-space-lg: 1.5rem;
+    --cs-course-space-xl: 2rem;
+
+    margin-top: clamp(2rem, 5vw, 3.75rem) !important;
+    margin-bottom: clamp(3.25rem, 7vw, 6rem) !important;
+
+    padding-left: clamp(0.9rem, 3vw, 2rem);
+    padding-right: clamp(0.9rem, 3vw, 2rem);
+}
+
+.cs-v2-course-detail-row {
+    margin-left: 0;
+    margin-right: 0;
+}
+
+.cs-v2-course-detail-column {
+    width: 100%;
+    max-width: 940px;
+    padding-left: 0;
+    padding-right: 0;
+}
+
+/* --------------------------------------------------------------
+   Primary content cards
+   -------------------------------------------------------------- */
+
+.cs-v2-course-detail .card {
+    margin-bottom: clamp(1.35rem, 3vw, 2rem) !important;
+    border-radius: 18px;
+    overflow: hidden;
+}
+
+.cs-v2-course-detail .card-header {
+    padding:
+        clamp(1rem, 2.2vw, 1.35rem)
+        clamp(1rem, 2.8vw, 1.55rem);
+
+    min-height: 60px;
+
+    display: flex;
+    align-items: center;
+}
+
+.cs-v2-course-detail .card-header > :last-child {
+    margin-bottom: 0;
+}
+
+.cs-v2-course-detail .card-header .card-title,
+.cs-v2-course-detail .card-header h2,
+.cs-v2-course-detail .card-header h3,
+.cs-v2-course-detail .card-header h4 {
+    line-height: 1.25;
+}
+
+.cs-v2-course-detail .card-body {
+    padding:
+        clamp(1.1rem, 2.8vw, 1.65rem)
+        clamp(1.05rem, 3vw, 1.65rem);
+}
+
+.cs-v2-course-detail .card-body > :first-child {
+    margin-top: 0;
+}
+
+.cs-v2-course-detail .card-body > :last-child {
+    margin-bottom: 0;
+}
+
+/* --------------------------------------------------------------
+   Typography / readable line lengths
+   -------------------------------------------------------------- */
+
+.cs-v2-course-detail .course-summary,
+.cs-v2-course-detail .module-description,
+.cs-v2-course-detail .card-text {
+    line-height: 1.7;
+}
+
+.cs-v2-course-detail .course-summary > p,
+.cs-v2-course-detail .module-description > p {
+    max-width: 75ch;
+}
+
+.cs-v2-course-detail .course-summary p:not(:last-child),
+.cs-v2-course-detail .module-description p:not(:last-child) {
+    margin-bottom: 0.85rem;
+}
+
+/* --------------------------------------------------------------
+   Course/module status panels
+   -------------------------------------------------------------- */
+
+.cs-v2-course-detail .alert {
+    margin-top: 1rem;
+    margin-bottom: 1.4rem;
+
+    padding:
+        clamp(1rem, 2.4vw, 1.3rem)
+        clamp(1rem, 2.8vw, 1.4rem);
+
+    border-radius: 14px;
+    line-height: 1.55;
+}
+
+.cs-v2-course-detail .alert > :first-child {
+    margin-top: 0;
+}
+
+.cs-v2-course-detail .alert > :last-child {
+    margin-bottom: 0;
+}
+
+.cs-v2-course-detail .alert h1,
+.cs-v2-course-detail .alert h2,
+.cs-v2-course-detail .alert h3,
+.cs-v2-course-detail .alert h4,
+.cs-v2-course-detail .alert h5,
+.cs-v2-course-detail .alert h6 {
+    margin-bottom: 0.6rem;
+}
+
+.cs-v2-course-detail .alert p {
+    margin-bottom: 0.8rem;
+}
+
+.cs-v2-course-detail .alert .btn {
+    margin-top: 0.35rem;
+}
+
+/* --------------------------------------------------------------
+   Modules
+   -------------------------------------------------------------- */
+
+.cs-v2-course-detail .course-module {
+    margin-bottom: 1rem;
+}
+
+.cs-v2-course-detail .course-module:last-child {
+    margin-bottom: 0;
+}
+
+.cs-v2-course-detail .accordion {
+    display: grid;
+    gap: 0.85rem;
+}
+
+.cs-v2-course-detail .accordion-item {
+    margin: 0;
+
+    border-radius: 14px;
+    overflow: hidden;
+}
+
+.cs-v2-course-detail .accordion-button {
+    min-height: 58px;
+
+    padding: 0.95rem 1.1rem;
+
+    line-height: 1.4;
+}
+
+.cs-v2-course-detail .accordion-body {
+    padding: 1.2rem;
+}
+
+.cs-v2-course-detail .list-group {
+    gap: 0;
+}
+
+.cs-v2-course-detail .list-group-item {
+    padding: 0.9rem 1rem;
+}
+
+/* --------------------------------------------------------------
+   Badges and action groups
+   -------------------------------------------------------------- */
+
+.cs-v2-course-detail .badge {
+    line-height: 1.2;
+}
+
+.cs-v2-course-detail .d-flex.flex-wrap.gap-2 {
+    row-gap: 0.75rem !important;
+}
+
+.cs-v2-course-detail .btn {
+    min-height: 42px;
+}
+
+.cs-v2-course-detail .btn-sm {
+    min-height: 36px;
+}
+
+/* --------------------------------------------------------------
+   Tablet
+   This is particularly important around the ~768px screenshot width.
+   -------------------------------------------------------------- */
+
+@media (min-width: 576px) and (max-width: 991.98px) {
+    .cs-v2-course-detail {
+        padding-left: clamp(1.5rem, 5vw, 3rem);
+        padding-right: clamp(1.5rem, 5vw, 3rem);
+    }
+
+    .cs-v2-course-detail-column {
+        max-width: 780px;
+    }
+
+    .cs-v2-course-detail .card {
+        border-radius: 17px;
+    }
+
+    .cs-v2-course-detail .card-header {
+        padding: 1.15rem 1.35rem;
+    }
+
+    .cs-v2-course-detail .card-body {
+        padding: 1.35rem;
+    }
+}
+
+/* --------------------------------------------------------------
+   Phone layout
+   -------------------------------------------------------------- */
+
+@media (max-width: 575.98px) {
+    .cs-v2-course-detail {
+        margin-top: 1.5rem !important;
+        margin-bottom: 4rem !important;
+
+        padding-left: 0.85rem;
+        padding-right: 0.85rem;
+    }
+
+    .cs-v2-course-detail .card {
+        margin-bottom: 1.15rem !important;
+
+        border-radius: 14px;
+    }
+
+    .cs-v2-course-detail .card-header {
+        min-height: 54px;
+
+        padding: 0.9rem 1rem;
+    }
+
+    .cs-v2-course-detail .card-header .card-title,
+    .cs-v2-course-detail .card-header h2,
+    .cs-v2-course-detail .card-header h3 {
+        font-size: 1.2rem;
+    }
+
+    .cs-v2-course-detail .card-body {
+        padding: 1rem;
+    }
+
+    .cs-v2-course-detail .alert {
+        margin-top: 0.9rem;
+        margin-bottom: 1.2rem;
+
+        padding: 1rem;
+
+        border-radius: 12px;
+    }
+
+    .cs-v2-course-detail .accordion {
+        gap: 0.7rem;
+    }
+
+    .cs-v2-course-detail .accordion-button {
+        min-height: 52px;
+
+        padding: 0.85rem 0.9rem;
+    }
+
+    .cs-v2-course-detail .accordion-body {
+        padding: 1rem;
+    }
+
+    .cs-v2-course-detail .list-group-item {
+        padding: 0.85rem 0.9rem;
+    }
+
+    .cs-v2-course-detail .course-summary,
+    .cs-v2-course-detail .module-description {
+        line-height: 1.65;
+    }
+}
+
+/* --------------------------------------------------------------
+   Large desktop
+   -------------------------------------------------------------- */
+
+@media (min-width: 1200px) {
+    .cs-v2-course-detail-column {
+        max-width: 900px;
+    }
+
+    .cs-v2-course-detail .card-header {
+        padding-left: 1.6rem;
+        padding-right: 1.6rem;
+    }
+
+    .cs-v2-course-detail .card-body {
+        padding: 1.6rem;
+    }
+}
+
+
