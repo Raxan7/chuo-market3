@@ -1,0 +1,44 @@
+# Git / editor metadata
+.git
+.gitignore
+.github
+.vscode
+.idea
+
+# Local Python environments and caches
+.venv
+venv
+__pycache__
+**/__pycache__
+*.py[cod]
+.pytest_cache
+.mypy_cache
+.ruff_cache
+
+# Secrets / local environment
+.env
+.env.*
+!.env.example
+
+# Runtime-generated data - never bake into a container image
+media
+private_media
+staticfiles
+logs
+db_backup
+.test-private-media
+*.sqlite3
+*.sqlite
+*.db
+chuosmart_db
+
+# Local build / OS noise
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+*.swp
+
+# Generated archives / patches
+*.zip
+*.patch
