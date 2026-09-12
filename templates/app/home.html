@@ -9,6 +9,10 @@
 {% block twitter_title %}ChuoSmart — Skills, AI and measurable workplace impact{% endblock twitter_title %}
 {% block twitter_description %}Build AI-capable teams. Learn practical skills. Turn training into measurable workplace impact.{% endblock twitter_description %}
 
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'chuosmart_v2/css/discovery.css' %}">
+{% endblock extra_head %}
+
 {% block main-content %}
 <div class="cs-v2-home">
   {% if user.is_authenticated and not customers %}
@@ -23,17 +27,17 @@
     <div class="container">
       <div class="cs-v2-hero-grid">
         <div class="cs-v2-hero-copy">
-          <span class="cs-v2-eyebrow">AI skills. Real work. Measurable progress.</span>
-          <h1 id="home-hero-title">Build a future-ready workforce <span class="cs-v2-gradient-text">with AI.</span></h1>
-          <p>ChuoSmart helps organizations assess, train and empower their teams with practical AI skills — then measure what changed. Individuals can learn job-relevant skills and move closer to real opportunities.</p>
+          <span class="cs-v2-eyebrow">Skills. Careers. AI transformation.</span>
+          <h1 id="home-hero-title">Find your next step — <span class="cs-v2-gradient-text">and make it count.</span></h1>
+          <p>Learn practical skills, find opportunities, continue your learning, or build an AI-capable organization. ChuoSmart brings every path into one clear place.</p>
           <div class="cs-v2-hero-actions">
-            <a href="{% url 'for_business' %}" class="btn cs-v2-primary-btn">Explore ChuoSmart for Business <i class="fas fa-arrow-right ms-2"></i></a>
-            <a href="{% url 'lms:course_list' %}" class="cs-v2-hero-secondary">Explore learning <i class="fas fa-graduation-cap ms-2"></i></a>
+            <a href="#start-here" class="btn cs-v2-primary-btn">Find what you need <i class="fas fa-arrow-down ms-2"></i></a>
+            <a href="{% url 'for_business' %}" class="cs-v2-hero-secondary">For organizations <i class="fas fa-building ms-2"></i></a>
           </div>
-          <div class="cs-v2-hero-proof" aria-label="Program highlights">
-            <div class="cs-v2-hero-proof-item"><strong>8 weeks</strong><span>Flagship enterprise accelerator</span></div>
-            <div class="cs-v2-hero-proof-item"><strong>16+ labs</strong><span>Practical workplace challenges</span></div>
-            <div class="cs-v2-hero-proof-item"><strong>7 role tracks</strong><span>Training matched to real work</span></div>
+          <div class="cs-v2-hero-proof" aria-label="What you can do on ChuoSmart">
+            <div class="cs-v2-hero-proof-item"><strong>Learn</strong><span>Free and paid practical courses</span></div>
+            <div class="cs-v2-hero-proof-item"><strong>Grow</strong><span>Jobs, materials and opportunities</span></div>
+            <div class="cs-v2-hero-proof-item"><strong>Transform</strong><span>AI workforce programs for organizations</span></div>
           </div>
         </div>
         <div class="cs-v2-hero-visual" aria-hidden="true">
@@ -45,6 +49,109 @@
           <div class="cs-v2-hero-float cs-v2-hero-float-b"><strong>People. Skills. Progress.</strong><small>From learning to workplace outcomes</small></div>
         </div>
       </div>
+    </div>
+  </section>
+
+  <section class="cs-discovery" id="start-here" aria-labelledby="start-here-heading">
+    <div class="container">
+      <div class="cs-discovery-heading">
+        <div>
+          <span class="cs-v2-eyebrow">Start here</span>
+          <h2 id="start-here-heading">What do you want to do today?</h2>
+          <p>You should not need to know ChuoSmart first. Pick the outcome you want and go straight there.</p>
+        </div>
+        <span class="cs-discovery-one-click"><i class="fas fa-mouse-pointer"></i> Important destinations are one click away</span>
+      </div>
+
+      <div class="cs-discovery-audiences">
+        <article class="cs-discovery-panel cs-discovery-panel-individual">
+          <div class="cs-discovery-panel-head">
+            <span class="cs-discovery-audience-icon"><i class="fas fa-user-graduate"></i></span>
+            <div>
+              <span class="cs-discovery-kicker">For individuals</span>
+              <h3>Learn, grow and find opportunities</h3>
+              <p>Everything you need for your own learning and career journey.</p>
+            </div>
+          </div>
+          <div class="cs-discovery-links">
+            <a class="cs-discovery-link cs-discovery-link-featured" href="{% url 'lms:course_list' %}">
+              <span class="cs-discovery-link-icon"><i class="fas fa-graduation-cap"></i></span>
+              <span><strong>Browse Courses</strong><small>Explore practical free and paid learning</small></span>
+              <i class="fas fa-arrow-right cs-discovery-arrow"></i>
+            </a>
+            <a class="cs-discovery-link" href="{% url 'lms:course_list' %}?pricing=free">
+              <span class="cs-discovery-link-icon"><i class="fas fa-gift"></i></span>
+              <span><strong>Free Courses</strong><small>Start learning without payment</small></span>
+              <i class="fas fa-arrow-right cs-discovery-arrow"></i>
+            </a>
+            <a class="cs-discovery-link" href="{% url 'lms:lms_home' %}">
+              <span class="cs-discovery-link-icon"><i class="fas fa-book-reader"></i></span>
+              <span><strong>My Learning</strong><small>Continue courses and track progress</small></span>
+              <i class="fas fa-arrow-right cs-discovery-arrow"></i>
+            </a>
+            <a class="cs-discovery-link" href="{% url 'jobs:job_list' %}">
+              <span class="cs-discovery-link-icon"><i class="fas fa-briefcase"></i></span>
+              <span><strong>Jobs & Opportunities</strong><small>Discover roles and career openings</small></span>
+              <i class="fas fa-arrow-right cs-discovery-arrow"></i>
+            </a>
+            <a class="cs-discovery-link" href="{% url 'materials:list' %}">
+              <span class="cs-discovery-link-icon"><i class="fas fa-book-open"></i></span>
+              <span><strong>Learning Materials</strong><small>Find useful resources and study support</small></span>
+              <i class="fas fa-arrow-right cs-discovery-arrow"></i>
+            </a>
+            <a class="cs-discovery-link" href="{% url 'marketplace' %}">
+              <span class="cs-discovery-link-icon"><i class="fas fa-store"></i></span>
+              <span><strong>Marketplace</strong><small>Buy and sell through the ChuoSmart community</small></span>
+              <i class="fas fa-arrow-right cs-discovery-arrow"></i>
+            </a>
+          </div>
+        </article>
+
+        <article class="cs-discovery-panel cs-discovery-panel-business">
+          <div class="cs-discovery-panel-head">
+            <span class="cs-discovery-audience-icon"><i class="fas fa-building"></i></span>
+            <div>
+              <span class="cs-discovery-kicker">For organizations</span>
+              <h3>Build practical AI capability</h3>
+              <p>Move from AI interest to measurable workforce adoption.</p>
+            </div>
+          </div>
+          <div class="cs-discovery-links">
+            <a class="cs-discovery-link cs-discovery-link-featured" href="{% url 'for_business' %}">
+              <span class="cs-discovery-link-icon"><i class="fas fa-building"></i></span>
+              <span><strong>ChuoSmart for Business</strong><small>See how we work with organizations</small></span>
+              <i class="fas fa-arrow-right cs-discovery-arrow"></i>
+            </a>
+            <a class="cs-discovery-link" href="{% url 'ai_workforce_accelerator' %}">
+              <span class="cs-discovery-link-icon"><i class="fas fa-bolt"></i></span>
+              <span><strong>AI Workforce Accelerator</strong><small>Explore the flagship practical program</small></span>
+              <i class="fas fa-arrow-right cs-discovery-arrow"></i>
+            </a>
+            <a class="cs-discovery-link" href="{% url 'for_business' %}#solutions">
+              <span class="cs-discovery-link-icon"><i class="fas fa-layer-group"></i></span>
+              <span><strong>Business Solutions</strong><small>Find the right path for your team</small></span>
+              <i class="fas fa-arrow-right cs-discovery-arrow"></i>
+            </a>
+            <a class="cs-discovery-link" href="{% url 'contact' %}?topic=business">
+              <span class="cs-discovery-link-icon"><i class="fas fa-comments"></i></span>
+              <span><strong>Talk to ChuoSmart</strong><small>Discuss a pilot or organization-wide rollout</small></span>
+              <i class="fas fa-arrow-right cs-discovery-arrow"></i>
+            </a>
+          </div>
+          <div class="cs-discovery-business-note">
+            <span><i class="fas fa-check-circle"></i> Practical, role-specific learning</span>
+            <span><i class="fas fa-chart-line"></i> Measurable capability and outcomes</span>
+          </div>
+        </article>
+      </div>
+
+      <nav class="cs-discovery-secondary" aria-label="More ChuoSmart destinations">
+        <span class="cs-discovery-secondary-label">Explore more</span>
+        <a href="{% url 'blog_list' %}"><i class="fas fa-newspaper"></i><span>Insights</span></a>
+        <a href="{% url 'about' %}"><i class="fas fa-info-circle"></i><span>About ChuoSmart</span></a>
+        <a href="{% url 'help_center' %}"><i class="fas fa-life-ring"></i><span>Help Center</span></a>
+        <a href="{% url 'contact' %}"><i class="fas fa-envelope"></i><span>Contact</span></a>
+      </nav>
     </div>
   </section>
 

@@ -17,6 +17,7 @@ class Command(BaseCommand):
     TEMPLATES = ('app/base.html', 'app/home.html', 'app/for_business.html', 'app/ai_workforce_accelerator.html')
     ASSETS = (
         'chuosmart_v2/css/site.css',
+        'chuosmart_v2/css/discovery.css',
         'chuosmart_v2/js/site.js',
         'chuosmart_v2/images/enterprise-team.webp',
         'chuosmart_v2/images/workshop.webp',

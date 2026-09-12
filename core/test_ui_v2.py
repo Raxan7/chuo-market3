@@ -25,9 +25,45 @@ class ChuoSmartUIV2RoutingTests(TestCase):
     def test_home_is_premium_front_door_without_ads(self):
         response = self.client.get(reverse('home'))
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'Build a future-ready workforce')
-        self.assertContains(response, 'Explore ChuoSmart for Business')
+        self.assertContains(response, 'Find your next step')
+        self.assertContains(response, 'Find what you need')
+        self.assertContains(response, 'For organizations')
         self.assertNotContains(response, 'pagead2.googlesyndication.com')
+
+    def test_home_exposes_primary_product_directory(self):
+        response = self.client.get(reverse('home'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'What do you want to do today?')
+        self.assertContains(response, 'Important destinations are one click away')
+        for label in (
+            'Browse Courses',
+            'Free Courses',
+            'My Learning',
+            'Jobs & Opportunities',
+            'Learning Materials',
+            'Marketplace',
+            'ChuoSmart for Business',
+            'AI Workforce Accelerator',
+            'Business Solutions',
+            'Talk to ChuoSmart',
+            'Insights',
+            'Help Center',
+        ):
+            self.assertContains(response, label)
+
+        for destination in (
+            reverse('lms:course_list'),
+            reverse('lms:lms_home'),
+            reverse('jobs:job_list'),
+            reverse('materials:list'),
+            reverse('marketplace'),
+            reverse('for_business'),
+            reverse('ai_workforce_accelerator'),
+            reverse('blog_list'),
+            reverse('help_center'),
+            reverse('contact'),
+        ):
+            self.assertContains(response, destination)
 
     def test_home_keeps_individual_learning_first_class(self):
         response = self.client.get(reverse('home'))
@@ -94,6 +130,7 @@ class ChuoSmartUIV2StaticTests(TestCase):
     def test_v2_assets_have_unique_static_paths(self):
         assets = [
             'chuosmart_v2/css/site.css',
+            'chuosmart_v2/css/discovery.css',
             'chuosmart_v2/js/site.js',
             'chuosmart_v2/images/enterprise-team.webp',
             'chuosmart_v2/images/workshop.webp',
