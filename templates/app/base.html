@@ -77,6 +77,8 @@
   <!-- Patch 14 design layer: intentionally unique static namespace to avoid collectstatic collisions. -->
   <link rel="stylesheet" href="{% static 'chuosmart_v2/css/site.css' %}">
   {% block extra_head %}{% endblock %}
+  <!-- Patch 22: final scale/density normalization layer. -->
+  <link rel="stylesheet" href="{% static 'chuosmart_v2/css/density.css' %}">
 
   <link rel="icon" href="{% static 'app/images/icon/favicon.ico' %}" type="image/x-icon">
   {% webpush_header %}

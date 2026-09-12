@@ -1,0 +1,975 @@
+/*
+ * ChuoSmart UI v2 — Patch 22
+ * Scale & Density Normalization
+ *
+ * This layer changes proportions only.
+ * It deliberately does NOT define theme colors.
+ *
+ * Goals:
+ * - remove presentation-sized UI proportions
+ * - preserve readability
+ * - preserve mobile touch targets
+ * - keep System / Light / Dark / Midnight intact
+ * - keep legacy LMS/business logic untouched
+ */
+
+/* ---------------------------------------------------------------
+   Density tokens
+   --------------------------------------------------------------- */
+
+:root,
+html[data-cs-theme="light"],
+html[data-cs-theme="dark"],
+html[data-cs-theme="midnight"] {
+  --cs-density-nav: 72px;
+  --cs-density-nav-mobile: 68px;
+
+  --cs-density-section: 68px;
+  --cs-density-section-sm: 48px;
+
+  --cs-radius-sm: 9px;
+  --cs-radius: 14px;
+  --cs-radius-lg: 20px;
+  --cs-radius-xl: 26px;
+}
+
+
+/* ---------------------------------------------------------------
+   Global shell
+   --------------------------------------------------------------- */
+
+body.cs-v2-site {
+  padding-top: var(--cs-density-nav);
+  line-height: 1.55;
+}
+
+body.cs-v2-site .content {
+  min-height: calc(100vh - var(--cs-density-nav));
+}
+
+body.cs-v2-site .container {
+  max-width: 1160px;
+}
+
+
+/* ---------------------------------------------------------------
+   Navigation
+   Previous desktop height: 82px
+   New desktop height: 72px
+   --------------------------------------------------------------- */
+
+.cs-v2-nav.navbar {
+  height: var(--cs-density-nav) !important;
+}
+
+.cs-v2-nav-inner {
+  min-height: var(--cs-density-nav) !important;
+}
+
+.cs-v2-brand {
+  gap: 8px;
+}
+
+.cs-v2-brand-mark {
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
+}
+
+.cs-v2-brand-mark img {
+  width: 27px;
+  height: 27px;
+}
+
+.cs-v2-brand-copy strong {
+  font-size: 17px;
+}
+
+.cs-v2-brand-copy small {
+  margin-top: 3px;
+  font-size: 8px;
+}
+
+.cs-v2-main-links {
+  gap: 2px;
+}
+
+.cs-v2-nav .nav-link {
+  padding: 8px 9px !important;
+  font-size: 13px;
+}
+
+.cs-v2-login-btn,
+.cs-v2-account-btn,
+.cs-v2-theme-toggle {
+  min-height: 38px;
+  padding: 7px 11px;
+  font-size: 13px;
+}
+
+.cs-v2-nav .cs-v2-primary-btn {
+  min-height: 40px;
+  padding: 8px 14px;
+  font-size: 13px;
+}
+
+.cs-v2-dropdown,
+.cs-v2-account-menu {
+  min-width: 270px;
+  padding: 7px;
+  border-radius: 14px;
+}
+
+.cs-v2-dropdown .dropdown-item {
+  gap: 10px;
+  padding: 8px 9px;
+}
+
+.cs-v2-menu-icon {
+  width: 31px;
+  height: 31px;
+  flex-basis: 31px;
+  border-radius: 9px;
+}
+
+
+/* ---------------------------------------------------------------
+   Shared marketing/page rhythm
+   Previous section spacing: 92px
+   New section spacing: 68px
+   --------------------------------------------------------------- */
+
+.cs-v2-section {
+  padding: var(--cs-density-section) 0;
+}
+
+.cs-v2-section-sm {
+  padding: var(--cs-density-section-sm) 0;
+}
+
+.cs-v2-eyebrow {
+  font-size: 10px;
+}
+
+.cs-v2-eyebrow::before {
+  width: 18px;
+}
+
+.cs-v2-section-title {
+  max-width: 680px;
+  margin-top: 9px;
+  font-size: clamp(28px, 3.2vw, 40px);
+  line-height: 1.08;
+}
+
+.cs-v2-section-copy {
+  max-width: 650px;
+  margin-top: 14px;
+  font-size: 15.5px;
+}
+
+.cs-v2-button-row {
+  margin-top: 22px;
+}
+
+.cs-v2-secondary-btn,
+.cs-v2-light-btn {
+  min-height: 42px;
+  padding: 9px 15px;
+  border-radius: 10px;
+  font-size: 13px;
+}
+
+.cs-v2-card {
+  border-radius: 14px;
+}
+
+
+/* ---------------------------------------------------------------
+   Homepage hero
+   Previous: 690px / headline up to 72px
+   New:      560px / headline up to 58px
+   --------------------------------------------------------------- */
+
+.cs-v2-home-hero {
+  min-height: 560px;
+}
+
+.cs-v2-hero-grid {
+  min-height: 560px;
+  gap: 40px;
+  padding-top: 32px;
+  padding-bottom: 32px;
+}
+
+.cs-v2-hero-copy {
+  padding: 12px 0;
+}
+
+.cs-v2-hero-copy h1 {
+  max-width: 620px;
+  margin: 14px 0 18px;
+  font-size: clamp(38px, 4.5vw, 58px);
+  line-height: 1.01;
+}
+
+.cs-v2-hero-copy > p {
+  max-width: 600px;
+  font-size: clamp(15.5px, 1.35vw, 18px);
+  line-height: 1.6;
+}
+
+.cs-v2-hero-actions {
+  gap: 10px;
+  margin-top: 24px;
+}
+
+.cs-v2-home-hero .cs-v2-primary-btn,
+.cs-v2-hero-secondary {
+  min-height: 46px;
+  padding: 11px 17px;
+}
+
+.cs-v2-hero-proof {
+  gap: 22px;
+  margin-top: 28px;
+  padding-top: 20px;
+}
+
+.cs-v2-hero-proof-item strong {
+  font-size: 18px;
+}
+
+.cs-v2-hero-proof-item span {
+  font-size: 11px;
+}
+
+.cs-v2-hero-visual {
+  min-height: 450px;
+}
+
+.cs-v2-hero-photo {
+  inset: 32px 0 22px;
+  border-radius: 22px;
+}
+
+.cs-v2-hero-float {
+  padding: 12px 14px;
+  border-radius: 13px;
+}
+
+.cs-v2-hero-float strong {
+  font-size: 14px;
+}
+
+.cs-v2-hero-float small {
+  font-size: 10px;
+}
+
+.cs-v2-hero-float-a {
+  right: -10px;
+  top: 105px;
+}
+
+.cs-v2-hero-float-b {
+  left: -18px;
+  bottom: 48px;
+}
+
+
+/* ---------------------------------------------------------------
+   Homepage supporting sections
+   --------------------------------------------------------------- */
+
+.cs-v2-industry-inner {
+  min-height: 84px;
+}
+
+.cs-v2-industry-list span {
+  padding: 7px 11px;
+  font-size: 11px;
+}
+
+.cs-v2-method-grid {
+  margin-top: 32px;
+}
+
+.cs-v2-method-card {
+  min-height: 160px;
+  padding: 18px 16px;
+}
+
+.cs-v2-step-number {
+  width: 34px;
+  height: 34px;
+}
+
+.cs-v2-method-card h3 {
+  margin: 16px 0 6px;
+  font-size: 16px;
+}
+
+.cs-v2-method-card p {
+  font-size: 12px;
+}
+
+.cs-v2-feature-split {
+  gap: 52px;
+}
+
+.cs-v2-feature-media {
+  min-height: 440px;
+  border-radius: 22px;
+}
+
+.cs-v2-feature-caption {
+  left: 22px;
+  right: 22px;
+  bottom: 21px;
+}
+
+.cs-v2-feature-caption strong {
+  font-size: 20px;
+}
+
+.cs-v2-benefit-list {
+  margin-top: 24px;
+}
+
+.cs-v2-benefit {
+  padding: 13px;
+}
+
+.cs-v2-track-grid {
+  margin-top: 30px;
+}
+
+.cs-v2-track-card {
+  min-height: 128px;
+  padding: 17px;
+}
+
+.cs-v2-track-icon {
+  width: 36px;
+  height: 36px;
+}
+
+.cs-v2-track-card h3 {
+  margin: 14px 0 5px;
+  font-size: 15px;
+}
+
+.cs-v2-outcome-panel {
+  padding: 34px;
+  border-radius: 22px;
+}
+
+.cs-v2-outcome-panel h2 {
+  font-size: clamp(28px, 3.2vw, 38px);
+}
+
+.cs-v2-outcome-grid {
+  gap: 22px;
+  margin-top: 28px;
+}
+
+.cs-v2-dashboard-mock {
+  padding: 16px;
+}
+
+.cs-v2-ecosystem-grid {
+  margin-top: 26px;
+}
+
+.cs-v2-ecosystem-card {
+  padding: 20px;
+}
+
+
+/* ---------------------------------------------------------------
+   Patch 20 discovery hub
+   --------------------------------------------------------------- */
+
+.cs-discovery {
+  padding: 52px 0 46px;
+}
+
+.cs-discovery::before {
+  height: 140px;
+}
+
+.cs-discovery-heading {
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+.cs-discovery-heading h2 {
+  max-width: 700px;
+  margin-top: 8px;
+  font-size: clamp(28px, 3.2vw, 38px);
+}
+
+body.cs-v2-site .cs-discovery-heading p {
+  margin-top: 10px;
+  font-size: 15px;
+}
+
+.cs-discovery-one-click {
+  padding: 7px 10px;
+  font-size: 11px;
+}
+
+.cs-discovery-audiences {
+  gap: 14px;
+}
+
+.cs-discovery-panel {
+  padding: clamp(20px, 2.4vw, 24px);
+  border-radius: 20px;
+}
+
+.cs-discovery-panel-head {
+  gap: 12px;
+  padding-bottom: 16px;
+}
+
+.cs-discovery-audience-icon {
+  width: 40px;
+  height: 40px;
+  flex-basis: 40px;
+  border-radius: 12px;
+  font-size: 16px;
+}
+
+.cs-discovery-panel-head h3 {
+  font-size: clamp(19px, 2vw, 23px);
+}
+
+body.cs-v2-site .cs-discovery-panel-head p {
+  margin-top: 5px;
+  font-size: 13px;
+}
+
+.cs-discovery-links {
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.cs-discovery-link {
+  min-height: 66px;
+  grid-template-columns: 34px minmax(0, 1fr) 18px;
+  gap: 9px;
+  padding: 10px;
+  border-radius: 12px;
+}
+
+.cs-discovery-link-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+}
+
+.cs-discovery-link strong {
+  font-size: 12.5px;
+}
+
+.cs-discovery-link small {
+  font-size: 10.5px;
+}
+
+.cs-discovery-business-note {
+  margin-top: 12px;
+  padding: 11px 12px;
+}
+
+.cs-discovery-secondary {
+  margin-top: 14px;
+  padding: 10px 12px;
+}
+
+
+/* ---------------------------------------------------------------
+   Business surface
+   --------------------------------------------------------------- */
+
+.cs-v2-business-hero {
+  padding: 64px 0 58px;
+}
+
+.cs-v2-business-hero-grid {
+  gap: 48px;
+}
+
+.cs-v2-business-hero h1 {
+  max-width: 660px;
+  margin: 13px 0 16px;
+  font-size: clamp(38px, 4.2vw, 56px);
+}
+
+.cs-v2-business-hero p {
+  font-size: 16.5px;
+}
+
+.cs-v2-business-visual {
+  min-height: 450px;
+}
+
+.cs-v2-business-photo {
+  inset: 0 0 30px 28px;
+  border-radius: 22px;
+}
+
+.cs-v2-floating-proof {
+  width: 210px;
+  padding: 14px;
+  border-radius: 14px;
+}
+
+.cs-v2-program-facts {
+  margin-top: 28px;
+}
+
+.cs-v2-program-fact {
+  padding: 14px 10px;
+}
+
+.cs-v2-solution-grid {
+  gap: 14px;
+  margin-top: 32px;
+}
+
+.cs-v2-solution-card {
+  padding: 22px;
+}
+
+.cs-v2-solution-card .cs-v2-track-icon {
+  width: 42px;
+  height: 42px;
+}
+
+.cs-v2-solution-card h3 {
+  margin: 18px 0 8px;
+  font-size: 18px;
+}
+
+.cs-v2-journey {
+  margin-top: 40px;
+}
+
+.cs-v2-governance-split {
+  gap: 40px;
+}
+
+.cs-v2-governance-image,
+.cs-v2-governance-image img {
+  min-height: 380px;
+}
+
+.cs-v2-investment-card {
+  gap: 20px;
+  padding: 32px;
+  border-radius: 22px;
+}
+
+.cs-v2-investment-card h2 {
+  font-size: clamp(26px, 3.2vw, 38px);
+}
+
+.cs-v2-price-panel {
+  padding: 24px;
+  border-radius: 17px;
+}
+
+.cs-v2-price-panel strong {
+  font-size: 30px;
+}
+
+
+/* ---------------------------------------------------------------
+   Accelerator/program page
+   --------------------------------------------------------------- */
+
+.cs-v2-program-hero {
+  padding: 56px 0 46px;
+}
+
+.cs-v2-program-hero-grid {
+  gap: 46px;
+}
+
+.cs-v2-program-hero h1 {
+  font-size: clamp(36px, 4.2vw, 52px);
+}
+
+.cs-v2-program-media {
+  min-height: 390px;
+  border-radius: 20px;
+}
+
+.cs-v2-program-media-note {
+  left: 18px;
+  right: 18px;
+  bottom: 17px;
+  padding: 13px;
+}
+
+.cs-v2-week-grid {
+  gap: 12px;
+  margin-top: 30px;
+}
+
+.cs-v2-week-card {
+  padding: 18px;
+}
+
+
+/* ---------------------------------------------------------------
+   LMS / legacy application density
+   --------------------------------------------------------------- */
+
+body.cs-v2-site .form-control,
+body.cs-v2-site .form-select {
+  min-height: 42px;
+}
+
+body.cs-v2-site .table > :not(caption) > * > * {
+  padding: .68rem .6rem;
+}
+
+body.cs-v2-site .btn-lg {
+  --bs-btn-padding-y: .65rem;
+  --bs-btn-padding-x: 1rem;
+  --bs-btn-font-size: 1rem;
+}
+
+.cs-v2-course-detail {
+  margin-top: clamp(1.5rem, 3vw, 2.5rem) !important;
+  margin-bottom: clamp(2.5rem, 5vw, 4rem) !important;
+}
+
+.cs-v2-course-detail .course-detail-image {
+  max-height: 360px !important;
+}
+
+.cs-v2-course-detail .card {
+  margin-bottom: clamp(1.1rem, 2vw, 1.5rem) !important;
+  border-radius: 15px;
+}
+
+.cs-v2-course-detail .card-header {
+  min-height: 52px;
+  padding: .9rem 1.15rem;
+}
+
+.cs-v2-course-detail .card-body {
+  padding: 1.15rem 1.2rem;
+}
+
+.cs-v2-course-detail h1.card-title {
+  font-size: clamp(1.75rem, 2.6vw, 2.1rem);
+  line-height: 1.15;
+}
+
+.cs-v2-course-detail .course-summary {
+  font-size: 1rem;
+}
+
+.cs-v2-course-detail .alert {
+  margin-top: .75rem;
+  margin-bottom: 1.1rem;
+  padding: .9rem 1.05rem;
+}
+
+.cs-v2-course-detail .accordion {
+  gap: .65rem;
+}
+
+.cs-v2-course-detail .accordion-button {
+  min-height: 50px;
+  padding: .8rem .95rem;
+}
+
+.cs-v2-course-detail .accordion-body {
+  padding: 1rem;
+}
+
+.cs-v2-course-detail .list-group-item {
+  padding: .75rem .85rem;
+}
+
+
+/* ---------------------------------------------------------------
+   Footer
+   --------------------------------------------------------------- */
+
+.cs-v2-footer-cta {
+  gap: 24px;
+  padding: 44px 0 36px;
+}
+
+.cs-v2-footer-cta h2 {
+  font-size: clamp(26px, 3.2vw, 36px);
+}
+
+.cs-v2-footer-main {
+  padding: 38px 0 34px;
+}
+
+.cs-v2-footer-brand img {
+  width: 36px;
+  height: 36px;
+}
+
+.cs-v2-footer-brand strong {
+  font-size: 18px;
+}
+
+
+/* ---------------------------------------------------------------
+   Tablet
+   --------------------------------------------------------------- */
+
+@media (max-width: 1199.98px) {
+  body.cs-v2-site {
+    padding-top: var(--cs-density-nav-mobile);
+  }
+
+  .cs-v2-nav.navbar {
+    height: var(--cs-density-nav-mobile) !important;
+  }
+
+  .cs-v2-nav-inner {
+    min-height: var(--cs-density-nav-mobile) !important;
+  }
+
+  .cs-v2-nav .navbar-collapse {
+    top: var(--cs-density-nav-mobile) !important;
+    height: calc(100dvh - var(--cs-density-nav-mobile)) !important;
+    padding-top: 16px !important;
+  }
+
+  .cs-v2-section {
+    padding: 58px 0;
+  }
+
+  .cs-v2-section-sm {
+    padding: 42px 0;
+  }
+}
+
+
+@media (max-width: 991.98px) {
+  .cs-v2-home-hero {
+    min-height: 0;
+  }
+
+  .cs-v2-hero-grid {
+    min-height: 0;
+    gap: 28px;
+    padding-top: 46px;
+    padding-bottom: 46px;
+  }
+
+  .cs-v2-hero-visual {
+    min-height: 340px;
+  }
+
+  .cs-v2-feature-split,
+  .cs-v2-business-hero-grid,
+  .cs-v2-program-hero-grid,
+  .cs-v2-governance-split {
+    gap: 34px;
+  }
+
+  .cs-v2-feature-media {
+    min-height: 380px;
+  }
+
+  .cs-v2-business-visual {
+    min-height: 380px;
+  }
+
+  .cs-v2-program-media {
+    min-height: 340px;
+  }
+
+  .cs-v2-governance-image,
+  .cs-v2-governance-image img {
+    min-height: 340px;
+  }
+
+  .cs-discovery {
+    padding: 46px 0 42px;
+  }
+}
+
+
+/* ---------------------------------------------------------------
+   Mobile
+   Keep controls large enough to touch.
+   --------------------------------------------------------------- */
+
+@media (max-width: 767.98px) {
+  .cs-v2-section {
+    padding: 46px 0;
+  }
+
+  .cs-v2-section-sm {
+    padding: 36px 0;
+  }
+
+  .cs-v2-section-title {
+    font-size: clamp(26px, 7vw, 32px);
+  }
+
+  .cs-v2-section-copy {
+    font-size: 15px;
+  }
+
+  .cs-v2-hero-grid {
+    padding-top: 36px;
+    padding-bottom: 38px;
+  }
+
+  .cs-v2-hero-copy h1 {
+    font-size: clamp(32px, 9vw, 40px);
+  }
+
+  .cs-v2-hero-copy > p {
+    font-size: 15.5px;
+  }
+
+  .cs-v2-home-hero .cs-v2-primary-btn,
+  .cs-v2-hero-secondary,
+  .cs-v2-primary-btn,
+  .cs-v2-secondary-btn,
+  .cs-v2-light-btn {
+    min-height: 44px;
+  }
+
+  .cs-v2-hero-proof {
+    margin-top: 22px;
+    padding-top: 18px;
+  }
+
+  .cs-v2-hero-visual {
+    min-height: 280px;
+  }
+
+  .cs-v2-industry-inner {
+    min-height: 70px;
+  }
+
+  .cs-discovery {
+    padding: 38px 0 36px;
+  }
+
+  .cs-discovery-heading {
+    margin-bottom: 18px;
+  }
+
+  .cs-discovery-panel {
+    padding: 16px;
+    border-radius: 16px;
+  }
+
+  .cs-discovery-link {
+    min-height: 64px;
+  }
+
+  .cs-v2-business-hero {
+    padding: 44px 0 40px;
+  }
+
+  .cs-v2-business-hero h1 {
+    font-size: clamp(34px, 9vw, 42px);
+  }
+
+  .cs-v2-business-visual {
+    min-height: 320px;
+  }
+
+  .cs-v2-program-hero {
+    padding: 44px 0 38px;
+  }
+
+  .cs-v2-program-hero h1 {
+    font-size: clamp(34px, 9vw, 42px);
+  }
+
+  .cs-v2-program-media {
+    min-height: 300px;
+  }
+
+  .cs-v2-feature-media {
+    min-height: 320px;
+  }
+
+  .cs-v2-governance-image,
+  .cs-v2-governance-image img {
+    min-height: 300px;
+  }
+
+  .cs-v2-investment-card {
+    padding: 22px;
+  }
+
+  .cs-v2-course-detail {
+    margin-top: 1.25rem !important;
+    margin-bottom: 3rem !important;
+  }
+
+  .cs-v2-course-detail .card-header {
+    min-height: 50px;
+    padding: .8rem .9rem;
+  }
+
+  .cs-v2-course-detail .card-body {
+    padding: .95rem;
+  }
+
+  .cs-v2-course-detail .accordion-button {
+    min-height: 48px;
+  }
+
+  .cs-v2-footer-cta {
+    padding: 34px 0 30px;
+  }
+
+  .cs-v2-footer-main {
+    padding: 32px 0 28px;
+  }
+}
+
+
+/* ---------------------------------------------------------------
+   Very small phones
+   --------------------------------------------------------------- */
+
+@media (max-width: 479.98px) {
+  .cs-v2-brand-mark {
+    width: 34px;
+    height: 34px;
+  }
+
+  .cs-v2-brand-mark img {
+    width: 25px;
+    height: 25px;
+  }
+
+  .cs-v2-brand-copy strong {
+    font-size: 15px;
+  }
+
+  .cs-v2-brand-copy small {
+    display: none;
+  }
+
+  .cs-v2-hero-copy h1 {
+    font-size: 34px;
+  }
+
+  .cs-v2-hero-visual {
+    min-height: 250px;
+  }
+}
