@@ -12,13 +12,15 @@ class ChuoSmartUIV2RoutingTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Build AI capability your organization can actually use.')
         self.assertContains(response, 'AI Workforce Accelerator')
+        self.assertNotContains(response, 'TZS 50M')
         self.assertNotContains(response, 'pagead2.googlesyndication.com')
 
     def test_accelerator_page_renders_flagship_offer(self):
         response = self.client.get(reverse('ai_workforce_accelerator'))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'AI Workforce Accelerator')
-        self.assertContains(response, 'TZS 50M')
+        self.assertContains(response, 'Tailored to scope')
+        self.assertNotContains(response, 'TZS 50M')
         self.assertContains(response, '16+ common practical labs')
         self.assertNotContains(response, 'pagead2.googlesyndication.com')
 
