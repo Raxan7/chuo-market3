@@ -94,6 +94,28 @@
         <span class="cs-v2-brand-copy"><strong>ChuoSmart</strong><small>Skills for a Smarter Africa</small></span>
       </a>
 
+      {% if has_creator_tools %}
+      <div class="dropdown d-xl-none cs-v2-mobile-create ms-auto me-2">
+        <button class="btn cs-v2-create-btn dropdown-toggle" id="csMobileCreateMenuButton" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Open creator tools">
+          <i class="fas fa-plus-circle" aria-hidden="true"></i><span>Create</span>
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end cs-v2-account-menu cs-v2-create-menu" aria-labelledby="csMobileCreateMenuButton">
+          <li><h6 class="dropdown-header">Create &amp; manage</h6></li>
+          {% if can_post_jobs %}
+            <li><a class="dropdown-item cs-v2-creator-action" data-creator-action="post-job" href="{% url 'jobs:create_job' %}"><i class="fas fa-briefcase fa-fw me-2"></i><span><strong>Post a job</strong><small>Publish a new opportunity</small></span></a></li>
+            <li><a class="dropdown-item" href="{% url 'jobs:my_jobs' %}"><i class="fas fa-list-alt fa-fw me-2"></i>Manage job posts</a></li>
+          {% endif %}
+          {% if can_post_jobs and can_create_courses %}<li><hr class="dropdown-divider"></li>{% endif %}
+          {% if can_create_courses %}
+            <li><a class="dropdown-item cs-v2-creator-action" data-creator-action="create-course" href="{% url 'lms:course_create' %}"><i class="fas fa-graduation-cap fa-fw me-2"></i><span><strong>Create a course</strong><small>Build a new learning experience</small></span></a></li>
+          {% endif %}
+          {% if can_use_instructor_dashboard %}
+            <li><a class="dropdown-item" href="{% url 'lms:instructor_dashboard' %}"><i class="fas fa-chalkboard-teacher fa-fw me-2"></i>Instructor dashboard</a></li>
+          {% endif %}
+        </ul>
+      </div>
+      {% endif %}
+
       <button class="navbar-toggler cs-v2-nav-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavbar" aria-controls="mainNavbar" aria-expanded="false" aria-label="Open navigation">
         <span class="navbar-toggler-icon"></span>
       </button>
@@ -171,6 +193,27 @@
               </li>
             </ul>
           </div>
+          {% if has_creator_tools %}
+            <div class="dropdown d-none d-xl-block cs-v2-desktop-create">
+              <button class="btn cs-v2-create-btn dropdown-toggle" id="csCreateMenuButton" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                <i class="fas fa-plus-circle" aria-hidden="true"></i><span class="cs-v2-create-label">Create</span>
+              </button>
+              <ul class="dropdown-menu dropdown-menu-end cs-v2-account-menu cs-v2-create-menu" aria-labelledby="csCreateMenuButton">
+                <li><h6 class="dropdown-header">Create &amp; manage</h6></li>
+                {% if can_post_jobs %}
+                  <li><a class="dropdown-item cs-v2-creator-action" data-creator-action="post-job" href="{% url 'jobs:create_job' %}"><i class="fas fa-briefcase fa-fw me-2"></i><span><strong>Post a job</strong><small>Publish a new opportunity</small></span></a></li>
+                  <li><a class="dropdown-item" href="{% url 'jobs:my_jobs' %}"><i class="fas fa-list-alt fa-fw me-2"></i>Manage job posts</a></li>
+                {% endif %}
+                {% if can_post_jobs and can_create_courses %}<li><hr class="dropdown-divider"></li>{% endif %}
+                {% if can_create_courses %}
+                  <li><a class="dropdown-item cs-v2-creator-action" data-creator-action="create-course" href="{% url 'lms:course_create' %}"><i class="fas fa-graduation-cap fa-fw me-2"></i><span><strong>Create a course</strong><small>Build a new learning experience</small></span></a></li>
+                {% endif %}
+                {% if can_use_instructor_dashboard %}
+                  <li><a class="dropdown-item" href="{% url 'lms:instructor_dashboard' %}"><i class="fas fa-chalkboard-teacher fa-fw me-2"></i>Instructor dashboard</a></li>
+                {% endif %}
+              </ul>
+            </div>
+          {% endif %}
           {% if user.is_authenticated %}
             <div class="dropdown">
               <button class="btn cs-v2-account-btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
@@ -184,6 +227,20 @@
                 <li><a class="dropdown-item" href="{% url 'jobs:job_list' %}"><i class="fas fa-briefcase fa-fw me-2"></i>Jobs</a></li>
                 <li><a class="dropdown-item" href="{% url 'marketplace' %}"><i class="fas fa-store fa-fw me-2"></i>Marketplace</a></li>
                 <li><a class="dropdown-item" href="{% url 'profile' %}"><i class="fas fa-user-circle fa-fw me-2"></i>Profile</a></li>
+                {% if has_creator_tools %}
+                  <li><hr class="dropdown-divider"></li>
+                  <li><h6 class="dropdown-header">Creator tools</h6></li>
+                  {% if can_post_jobs %}
+                    <li><a class="dropdown-item" data-creator-action="post-job" href="{% url 'jobs:create_job' %}"><i class="fas fa-plus-circle fa-fw me-2"></i>Post a job</a></li>
+                    <li><a class="dropdown-item" href="{% url 'jobs:my_jobs' %}"><i class="fas fa-list-alt fa-fw me-2"></i>My job posts</a></li>
+                  {% endif %}
+                  {% if can_create_courses %}
+                    <li><a class="dropdown-item" data-creator-action="create-course" href="{% url 'lms:course_create' %}"><i class="fas fa-plus-circle fa-fw me-2"></i>Create a course</a></li>
+                  {% endif %}
+                  {% if can_use_instructor_dashboard %}
+                    <li><a class="dropdown-item" href="{% url 'lms:instructor_dashboard' %}"><i class="fas fa-chalkboard-teacher fa-fw me-2"></i>Instructor dashboard</a></li>
+                  {% endif %}
+                {% endif %}
                 <li><hr class="dropdown-divider"></li>
                 <li><a class="dropdown-item" href="{% url 'logout' %}"><i class="fas fa-sign-out-alt fa-fw me-2"></i>Logout</a></li>
               </ul>

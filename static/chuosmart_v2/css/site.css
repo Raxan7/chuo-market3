@@ -174,6 +174,19 @@ body.cs-v2-site :focus-visible { outline: 3px solid rgba(91, 93, 247, .28); outl
 }
 .cs-v2-login-btn:hover,
 .cs-v2-account-btn:hover { background: #f8f9fc; border-color: #c6cede; color: var(--cs-ink); }
+.cs-v2-create-btn {
+  min-height: 42px; display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  border: 0; border-radius: 11px; padding: 9px 14px; color: #fff !important; background: var(--cs-green);
+  font-size: 14px; font-weight: 780; box-shadow: 0 9px 22px rgba(17, 168, 121, .2);
+  transition: transform .2s ease, box-shadow .2s ease, filter .2s ease;
+}
+.cs-v2-create-btn:hover,
+.cs-v2-create-btn:focus { color: #fff !important; filter: brightness(.96); box-shadow: 0 12px 28px rgba(17, 168, 121, .28); }
+.cs-v2-create-btn:hover { transform: translateY(-1px); }
+.cs-v2-create-menu .cs-v2-creator-action { display: flex; align-items: center; }
+.cs-v2-create-menu .cs-v2-creator-action > span { display: flex; flex-direction: column; min-width: 0; }
+.cs-v2-create-menu .cs-v2-creator-action strong { color: inherit; font-size: 13px; }
+.cs-v2-create-menu .cs-v2-creator-action small { margin-top: 2px; color: var(--cs-muted); font-size: 10px; line-height: 1.25; }
 .cs-v2-primary-btn {
   min-height: 42px; display: inline-flex; align-items: center; justify-content: center;
   border: 0; border-radius: 11px; padding: 10px 17px; color: #fff !important; font-size: 14px; font-weight: 750;
@@ -461,8 +474,18 @@ body.cs-v2-site .pagination .active .page-link { background: var(--cs-purple); b
   .cs-v2-nav-actions > *, .cs-v2-nav-actions .dropdown, .cs-v2-nav-actions .btn { width: 100%; }
   .cs-v2-account-btn { display: flex; align-items: center; justify-content: center; }
   .cs-v2-dropdown, .cs-v2-account-menu { position: static !important; transform: none !important; box-shadow: none; border-radius: 12px; margin: 5px 0 !important; width: 100%; min-width: 0; }
+  .cs-v2-mobile-create .cs-v2-account-menu {
+    position: absolute !important; top: 100% !important; right: 0 !important; left: auto !important; transform: none !important;
+    width: min(310px, calc(100vw - 24px)); min-width: 260px; margin: 8px 0 0 !important; box-shadow: var(--cs-shadow-md);
+  }
   .cs-v2-nav-cta { margin-top: 5px; }
   .cs-v2-brand-copy small { display: none; }
+}
+
+@media (min-width: 1200px) and (max-width: 1399.98px) {
+  .cs-v2-desktop-create .cs-v2-create-label { display: none; }
+  .cs-v2-desktop-create .cs-v2-create-btn { width: 40px; padding-left: 0; padding-right: 0; }
+  .cs-v2-desktop-create .dropdown-toggle::after { display: none; }
 }
 
 @media (max-width: 991.98px) {

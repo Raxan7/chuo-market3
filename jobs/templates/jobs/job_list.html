@@ -113,7 +113,7 @@ View the latest jobs, internships, and graduate opportunities in Tanzania. Filte
 
 {% block job_content %}
 <!-- Jobs Found and Sorting -->
-<div class="d-flex justify-content-between align-items-center mb-3">
+<div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-3">
     <div>
         <h1 class="h4 mb-0">
             {% if search_form.keywords.value %}
@@ -124,7 +124,12 @@ View the latest jobs, internships, and graduate opportunities in Tanzania. Filte
             <span class="badge bg-primary ms-2">{{ total_jobs }}</span>
         </h1>
     </div>
-    <div class="d-flex">
+    <div class="d-flex flex-wrap gap-2">
+        {% if can_post_jobs %}
+        <a href="{% url 'jobs:create_job' %}" class="btn btn-success" data-creator-action="post-job">
+            <i class="bi bi-plus-circle me-1"></i> Post a Job
+        </a>
+        {% endif %}
         <div class="dropdown me-2">
             <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="sortDropdown" 
                 data-bs-toggle="dropdown" aria-expanded="false">

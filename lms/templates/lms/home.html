@@ -32,9 +32,15 @@
                                     <a href="{% url 'lms:request_instructor_role' %}" class="btn btn-outline-secondary ms-2">Become an Instructor</a>
                                 </div>
                             {% elif user_profile.role == 'instructor' %}
-                                <a href="{% url 'lms:instructor_dashboard' %}" class="btn btn-primary">Go to Instructor Dashboard</a>
+                                <div class="lms-home-actions">
+                                    <a href="{% url 'lms:course_create' %}" class="btn btn-success" data-creator-action="create-course"><i class="fas fa-plus-circle me-2"></i>Create a Course</a>
+                                    <a href="{% url 'lms:instructor_dashboard' %}" class="btn btn-primary ms-2">Go to Instructor Dashboard</a>
+                                </div>
                             {% elif user_profile.role == 'admin' %}
-                                <a href="{% url 'lms:lms_home' %}" class="btn btn-primary">Admin Dashboard</a>
+                                <div class="lms-home-actions">
+                                    <a href="{% url 'lms:course_create' %}" class="btn btn-success" data-creator-action="create-course"><i class="fas fa-plus-circle me-2"></i>Create a Course</a>
+                                    <a href="{% url 'lms:lms_home' %}" class="btn btn-primary ms-2">Admin Dashboard</a>
+                                </div>
                             {% endif %}
                         {% else %}
                             <div class="alert alert-info">
@@ -78,9 +84,10 @@
                                 <li class="list-group-item">
                                     <a href="{% url 'lms:grade_list' %}">My Grades</a>
                                 </li>
-                            {% elif user_profile.role == 'instructor' %}
+                            {% endif %}
+                            {% if can_create_courses %}
                                 <li class="list-group-item">
-                                    <a href="{% url 'lms:course_create' %}">Create New Course</a>
+                                    <a href="{% url 'lms:course_create' %}" data-creator-action="create-course"><i class="fas fa-plus-circle me-1"></i>Create New Course</a>
                                 </li>
                             {% endif %}
                         {% endif %}

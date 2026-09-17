@@ -2,12 +2,77 @@ from datetime import date, datetime, timedelta
 
 from django.conf import settings as django_settings
 from django.contrib.auth.models import AnonymousUser
+from django.core.exceptions import ObjectDoesNotExist
 from django.utils import timezone
 
 
 def auth_status(request):
     return {
         'is_authenticated': not isinstance(request.user, AnonymousUser)
+    }
+
+
+def creator_access(request):
+    """Expose creator permissions to the global UI shell.
+
+    The redesigned navigation must not make users hunt for actions they are
+    already allowed to perform. Keep these flags aligned with the underlying
+    publishing rules:
+
+    * Any signed-in user can submit a job; job/company approval controls public
+      visibility after submission, matching the existing job creation view.
+    * Courses can be created by LMS instructors/admins. An approved instructor
+      request is also accepted because the course view promotes that profile on
+      first access via ``is_instructor``.
+
+    The imports are intentionally local so this context processor remains safe
+    during Django app loading and management commands.
+    """
+    user = getattr(request, 'user', None)
+    defaults = {
+        'can_post_jobs': False,
+        'can_create_courses': False,
+        'can_use_instructor_dashboard': False,
+        'has_creator_tools': False,
+    }
+    if not user or not user.is_authenticated:
+        return defaults
+
+    # ``jobs:create_job`` is protected by login only. Approval determines whether
+    # a submitted job is public, not whether the user may submit it.
+    can_post_jobs = True
+
+    profile = None
+    try:
+        profile = user.lms_profile
+    except (AttributeError, ObjectDoesNotExist):
+        pass
+
+    can_use_instructor_dashboard = bool(profile and profile.role == 'instructor')
+    can_create_courses = bool(profile and profile.role in {'instructor', 'admin'})
+
+    # Be resilient to legacy/stale data where an instructor request was
+    # approved but the LMS profile role was not updated yet.
+    if profile and not can_use_instructor_dashboard:
+        try:
+            from lms.models import InstructorRequest
+
+            approved_instructor_request = InstructorRequest.objects.filter(
+                user=user,
+                status='approved',
+            ).exists()
+            can_use_instructor_dashboard = approved_instructor_request
+            can_create_courses = can_create_courses or approved_instructor_request
+        except Exception:
+            # Navigation should never make the whole site fail if an optional
+            # creator lookup is temporarily unavailable.
+            pass
+
+    return {
+        'can_post_jobs': can_post_jobs,
+        'can_create_courses': can_create_courses,
+        'can_use_instructor_dashboard': can_use_instructor_dashboard,
+        'has_creator_tools': can_post_jobs or can_create_courses,
     }
 
 

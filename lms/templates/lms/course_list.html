@@ -53,9 +53,9 @@ View free and paid courses for students in Tanzania. Browse programs, levels, an
                 <p class="text-muted lead d-none d-md-block">Browse our catalog of professional and university courses</p>
             </div>
             <div class="col-12 col-md-4 text-start text-md-end">
-                {% if user.is_authenticated and user|is_instructor %}
+                {% if can_create_courses %}
                 <a href="{% url 'lms:course_create' %}" class="btn btn-primary btn-sm w-100 d-inline-block d-md-inline-flex justify-content-center">
-                    <i class="fas fa-plus-circle me-2"></i> <span class="d-md-inline">Create New Course</span><span class="d-md-none">New</span>
+                    <i class="fas fa-plus-circle me-2"></i><span>Create New Course</span>
                 </a>
                 {% endif %}
             </div>
