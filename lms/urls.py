@@ -25,10 +25,12 @@ urlpatterns = [
     path('courses/', views.CourseListView.as_view(), name='course_list'),
     path('courses/create/', views.CourseCreateView.as_view(), name='course_create'),
     path('courses/<slug:slug>/', views.CourseDetailView.as_view(), name='course_detail'),
+    path('courses/<slug:slug>/override-completion/<int:student_id>/', views.override_course_completion, name='override_course_completion'),
     path('courses/<slug:slug>/direct/', views.CourseDetailView.as_view(), name='course_detail_direct'),
     path('courses/<slug:slug>/update/', views.CourseUpdateView.as_view(), name='course_update'),
     path('courses/<slug:slug>/enroll/', views.enroll_course, name='enroll_course'),
     path('courses/<slug:slug>/unenroll/', views.unenroll_course, name='unenroll_course'),
+    path('certificates/<certificate_id>/admin-download/', views.admin_download_certificate, name='admin_download_certificate'),
     
     # Course modules
     path('courses/<slug:course_slug>/modules/create/', 

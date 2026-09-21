@@ -603,6 +603,23 @@ class CourseEnrollmentAdmin(admin.ModelAdmin):
             messages.info(request, _("No enrollments were updated."))
     
     revoke_admin_granted_access.short_description = _("Revoke admin granted access")
+
+    def override_course_completion(self, request, queryset):
+        """Override course completion for selected enrollments.
+        Student must pay for certificate but completion is not auto-issued."""
+        updated = 0
+        for enrollment in queryset:
+            enrollment.admin_override_completion = True
+            enrollment.granted_by = request.user
+            enrollment.save()
+            updated += 1
+
+        if updated > 0:
+            messages.success(request, _(f"{updated} enrollment(s) had course completion overridden."))
+        else:
+            messages.info(request, _("No enrollments were updated."))
+
+    override_course_completion.short_description = _("Override course completion (keep at pay stage)")
 admin.site.register(Essay_Question, EssayQuestionAdmin)
 admin.site.register(SiteSettings, SiteSettingsAdmin)
 

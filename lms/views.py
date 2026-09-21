@@ -6,6 +6,7 @@ import json
 import time
 from datetime import timedelta
 from decimal import Decimal, InvalidOperation
+from urllib.parse import urlparse
 
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse, reverse_lazy
@@ -49,6 +50,53 @@ from .forms import (
 )
 
 from .forms import PaymentMethodForm
+
+
+def _snippe_base_url():
+    return str(getattr(settings, 'SNIPPE_BASE_URL', 'https://api.snippe.sh') or 'https://api.snippe.sh').rstrip('/')
+
+
+def _snippe_session_url():
+    return f"{_snippe_base_url()}/api/v1/sessions"
+
+
+def _snippe_allowed_methods():
+    methods = getattr(settings, 'SNIPPE_ALLOWED_METHODS', ('mobile_money', 'card'))
+    if isinstance(methods, str):
+        methods = [item.strip() for item in methods.split(',') if item.strip()]
+    methods = list(methods or ['mobile_money'])
+    return methods
+
+
+def _snippe_customer_payload(user, phone=''):
+    customer = {
+        'name': user.get_full_name() or user.username,
+    }
+    if phone:
+        customer['phone'] = phone
+    if user.email:
+        customer['email'] = user.email
+    return customer
+
+
+def _snippe_provider_is_local():
+    try:
+        host = (urlparse(_snippe_base_url()).hostname or '').lower()
+    except ValueError:
+        return False
+    return host in {'localhost', '127.0.0.1', '::1', 'host.docker.internal'}
+
+
+def _snippe_webhook_url(request):
+    webhook_path = reverse('lms:snippe_webhook')
+    configured_base = str(getattr(settings, 'SNIPPE_WEBHOOK_BASE_URL', '') or '').rstrip('/')
+    if configured_base:
+        return f"{configured_base}{webhook_path}"
+
+    webhook_url = request.build_absolute_uri(webhook_path)
+    if not _snippe_provider_is_local() and webhook_url.startswith('http://'):
+        webhook_url = webhook_url.replace('http://', 'https://', 1)
+    return webhook_url
 # Instructor: Manage Payment Methods
 @login_required(login_url='login')
 def instructor_payment_methods(request):
@@ -2042,18 +2090,21 @@ def certificate_detail(request, certificate_id):
 
     # Check payment status
     has_paid = False
+    is_admin_user = is_admin(request.user)
     if is_owner:
         has_paid = CertificatePayment.objects.filter(
             certificate=certificate, user=request.user, status='completed'
         ).exists()
         # Check if admin granted certificate access or certificate was prepaid
         if not has_paid:
-            has_paid = CourseEnrollment.objects.filter(
-                student__user=request.user,
-                course=certificate.course,
-            ).filter(
-                Q(admin_granted_certificate=True) | Q(certificate_prepaid=True)
-            ).exists()
+            # Also allow admin to bypass payment check
+            if not is_admin_user:
+                has_paid = CourseEnrollment.objects.filter(
+                    student__user=request.user,
+                    course=certificate.course,
+                ).filter(
+                    Q(admin_granted_certificate=True) | Q(certificate_prepaid=True)
+                ).exists()
 
     # Determine certificate price
     template = certificate.template
@@ -2103,7 +2154,10 @@ def download_certificate(request, certificate_id):
         )
         return redirect('lms:certificate_detail', certificate_id=certificate.certificate_id)
 
-    # ── Payment verification (students only; instructors bypass) ──
+    from .views import is_admin
+    is_admin_user = is_admin(request.user)
+
+    # ── Payment verification (students only; instructors and admins bypass) ──
     if certificate.student == request.user:
         try:
             completed_payments = list(CertificatePayment.objects.filter(
@@ -2141,7 +2195,7 @@ def download_certificate(request, certificate_id):
             logger.error("payment check failed for cert=%s user=%s: %s", certificate_id, request.user.id, exc)
             has_paid = False
 
-        if not has_paid:
+        if not has_paid and not is_admin_user:
             messages.info(
                 request,
                 _("Please pay for the certificate before downloading."),
@@ -2199,6 +2253,8 @@ def certificate_payment_init(request, certificate_id):
         messages.info(request, _("You have already paid for this certificate."))
         return redirect('lms:certificate_download', certificate_id=certificate.certificate_id)
 
+    force_new_checkout = request.POST.get('force_new_checkout') == '1'
+
     reusable_payment = CertificatePayment.objects.filter(
         certificate=certificate,
         user=request.user,
@@ -2206,8 +2262,8 @@ def certificate_payment_init(request, certificate_id):
         checkout_url__gt='',
         created_at__gte=timezone.now() - timedelta(minutes=50),
     ).order_by('-created_at').first()
-    if reusable_payment:
-        return redirect(reusable_payment.checkout_url)
+    if reusable_payment and not force_new_checkout:
+        return redirect('lms:certificate_payment_success', certificate_id=certificate.certificate_id)
 
     snippe_api_key = getattr(settings, 'SNIPPE_API_KEY', '')
     if not snippe_api_key:
@@ -2224,12 +2280,8 @@ def certificate_payment_init(request, certificate_id):
     redirect_url = request.build_absolute_uri(
         reverse('lms:certificate_payment_success', kwargs={'certificate_id': certificate.certificate_id})
     )
-    webhook_url = request.build_absolute_uri(reverse('lms:snippe_webhook'))
-    # Snippe requires HTTPS for webhook URLs
-    if webhook_url.startswith('http://'):
-        webhook_url = webhook_url.replace('http://', 'https://', 1)
+    webhook_url = _snippe_webhook_url(request)
 
-    customer_name = request.user.get_full_name() or request.user.username
     customer_phone = ''
     try:
         customer_phone = request.user.customer.phone_number or ''
@@ -2246,12 +2298,8 @@ def certificate_payment_init(request, certificate_id):
     session_payload = {
         "amount": amount,
         "currency": "TZS",
-        "allowed_methods": ["mobile_money", "card"],
-        "customer": {
-            "name": customer_name,
-            "phone": customer_phone,
-            "email": request.user.email or '',
-        },
+        "allowed_methods": _snippe_allowed_methods(),
+        "customer": _snippe_customer_payload(request.user, customer_phone),
         "redirect_url": redirect_url,
         "webhook_url": webhook_url,
         "description": f"Certificate: {certificate.course.title}",
@@ -2266,7 +2314,7 @@ def certificate_payment_init(request, certificate_id):
 
     try:
         resp = requests.post(
-            "https://api.snippe.sh/api/v1/sessions",
+            _snippe_session_url(),
             headers={
                 "Authorization": f"Bearer {snippe_api_key}",
                 "Content-Type": "application/json",
@@ -2311,9 +2359,13 @@ def certificate_payment_init(request, certificate_id):
 @login_required(login_url='login')
 def certificate_payment_success(request, certificate_id):
     certificate = get_object_or_404(StudentCertificate, certificate_id=certificate_id, student=request.user)
-    payment = CertificatePayment.objects.filter(
+    payment_qs = CertificatePayment.objects.filter(
         user=request.user, certificate=certificate,
-    ).order_by('-created_at').first()
+    )
+    payment = (
+        payment_qs.filter(status='completed').order_by('-updated_at').first()
+        or payment_qs.order_by('-created_at').first()
+    )
     return render(request, 'lms/payment_confirmation.html', {
         'title': _("Confirming certificate payment"),
         'item_title': certificate.course.title,
@@ -2321,15 +2373,49 @@ def certificate_payment_success(request, certificate_id):
         'status_url': reverse('lms:certificate_payment_status', kwargs={'certificate_id': certificate.certificate_id}),
         'success_url': reverse('lms:certificate_detail', kwargs={'certificate_id': certificate.certificate_id}),
         'success_label': _("Download certificate"),
+        'retry_url': reverse('lms:certificate_payment_init', kwargs={'certificate_id': certificate.certificate_id}),
     })
 
+@require_POST
 
-@login_required(login_url='login')
+def override_course_completion(request, course_slug, student_id):
+    """Admin override: set admin_override_completion on enrollment."""
+    from django.shortcuts import get_object_or_404, redirect
+    from django.contrib import messages
+    from .models import Course, CourseEnrollment, LMSProfile
+    from .views import is_admin
+
+    # Check if user is admin
+    if not is_admin(request.user) and not request.user.is_staff:
+        messages.error(request, _("You must be an admin to override course completion."))
+        return redirect('lms:course_detail', slug=course.slug)
+
+    # Get or create enrollment
+    course = get_object_or_404(Course, slug=course_slug)
+    student = get_object_or_404(LMSProfile, id=student_id)
+
+    # Get or create enrollment
+    enrollment, created = CourseEnrollment.objects.get_or_create(
+        student=student,
+        course=course,
+    )
+
+    # Set admin override completion
+    enrollment.admin_override_completion = True
+    enrollment.granted_by = request.user
+    enrollment.save()
+
+    messages.success(request, _(f"Course completion overridden for {student.user.username}."))
+    return redirect('lms:course_detail', slug=course.slug)
 def certificate_payment_status(request, certificate_id):
     certificate = get_object_or_404(StudentCertificate, certificate_id=certificate_id, student=request.user)
-    payment = CertificatePayment.objects.filter(
+    payment_qs = CertificatePayment.objects.filter(
         user=request.user, certificate=certificate,
-    ).order_by('-created_at').first()
+    )
+    payment = (
+        payment_qs.filter(status='completed').order_by('-updated_at').first()
+        or payment_qs.order_by('-created_at').first()
+    )
     return JsonResponse({
         'status': payment.status if payment else 'missing',
         'message': payment.failure_reason if payment and payment.status in {'failed', 'cancelled', 'expired'} else '',
@@ -3165,6 +3251,8 @@ def course_payment_init(request, slug):
         messages.success(request, _("Your previous module payments cover the full course. Full access is now unlocked."))
         return redirect('lms:course_detail', slug=course.slug)
 
+    force_new_checkout = request.POST.get('force_new_checkout') == '1'
+
     reusable_payment = CoursePayment.objects.filter(
         user=request.user,
         course=course,
@@ -3173,8 +3261,8 @@ def course_payment_init(request, slug):
         checkout_url__gt='',
         created_at__gte=timezone.now() - timedelta(minutes=50),
     ).order_by('-created_at').first()
-    if reusable_payment:
-        return redirect(reusable_payment.checkout_url)
+    if reusable_payment and not force_new_checkout:
+        return redirect('lms:course_payment_success', slug=course.slug)
 
     payment = CoursePayment.objects.create(
         user=request.user,
@@ -3186,11 +3274,8 @@ def course_payment_init(request, slug):
     redirect_url = request.build_absolute_uri(
         reverse('lms:course_payment_success', kwargs={'slug': course.slug})
     )
-    webhook_url = request.build_absolute_uri(reverse('lms:snippe_webhook'))
-    if webhook_url.startswith('http://'):
-        webhook_url = webhook_url.replace('http://', 'https://', 1)
+    webhook_url = _snippe_webhook_url(request)
 
-    customer_name = request.user.get_full_name() or request.user.username
     customer_phone = ''
     try:
         customer_phone = request.user.customer.phone_number or ''
@@ -3200,12 +3285,8 @@ def course_payment_init(request, slug):
     session_payload = {
         "amount": int(amount_due),
         "currency": "TZS",
-        "allowed_methods": ["mobile_money", "card"],
-        "customer": {
-            "name": customer_name,
-            "phone": customer_phone,
-            "email": request.user.email or '',
-        },
+        "allowed_methods": _snippe_allowed_methods(),
+        "customer": _snippe_customer_payload(request.user, customer_phone),
         "redirect_url": redirect_url,
         "webhook_url": webhook_url,
         "description": f"Enrollment: {course.title}",
@@ -3220,7 +3301,7 @@ def course_payment_init(request, slug):
 
     try:
         resp = requests.post(
-            "https://api.snippe.sh/api/v1/sessions",
+            _snippe_session_url(),
             headers={
                 "Authorization": f"Bearer {snippe_api_key}",
                 "Content-Type": "application/json",
@@ -3258,7 +3339,11 @@ def course_payment_success(request, slug):
     course = get_object_or_404(Course, slug=slug)
     profile, profile_created = LMSProfile.objects.get_or_create(user=request.user, defaults={'role': 'student'})
 
-    payment = CoursePayment.objects.filter(user=request.user, course=course).order_by('-created_at').first()
+    payment_qs = CoursePayment.objects.filter(user=request.user, course=course)
+    payment = (
+        payment_qs.filter(status='completed').order_by('-updated_at').first()
+        or payment_qs.order_by('-created_at').first()
+    )
     enrollment = CourseEnrollment.objects.filter(student=profile, course=course).first()
     if payment and payment.status == 'completed' and (not enrollment or enrollment.payment_status != 'approved'):
         enrollment, enrollment_created = CourseEnrollment.objects.get_or_create(student=profile, course=course)
@@ -3273,6 +3358,7 @@ def course_payment_success(request, slug):
         'status_url': reverse('lms:course_payment_status', kwargs={'slug': course.slug}),
         'success_url': reverse('lms:course_detail', kwargs={'slug': course.slug}),
         'success_label': _("Start course"),
+        'retry_url': reverse('lms:course_payment_init', kwargs={'slug': course.slug}),
     })
 
 
@@ -3280,7 +3366,11 @@ def course_payment_success(request, slug):
 def course_payment_status(request, slug):
     """Small polling endpoint used by the payment confirmation screen."""
     course = get_object_or_404(Course, slug=slug)
-    payment = CoursePayment.objects.filter(user=request.user, course=course).order_by('-created_at').first()
+    payment_qs = CoursePayment.objects.filter(user=request.user, course=course)
+    payment = (
+        payment_qs.filter(status='completed').order_by('-updated_at').first()
+        or payment_qs.order_by('-created_at').first()
+    )
     status = payment.status if payment else 'missing'
     return JsonResponse({
         'status': status,
@@ -3393,6 +3483,8 @@ def module_payment_init(request, course_slug, module_id):
         messages.error(request, _("Invalid module price."))
         return redirect('lms:course_detail', slug=course.slug)
 
+    force_new_checkout = request.POST.get('force_new_checkout') == '1'
+
     reusable_payment = ModulePayment.objects.filter(
         user=request.user,
         module=module,
@@ -3401,8 +3493,8 @@ def module_payment_init(request, course_slug, module_id):
         checkout_url__gt='',
         created_at__gte=timezone.now() - timedelta(minutes=50),
     ).order_by('-created_at').first()
-    if reusable_payment:
-        return redirect(reusable_payment.checkout_url)
+    if reusable_payment and not force_new_checkout:
+        return redirect('lms:module_payment_success', course_slug=course.slug, module_id=module.id)
 
     payment = ModulePayment.objects.create(
         user=request.user,
@@ -3414,11 +3506,8 @@ def module_payment_init(request, course_slug, module_id):
     redirect_url = request.build_absolute_uri(
         reverse('lms:module_payment_success', kwargs={'course_slug': course.slug, 'module_id': module.id})
     )
-    webhook_url = request.build_absolute_uri(reverse('lms:snippe_webhook'))
-    if webhook_url.startswith('http://'):
-        webhook_url = webhook_url.replace('http://', 'https://', 1)
+    webhook_url = _snippe_webhook_url(request)
 
-    customer_name = request.user.get_full_name() or request.user.username
     customer_phone = ''
     try:
         customer_phone = request.user.customer.phone_number or ''
@@ -3428,12 +3517,8 @@ def module_payment_init(request, course_slug, module_id):
     session_payload = {
         "amount": int(amount),
         "currency": "TZS",
-        "allowed_methods": ["mobile_money", "card"],
-        "customer": {
-            "name": customer_name,
-            "phone": customer_phone,
-            "email": request.user.email or '',
-        },
+        "allowed_methods": _snippe_allowed_methods(),
+        "customer": _snippe_customer_payload(request.user, customer_phone),
         "redirect_url": redirect_url,
         "webhook_url": webhook_url,
         "description": f"Module access: {module.title} ({course.title})",
@@ -3449,7 +3534,7 @@ def module_payment_init(request, course_slug, module_id):
 
     try:
         resp = requests.post(
-            "https://api.snippe.sh/api/v1/sessions",
+            _snippe_session_url(),
             headers={
                 "Authorization": f"Bearer {snippe_api_key}",
                 "Content-Type": "application/json",
@@ -3486,7 +3571,11 @@ def module_payment_success(request, course_slug, module_id):
     module = get_object_or_404(CourseModule, id=module_id, course=course)
     profile, profile_created = LMSProfile.objects.get_or_create(user=request.user, defaults={'role': 'student'})
 
-    payment = ModulePayment.objects.filter(user=request.user, module=module).order_by('-created_at').first()
+    payment_qs = ModulePayment.objects.filter(user=request.user, module=module)
+    payment = (
+        payment_qs.filter(status='completed').order_by('-updated_at').first()
+        or payment_qs.order_by('-created_at').first()
+    )
     if payment and payment.status == 'completed':
         access_request, access_request_created = ModuleAccessRequest.objects.get_or_create(
             student=profile,
@@ -3512,6 +3601,7 @@ def module_payment_success(request, course_slug, module_id):
         }),
         'success_url': reverse('lms:course_detail', kwargs={'slug': course.slug}),
         'success_label': _("Start module"),
+        'retry_url': reverse('lms:module_payment_init', kwargs={'course_slug': course.slug, 'module_id': module.id}),
     })
 
 
@@ -3519,7 +3609,11 @@ def module_payment_success(request, course_slug, module_id):
 def module_payment_status(request, course_slug, module_id):
     course = get_object_or_404(Course, slug=course_slug)
     module = get_object_or_404(CourseModule, id=module_id, course=course)
-    payment = ModulePayment.objects.filter(user=request.user, module=module).order_by('-created_at').first()
+    payment_qs = ModulePayment.objects.filter(user=request.user, module=module)
+    payment = (
+        payment_qs.filter(status='completed').order_by('-updated_at').first()
+        or payment_qs.order_by('-created_at').first()
+    )
     status = payment.status if payment else 'missing'
     return JsonResponse({
         'status': status,

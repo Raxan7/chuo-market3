@@ -241,7 +241,7 @@ class Course(models.Model):
                 student__user=user, 
                 course=self
             )
-            return enrollment.payment_status == 'approved' or enrollment.admin_granted_access
+            return enrollment.payment_status == 'approved' or enrollment.admin_granted_access or enrollment.admin_override_completion
         except CourseEnrollment.DoesNotExist:
             return False
 
@@ -354,6 +354,10 @@ class CourseEnrollment(models.Model):
         default=False,
         help_text=_("Certificate has been prepaid as part of this enrollment.")
     )
+    admin_override_completion = models.BooleanField(
+        default=False,
+        help_text=_("Admin has overridden course completion. Student must pay for certificate but completion is not auto-issued.")
+    )
     granted_by = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,
@@ -374,7 +378,7 @@ class CourseEnrollment(models.Model):
         """Determine if student has access to the course"""
         if self.course.is_free:
             return True
-        return self.payment_status == 'approved' or self.admin_granted_access
+        return self.payment_status == 'approved' or self.admin_granted_access or self.admin_override_completion
         
     def save(self, *args, **kwargs):
         # For free courses, automatically set payment_status to not_required
