@@ -510,7 +510,7 @@ class CoursePaymentTests(TestCase):
         SNIPPE_ALLOWED_METHODS=('mobile_money',),
     )
     def test_course_payment_init_creates_payment_record(self):
-        """course_payment_init creates the local record before redirecting to Snippe."""
+        """course_payment_init creates the local record before handing off to Snippe."""
         from unittest.mock import patch
 
         self.client.login(username='student', password='testpassword')
@@ -518,8 +518,8 @@ class CoursePaymentTests(TestCase):
             'code': 201,
             'data': {
                 'reference': 'sess_course_123',
-                'checkout_url': 'https://pay.snippe.sh/sess_course_123',
-                'payment_link_url': 'https://pay.snippe.sh/l/sess_course_123',
+                'checkout_url': 'https://snippe.me/checkout/sess_course_123',
+                'payment_link_url': 'https://snippe.me/p/sess_course_123',
             },
         }})()
         with patch('lms.views.requests.post', return_value=mock_response) as mock_post:
@@ -527,7 +527,9 @@ class CoursePaymentTests(TestCase):
                 reverse('lms:course_payment_init', kwargs={'slug': self.paid_course.slug}),
             )
 
-        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'https://snippe.me/checkout/sess_course_123')
+        self.assertNotIn('Location', response)
         payment = CoursePayment.objects.get(user=self.student_user, course=self.paid_course)
         self.assertEqual(payment.snippe_session_id, 'sess_course_123')
         self.assertEqual(payment.status, 'pending')
@@ -543,7 +545,7 @@ class CoursePaymentTests(TestCase):
         from unittest.mock import patch
 
         self.client.login(username='student', password='testpassword')
-        checkout_url = 'https://pay.snippe.sh/sess_existing_course'
+        checkout_url = 'https://snippe.me/checkout/sess_existing_course'
         CoursePayment.objects.create(
             user=self.student_user,
             course=self.paid_course,
@@ -558,8 +560,9 @@ class CoursePaymentTests(TestCase):
                 reverse('lms:course_payment_init', kwargs={'slug': self.paid_course.slug}),
             )
 
-        self.assertEqual(response.status_code, 302)
-        self.assertEqual(response['Location'], checkout_url)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, checkout_url)
+        self.assertNotIn('Location', response)
         mock_post.assert_not_called()
         self.assertEqual(
             CoursePayment.objects.filter(user=self.student_user, course=self.paid_course).count(),
@@ -939,15 +942,15 @@ class ModulePaymentTests(TestCase):
 
     @override_settings(SNIPPE_API_KEY='test_key')
     def test_module_payment_init_creates_module_payment(self):
-        """module_payment_init should create a ModulePayment record and attempt Snippe redirect"""
+        """module_payment_init should create a ModulePayment record and hand off to Snippe"""
         from unittest.mock import patch
 
         mock_response = type('FakeResponse', (), {'json': lambda self: {
             'code': 201,
             'data': {
                 'reference': 'sess_module_123',
-                'checkout_url': 'https://pay.snippe.sh/sess_module_123',
-                'payment_link_url': 'https://pay.snippe.sh/l/sess_module_123',
+                'checkout_url': 'https://snippe.me/checkout/sess_module_123',
+                'payment_link_url': 'https://snippe.me/p/sess_module_123',
             },
         }})()
         with patch('lms.views.requests.post', return_value=mock_response) as mock_post:
@@ -955,8 +958,9 @@ class ModulePaymentTests(TestCase):
                 'course_slug': self.course.slug,
                 'module_id': self.priced_module.id,
             }))
-        self.assertEqual(response.status_code, 302)
-        self.assertTrue(response['Location'].startswith('https://pay.snippe.sh/'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'https://snippe.me/checkout/sess_module_123')
+        self.assertNotIn('Location', response)
         self.assertEqual(mock_post.call_count, 1)
 
         payment = ModulePayment.objects.get(
@@ -971,7 +975,7 @@ class ModulePaymentTests(TestCase):
         """A reusable module session must reopen Snippe instead of confirmation."""
         from unittest.mock import patch
 
-        checkout_url = 'https://pay.snippe.sh/sess_existing_module'
+        checkout_url = 'https://snippe.me/checkout/sess_existing_module'
         ModulePayment.objects.create(
             user=self.student_user,
             module=self.priced_module,
@@ -987,8 +991,9 @@ class ModulePaymentTests(TestCase):
                 'module_id': self.priced_module.id,
             }))
 
-        self.assertEqual(response.status_code, 302)
-        self.assertEqual(response['Location'], checkout_url)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, checkout_url)
+        self.assertNotIn('Location', response)
         mock_post.assert_not_called()
         self.assertEqual(
             ModulePayment.objects.filter(user=self.student_user, module=self.priced_module).count(),

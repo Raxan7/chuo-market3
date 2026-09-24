@@ -89,10 +89,10 @@ class SecurityHeadersMiddleware(MiddlewareMixin):
         ],
         'object-src': ["'none'"],
         'base-uri': ["'self'"],
-        # Chrome/Safari can enforce form-action across redirects. Payment
-        # initiation POSTs to ChuoSmart and then redirects to Snippe's hosted
-        # checkout, so the checkout origin must be explicitly permitted.
-        'form-action': ["'self'", 'https://pay.snippe.sh'],
+        # Forms submit only to ChuoSmart. External payment checkout navigation
+        # happens from a normal 200 transition page, not from the form POST's
+        # redirect chain, so third-party origins do not belong in form-action.
+        'form-action': ["'self'"],
         'frame-ancestors': ["'none'"],
     }
 

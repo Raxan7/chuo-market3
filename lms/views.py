@@ -97,6 +97,68 @@ def _snippe_webhook_url(request):
     if not _snippe_provider_is_local() and webhook_url.startswith('http://'):
         webhook_url = webhook_url.replace('http://', 'https://', 1)
     return webhook_url
+
+
+def _snippe_checkout_url_is_trusted(checkout_url):
+    """Allow only Snippe-hosted (or explicitly configured) checkout URLs."""
+    try:
+        parsed = urlparse(str(checkout_url or '').strip())
+    except ValueError:
+        return False
+
+    if not parsed.scheme or not parsed.hostname or parsed.username or parsed.password:
+        return False
+
+    host = parsed.hostname.lower().rstrip('.')
+    configured_hosts = getattr(settings, 'SNIPPE_CHECKOUT_HOSTS', ())
+    if isinstance(configured_hosts, str):
+        configured_hosts = [
+            item.strip().lower().rstrip('.')
+            for item in configured_hosts.split(',')
+            if item.strip()
+        ]
+    else:
+        configured_hosts = [str(item).strip().lower().rstrip('.') for item in configured_hosts or ()]
+
+    # Current Snippe sessions use snippe.me; keep *.snippe.sh for existing
+    # sessions and older provider deployments.
+    trusted_host = (
+        host == 'snippe.me'
+        or host.endswith('.snippe.me')
+        or host == 'snippe.sh'
+        or host.endswith('.snippe.sh')
+        or host in configured_hosts
+    )
+    if trusted_host:
+        return parsed.scheme == 'https'
+
+    # Local development/test gateways may legitimately use HTTP.
+    if _snippe_provider_is_local():
+        provider = urlparse(_snippe_base_url())
+        return host == (provider.hostname or '').lower() and parsed.scheme in {'http', 'https'}
+
+    return False
+
+
+def _snippe_checkout_response(request, checkout_url):
+    """Return a 200 transition page instead of an external form redirect.
+
+    Browsers such as Chrome can apply CSP ``form-action`` to the redirect chain
+    of a submitted form. Returning a normal HTML response first breaks that
+    form-submission redirect chain; the page then navigates to Snippe using a
+    meta refresh / manual link.
+    """
+    if not _snippe_checkout_url_is_trusted(checkout_url):
+        raise ValueError('Payment provider returned an untrusted checkout URL')
+
+    response = render(request, 'lms/snippe_checkout_redirect.html', {
+        'checkout_url': checkout_url,
+    })
+    response['Cache-Control'] = 'no-store, private'
+    response['Referrer-Policy'] = 'no-referrer'
+    return response
+
+
 # Instructor: Manage Payment Methods
 @login_required(login_url='login')
 def instructor_payment_methods(request):
@@ -2264,7 +2326,12 @@ def certificate_payment_init(request, certificate_id):
         # Resume the existing Snippe checkout. The success URL is only for the
         # provider's post-checkout return; sending an unpaid user there here
         # strands them on the confirmation screen without ever opening Snippe.
-        return redirect(reusable_payment.checkout_url)
+        try:
+            return _snippe_checkout_response(request, reusable_payment.checkout_url)
+        except ValueError as exc:
+            reusable_payment.status = 'failed'
+            reusable_payment.failure_reason = str(exc)
+            reusable_payment.save(update_fields=['status', 'failure_reason', 'updated_at'])
 
     snippe_api_key = getattr(settings, 'SNIPPE_API_KEY', '')
     if not snippe_api_key:
@@ -2340,7 +2407,7 @@ def certificate_payment_init(request, certificate_id):
             payment.save(update_fields=[
                 'snippe_session_id', 'checkout_url', 'payment_link_url', 'updated_at',
             ])
-            return redirect(checkout_url)
+            return _snippe_checkout_response(request, checkout_url)
         else:
             err_msg = data.get("message", _("Unknown error"))
             payment.status = 'failed'
@@ -3311,7 +3378,12 @@ def course_payment_init(request, slug):
         # Resume the existing Snippe checkout instead of jumping directly to
         # our post-checkout confirmation page. This also prevents duplicate
         # sessions while still allowing the customer to actually pay.
-        return redirect(reusable_payment.checkout_url)
+        try:
+            return _snippe_checkout_response(request, reusable_payment.checkout_url)
+        except ValueError as exc:
+            reusable_payment.status = 'failed'
+            reusable_payment.failure_reason = str(exc)
+            reusable_payment.save(update_fields=['status', 'failure_reason', 'updated_at'])
 
     payment = CoursePayment.objects.create(
         user=request.user,
@@ -3373,7 +3445,7 @@ def course_payment_init(request, slug):
         payment.save(update_fields=[
             'snippe_session_id', 'checkout_url', 'payment_link_url', 'updated_at',
         ])
-        return redirect(checkout_url)
+        return _snippe_checkout_response(request, checkout_url)
     except (requests.RequestException, ValueError, KeyError) as exc:
         payment.status = 'failed'
         payment.failure_reason = f'Payment session error: {exc}'
@@ -3545,7 +3617,12 @@ def module_payment_init(request, course_slug, module_id):
     if reusable_payment and not force_new_checkout:
         # Resume the existing Snippe checkout. The confirmation screen must
         # only be reached after Snippe redirects the customer back.
-        return redirect(reusable_payment.checkout_url)
+        try:
+            return _snippe_checkout_response(request, reusable_payment.checkout_url)
+        except ValueError as exc:
+            reusable_payment.status = 'failed'
+            reusable_payment.failure_reason = str(exc)
+            reusable_payment.save(update_fields=['status', 'failure_reason', 'updated_at'])
 
     payment = ModulePayment.objects.create(
         user=request.user,
@@ -3606,7 +3683,7 @@ def module_payment_init(request, course_slug, module_id):
         payment.save(update_fields=[
             'snippe_session_id', 'checkout_url', 'payment_link_url', 'updated_at',
         ])
-        return redirect(checkout_url)
+        return _snippe_checkout_response(request, checkout_url)
     except (requests.RequestException, ValueError, KeyError) as exc:
         payment.status = 'failed'
         payment.failure_reason = f'Payment session error: {exc}'
