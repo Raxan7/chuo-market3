@@ -1,6 +1,7 @@
 {% extends "app/base.html" %}
 {% load static %}
 {% load lms_extras %}
+{% load lms_user_tags %}
 {% load sanitize_tags %}
 
 {% block title %}{{ course.title|truncatechars:32 }} | Course Tanzania{% endblock %}
@@ -283,7 +284,7 @@
                             <i class="fas fa-arrow-right"></i>
                         </a>
                         {% else %}
-                            {% if user.is_authenticated and hasattr(user, 'lms_profile') and user.lms_profile.role == 'admin' %}
+                            {% if user|is_admin %}
                             {% if course_progress and course_progress.course_completed %}
                             <a href="{% url 'lms:override_course_completion' course.slug student.id %}" class="certificate-main-btn" style="background: #dc3545; box-shadow: 0 0 0 2px rgba(220, 53, 83, 0.3);">
                                 <i class="fas fa-undo me-2"></i>
@@ -302,6 +303,7 @@
                                 <span>Check Certificate Status</span>
                             </button>
                             {% endif %}
+                        {% endif %}
                     </div>
 
                     {% if not issued_certificate %}
@@ -658,10 +660,13 @@
                                         <a href="{% url 'lms:quiz_create_in_module' course_slug=course.slug module_id=module.id %}" class="btn btn-sm btn-outline-info">
                                             <i class="fas fa-magic me-1"></i> Regenerate AI Assessment
                                         </a>
-                                        <a href="{% url 'lms:module_update' course_slug=course.slug module_id=module.id %}" class="btn btn-sm btn-outline-secondary">
-                                            <i class="fas fa-cog me-1"></i> Module Settings
-                                        </a>
                                         {% endif %}
+                                        <a href="{% url 'lms:module_update' course_slug=course.slug module_id=module.id %}" class="btn btn-sm btn-outline-secondary">
+                                            <i class="fas fa-pen me-1"></i> Edit Module
+                                        </a>
+                                        <a href="{% url 'lms:module_delete' course_slug=course.slug module_id=module.id %}" class="btn btn-sm btn-outline-danger">
+                                            <i class="fas fa-trash me-1"></i> Delete Module
+                                        </a>
                                     </div>
                                     {% endif %}
                                 </div>
@@ -687,6 +692,19 @@
                             <div id="module-body-{{ module.id }}" class="collapse">
                                 <div class="p-3 border-top">
                                     <div class="module-description mb-3">{{ module.description|sanitize }}</div>
+                                    {% if is_course_instructor %}
+                                    <div class="d-flex flex-wrap gap-2 mb-3">
+                                        <a href="{% url 'lms:content_create' course_slug=course.slug module_id=module.id %}" class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-plus me-1"></i> Add Content
+                                        </a>
+                                        <a href="{% url 'lms:module_update' course_slug=course.slug module_id=module.id %}" class="btn btn-sm btn-outline-secondary">
+                                            <i class="fas fa-pen me-1"></i> Edit Module
+                                        </a>
+                                        <a href="{% url 'lms:module_delete' course_slug=course.slug module_id=module.id %}" class="btn btn-sm btn-outline-danger">
+                                            <i class="fas fa-trash me-1"></i> Delete Module
+                                        </a>
+                                    </div>
+                                    {% endif %}
                                     <h6 class="text-success"><i class="fas fa-list me-1"></i>Module Content</h6>
                                     {% if module.contents.all %}
                                     <ul class="list-group mb-0">
@@ -711,6 +729,16 @@
                                 <p class="mb-0 text-muted">{{ module.description|striptags|truncatechars:140 }}</p>
                             </div>
                             <div class="text-end">
+                                {% if is_course_instructor %}
+                                <div class="d-flex flex-wrap gap-1 justify-content-end mb-2">
+                                    <a href="{% url 'lms:module_update' course_slug=course.slug module_id=module.id %}" class="btn btn-sm btn-outline-secondary">
+                                        <i class="fas fa-pen me-1"></i>Edit
+                                    </a>
+                                    <a href="{% url 'lms:module_delete' course_slug=course.slug module_id=module.id %}" class="btn btn-sm btn-outline-danger">
+                                        <i class="fas fa-trash me-1"></i>Delete
+                                    </a>
+                                </div>
+                                {% endif %}
                                 {% if module_request.status == 'pending' %}
                                 <span class="badge bg-warning text-dark"><i class="fas fa-check-circle me-1"></i>Payment successful — Confirming payment</span>
                                 {% elif module_request.status == 'approved' %}

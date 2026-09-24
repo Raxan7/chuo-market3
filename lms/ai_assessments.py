@@ -11,6 +11,7 @@ from django.utils.html import strip_tags
 from django.utils.text import Truncator
 
 from .models import ActivityLog, Choice, MCQuestion, Quiz
+from .agentic_ai import AgenticAIError, chat_completion, gateway_configured
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +61,7 @@ def collect_module_learning_context(module, student=None):
 
         parts.append(f"Content item: {content.title}\n{body}")
 
-    limit = getattr(settings, 'CEREBRAS_CONTEXT_LIMIT', 8000)
+    limit = getattr(settings, 'AI_ASSESSMENT_CONTEXT_LIMIT', getattr(settings, 'CEREBRAS_CONTEXT_LIMIT', 8000))
     context = Truncator("\n\n".join(parts)).chars(limit)
 
     logger.info(
@@ -508,6 +509,82 @@ def _call_cerebras_for_questions(module, context, question_count):
     return None, 'invalid_json', final_msg
 
 
+def _call_agentic_gateway_for_questions(module, context, question_count):
+    """Call the multi-provider agentic AI gateway and return the legacy status tuple."""
+    if not gateway_configured():
+        msg = f"Module {getattr(module, 'id', '?')}: agentic AI gateway is not configured"
+        logger.warning(msg)
+        return None, 'missing_api_key', msg
+
+    prompt = _build_quiz_prompt(module, context, question_count)
+    messages = [
+        {
+            'role': 'system',
+            'content': (
+                'You generate accurate course assessments grounded only in the supplied module content. '
+                'Return only valid JSON, with no Markdown or commentary.'
+            ),
+        },
+        {'role': 'user', 'content': prompt},
+    ]
+
+    try:
+        payload_text, meta = chat_completion(
+            messages,
+            route=getattr(settings, 'AGENTIC_AI_ROUTE', 'structured'),
+            temperature=0.0,
+            max_tokens=getattr(settings, 'AI_ASSESSMENT_MAX_TOKENS', 4000),
+            response_format={'type': 'json_object'},
+        )
+        parsed = _extract_json_object(payload_text)
+        logger.info(
+            'Agentic AI response module_id=%s provider=%s model=%s attempts=%s payload_chars=%s',
+            getattr(module, 'id', '?'),
+            meta.get('provider'),
+            meta.get('model'),
+            len(meta.get('attempts') or []),
+            len(payload_text or ''),
+        )
+        return parsed, 'success', (
+            f"provider={meta.get('provider') or 'unknown'} model={meta.get('model') or 'unknown'}"
+        )
+    except AgenticAIError as exc:
+        status = 'rate_limited' if exc.rate_limited else 'api_error'
+        msg = f"Module {getattr(module, 'id', '?')}: agentic AI gateway failed: {exc}"
+        logger.warning(msg)
+        return None, status, msg
+    except ValueError as exc:
+        msg = f"Module {getattr(module, 'id', '?')}: invalid JSON from agentic AI gateway: {exc}"
+        logger.warning(msg)
+        return None, 'invalid_json', msg
+    except Exception as exc:
+        msg = f"Module {getattr(module, 'id', '?')}: unexpected agentic AI error: {type(exc).__name__}: {exc}"
+        logger.exception(msg)
+        return None, 'api_error', msg
+
+
+def _call_configured_ai_for_questions(module, context, question_count):
+    """Use the configured quiz provider, preferring the multi-provider gateway in auto mode."""
+    provider = getattr(settings, 'AI_ASSESSMENT_PROVIDER', 'auto').strip().lower()
+
+    if provider not in {'auto', 'agentic', 'cerebras'}:
+        return None, 'api_error', f"Unsupported AI_ASSESSMENT_PROVIDER={provider!r}"
+
+    if provider in {'auto', 'agentic'} and gateway_configured():
+        return _call_agentic_gateway_for_questions(module, context, question_count)
+
+    if provider == 'agentic':
+        return None, 'missing_api_key', 'Agentic AI gateway selected but AGENTIC_AI_BASE_URL/API_KEY are not configured.'
+
+    if provider in {'auto', 'cerebras'} and getattr(settings, 'CEREBRAS_API_KEY', None):
+        return _call_cerebras_for_questions(module, context, question_count)
+
+    if provider == 'cerebras':
+        return None, 'missing_api_key', 'Cerebras selected but CEREBRAS_API_KEY is not configured.'
+
+    return None, 'missing_api_key', 'No AI quiz provider is configured.'
+
+
 def ensure_module_assessment(module, student=None, question_count=DEFAULT_QUESTION_COUNT, force=False):
     """
     Generate one shared AI quiz for a module.
@@ -555,19 +632,19 @@ def ensure_module_assessment(module, student=None, question_count=DEFAULT_QUESTI
         f"Collected AI context for module {module.id}: {len(context or '')} characters."
     )
 
+    provider_name = getattr(settings, 'AI_ASSESSMENT_PROVIDER', 'auto')
     _log_assessment_event(
-        f"Calling Cerebras for module {module.id} using model "
-        f"{getattr(settings, 'CEREBRAS_ASSESSMENT_MODEL', 'zai-glm-4.7')}."
+        f"Calling configured AI provider for module {module.id}: provider={provider_name}."
     )
 
-    raw_payload, status, msg = _call_cerebras_for_questions(
+    raw_payload, status, msg = _call_configured_ai_for_questions(
         module,
         context,
         question_count,
     )
 
     _log_assessment_event(
-        f"Cerebras returned for module {module.id}: status={status}, message={str(msg)[:300]}."
+        f"AI provider returned for module {module.id}: status={status}, message={str(msg)[:300]}."
     )
 
     if status == 'rate_limited':
@@ -583,7 +660,7 @@ def ensure_module_assessment(module, student=None, question_count=DEFAULT_QUESTI
         raise RuntimeError(str(msg))
 
     if status != 'success' or not raw_payload:
-        if not getattr(settings, 'CEREBRAS_STRICT_ASSESSMENTS', True):
+        if getattr(settings, 'AI_ASSESSMENT_ALLOW_DETERMINISTIC_FALLBACK', False):
             from .management.commands.fallback_pending_quiz_jobs import build_fallback_questions
 
             fallback_questions = build_fallback_questions(module)[:question_count]
@@ -605,7 +682,7 @@ def ensure_module_assessment(module, student=None, question_count=DEFAULT_QUESTI
             _mark_quiz_generation_state(
                 existing,
                 'ready',
-                'Fallback assessment is ready. AI generation can be retried later.',
+                'Emergency deterministic fallback is ready. Regenerate with AI before normal production use.',
             )
             existing.ai_generated = False
             existing.save(update_fields=['ai_generated'])
@@ -727,15 +804,14 @@ def queue_module_assessment_generation(module, student=None, question_count=DEFA
         )
         return None
 
-    # Development/offline safety: when strict AI assessments are disabled and
-    # no provider key is configured, build a deterministic assessment now.
-    # This keeps learning flows usable without external network calls.
-    if not getattr(settings, 'CEREBRAS_API_KEY', None) and not getattr(
-        settings, 'CEREBRAS_STRICT_ASSESSMENTS', True
-    ):
-        return ensure_module_assessment(
-            module, student=student, question_count=question_count, force=force
-        )
+    # Deterministic fallback is opt-in only. Production defaults never publish
+    # repeated placeholder quizzes just because the AI provider is unavailable.
+    if getattr(settings, 'AI_ASSESSMENT_ALLOW_DETERMINISTIC_FALLBACK', False):
+        has_ai_provider = gateway_configured() or bool(getattr(settings, 'CEREBRAS_API_KEY', None))
+        if not has_ai_provider:
+            return ensure_module_assessment(
+                module, student=student, question_count=question_count, force=force
+            )
 
     # The database-backed production queue currently generates one shared quiz
     # per module. Personalized offline assessments above remain learner-scoped.

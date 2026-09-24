@@ -50,7 +50,7 @@ class LMSModuleGatingTests(TestCase):
             order=1,
         )
 
-    @override_settings(CEREBRAS_API_KEY=None, CEREBRAS_STRICT_ASSESSMENTS=False)
+    @override_settings(CEREBRAS_API_KEY=None, CEREBRAS_STRICT_ASSESSMENTS=False, AI_ASSESSMENT_ALLOW_DETERMINISTIC_FALLBACK=True)
     def test_overview_module_skips_assessment_and_unlocks_next_module(self):
         overview_module = CourseModule.objects.create(
             course=self.course,
@@ -89,7 +89,7 @@ class LMSModuleGatingTests(TestCase):
         self.assertIsNotNone(response.context['module_states'][1]['assessment'])
         self.assertContains(response, 'Open Assessment')
 
-    @override_settings(CEREBRAS_API_KEY=None, CEREBRAS_STRICT_ASSESSMENTS=False)
+    @override_settings(CEREBRAS_API_KEY=None, CEREBRAS_STRICT_ASSESSMENTS=False, AI_ASSESSMENT_ALLOW_DETERMINISTIC_FALLBACK=True)
     def test_generated_assessment_is_required_before_next_module_unlocks(self):
         first_module = CourseModule.objects.create(
             course=self.course,
@@ -128,7 +128,7 @@ class LMSModuleGatingTests(TestCase):
         self.assertTrue(progress.completed)
         self.assertTrue(is_module_unlocked(second_module, self.profile))
 
-    @override_settings(CEREBRAS_API_KEY=None, CEREBRAS_STRICT_ASSESSMENTS=False)
+    @override_settings(CEREBRAS_API_KEY=None, CEREBRAS_STRICT_ASSESSMENTS=False, AI_ASSESSMENT_ALLOW_DETERMINISTIC_FALLBACK=True)
     def test_enrollment_queues_personalized_assessment_for_student(self):
         module = CourseModule.objects.create(
             course=self.course,
@@ -149,7 +149,7 @@ class LMSModuleGatingTests(TestCase):
         self.assertTrue(response.context['quiz_is_ready'])
         self.assertFalse(response.context['is_generating'])
 
-    @override_settings(CEREBRAS_API_KEY=None, CEREBRAS_STRICT_ASSESSMENTS=False)
+    @override_settings(CEREBRAS_API_KEY=None, CEREBRAS_STRICT_ASSESSMENTS=False, AI_ASSESSMENT_ALLOW_DETERMINISTIC_FALLBACK=True)
     def test_new_module_after_enrollment_gets_progress_and_one_ai_quiz(self):
         module = CourseModule.objects.create(
             course=self.course,
@@ -178,7 +178,7 @@ class LMSModuleGatingTests(TestCase):
         self.assertIsNotNone(state['assessment'])
         self.assertEqual(state['assessment_status'], 'ready')
 
-    @override_settings(CEREBRAS_API_KEY=None, CEREBRAS_STRICT_ASSESSMENTS=False)
+    @override_settings(CEREBRAS_API_KEY=None, CEREBRAS_STRICT_ASSESSMENTS=False, AI_ASSESSMENT_ALLOW_DETERMINISTIC_FALLBACK=True)
     def test_queueing_module_assessment_is_idempotent(self):
         module = CourseModule.objects.create(
             course=self.course,
@@ -196,7 +196,7 @@ class LMSModuleGatingTests(TestCase):
             1,
         )
 
-    @override_settings(CEREBRAS_API_KEY=None, CEREBRAS_STRICT_ASSESSMENTS=False)
+    @override_settings(CEREBRAS_API_KEY=None, CEREBRAS_STRICT_ASSESSMENTS=False, AI_ASSESSMENT_ALLOW_DETERMINISTIC_FALLBACK=True)
     def test_instructor_quiz_create_route_queues_ai_instead_of_manual_form(self):
         instructor_user = User.objects.create_user(
             username='instructor',
@@ -231,6 +231,7 @@ class LMSModuleGatingTests(TestCase):
             1,
         )
 
+    @override_settings(CEREBRAS_API_KEY=None, CEREBRAS_STRICT_ASSESSMENTS=False, AI_ASSESSMENT_ALLOW_DETERMINISTIC_FALLBACK=True)
     def test_locked_modules_render_as_disabled_controls(self):
         first_module = CourseModule.objects.create(
             course=self.course,
@@ -339,7 +340,7 @@ class LMSModuleGatingTests(TestCase):
         self.assertTrue(response.context['has_special_module_access'])
         self.assertContains(response, 'You are enrolled with special module access')
 
-    @override_settings(CEREBRAS_API_KEY=None, CEREBRAS_STRICT_ASSESSMENTS=False)
+    @override_settings(CEREBRAS_API_KEY=None, CEREBRAS_STRICT_ASSESSMENTS=False, AI_ASSESSMENT_ALLOW_DETERMINISTIC_FALLBACK=True)
     def test_passing_quiz_saves_progress_and_redirects_to_next_module(self):
         first_module = CourseModule.objects.create(
             course=self.course,
@@ -1448,7 +1449,7 @@ class ModuleAccessRequestAfterManualGrantTests(TestCase):
 
         self.client.login(username='manual_enrollee', password='testpassword')
 
-    @override_settings(CEREBRAS_API_KEY=None, CEREBRAS_STRICT_ASSESSMENTS=False)
+    @override_settings(CEREBRAS_API_KEY=None, CEREBRAS_STRICT_ASSESSMENTS=False, AI_ASSESSMENT_ALLOW_DETERMINISTIC_FALLBACK=True)
     def test_request_access_hidden_until_previous_module_completed(self):
         """Unlock Module must be hidden for module 2 until module 1 is completed."""
         ModuleAccessGrant.objects.create(
@@ -1466,7 +1467,7 @@ class ModuleAccessRequestAfterManualGrantTests(TestCase):
         self.assertNotContains(response, 'Unlock Module — 15000.00')
         self.assertContains(response, 'Previous module required')
 
-    @override_settings(CEREBRAS_API_KEY=None, CEREBRAS_STRICT_ASSESSMENTS=False)
+    @override_settings(CEREBRAS_API_KEY=None, CEREBRAS_STRICT_ASSESSMENTS=False, AI_ASSESSMENT_ALLOW_DETERMINISTIC_FALLBACK=True)
     def test_request_access_shown_after_completing_granted_module(self):
         """After completing module 1 (granted), module 2 should show Unlock Module."""
         ModuleAccessGrant.objects.create(
@@ -1567,6 +1568,7 @@ class CertificatePrepaidTests(TestCase):
     },
     CEREBRAS_API_KEY=None,
     CEREBRAS_STRICT_ASSESSMENTS=False,
+    AI_ASSESSMENT_ALLOW_DETERMINISTIC_FALLBACK=True,
 )
 class PartialEnrollmentAccessGateTests(TestCase):
     """G2+G3: quizzes gated by module payment; unenroll blocked for partial students."""

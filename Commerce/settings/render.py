@@ -128,11 +128,14 @@ if not _env_bool("RENDER_ENABLE_OUTBOUND_EMAIL", default=False):
     MARKETING_EMAIL_HOST_USER = ""
     MARKETING_EMAIL_HOST_PASSWORD = ""
 
-# Prototype defaults: an unavailable external AI provider should not prevent a
-# tester from exercising the LMS assessment flow. Setting this env var to true
-# restores strict behavior.
+# Production safety: never silently publish deterministic repeated quizzes when
+# an external AI provider is unavailable. Operators can still run the explicit
+# emergency fallback command if they deliberately choose to do so.
 CEREBRAS_STRICT_ASSESSMENTS = _env_bool(
-    "CEREBRAS_STRICT_ASSESSMENTS", default=False
+    "CEREBRAS_STRICT_ASSESSMENTS", default=True
+)
+AI_ASSESSMENT_ALLOW_DETERMINISTIC_FALLBACK = _env_bool(
+    "AI_ASSESSMENT_ALLOW_DETERMINISTIC_FALLBACK", default=False
 )
 
 # Render streams stdout/stderr into its log viewer. Avoid depending on container

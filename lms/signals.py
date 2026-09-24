@@ -103,8 +103,10 @@ def ensure_learning_records_on_module_save(sender, instance, created, **kwargs):
     def dispatch_learning_records():
         from .utils import ensure_course_learning_records
 
-        # Queue assessment for the new module
-        queue_module_assessment_generation(instance)
+        # Create the first assessment for new modules; regenerate it after an
+        # instructor edits the module title/description/settings so the quiz
+        # never stays stale relative to the learning material.
+        queue_module_assessment_generation(instance, force=not created)
 
     transaction.on_commit(dispatch_learning_records)
 

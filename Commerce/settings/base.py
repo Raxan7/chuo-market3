@@ -176,16 +176,32 @@ SESSION_EXPIRE_AT_BROWSER_CLOSE = False
 SESSION_COOKIE_HTTPONLY = True
 SESSION_IDLE_TIMEOUT = int(os.getenv('SESSION_IDLE_TIMEOUT', str(60 * 60 * 24 * 7)))
 
+# AI assessment generation. The agentic gateway is preferred because it can
+# fail over across multiple providers/models. Cerebras remains supported as a
+# backwards-compatible secondary provider while deployments migrate.
+AGENTIC_AI_BASE_URL = os.getenv('AGENTIC_AI_BASE_URL', '').rstrip('/')
+AGENTIC_AI_API_KEY = os.getenv('AGENTIC_AI_API_KEY', '')
+AGENTIC_AI_ROUTE = os.getenv('AGENTIC_AI_ROUTE', 'structured')
+AGENTIC_AI_TIMEOUT_SECONDS = float(os.getenv('AGENTIC_AI_TIMEOUT_SECONDS', '240'))
+AI_ASSESSMENT_PROVIDER = os.getenv('AI_ASSESSMENT_PROVIDER', 'auto').strip().lower()
+AI_ASSESSMENT_CONTEXT_LIMIT = int(os.getenv('AI_ASSESSMENT_CONTEXT_LIMIT', '12000'))
+AI_ASSESSMENT_MAX_TOKENS = int(os.getenv('AI_ASSESSMENT_MAX_TOKENS', '4000'))
+# Deterministic fallback quizzes are intentionally disabled by default. A failed
+# AI call must stay pending/failed instead of silently publishing repeated quiz text.
+AI_ASSESSMENT_ALLOW_DETERMINISTIC_FALLBACK = os.getenv(
+    'AI_ASSESSMENT_ALLOW_DETERMINISTIC_FALLBACK', 'False'
+).lower() in ('1', 'true', 'yes')
+
 CEREBRAS_API_KEY = os.getenv('CEREBRAS_API_KEY')
 CEREBRAS_ASSESSMENT_MODEL = os.getenv('CEREBRAS_ASSESSMENT_MODEL', 'zai-glm-4.7')
-CEREBRAS_ASSESSMENT_MAX_TOKENS = int(os.getenv('CEREBRAS_ASSESSMENT_MAX_TOKENS', '4000'))
-CEREBRAS_CONTEXT_LIMIT = int(os.getenv('CEREBRAS_CONTEXT_LIMIT', '12000'))
+CEREBRAS_ASSESSMENT_MAX_TOKENS = int(os.getenv('CEREBRAS_ASSESSMENT_MAX_TOKENS', str(AI_ASSESSMENT_MAX_TOKENS)))
+CEREBRAS_CONTEXT_LIMIT = int(os.getenv('CEREBRAS_CONTEXT_LIMIT', str(AI_ASSESSMENT_CONTEXT_LIMIT)))
 CEREBRAS_STRICT_ASSESSMENTS = os.getenv('CEREBRAS_STRICT_ASSESSMENTS', 'True').lower() in ('1', 'true', 'yes')
 
-if not CEREBRAS_API_KEY:
+if not AGENTIC_AI_API_KEY and not CEREBRAS_API_KEY:
     import logging
     logger = logging.getLogger(__name__)
-    logger.warning('CEREBRAS_API_KEY is not set; AI-generated assessments will use fallback behavior or remain unavailable.')
+    logger.warning('No AI assessment provider is configured; quiz generation jobs will remain unavailable until one is configured.')
 
 SNIPPE_API_KEY = os.getenv('SNIPPE_API_KEY', '')
 SNIPPE_WEBHOOK_SECRET = os.getenv('SNIPPE_WEBHOOK_SECRET', '')

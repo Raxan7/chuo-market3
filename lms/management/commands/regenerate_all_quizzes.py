@@ -18,7 +18,7 @@ def safe_text(text):
 
 
 class Command(BaseCommand):
-    help = "Regenerates non-AI module quizzes via Cerebras. Skips ai_generated=True. Terminates on error."
+    help = "Regenerates every non-AI module quiz with the configured AI provider. Skips ai_generated=True. Terminates on error."
 
     def add_arguments(self, parser):
         parser.add_argument("--course-id", type=int, help="Only regenerate for a specific course ID")
@@ -76,7 +76,7 @@ class Command(BaseCommand):
         total = len(needs_gen)
 
         self.write("")
-        self.write("Cerebras AI Quiz Regeneration", self.style.MIGRATE_HEADING)
+        self.write("AI Quiz Regeneration", self.style.MIGRATE_HEADING)
         self.write("=" * 70)
         self.write(f"Total modules (no skip): {total_all}")
         self.write(f"Already AI-generated (skipped): {len(already_done)}")
@@ -122,7 +122,8 @@ class Command(BaseCommand):
                     f"\nFATAL: Quiz generation failed for Module #{module.id} \"{safe_text(module.title)}\""
                     f"\n  Course: {safe_text(module.course.title)}"
                     f"\n  Error: {exc}"
-                    f"\n\nTERMINATING. Fix the issue, then re-run with --start-at {idx} to continue."
+                    f"\n\nTERMINATING. Fix the AI/provider issue and re-run the same command. "
+                    f"Modules already regenerated successfully are skipped automatically."
                 )
                 logger.exception(
                     "Quiz generation failed for module_id=%s course_id=%s",

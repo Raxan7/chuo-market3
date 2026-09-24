@@ -1596,9 +1596,10 @@ class CourseModuleUpdateView(InstructorRequiredMixin, UpdateView):
 
 
 class CourseModuleDeleteView(InstructorRequiredMixin, DeleteView):
-    """Delete a course module"""
+    """Delete a course module after an explicit POST confirmation."""
     model = CourseModule
     pk_url_kwarg = 'module_id'
+    template_name = 'lms/module_confirm_delete.html'
     
     def dispatch(self, request, *args, **kwargs):
         # First check if the user is authenticated
@@ -1624,17 +1625,14 @@ class CourseModuleDeleteView(InstructorRequiredMixin, DeleteView):
     def get_queryset(self):
         return CourseModule.objects.filter(course=self.course)
     
-    def delete(self, request, *args, **kwargs):
-        module = self.get_object()
-        module_title = module.title
-        
-        # Create activity log
+    def form_valid(self, form):
+        module_title = self.object.title
+
         ActivityLog.objects.create(
-            message=_(f"Instructor {request.user.username} deleted module '{module_title}' from course '{self.course.title}'.")
+            message=_(f"Instructor {self.request.user.username} deleted module '{module_title}' from course '{self.course.title}'.")
         )
-        
-        messages.success(request, _("Module deleted successfully."))
-        return super().delete(request, *args, **kwargs)
+        messages.success(self.request, _("Module deleted successfully."))
+        return super().form_valid(form)
     
     def get_success_url(self):
         return reverse('lms:course_detail', kwargs={'slug': self.course.slug})
