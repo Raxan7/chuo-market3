@@ -503,7 +503,12 @@ class CoursePaymentTests(TestCase):
 
     # ── CoursePayment model ──────────────────────────────────────────
 
-    @override_settings(SNIPPE_API_KEY='test_key')
+    @override_settings(
+        SNIPPE_API_KEY='test_key',
+        SNIPPE_BASE_URL='http://127.0.0.1:8787',
+        SNIPPE_WEBHOOK_BASE_URL='http://host.docker.internal:8000',
+        SNIPPE_ALLOWED_METHODS=('mobile_money',),
+    )
     def test_course_payment_init_creates_payment_record(self):
         """course_payment_init creates the local record before redirecting to Snippe."""
         from unittest.mock import patch
@@ -526,8 +531,11 @@ class CoursePaymentTests(TestCase):
         payment = CoursePayment.objects.get(user=self.student_user, course=self.paid_course)
         self.assertEqual(payment.snippe_session_id, 'sess_course_123')
         self.assertEqual(payment.status, 'pending')
+        self.assertEqual(mock_post.call_args.args[0], 'http://127.0.0.1:8787/api/v1/sessions')
         payload = mock_post.call_args.kwargs['json']
         self.assertEqual(payload['metadata']['payment_id'], payment.pk)
+        self.assertEqual(payload['allowed_methods'], ['mobile_money'])
+        self.assertEqual(payload['webhook_url'], 'http://host.docker.internal:8000/lms/webhooks/snippe/')
 
     def test_course_payment_init_rejects_get(self):
         self.client.login(username='student', password='testpassword')

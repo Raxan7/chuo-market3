@@ -2374,37 +2374,82 @@ def certificate_payment_success(request, certificate_id):
         'retry_url': reverse('lms:certificate_payment_init', kwargs={'certificate_id': certificate.certificate_id}),
     })
 
+@login_required(login_url='login')
 @require_POST
-
 def override_course_completion(request, course_slug, student_id):
-    """Admin override: set admin_override_completion on enrollment."""
-    from django.shortcuts import get_object_or_404, redirect
-    from django.contrib import messages
-    from .models import Course, CourseEnrollment, LMSProfile
-    from .views import is_admin
+    """Allow an administrator to mark an enrollment as completion-overridden."""
+    course = get_object_or_404(Course, slug=course_slug)
 
-    # Check if user is admin
-    if not is_admin(request.user) and not request.user.is_staff:
+    if not (request.user.is_staff or request.user.is_superuser or is_admin(request.user)):
         messages.error(request, _("You must be an admin to override course completion."))
         return redirect('lms:course_detail', slug=course.slug)
 
-    # Get or create enrollment
-    course = get_object_or_404(Course, slug=course_slug)
     student = get_object_or_404(LMSProfile, id=student_id)
-
-    # Get or create enrollment
     enrollment, created = CourseEnrollment.objects.get_or_create(
         student=student,
         course=course,
     )
-
-    # Set admin override completion
     enrollment.admin_override_completion = True
     enrollment.granted_by = request.user
-    enrollment.save()
+    enrollment.save(update_fields=['admin_override_completion', 'granted_by'])
 
-    messages.success(request, _(f"Course completion overridden for {student.user.username}."))
+    messages.success(
+        request,
+        _("Course completion overridden for %(username)s.") % {
+            'username': student.user.username,
+        },
+    )
     return redirect('lms:course_detail', slug=course.slug)
+
+
+@login_required(login_url='login')
+def admin_download_certificate(request, certificate_id):
+    """Allow a ChuoSmart administrator to download any issued certificate.
+
+    This endpoint is intentionally GET-compatible because downloading a generated
+    certificate is a read-only action. It does not modify payment or enrollment state.
+    """
+    if not (request.user.is_staff or request.user.is_superuser or is_admin(request.user)):
+        messages.error(request, _("You must be an admin to download certificates."))
+        return redirect('lms:student_dashboard')
+
+    certificate = get_object_or_404(
+        StudentCertificate.objects.select_related('student', 'course', 'template'),
+        certificate_id=certificate_id,
+    )
+
+    from .certificates import certificate_context
+    from django.template.loader import render_to_string
+
+    try:
+        from weasyprint import HTML
+    except ImportError:
+        messages.error(
+            request,
+            _("PDF generation is not available. Please try again later."),
+        )
+        return redirect(
+            'lms:certificate_detail',
+            certificate_id=certificate.certificate_id,
+        )
+
+    ctx = certificate_context(certificate, request=request)
+    html_string = render_to_string(
+        'lms/certificates/certificate_pdf.html',
+        ctx,
+        request=request,
+    )
+    pdf_bytes = HTML(
+        string=html_string,
+        base_url=request.build_absolute_uri('/'),
+    ).write_pdf()
+
+    filename = f"{certificate.certificate_id}.pdf"
+    response = HttpResponse(pdf_bytes, content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
+
+
 def certificate_payment_status(request, certificate_id):
     certificate = get_object_or_404(StudentCertificate, certificate_id=certificate_id, student=request.user)
     payment_qs = CertificatePayment.objects.filter(

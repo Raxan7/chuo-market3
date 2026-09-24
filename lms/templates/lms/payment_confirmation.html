@@ -23,9 +23,32 @@
           </div>
           <div id="paymentFailed" class="d-none">
             <div class="display-5 text-danger mb-3"><i class="fas fa-times-circle"></i></div>
-            <h2 class="h3">{% trans "Payment not completed" %}</h2>
+            <h2 class="h3">{% trans "Payment confirmation needs attention" %}</h2>
             <p id="paymentFailureMessage" class="text-muted"></p>
-            <a href="javascript:history.back()" class="btn btn-outline-primary">{% trans "Return to payment" %}</a>
+
+            <div class="d-flex justify-content-center flex-wrap gap-2">
+              <button type="button" id="paymentCheckAgain" class="btn btn-outline-primary">
+                {% trans "Check again" %}
+              </button>
+
+              {% if retry_url %}
+              <form method="post" action="{{ retry_url }}" class="d-inline">
+                {% csrf_token %}
+                <input type="hidden" name="force_new_checkout" value="1">
+                <button type="submit" class="btn btn-primary">
+                  {% trans "Start a fresh checkout" %}
+                </button>
+              </form>
+              {% endif %}
+
+              <a href="{{ success_url }}" class="btn btn-outline-secondary">
+                {% trans "Back" %}
+              </a>
+            </div>
+
+            <p class="small text-muted mt-3 mb-0">
+              {% trans "Start a fresh checkout only when the previous payment did not complete." %}
+            </p>
           </div>
           {% if payment %}
           <p class="small text-muted mt-4 mb-0">{% trans "ChuoSmart payment reference" %}: #{{ payment.id }}</p>
@@ -46,6 +69,7 @@
   const success = document.getElementById('paymentSuccess');
   const failed = document.getElementById('paymentFailed');
   const failureMessage = document.getElementById('paymentFailureMessage');
+  const checkAgain = document.getElementById('paymentCheckAgain');
   let attempts = 0;
 
   async function checkStatus() {
@@ -71,9 +95,22 @@
     if (attempts < 30) {
       window.setTimeout(checkStatus, 2000);
     } else {
-      pending.querySelector('p.mb-0').textContent = '{% trans "Confirmation is taking longer than expected. You can leave this page safely; access will unlock automatically when the provider confirms payment." %}';
+      pending.classList.add('d-none');
+      failed.classList.remove('d-none');
+      failureMessage.textContent = '{% trans "Confirmation is taking longer than expected. Check the status again, or start a fresh checkout if the previous payment did not complete." %}';
     }
   }
+
+  if (checkAgain) {
+    checkAgain.addEventListener('click', function () {
+      attempts = 0;
+      failed.classList.add('d-none');
+      success.classList.add('d-none');
+      pending.classList.remove('d-none');
+      checkStatus();
+    });
+  }
+
   checkStatus();
 })();
 </script>

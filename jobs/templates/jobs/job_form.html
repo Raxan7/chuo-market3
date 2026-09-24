@@ -1,504 +1,365 @@
 {% extends "jobs/base.html" %}
 {% load static %}
 
-{% block job_content %}
-<div class="mb-4">
-    <div class="d-flex flex-column flex-lg-row justify-content-between align-items-start gap-3 mb-3">
-        <div>
-            <p class="text-uppercase text-muted small mb-1">
-                <i class="bi bi-briefcase me-1"></i>Job posting
-            </p>
-            <h1 class="mb-1">{% if is_create %}Post a New Job{% else %}Edit Job{% endif %}</h1>
-            <p class="text-muted mb-0">
-                {% if is_create %}
-                    Share your job opportunity with thousands of candidates. Your verified status determines job visibility.
-                {% else %}
-                    Update your job posting details.
-                {% endif %}
-            </p>
-        </div>
-        <div>
-            <a href="{% url 'jobs:my_jobs' %}" class="btn btn-outline-secondary">
-                <i class="bi bi-arrow-left me-1"></i>Back
-            </a>
-        </div>
-    </div>
+{% block title %}{% if is_create %}Post a Job{% else %}Edit Job{% endif %}{% endblock %}
 
-    <!-- Status Banner -->
-    {% if user.job_approval.is_approved %}
-    <div class="alert alert-success d-flex align-items-center mb-4" role="alert">
-        <i class="bi bi-check-circle-fill me-2 fs-5"></i>
-        <div>
-            <strong>Account Verified</strong>
-            <p class="mb-0">Your jobs are visible to all candidates immediately upon posting.</p>
-        </div>
-    </div>
-    {% else %}
-    <div class="alert alert-warning d-flex align-items-center mb-4" role="alert">
-        <i class="bi bi-exclamation-circle-fill me-2 fs-5"></i>
-        <div>
-            <strong>Account Pending Verification</strong>
-            <p class="mb-0">Your jobs will be hidden until your account is verified by our team. This helps maintain job quality.</p>
-        </div>
-    </div>
-    {% endif %}
+{% block extra_head %}
+{{ block.super }}
+<link rel="stylesheet" href="{% static 'chuosmart_v2/css/creator_forms.css' %}">
+{% endblock %}
 
-    <!-- Company Note -->
-    {% if form.company %}
-    <div class="alert alert-info d-flex align-items-center mb-4" role="alert">
-        <i class="bi bi-info-circle-fill me-2"></i>
-        <div>
-            <strong>Company Information</strong>
-            <p class="mb-0">Associate your job with a company profile to give candidates more context about your organization.</p>
-        </div>
-    </div>
-    {% endif %}
-
-<!-- Modern Multi-Step Form -->
-<form method="post" enctype="multipart/form-data" class="needs-validation" novalidate>
-    {% csrf_token %}
-    {{ form.posted_date.as_hidden }}
-    
-    {% if form.errors %}
-    <div class="alert alert-danger mb-4" role="alert">
-        <h5 class="alert-heading">Please fix the following</h5>
-        <ul class="mb-0 ps-3">
-            {% for field in form %}
-                {% for error in field.errors %}
-                    <li><strong>{{ field.label }}:</strong> {{ error }}</li>
-                {% endfor %}
-            {% endfor %}
-            {% for error in form.non_field_errors %}
-                <li>{{ error }}</li>
-            {% endfor %}
-        </ul>
-    </div>
-    {% endif %}
-
-    <!-- Section 1: Basic Information -->
-    <div class="card shadow-sm mb-4 border-0">
-        <div class="card-header bg-light border-0 py-3">
-            <div class="d-flex align-items-center">
-                <div class="badge bg-primary rounded-circle p-2" style="width: 35px; height: 35px; display: flex; align-items: center; justify-content: center;">
-                    <i class="bi bi-pencil-square"></i>
+{% block main-content %}
+<div class="cs-creator-page" data-creator-page="job">
+    <div class="container">
+        <header class="cs-creator-hero">
+            <div class="cs-creator-hero-grid">
+                <div>
+                    <div class="cs-creator-kicker">
+                        <span class="cs-creator-kicker-icon"><i class="fas fa-briefcase" aria-hidden="true"></i></span>
+                        Opportunity Studio
+                    </div>
+                    <h1>{% if is_create %}Create a job people want to apply for.{% else %}Make this opportunity even stronger.{% endif %}</h1>
+                    <p>
+                        {% if is_create %}
+                            Give candidates the context they need to understand the role, see the value, and apply with confidence.
+                        {% else %}
+                            Refine the role, application flow, and publishing details without losing what you already built.
+                        {% endif %}
+                    </p>
+                    <div class="cs-creator-status-row" aria-label="Posting status">
+                        {% if user.job_approval.is_approved %}
+                            <span class="cs-creator-status is-success"><i class="fas fa-check-circle" aria-hidden="true"></i> Verified poster</span>
+                            <span class="cs-creator-status"><i class="fas fa-bolt" aria-hidden="true"></i> Eligible for public visibility</span>
+                        {% else %}
+                            <span class="cs-creator-status is-warning"><i class="fas fa-clock" aria-hidden="true"></i> Verification pending</span>
+                            <span class="cs-creator-status"><i class="fas fa-shield-alt" aria-hidden="true"></i> You can save now; visibility follows verification</span>
+                        {% endif %}
+                    </div>
                 </div>
-                <h5 class="mb-0 ms-3">Basic Information</h5>
+                <a href="{% url 'jobs:my_jobs' %}" class="cs-creator-back">
+                    <i class="fas fa-arrow-left" aria-hidden="true"></i> My job posts
+                </a>
             </div>
-        </div>
-        <div class="card-body">
-            <div class="row g-4">
-                <div class="col-lg-8">
-                    <div class="form-group">
-                        <label class="form-label fw-500" for="{{ form.title.id_for_label }}">
-                            <i class="bi bi-briefcase me-1"></i>Job Title
-                        </label>
-                        {{ form.title }}
-                        {% if form.title.errors %}
-                            <div class="invalid-feedback d-block">
-                                {% for error in form.title.errors %}{{ error }}{% endfor %}
-                            </div>
-                        {% endif %}
-                        <small class="text-muted d-block mt-1">E.g., Senior Software Engineer, Marketing Manager</small>
-                    </div>
-                </div>
-                <div class="col-lg-4">
-                    <div class="form-group">
-                        <label class="form-label fw-500" for="{{ form.industry.id_for_label }}">
-                            <i class="bi bi-layers me-1"></i>Industry
-                        </label>
-                        {{ form.industry }}
-                        {% if form.industry.errors %}
-                            <div class="invalid-feedback d-block">
-                                {% for error in form.industry.errors %}{{ error }}{% endfor %}
-                            </div>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
+        </header>
 
-            <div class="row g-4 mt-2">
-                <div class="col-lg-4">
-                    <div class="form-group">
-                        <label class="form-label fw-500" for="{{ form.job_type.id_for_label }}">
-                            <i class="bi bi-clock me-1"></i>Job Type
-                        </label>
-                        {{ form.job_type }}
-                        {% if form.job_type.errors %}
-                            <div class="invalid-feedback d-block">
-                                {% for error in form.job_type.errors %}{{ error }}{% endfor %}
-                            </div>
-                        {% endif %}
-                    </div>
-                </div>
-                <div class="col-lg-4">
-                    <div class="form-group">
-                        <label class="form-label fw-500" for="{{ form.experience_level.id_for_label }}">
-                            <i class="bi bi-graph-up me-1"></i>Experience Level
-                        </label>
-                        {{ form.experience_level }}
-                        {% if form.experience_level.errors %}
-                            <div class="invalid-feedback d-block">
-                                {% for error in form.experience_level.errors %}{{ error }}{% endfor %}
-                            </div>
-                        {% endif %}
-                    </div>
-                </div>
-                <div class="col-lg-4">
-                    <div class="form-group">
-                        <label class="form-label fw-500">
-                            <i class="bi bi-geo me-1"></i>Location
-                        </label>
-                        {{ form.location }}
-                        {% if form.location.errors %}
-                            <div class="invalid-feedback d-block">
-                                {% for error in form.location.errors %}{{ error }}{% endfor %}
-                            </div>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
+        <div class="cs-creator-layout">
+            <div class="cs-creator-main">
+                <form method="post" class="cs-creator-form" novalidate>
+                    {% csrf_token %}
 
-            <div class="row g-4 mt-2">
-                <div class="col-lg-4">
-                    <div class="form-check form-switch">
-                        {{ form.is_remote }}
-                        <label class="form-check-label fw-500" for="{{ form.is_remote.id_for_label }}">
-                            <i class="bi bi-globe me-1"></i>Remote Friendly
-                        </label>
-                        {% if form.is_remote.errors %}
-                            <div class="invalid-feedback d-block">
-                                {% for error in form.is_remote.errors %}{{ error }}{% endfor %}
-                            </div>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-
-            {% if form.company %}
-            <div class="row g-4 mt-2">
-                <div class="col-lg-6">
-                    <div class="form-group">
-                        <label class="form-label fw-500" for="{{ form.company.id_for_label }}">
-                            <i class="bi bi-building me-1"></i>Company (Optional)
-                        </label>
-                        {{ form.company }}
-                        {% if form.company.errors %}
-                            <div class="invalid-feedback d-block">
-                                {% for error in form.company.errors %}{{ error }}{% endfor %}
-                            </div>
-                        {% endif %}
-                        <small class="text-muted d-block mt-1">Associate with a company to provide more context about your organization.</small>
-                    </div>
-                </div>
-            </div>
-            {% endif %}
-        </div>
-    </div>
-
-    <!-- Section 2: Job Details -->
-    <div class="card shadow-sm mb-4 border-0">
-        <div class="card-header bg-light border-0 py-3">
-            <div class="d-flex align-items-center">
-                <div class="badge bg-success rounded-circle p-2" style="width: 35px; height: 35px; display: flex; align-items: center; justify-content: center;">
-                    <i class="bi bi-file-earmark-text"></i>
-                </div>
-                <h5 class="mb-0 ms-3">Job Details</h5>
-            </div>
-        </div>
-        <div class="card-body">
-            <div class="row g-4">
-                <div class="col-12">
-                    <div class="form-group">
-                        <label class="form-label fw-500" for="{{ form.description.id_for_label }}">
-                            <i class="bi bi-card-text me-1"></i>Job Description
-                        </label>
-                        {{ form.description }}
-                        {% if form.description.errors %}
-                            <div class="invalid-feedback d-block">
-                                {% for error in form.description.errors %}{{ error }}{% endfor %}
-                            </div>
-                        {% endif %}
-                        <small class="text-muted d-block mt-1">Describe the role, responsibilities, and what makes it exciting.</small>
-                    </div>
-                </div>
-            </div>
-
-            <div class="row g-4 mt-2">
-                <div class="col-lg-6">
-                    <div class="form-group">
-                        <label class="form-label fw-500" for="{{ form.requirements.id_for_label }}">
-                            <i class="bi bi-clipboard-check me-1"></i>Requirements
-                        </label>
-                        {{ form.requirements }}
-                        {% if form.requirements.errors %}
-                            <div class="invalid-feedback d-block">
-                                {% for error in form.requirements.errors %}{{ error }}{% endfor %}
-                            </div>
-                        {% endif %}
-                    </div>
-                </div>
-                <div class="col-lg-6">
-                    <div class="form-group">
-                        <label class="form-label fw-500" for="{{ form.responsibilities.id_for_label }}">
-                            <i class="bi bi-list-task me-1"></i>Responsibilities
-                        </label>
-                        {{ form.responsibilities }}
-                        {% if form.responsibilities.errors %}
-                            <div class="invalid-feedback d-block">
-                                {% for error in form.responsibilities.errors %}{{ error }}{% endfor %}
-                            </div>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-
-            <div class="row g-4 mt-2">
-                <div class="col-12">
-                    <div class="form-group">
-                        <label class="form-label fw-500" for="{{ form.benefits.id_for_label }}">
-                            <i class="bi bi-gift me-1"></i>Benefits & Perks
-                        </label>
-                        {{ form.benefits }}
-                        {% if form.benefits.errors %}
-                            <div class="invalid-feedback d-block">
-                                {% for error in form.benefits.errors %}{{ error }}{% endfor %}
-                            </div>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-
-            <div class="row g-4 mt-2">
-                <div class="col-12">
-                    <div class="form-group">
-                        <label class="form-label fw-500">
-                            <i class="bi bi-tools me-1"></i>Required Skills
-                        </label>
-                        <div class="border rounded p-3 bg-light" style="max-height: 300px; overflow-y: auto;">
-                            {{ form.skills }}
+                    {% if form.errors %}
+                    <div class="cs-creator-error-summary" role="alert">
+                        <i class="fas fa-exclamation-triangle" aria-hidden="true"></i>
+                        <div>
+                            <h2>Please fix the following</h2>
+                            <ul>
+                                {% for field in form %}
+                                    {% for error in field.errors %}
+                                        <li><strong>{{ field.label }}:</strong> {{ error }}</li>
+                                    {% endfor %}
+                                {% endfor %}
+                                {% for error in form.non_field_errors %}<li>{{ error }}</li>{% endfor %}
+                            </ul>
                         </div>
-                        {% if form.skills.errors %}
-                            <div class="invalid-feedback d-block">
-                                {% for error in form.skills.errors %}{{ error }}{% endfor %}
-                            </div>
-                        {% endif %}
-                        <small class="text-muted d-block mt-2">Select all relevant skills for this position.</small>
                     </div>
-                </div>
-            </div>
-        </div>
-    </div>
+                    {% endif %}
 
-    <!-- Section 3: Compensation & Timeline -->
-    <div class="card shadow-sm mb-4 border-0">
-        <div class="card-header bg-light border-0 py-3">
-            <div class="d-flex align-items-center">
-                <div class="badge bg-warning rounded-circle p-2" style="width: 35px; height: 35px; display: flex; align-items: center; justify-content: center;">
-                    <i class="bi bi-cash-coin"></i>
-                </div>
-                <h5 class="mb-0 ms-3">Compensation & Timeline</h5>
-            </div>
-        </div>
-        <div class="card-body">
-            <div class="row g-4">
-                <div class="col-lg-4">
-                    <div class="form-group">
-                        <label class="form-label fw-500" for="{{ form.salary_currency.id_for_label }}">
-                            <i class="bi bi-currency-dollar me-1"></i>Currency
-                        </label>
-                        {{ form.salary_currency }}
-                        {% if form.salary_currency.errors %}
-                            <div class="invalid-feedback d-block">
-                                {% for error in form.salary_currency.errors %}{{ error }}{% endfor %}
+                    <section class="cs-creator-section" id="job-basics" data-creator-section>
+                        <div class="cs-creator-section-head">
+                            <span class="cs-creator-section-number">01</span>
+                            <div>
+                                <h2>Role basics</h2>
+                                <p>Start with the details candidates scan first: title, work setup, seniority, and location.</p>
                             </div>
-                        {% endif %}
-                    </div>
-                </div>
-                <div class="col-lg-4">
-                    <div class="form-group">
-                        <label class="form-label fw-500" for="{{ form.salary_min.id_for_label }}">
-                            <i class="bi bi-arrow-down me-1"></i>Minimum Salary
-                        </label>
-                        {{ form.salary_min }}
-                        {% if form.salary_min.errors %}
-                            <div class="invalid-feedback d-block">
-                                {% for error in form.salary_min.errors %}{{ error }}{% endfor %}
-                            </div>
-                        {% endif %}
-                    </div>
-                </div>
-                <div class="col-lg-4">
-                    <div class="form-group">
-                        <label class="form-label fw-500" for="{{ form.salary_max.id_for_label }}">
-                            <i class="bi bi-arrow-up me-1"></i>Maximum Salary
-                        </label>
-                        {{ form.salary_max }}
-                        {% if form.salary_max.errors %}
-                            <div class="invalid-feedback d-block">
-                                {% for error in form.salary_max.errors %}{{ error }}{% endfor %}
-                            </div>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-
-            <div class="row g-4 mt-2">
-                <div class="col-lg-6">
-                    <div class="form-group">
-                        <label class="form-label fw-500" for="{{ form.application_deadline.id_for_label }}">
-                            <i class="bi bi-calendar-event me-1"></i>Application Deadline
-                        </label>
-                        {{ form.application_deadline }}
-                        {% if form.application_deadline.errors %}
-                            <div class="invalid-feedback d-block">
-                                {% for error in form.application_deadline.errors %}{{ error }}{% endfor %}
-                            </div>
-                        {% endif %}
-                        <small class="text-muted d-block mt-1">When should applications stop being accepted?</small>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Section 4: Publishing Options -->
-    <div class="card shadow-sm mb-4 border-0">
-        <div class="card-header bg-light border-0 py-3">
-            <div class="d-flex align-items-center">
-                <div class="badge bg-info rounded-circle p-2" style="width: 35px; height: 35px; display: flex; align-items: center; justify-content: center;">
-                    <i class="bi bi-rocket"></i>
-                </div>
-                <h5 class="mb-0 ms-3">Publishing Options</h5>
-            </div>
-        </div>
-        <div class="card-body">
-            <!-- Job Posting Type Selection -->
-            <div class="row g-4 mb-4">
-                <div class="col-lg-12">
-                    <label class="form-label fw-500">
-                        <i class="bi bi-question-circle me-1"></i>Job Application Method
-                    </label>
-                    <div class="alert alert-light border">
-                        <div class="row g-3">
-                            <div class="col-md-6">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="radio" id="job_posting_internal" 
-                                           name="job_posting_type" value="internal" 
-                                           {% if form.job_posting_type.value != 'external' %}checked{% endif %}>
-                                    <label class="form-check-label" for="job_posting_internal">
-                                        <strong><i class="bi bi-door-open me-2"></i>Apply on Chuosmart</strong>
-                                        <br>
-                                        <small class="text-muted">Candidates apply directly through our platform. You manage all applications in your dashboard.</small>
-                                    </label>
+                        </div>
+                        <div class="cs-creator-section-body">
+                            <div class="cs-creator-grid">
+                                <div class="cs-field col-8{% if form.title.errors %} has-error{% endif %}">
+                                    <label for="{{ form.title.id_for_label }}"><i class="fas fa-heading" aria-hidden="true"></i> Job title</label>
+                                    {{ form.title }}
+                                    <span class="cs-field-help">Be specific and searchable — for example, “Senior Backend Engineer” instead of “Developer”.</span>
+                                    {% for error in form.title.errors %}<span class="cs-field-error"><i class="fas fa-exclamation-circle"></i>{{ error }}</span>{% endfor %}
                                 </div>
+                                <div class="cs-field col-4{% if form.industry.errors %} has-error{% endif %}">
+                                    <label for="{{ form.industry.id_for_label }}"><i class="fas fa-layer-group" aria-hidden="true"></i> Industry</label>
+                                    {{ form.industry }}
+                                    {% for error in form.industry.errors %}<span class="cs-field-error"><i class="fas fa-exclamation-circle"></i>{{ error }}</span>{% endfor %}
+                                </div>
+
+                                <div class="cs-field col-4{% if form.job_type.errors %} has-error{% endif %}">
+                                    <label for="{{ form.job_type.id_for_label }}"><i class="fas fa-clock" aria-hidden="true"></i> Job type</label>
+                                    {{ form.job_type }}
+                                    {% for error in form.job_type.errors %}<span class="cs-field-error"><i class="fas fa-exclamation-circle"></i>{{ error }}</span>{% endfor %}
+                                </div>
+                                <div class="cs-field col-4{% if form.experience_level.errors %} has-error{% endif %}">
+                                    <label for="{{ form.experience_level.id_for_label }}"><i class="fas fa-chart-line" aria-hidden="true"></i> Experience level</label>
+                                    {{ form.experience_level }}
+                                    {% for error in form.experience_level.errors %}<span class="cs-field-error"><i class="fas fa-exclamation-circle"></i>{{ error }}</span>{% endfor %}
+                                </div>
+                                <div class="cs-field col-4{% if form.location.errors %} has-error{% endif %}">
+                                    <label for="{{ form.location.id_for_label }}"><i class="fas fa-map-marker-alt" aria-hidden="true"></i> Location</label>
+                                    {{ form.location }}
+                                    {% for error in form.location.errors %}<span class="cs-field-error"><i class="fas fa-exclamation-circle"></i>{{ error }}</span>{% endfor %}
+                                </div>
+
+                                <div class="cs-field col-6">
+                                    <div class="cs-switch-card">
+                                        {{ form.is_remote }}
+                                        <div>
+                                            <label for="{{ form.is_remote.id_for_label }}"><i class="fas fa-globe-africa" aria-hidden="true"></i> Remote friendly</label>
+                                            <p>Turn this on when the role can be performed remotely or from multiple locations.</p>
+                                            {% for error in form.is_remote.errors %}<span class="cs-field-error"><i class="fas fa-exclamation-circle"></i>{{ error }}</span>{% endfor %}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {% if form.company %}
+                                <div class="cs-field col-6{% if form.company.errors %} has-error{% endif %}">
+                                    <label for="{{ form.company.id_for_label }}"><i class="fas fa-building" aria-hidden="true"></i> Company <span class="text-muted fw-normal">(optional)</span></label>
+                                    {{ form.company }}
+                                    <span class="cs-field-help">Link a company profile to give candidates richer context about the employer.</span>
+                                    {% for error in form.company.errors %}<span class="cs-field-error"><i class="fas fa-exclamation-circle"></i>{{ error }}</span>{% endfor %}
+                                </div>
+                                {% endif %}
                             </div>
-                            <div class="col-md-6">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="radio" id="job_posting_external" 
-                                           name="job_posting_type" value="external"
-                                           {% if form.job_posting_type.value == 'external' %}checked{% endif %}>
-                                    <label class="form-check-label" for="job_posting_external">
-                                        <strong><i class="bi bi-box-arrow-up-right me-2"></i>External Link</strong>
-                                        <br>
-                                        <small class="text-muted">Candidates are directed to apply on your website or job board (e.g., LinkedIn, Indeed).</small>
-                                    </label>
+                        </div>
+                    </section>
+
+                    <section class="cs-creator-section" id="job-story" data-creator-section>
+                        <div class="cs-creator-section-head">
+                            <span class="cs-creator-section-number">02</span>
+                            <div>
+                                <h2>Tell the story of the role</h2>
+                                <p>Explain the mission, day-to-day work, expectations, and reasons a strong candidate should care.</p>
+                            </div>
+                        </div>
+                        <div class="cs-creator-section-body">
+                            <div class="cs-creator-grid">
+                                <div class="cs-field{% if form.description.errors %} has-error{% endif %}">
+                                    <label for="{{ form.description.id_for_label }}"><i class="fas fa-align-left" aria-hidden="true"></i> Job description</label>
+                                    {{ form.description }}
+                                    <span class="cs-field-help">Lead with the impact of the role, then explain the team, the work, and what success looks like.</span>
+                                    {% for error in form.description.errors %}<span class="cs-field-error"><i class="fas fa-exclamation-circle"></i>{{ error }}</span>{% endfor %}
+                                </div>
+
+                                <div class="cs-field col-6{% if form.requirements.errors %} has-error{% endif %}">
+                                    <label for="{{ form.requirements.id_for_label }}"><i class="fas fa-clipboard-check" aria-hidden="true"></i> Requirements</label>
+                                    {{ form.requirements }}
+                                    <span class="cs-field-help">Separate true must-haves from skills that can be learned on the job.</span>
+                                    {% for error in form.requirements.errors %}<span class="cs-field-error"><i class="fas fa-exclamation-circle"></i>{{ error }}</span>{% endfor %}
+                                </div>
+                                <div class="cs-field col-6{% if form.responsibilities.errors %} has-error{% endif %}">
+                                    <label for="{{ form.responsibilities.id_for_label }}"><i class="fas fa-tasks" aria-hidden="true"></i> Responsibilities</label>
+                                    {{ form.responsibilities }}
+                                    <span class="cs-field-help">Describe the work in clear, outcome-focused language.</span>
+                                    {% for error in form.responsibilities.errors %}<span class="cs-field-error"><i class="fas fa-exclamation-circle"></i>{{ error }}</span>{% endfor %}
+                                </div>
+
+                                <div class="cs-field col-6{% if form.benefits.errors %} has-error{% endif %}">
+                                    <label for="{{ form.benefits.id_for_label }}"><i class="fas fa-gift" aria-hidden="true"></i> Benefits &amp; perks</label>
+                                    {{ form.benefits }}
+                                    <span class="cs-field-help">Share meaningful benefits, flexibility, learning support, or other advantages.</span>
+                                    {% for error in form.benefits.errors %}<span class="cs-field-error"><i class="fas fa-exclamation-circle"></i>{{ error }}</span>{% endfor %}
+                                </div>
+                                <div class="cs-field col-6{% if form.skills.errors %} has-error{% endif %}">
+                                    <span class="cs-field-label"><i class="fas fa-tools" aria-hidden="true"></i> Required skills</span>
+                                    <div class="cs-skill-grid">{{ form.skills }}</div>
+                                    <span class="cs-field-help">Select only the skills that materially help someone succeed in this role.</span>
+                                    {% for error in form.skills.errors %}<span class="cs-field-error"><i class="fas fa-exclamation-circle"></i>{{ error }}</span>{% endfor %}
                                 </div>
                             </div>
                         </div>
-                    </div>
-                </div>
-            </div>
+                    </section>
 
-            <!-- External URL Field (shown only when external is selected) -->
-            <div class="row g-4 mb-4" id="external-url-section" style="display: {% if form.job_posting_type.value == 'external' %}block{% else %}none{% endif %};">
-                <div class="col-lg-12">
-                    <div class="form-group">
-                        <label class="form-label fw-500" for="{{ form.external_url.id_for_label }}">
-                            <i class="bi bi-link-45deg me-1"></i>External Application URL
-                        </label>
-                        {{ form.external_url }}
-                        {% if form.external_url.errors %}
-                            <div class="invalid-feedback d-block">
-                                {% for error in form.external_url.errors %}{{ error }}{% endfor %}
+                    <section class="cs-creator-section" id="job-offer" data-creator-section>
+                        <div class="cs-creator-section-head">
+                            <span class="cs-creator-section-number">03</span>
+                            <div>
+                                <h2>Compensation &amp; timing</h2>
+                                <p>Set expectations early with a salary range, currency, and clear application deadline.</p>
                             </div>
-                        {% endif %}
-                        <small class="text-muted d-block mt-1">The URL where candidates should apply (e.g., https://example.com/careers/job-123)</small>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Other Publishing Options -->
-            <div class="row g-4">
-                <div class="col-lg-6">
-                    <div class="form-check form-switch">
-                        {{ form.is_active }}
-                        <label class="form-check-label fw-500" for="{{ form.is_active.id_for_label }}">
-                            <i class="bi bi-play-circle me-1"></i>Publish Now
-                        </label>
-                        {% if form.is_active.errors %}
-                            <div class="invalid-feedback d-block">
-                                {% for error in form.is_active.errors %}{{ error }}{% endfor %}
+                        </div>
+                        <div class="cs-creator-section-body">
+                            <div class="cs-creator-grid">
+                                <div class="cs-field col-4{% if form.salary_currency.errors %} has-error{% endif %}">
+                                    <label for="{{ form.salary_currency.id_for_label }}"><i class="fas fa-coins" aria-hidden="true"></i> Currency</label>
+                                    {{ form.salary_currency }}
+                                    {% for error in form.salary_currency.errors %}<span class="cs-field-error"><i class="fas fa-exclamation-circle"></i>{{ error }}</span>{% endfor %}
+                                </div>
+                                <div class="cs-field col-4{% if form.salary_min.errors %} has-error{% endif %}">
+                                    <label for="{{ form.salary_min.id_for_label }}"><i class="fas fa-arrow-down" aria-hidden="true"></i> Minimum salary</label>
+                                    {{ form.salary_min }}
+                                    {% for error in form.salary_min.errors %}<span class="cs-field-error"><i class="fas fa-exclamation-circle"></i>{{ error }}</span>{% endfor %}
+                                </div>
+                                <div class="cs-field col-4{% if form.salary_max.errors %} has-error{% endif %}">
+                                    <label for="{{ form.salary_max.id_for_label }}"><i class="fas fa-arrow-up" aria-hidden="true"></i> Maximum salary</label>
+                                    {{ form.salary_max }}
+                                    {% for error in form.salary_max.errors %}<span class="cs-field-error"><i class="fas fa-exclamation-circle"></i>{{ error }}</span>{% endfor %}
+                                </div>
+                                <div class="cs-field col-6{% if form.application_deadline.errors %} has-error{% endif %}">
+                                    <label for="{{ form.application_deadline.id_for_label }}"><i class="fas fa-calendar-alt" aria-hidden="true"></i> Application deadline</label>
+                                    {{ form.application_deadline }}
+                                    <span class="cs-field-help">Choose when new applications should stop being accepted.</span>
+                                    {% for error in form.application_deadline.errors %}<span class="cs-field-error"><i class="fas fa-exclamation-circle"></i>{{ error }}</span>{% endfor %}
+                                </div>
                             </div>
-                        {% endif %}
-                        <small class="text-muted d-block mt-1">Job will be visible immediately if your account is verified.</small>
-                    </div>
-                </div>
-                </div>
-            </div>
-        </div>
-    </div>
+                        </div>
+                    </section>
 
-    <!-- Form Actions -->
-    <div class="d-flex flex-column flex-lg-row justify-content-between align-items-start align-items-lg-center gap-3 mb-4">
-        <div>
-            <small class="text-muted">
-                <i class="bi bi-info-circle me-1"></i>
-                {% if not user.job_approval.is_approved %}
-                    Your job will be hidden until your account is verified. Contact support for verification.
-                {% else %}
-                    Your verified account allows immediate job publication.
+                    <section class="cs-creator-section" id="job-publish" data-creator-section>
+                        <div class="cs-creator-section-head">
+                            <span class="cs-creator-section-number">04</span>
+                            <div>
+                                <h2>Applications &amp; publishing</h2>
+                                <p>Choose where candidates apply and whether this job should be active once it is saved.</p>
+                            </div>
+                        </div>
+                        <div class="cs-creator-section-body">
+                            <div class="cs-creator-grid">
+                                <div class="cs-field">
+                                    <span class="cs-field-label"><i class="fas fa-paper-plane" aria-hidden="true"></i> Application method</span>
+                                    <div class="cs-choice-grid" data-application-choices>
+                                        <label class="cs-choice-card" for="job_posting_internal">
+                                            <input type="radio" id="job_posting_internal" name="job_posting_type" value="internal" {% if form.job_posting_type.value != 'external' %}checked{% endif %}>
+                                            <span class="cs-choice-copy">
+                                                <strong>Apply on ChuoSmart</strong>
+                                                <span>Candidates apply inside ChuoSmart and you manage applications from your dashboard.</span>
+                                            </span>
+                                            <i class="fas fa-inbox cs-choice-icon" aria-hidden="true"></i>
+                                        </label>
+                                        <label class="cs-choice-card" for="job_posting_external">
+                                            <input type="radio" id="job_posting_external" name="job_posting_type" value="external" {% if form.job_posting_type.value == 'external' %}checked{% endif %}>
+                                            <span class="cs-choice-copy">
+                                                <strong>External application link</strong>
+                                                <span>Send candidates to your careers site or another application platform.</span>
+                                            </span>
+                                            <i class="fas fa-external-link-alt cs-choice-icon" aria-hidden="true"></i>
+                                        </label>
+                                    </div>
+                                    {% for error in form.job_posting_type.errors %}<span class="cs-field-error"><i class="fas fa-exclamation-circle"></i>{{ error }}</span>{% endfor %}
+                                </div>
+
+                                <div class="cs-field cs-external-url-wrap{% if form.external_url.errors %} has-error{% endif %}" id="external-url-section" {% if form.job_posting_type.value != 'external' %}hidden{% endif %}>
+                                    <label for="{{ form.external_url.id_for_label }}"><i class="fas fa-link" aria-hidden="true"></i> External application URL</label>
+                                    {{ form.external_url }}
+                                    <span class="cs-field-help">Use the full secure URL, for example https://company.com/careers/role.</span>
+                                    {% for error in form.external_url.errors %}<span class="cs-field-error"><i class="fas fa-exclamation-circle"></i>{{ error }}</span>{% endfor %}
+                                </div>
+
+                                <div class="cs-field col-7">
+                                    <div class="cs-switch-card">
+                                        {{ form.is_active }}
+                                        <div>
+                                            <label for="{{ form.is_active.id_for_label }}"><i class="fas fa-rocket" aria-hidden="true"></i> Publish as active</label>
+                                            <p>Keep this on if the opportunity should be active immediately after saving, subject to ChuoSmart visibility rules.</p>
+                                            {% for error in form.is_active.errors %}<span class="cs-field-error"><i class="fas fa-exclamation-circle"></i>{{ error }}</span>{% endfor %}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="cs-field col-5">
+                                    <div class="cs-inline-note {% if user.job_approval.is_approved %}is-success{% else %}is-warning{% endif %}">
+                                        <i class="fas {% if user.job_approval.is_approved %}fa-check-circle{% else %}fa-shield-alt{% endif %}" aria-hidden="true"></i>
+                                        <span>
+                                            {% if user.job_approval.is_approved %}
+                                                Your account is approved. Public visibility still follows the existing company/source visibility rules.
+                                            {% else %}
+                                                You can save the job now. It remains hidden from public listings until your account is approved.
+                                            {% endif %}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <div class="cs-creator-actions">
+                        <div class="cs-creator-actions-copy">
+                            <strong>{% if is_create %}Ready when you are.{% else %}Keep your listing current.{% endif %}</strong>
+                            <span>Your existing ChuoSmart publishing rules are unchanged.</span>
+                        </div>
+                        <div class="cs-creator-actions-buttons">
+                            <a href="{% url 'jobs:my_jobs' %}" class="cs-creator-cancel">Cancel</a>
+                            <button type="submit" class="cs-creator-submit">
+                                <i class="fas {% if is_create %}fa-paper-plane{% else %}fa-save{% endif %}" aria-hidden="true"></i>
+                                {% if is_create %}Post job{% else %}Save changes{% endif %}
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <aside class="cs-creator-aside" aria-label="Job creation guide">
+                <div class="cs-creator-panel">
+                    <h2>Build your listing</h2>
+                    <p>Move through four focused sections. You can jump back to any section at any time.</p>
+                    <nav class="cs-creator-nav" aria-label="Job form sections">
+                        <a href="#job-basics"><span class="cs-creator-nav-index">01</span><span>Role basics</span></a>
+                        <a href="#job-story"><span class="cs-creator-nav-index">02</span><span>Role story</span></a>
+                        <a href="#job-offer"><span class="cs-creator-nav-index">03</span><span>Offer</span></a>
+                        <a href="#job-publish"><span class="cs-creator-nav-index">04</span><span>Publish</span></a>
+                    </nav>
+                </div>
+
+                <div class="cs-creator-panel">
+                    <h3>Strong posts feel human</h3>
+                    <ul class="cs-creator-tip-list">
+                        <li><i class="fas fa-check"></i><span>Open with the impact of the role, not a wall of requirements.</span></li>
+                        <li><i class="fas fa-check"></i><span>Use a realistic salary range when you can.</span></li>
+                        <li><i class="fas fa-check"></i><span>Keep must-have skills focused so qualified people do not self-reject.</span></li>
+                    </ul>
+                </div>
+
+                {% if form.company %}
+                <div class="cs-creator-panel">
+                    <h3>Company context</h3>
+                    <p>Linking one of your company profiles can give candidates more confidence and richer employer information.</p>
+                </div>
                 {% endif %}
-            </small>
-        </div>
-        <div class="d-grid d-sm-flex gap-2">
-            <a href="{% url 'jobs:my_jobs' %}" class="btn btn-outline-secondary">
-                <i class="bi bi-x me-1"></i>Cancel
-            </a>
-            <button type="submit" class="btn btn-primary btn-lg">
-                <i class="bi bi-check-lg me-1"></i>
-                {% if is_create %}Post Job{% else %}Save Changes{% endif %}
-            </button>
+            </aside>
         </div>
     </div>
-</form>
+</div>
+{% endblock %}
 
+{% block extra_scripts %}
+{{ block.super }}
 <script>
-    // Toggle external URL field based on job posting type
-    document.addEventListener('DOMContentLoaded', function() {
-        const internalRadio = document.getElementById('job_posting_internal');
-        const externalRadio = document.getElementById('job_posting_external');
-        const externalUrlSection = document.getElementById('external-url-section');
-        const externalUrlInput = document.querySelector('input[name="external_url"]');
-        
-        function updateExternalUrlVisibility() {
-            if (externalRadio && externalRadio.checked) {
-                externalUrlSection.style.display = 'block';
-                if (externalUrlInput) externalUrlInput.required = true;
-            } else {
-                externalUrlSection.style.display = 'none';
-                if (externalUrlInput) externalUrlInput.required = false;
-            }
-        }
-        
-        if (internalRadio) {
-            internalRadio.addEventListener('change', updateExternalUrlVisibility);
-        }
-        if (externalRadio) {
-            externalRadio.addEventListener('change', updateExternalUrlVisibility);
-        }
-        
-        // Initial check
-        updateExternalUrlVisibility();
+document.addEventListener('DOMContentLoaded', function () {
+    const internalRadio = document.getElementById('job_posting_internal');
+    const externalRadio = document.getElementById('job_posting_external');
+    const externalWrap = document.getElementById('external-url-section');
+    const externalInput = document.querySelector('input[name="external_url"]');
+    const choiceCards = document.querySelectorAll('[data-application-choices] .cs-choice-card');
+
+    function syncApplicationMethod() {
+        const isExternal = Boolean(externalRadio && externalRadio.checked);
+        if (externalWrap) externalWrap.hidden = !isExternal;
+        if (externalInput) externalInput.required = isExternal;
+        choiceCards.forEach(function (card) {
+            const radio = card.querySelector('input[type="radio"]');
+            card.classList.toggle('is-selected', Boolean(radio && radio.checked));
+        });
+    }
+
+    [internalRadio, externalRadio].forEach(function (radio) {
+        if (radio) radio.addEventListener('change', syncApplicationMethod);
     });
+    syncApplicationMethod();
+
+    const sections = Array.from(document.querySelectorAll('[data-creator-section]'));
+    const navLinks = Array.from(document.querySelectorAll('.cs-creator-nav a'));
+    if ('IntersectionObserver' in window && sections.length && navLinks.length) {
+        const observer = new IntersectionObserver(function (entries) {
+            const visible = entries.filter(function (entry) { return entry.isIntersecting; })
+                .sort(function (a, b) { return b.intersectionRatio - a.intersectionRatio; })[0];
+            if (!visible) return;
+            navLinks.forEach(function (link) {
+                link.classList.toggle('is-active', link.getAttribute('href') === '#' + visible.target.id);
+            });
+        }, { rootMargin: '-20% 0px -65% 0px', threshold: [0.01, 0.25, 0.5] });
+        sections.forEach(function (section) { observer.observe(section); });
+    }
+});
 </script>
 {% endblock %}

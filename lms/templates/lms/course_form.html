@@ -3,522 +3,416 @@
 {% load lms_form_tags %}
 
 {% block extra_head %}
+{{ block.super }}
 {{ form.media }}
 <script src="{% static 'lms/js/tinymce-custom.js' %}"></script>
+<link rel="stylesheet" href="{% static 'chuosmart_v2/css/creator_forms.css' %}">
 {% endblock %}
 
-{% block title %}
-    {% if form.instance.id %}Edit Course{% else %}Create Course{% endif %}
-{% endblock title %}
+{% block title %}{% if form.instance.id %}Edit Course{% else %}Create Course{% endif %}{% endblock title %}
 
 {% block main-content %}
-<div class="container my-5">
-    <div class="row mb-4">
-        <div class="col">
-            <h1 class="display-5 fw-bold text-primary mb-3">
-                {% if form.instance.id %}
-                    <i class="fas fa-edit me-2"></i>Edit Course: {{ form.instance.title }}
-                {% else %}
-                    <i class="fas fa-plus-circle me-2"></i>Create New Course
-                {% endif %}
-            </h1>
-            <nav aria-label="breadcrumb">
-                <ol class="breadcrumb">
-                    <li class="breadcrumb-item"><a href="{% url 'lms:lms_home' %}">LMS Home</a></li>
-                    <li class="breadcrumb-item"><a href="{% url 'lms:course_list' %}">Courses</a></li>
-                    <li class="breadcrumb-item active">
-                        {% if form.instance.id %}Edit Course{% else %}Create Course{% endif %}
-                    </li>
-                </ol>
-            </nav>
-        </div>
-    </div>
-    
-    <div class="row g-4">
-        <div class="col-12 col-xl-8">
-            <div class="card shadow border-0 rounded-3">
-                <div class="card-header bg-primary bg-gradient text-white py-3">
-                    <h4 class="mb-0">
+<div class="cs-creator-page" data-creator-page="course">
+    <div class="container">
+        <header class="cs-creator-hero">
+            <div class="cs-creator-hero-grid">
+                <div>
+                    <div class="cs-creator-kicker">
+                        <span class="cs-creator-kicker-icon"><i class="fas fa-graduation-cap" aria-hidden="true"></i></span>
+                        Course Studio
+                    </div>
+                    <h1>
                         {% if form.instance.id %}
-                            <i class="fas fa-edit me-2"></i>Course Details
+                            Shape {{ form.instance.title }} into a better learning experience.
                         {% else %}
-                            <i class="fas fa-book me-2"></i>Course Details
+                            Build a course learners will want to finish.
                         {% endif %}
-                    </h4>
-                </div>
-                <div class="card-body p-4">
-                    <form method="post" enctype="multipart/form-data">
-                        {% csrf_token %}
-                        
-                        {% if form.non_field_errors %}
-                            <div class="alert alert-danger">
-                                {% for error in form.non_field_errors %}
-                                    {{ error }}
-                                {% endfor %}
-                            </div>
-                        {% endif %}
-                        
-                        <div class="mb-4">
-                            <label for="{{ form.title.id_for_label }}" class="form-label fw-bold">
-                                <i class="fas fa-heading me-2 text-primary"></i>{{ form.title.label }}
-                            </label>
-                            {{ form.title|add_class:"form-control form-control-lg" }}
-                            {% if form.title.errors %}
-                                <div class="text-danger small mt-1">
-                                    <i class="fas fa-exclamation-circle me-1"></i>{{ form.title.errors }}
-                                </div>
-                            {% endif %}
-                            {% if form.title.help_text %}
-                                <div class="form-text">{{ form.title.help_text }}</div>
-                            {% endif %}
-                        </div>
-                        
-                        <div class="mb-4">
-                            <label for="{{ form.course_type.id_for_label }}" class="form-label fw-bold">
-                                <i class="fas fa-graduation-cap me-2 text-primary"></i>{{ form.course_type.label }}
-                            </label>
-                            {{ form.course_type|add_class:"form-select" }}
-                            {% if form.course_type.errors %}
-                                <div class="text-danger small mt-1">
-                                    <i class="fas fa-exclamation-circle me-1"></i>{{ form.course_type.errors }}
-                                </div>
-                            {% endif %}
-                            <div class="form-text">
-                                <i class="fas fa-info-circle me-1"></i>
-                                Select "University Course" for academic courses with program, level, etc. or "General Course" for other courses.
-                            </div>
-                        </div>
-                        
-                        <div class="mb-4 university-fields">
-                            <label for="{{ form.code.id_for_label }}" class="form-label fw-bold">
-                                <i class="fas fa-hashtag me-2 text-primary"></i>{{ form.code.label }}
-                            </label>
-                            {{ form.code|add_class:"form-control" }}
-                            {% if form.code.errors %}
-                                <div class="text-danger small mt-1">
-                                    <i class="fas fa-exclamation-circle me-1"></i>{{ form.code.errors }}
-                                </div>
-                            {% endif %}
-                            {% if form.code.help_text %}
-                                <div class="form-text">{{ form.code.help_text }}</div>
-                            {% endif %}
-                        </div>
-                        
-                        <div class="mb-4">
-                            <label for="{{ form.summary.id_for_label }}" class="form-label fw-bold">
-                                <i class="fas fa-align-left me-2 text-primary"></i>{{ form.summary.label }}
-                            </label>
-                            {{ form.summary|add_class:"form-control" }}
-                            {% if form.summary.errors %}
-                                <div class="text-danger small mt-1">
-                                    <i class="fas fa-exclamation-circle me-1"></i>{{ form.summary.errors }}
-                                </div>
-                            {% endif %}
-                            <div class="form-text">Write a brief summary of what students will learn in this course</div>
-                        </div>
-                        
-                        <div class="mb-4">
-                            <label for="{{ form.content.id_for_label }}" class="form-label fw-bold">
-                                <i class="fas fa-file-alt me-2 text-primary"></i>{{ form.content.label }}
-                            </label>
-                            {{ form.content|add_class:"form-control" }}
-                            {% if form.content.errors %}
-                                <div class="text-danger small mt-1">
-                                    <i class="fas fa-exclamation-circle me-1"></i>{{ form.content.errors }}
-                                </div>
-                            {% endif %}
-                            <div class="form-text">Enter detailed course description, syllabus, learning objectives, and course content. This is the main content students will see.</div>
-                        </div>
-                        
-                        <!-- Toggle for Free or Paid course -->
-                        <div class="mb-4">
-                            <div class="form-check form-switch">
-                                {{ form.is_free|add_class:"form-check-input" }}
-                                <label for="{{ form.is_free.id_for_label }}" class="form-check-label fw-bold">
-                                    <i class="fas fa-dollar-sign me-2 text-primary"></i>{{ form.is_free.label }}
-                                </label>
-                                {% if form.is_free.help_text %}
-                                    <div class="form-text">{{ form.is_free.help_text }}</div>
-                                {% endif %}
-                            </div>
-                        </div>
-                        <!-- Price field for paid courses -->
-                        <div class="mb-4">
-                            <label for="{{ form.price.id_for_label }}" class="form-label fw-bold">
-                                <i class="fas fa-tag me-2 text-primary"></i>{{ form.price.label }}
-                            </label>
-                            {{ form.price|add_class:"form-control" }}
-                            {% if form.price.errors %}
-                                <div class="text-danger small mt-1">
-                                    {{ form.price.errors|join:", " }}
-                                </div>
-                            {% endif %}
-                            <div class="form-text">Enter the price for paid courses. Leave zero for free courses.</div>
-                        </div>
-                        <hr class="my-4">
-                        <h5 class="text-primary mb-3"><i class="fas fa-cogs me-2"></i>Course Settings</h5>
-
-                        <div class="row g-3 mb-4 university-fields">
-                            <div class="col-12 col-md-6">
-                                <label for="{{ form.program.id_for_label }}" class="form-label fw-bold">
-                                    <i class="fas fa-graduation-cap me-2 text-primary"></i>{{ form.program.label }}
-                                </label>
-                                
-                                {% if not has_programs %}
-                                <div class="alert alert-info">
-                                    <i class="fas fa-info-circle me-2"></i> No programs exist yet. Please create one below.
-                                </div>
-                                <button type="button" class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#createProgramModal">
-                                    <i class="fas fa-plus-circle me-2"></i>Create New Program
-                                </button>
-                                {% else %}
-                                {{ form.program|add_class:"form-select" }}
-                                <button type="button" class="btn btn-sm btn-outline-primary mt-2" data-bs-toggle="modal" data-bs-target="#createProgramModal">
-                                    <i class="fas fa-plus-circle me-1"></i>Create New Program
-                                </button>
-                                {% endif %}
-                                
-                                {% if form.program.errors %}
-                                    <div class="text-danger small mt-1">
-                                        <i class="fas fa-exclamation-circle me-1"></i>{{ form.program.errors }}
-                                    </div>
-                                {% endif %}
-                            </div>
-                            <div class="col-12 col-md-6">
-                                <label for="{{ form.level.id_for_label }}" class="form-label fw-bold">
-                                    <i class="fas fa-layer-group me-2 text-primary"></i>{{ form.level.label }}
-                                </label>
-                                {{ form.level|add_class:"form-select" }}
-                                {% if form.level.errors %}
-                                    <div class="text-danger small mt-1">
-                                        <i class="fas fa-exclamation-circle me-1"></i>{{ form.level.errors }}
-                                    </div>
-                                {% endif %}
-                            </div>
-                        </div>
-                        
-                        <div class="row g-3 mb-4 university-fields">
-                            <div class="col-12 col-md-4">
-                                <label for="{{ form.year.id_for_label }}" class="form-label fw-bold">
-                                    <i class="fas fa-calendar-alt me-2 text-primary"></i>{{ form.year.label }}
-                                </label>
-                                {{ form.year|add_class:"form-select" }}
-                                {% if form.year.errors %}
-                                    <div class="text-danger small mt-1">
-                                        <i class="fas fa-exclamation-circle me-1"></i>{{ form.year.errors }}
-                                    </div>
-                                {% endif %}
-                            </div>
-                            <div class="col-12 col-md-4">
-                                <label for="{{ form.semester.id_for_label }}" class="form-label fw-bold">
-                                    <i class="far fa-calendar me-2 text-primary"></i>{{ form.semester.label }}
-                                </label>
-                                {{ form.semester|add_class:"form-select" }}
-                                {% if form.semester.errors %}
-                                    <div class="text-danger small mt-1">
-                                        <i class="fas fa-exclamation-circle me-1"></i>{{ form.semester.errors }}
-                                    </div>
-                                {% endif %}
-                            </div>
-                            <div class="col-12 col-md-4">
-                                <label for="{{ form.credit.id_for_label }}" class="form-label fw-bold">
-                                    <i class="fas fa-award me-2 text-primary"></i>{{ form.credit.label }}
-                                </label>
-                                {{ form.credit|add_class:"form-control" }}
-                                {% if form.credit.errors %}
-                                    <div class="text-danger small mt-1">
-                                        <i class="fas fa-exclamation-circle me-1"></i>{{ form.credit.errors }}
-                                    </div>
-                                {% endif %}
-                            </div>
-                        </div>
-                        
-                        <div class="mb-4 university-fields">
-                            <div class="form-check form-switch">
-                                {{ form.is_elective|add_class:"form-check-input" }}
-                                <label for="{{ form.is_elective.id_for_label }}" class="form-check-label fw-bold">
-                                    <i class="fas fa-check-circle me-2 text-primary"></i>{{ form.is_elective.label }}
-                                </label>
-                                {% if form.is_elective.errors %}
-                                    <div class="text-danger small mt-1">
-                                        <i class="fas fa-exclamation-circle me-1"></i>{{ form.is_elective.errors }}
-                                    </div>
-                                {% endif %}
-                                <div class="form-text">Check if this course is an elective rather than a required course.</div>
-                            </div>
-                        </div>
-                        
-                        <hr class="my-4">
-                        <h5 class="text-primary mb-3"><i class="fas fa-users me-2"></i>Instructor Assignment</h5>
-                        
-                        <div class="mb-4">
-                            <label for="{{ form.instructors.id_for_label }}" class="form-label fw-bold">
-                                <i class="fas fa-chalkboard-teacher me-2 text-primary"></i>{{ form.instructors.label }}
-                            </label>
-                            {{ form.instructors|add_class:"form-select" }}
-                            {% if form.instructors.errors %}
-                                <div class="text-danger small mt-1">
-                                    <i class="fas fa-exclamation-circle me-1"></i>{{ form.instructors.errors }}
-                                </div>
-                            {% endif %}
-                            <div class="form-text">
-                                <i class="fas fa-info-circle me-1"></i>
-                                Hold Ctrl/Cmd to select multiple instructors.
-                            </div>
-                        </div>
-                        
-                        <hr class="my-4">
-                        <h5 class="text-primary mb-3"><i class="fas fa-image me-2"></i>Course Image</h5>
-                        
-                        <div class="mb-4">
-                            <label for="{{ form.image.id_for_label }}" class="form-label fw-bold">
-                                <i class="fas fa-file-image me-2 text-primary"></i>{{ form.image.label }}
-                            </label>
-                            
-                            <div class="input-group mb-3">
-                                <span class="input-group-text bg-primary text-white">
-                                    <i class="fas fa-upload"></i>
-                                </span>
-                                {{ form.image|add_class:"form-control" }}
-                            </div>
-                            
-                            {% if form.image.errors %}
-                                <div class="text-danger small mt-1">
-                                    <i class="fas fa-exclamation-circle me-1"></i>{{ form.image.errors }}
-                                </div>
-                            {% endif %}
-                            <div class="form-text">
-                                Upload an image that represents your course. Recommended size: 1200x800px.
-                            </div>
-                            
-                            {% if form.instance.image %}
-                            <div class="mt-2">
-                                <img src="{{ form.instance.image.url }}" alt="Current course image" class="img-thumbnail" style="max-height: 150px">
-                                <p class="small text-muted mt-1">Current image</p>
-                            </div>
-                            {% endif %}
-                        </div>
-                        
-                        <!-- Course Modules Section -->
+                    </h1>
+                    <p>
+                        Design the promise, learning experience, access model, and academic details in one focused workspace. Your existing ChuoSmart course rules stay exactly the same.
+                    </p>
+                    <div class="cs-creator-status-row" aria-label="Course workflow status">
+                        <span class="cs-creator-status is-success"><i class="fas fa-user-shield" aria-hidden="true"></i> Instructor workspace</span>
                         {% if form.instance.id %}
-                        <div class="mb-5 p-4 bg-light rounded-3 border border-secondary">
-                            <div class="d-flex justify-content-between align-items-center mb-4">
-                                <h5 class="mb-0">
-                                    <i class="fas fa-layer-group me-2 text-primary"></i>Course Modules
-                                </h5>
-                                <a href="{% url 'lms:module_create' course_slug=form.instance.slug %}" class="btn btn-sm btn-primary">
-                                    <i class="fas fa-plus-circle me-1"></i>Add Module
-                                </a>
+                            <span class="cs-creator-status"><i class="fas fa-layer-group" aria-hidden="true"></i> Modules available after details</span>
+                        {% else %}
+                            <span class="cs-creator-status"><i class="fas fa-route" aria-hidden="true"></i> Save course, then build modules</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <a href="{% url 'lms:course_list' %}" class="cs-creator-back">
+                    <i class="fas fa-arrow-left" aria-hidden="true"></i> Course catalogue
+                </a>
+            </div>
+        </header>
+
+        <div class="cs-creator-layout">
+            <div class="cs-creator-main">
+                <form method="post" enctype="multipart/form-data" class="cs-creator-form" novalidate>
+                    {% csrf_token %}
+
+                    {% if form.errors %}
+                    <div class="cs-creator-error-summary" role="alert">
+                        <i class="fas fa-exclamation-triangle" aria-hidden="true"></i>
+                        <div>
+                            <h2>A few course details need your attention</h2>
+                            <ul>
+                                {% for field in form %}
+                                    {% for error in field.errors %}<li><strong>{{ field.label }}:</strong> {{ error }}</li>{% endfor %}
+                                {% endfor %}
+                                {% for error in form.non_field_errors %}<li>{{ error }}</li>{% endfor %}
+                            </ul>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <section class="cs-creator-section" id="course-essentials" data-creator-section>
+                        <div class="cs-creator-section-head">
+                            <span class="cs-creator-section-number">01</span>
+                            <div>
+                                <h2>Course essentials</h2>
+                                <p>Give the course a clear identity and choose whether it follows university structure or a general learning format.</p>
                             </div>
-                            
-                            {% if form.instance.modules.all %}
-                                <div class="list-group">
-                                    {% for module in form.instance.modules.all|dictsort:"order" %}
-                                    <div class="list-group-item border-start border-4 border-primary">
-                                        <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3">
-                                            <div class="flex-grow-1">
-                                                <h6 class="mb-1">
-                                                    <i class="fas fa-book me-2"></i>{{ module.title }}
-                                                </h6>
-                                                {% if module.description %}
-                                                <p class="text-muted small mb-0">
-                                                    {{ module.description|striptags|truncatewords:20 }}
-                                                </p>
-                                                {% endif %}
-                                                <small class="text-secondary">Order: {{ module.order }}</small>
-                                            </div>
-                                            <div class="btn-group btn-group-sm flex-wrap" role="group">
-                                                <a href="{% url 'lms:module_update' course_slug=form.instance.slug module_id=module.id %}" 
-                                                   class="btn btn-outline-primary" title="Edit module">
-                                                    <i class="fas fa-edit"></i> Edit
-                                                </a>
-                                                <a href="{% url 'lms:module_delete' course_slug=form.instance.slug module_id=module.id %}" 
-                                                   class="btn btn-outline-danger" 
-                                                   onclick="return confirm('Are you sure you want to delete this module?');" 
-                                                   title="Delete module">
-                                                    <i class="fas fa-trash"></i> Delete
-                                                </a>
-                                            </div>
+                        </div>
+                        <div class="cs-creator-section-body">
+                            <div class="cs-creator-grid">
+                                <div class="cs-field col-8{% if form.title.errors %} has-error{% endif %}">
+                                    <label for="{{ form.title.id_for_label }}"><i class="fas fa-heading" aria-hidden="true"></i> {{ form.title.label }}</label>
+                                    {{ form.title|add_class:"form-control" }}
+                                    <span class="cs-field-help">Make the outcome obvious. A learner should understand the value of the course from the title alone.</span>
+                                    {% for error in form.title.errors %}<span class="cs-field-error"><i class="fas fa-exclamation-circle"></i>{{ error }}</span>{% endfor %}
+                                </div>
+                                <div class="cs-field col-4{% if form.course_type.errors %} has-error{% endif %}">
+                                    <label for="{{ form.course_type.id_for_label }}"><i class="fas fa-compass" aria-hidden="true"></i> {{ form.course_type.label }}</label>
+                                    {{ form.course_type|add_class:"form-select" }}
+                                    <span class="cs-field-help">University courses unlock programme, year, semester, credit and elective settings.</span>
+                                    {% for error in form.course_type.errors %}<span class="cs-field-error"><i class="fas fa-exclamation-circle"></i>{{ error }}</span>{% endfor %}
+                                </div>
+
+                                <div class="cs-field col-4 cs-university-fields{% if form.code.errors %} has-error{% endif %}" {% if form.course_type.value != 'university' %}hidden{% endif %}>
+                                    <label for="{{ form.code.id_for_label }}"><i class="fas fa-hashtag" aria-hidden="true"></i> {{ form.code.label }}</label>
+                                    {{ form.code|add_class:"form-control" }}
+                                    <span class="cs-field-help">Use the code students and your institution already recognise, such as CS101.</span>
+                                    {% for error in form.code.errors %}<span class="cs-field-error"><i class="fas fa-exclamation-circle"></i>{{ error }}</span>{% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="cs-creator-section" id="course-learning" data-creator-section>
+                        <div class="cs-creator-section-head">
+                            <span class="cs-creator-section-number">02</span>
+                            <div>
+                                <h2>Learning experience</h2>
+                                <p>Set expectations with a concise promise, then give learners the depth they need to understand the course.</p>
+                            </div>
+                        </div>
+                        <div class="cs-creator-section-body">
+                            <div class="cs-creator-grid">
+                                <div class="cs-field{% if form.summary.errors %} has-error{% endif %}">
+                                    <label for="{{ form.summary.id_for_label }}"><i class="fas fa-bullseye" aria-hidden="true"></i> {{ form.summary.label }}</label>
+                                    {{ form.summary|add_class:"form-control tinymce" }}
+                                    <span class="cs-field-help">Summarise who this is for, what they will learn, and the result they should expect.</span>
+                                    {% for error in form.summary.errors %}<span class="cs-field-error"><i class="fas fa-exclamation-circle"></i>{{ error }}</span>{% endfor %}
+                                </div>
+
+                                <div class="cs-field{% if form.content.errors %} has-error{% endif %}">
+                                    <label for="{{ form.content.id_for_label }}"><i class="fas fa-file-alt" aria-hidden="true"></i> {{ form.content.label }}</label>
+                                    {{ form.content|add_class:"form-control tinymce" }}
+                                    <span class="cs-field-help">Use this space for the detailed description, syllabus, learning objectives, structure, prerequisites, and anything learners should know before enrolling.</span>
+                                    {% for error in form.content.errors %}<span class="cs-field-error"><i class="fas fa-exclamation-circle"></i>{{ error }}</span>{% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="cs-creator-section" id="course-access" data-creator-section>
+                        <div class="cs-creator-section-head">
+                            <span class="cs-creator-section-number">03</span>
+                            <div>
+                                <h2>Access &amp; pricing</h2>
+                                <p>Decide whether learners can join for free or need to purchase access.</p>
+                            </div>
+                        </div>
+                        <div class="cs-creator-section-body">
+                            <div class="cs-creator-grid">
+                                <div class="cs-field col-6">
+                                    <div class="cs-switch-card">
+                                        {{ form.is_free|add_class:"form-check-input" }}
+                                        <div>
+                                            <label for="{{ form.is_free.id_for_label }}"><i class="fas fa-gift" aria-hidden="true"></i> {{ form.is_free.label }}</label>
+                                            <p>Keep this on for a free course. Turn it off to set a learner price.</p>
+                                            {% for error in form.is_free.errors %}<span class="cs-field-error"><i class="fas fa-exclamation-circle"></i>{{ error }}</span>{% endfor %}
                                         </div>
                                     </div>
-                                    {% endfor %}
                                 </div>
+
+                                <div class="cs-field col-6 cs-course-price-wrap{% if form.price.errors %} has-error{% endif %}" id="course-price-wrap" {% if form.is_free.value %}hidden{% endif %}>
+                                    <label for="{{ form.price.id_for_label }}"><i class="fas fa-tag" aria-hidden="true"></i> {{ form.price.label }}</label>
+                                    {{ form.price|add_class:"form-control" }}
+                                    <span class="cs-field-help">Enter a positive price for paid courses. ChuoSmart will continue to apply the existing payment rules.</span>
+                                    {% for error in form.price.errors %}<span class="cs-field-error"><i class="fas fa-exclamation-circle"></i>{{ error }}</span>{% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="cs-creator-section cs-university-fields" id="course-academic" data-creator-section {% if form.course_type.value != 'university' %}hidden{% endif %}>
+                        <div class="cs-creator-section-head">
+                            <span class="cs-creator-section-number">04</span>
+                            <div>
+                                <h2>Academic structure</h2>
+                                <p>Map the course to the programme and academic context learners already understand.</p>
+                            </div>
+                        </div>
+                        <div class="cs-creator-section-body">
+                            <div class="cs-creator-grid">
+                                <div class="cs-field col-6{% if form.program.errors %} has-error{% endif %}">
+                                    <label for="{{ form.program.id_for_label }}"><i class="fas fa-sitemap" aria-hidden="true"></i> {{ form.program.label }}</label>
+                                    {% if not has_programs %}
+                                        <div class="cs-inline-note is-warning mb-2"><i class="fas fa-info-circle"></i><span>No programmes exist yet. Create one before finishing this university course.</span></div>
+                                        <button type="button" class="cs-creator-mini-btn" data-bs-toggle="modal" data-bs-target="#createProgramModal"><i class="fas fa-plus"></i> Create programme</button>
+                                    {% else %}
+                                        {{ form.program|add_class:"form-select" }}
+                                        <button type="button" class="cs-creator-mini-btn mt-2" data-bs-toggle="modal" data-bs-target="#createProgramModal"><i class="fas fa-plus"></i> New programme</button>
+                                    {% endif %}
+                                    {% for error in form.program.errors %}<span class="cs-field-error"><i class="fas fa-exclamation-circle"></i>{{ error }}</span>{% endfor %}
+                                </div>
+                                <div class="cs-field col-6{% if form.level.errors %} has-error{% endif %}">
+                                    <label for="{{ form.level.id_for_label }}"><i class="fas fa-layer-group" aria-hidden="true"></i> {{ form.level.label }}</label>
+                                    {{ form.level|add_class:"form-select" }}
+                                    {% for error in form.level.errors %}<span class="cs-field-error"><i class="fas fa-exclamation-circle"></i>{{ error }}</span>{% endfor %}
+                                </div>
+
+                                <div class="cs-field col-4{% if form.year.errors %} has-error{% endif %}">
+                                    <label for="{{ form.year.id_for_label }}"><i class="fas fa-calendar-alt" aria-hidden="true"></i> {{ form.year.label }}</label>
+                                    {{ form.year|add_class:"form-select" }}
+                                    {% for error in form.year.errors %}<span class="cs-field-error"><i class="fas fa-exclamation-circle"></i>{{ error }}</span>{% endfor %}
+                                </div>
+                                <div class="cs-field col-4{% if form.semester.errors %} has-error{% endif %}">
+                                    <label for="{{ form.semester.id_for_label }}"><i class="far fa-calendar" aria-hidden="true"></i> {{ form.semester.label }}</label>
+                                    {{ form.semester|add_class:"form-select" }}
+                                    {% for error in form.semester.errors %}<span class="cs-field-error"><i class="fas fa-exclamation-circle"></i>{{ error }}</span>{% endfor %}
+                                </div>
+                                <div class="cs-field col-4{% if form.credit.errors %} has-error{% endif %}">
+                                    <label for="{{ form.credit.id_for_label }}"><i class="fas fa-award" aria-hidden="true"></i> {{ form.credit.label }}</label>
+                                    {{ form.credit|add_class:"form-control" }}
+                                    {% for error in form.credit.errors %}<span class="cs-field-error"><i class="fas fa-exclamation-circle"></i>{{ error }}</span>{% endfor %}
+                                </div>
+
+                                <div class="cs-field col-7">
+                                    <div class="cs-switch-card">
+                                        {{ form.is_elective|add_class:"form-check-input" }}
+                                        <div>
+                                            <label for="{{ form.is_elective.id_for_label }}"><i class="fas fa-random" aria-hidden="true"></i> {{ form.is_elective.label }}</label>
+                                            <p>Turn this on when the course is optional rather than a required part of the programme.</p>
+                                            {% for error in form.is_elective.errors %}<span class="cs-field-error"><i class="fas fa-exclamation-circle"></i>{{ error }}</span>{% endfor %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="cs-creator-section" id="course-team" data-creator-section>
+                        <div class="cs-creator-section-head">
+                            <span class="cs-creator-section-number">05</span>
+                            <div>
+                                <h2>Teaching team &amp; visual identity</h2>
+                                <p>Choose the instructors attached to the course and give the course a recognisable image.</p>
+                            </div>
+                        </div>
+                        <div class="cs-creator-section-body">
+                            <div class="cs-creator-grid">
+                                <div class="cs-field col-6{% if form.instructors.errors %} has-error{% endif %}">
+                                    <label for="{{ form.instructors.id_for_label }}"><i class="fas fa-chalkboard-teacher" aria-hidden="true"></i> {{ form.instructors.label }}</label>
+                                    {{ form.instructors|add_class:"form-select" }}
+                                    <span class="cs-field-help">Hold Ctrl on Windows/Linux or Command on macOS to select multiple instructors.</span>
+                                    {% for error in form.instructors.errors %}<span class="cs-field-error"><i class="fas fa-exclamation-circle"></i>{{ error }}</span>{% endfor %}
+                                </div>
+                                <div class="cs-field col-6{% if form.image.errors %} has-error{% endif %}">
+                                    <label for="{{ form.image.id_for_label }}"><i class="fas fa-image" aria-hidden="true"></i> {{ form.image.label }}</label>
+                                    {{ form.image|add_class:"form-control" }}
+                                    <span class="cs-field-help">Use a clean landscape image. A 1200×800 image is a good target.</span>
+                                    {% for error in form.image.errors %}<span class="cs-field-error"><i class="fas fa-exclamation-circle"></i>{{ error }}</span>{% endfor %}
+                                    {% if form.instance.image %}
+                                    <div class="cs-course-image-preview">
+                                        <img src="{{ form.instance.image.url }}" alt="Current course image">
+                                        <div><strong>Current image</strong><span>Choose a new file only if you want to replace it.</span></div>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    {% if form.instance.id %}
+                    <section class="cs-creator-section" id="course-modules" data-creator-section>
+                        <div class="cs-creator-section-head">
+                            <span class="cs-creator-section-number">06</span>
+                            <div>
+                                <h2>Course modules</h2>
+                                <p>Organise the learning journey into manageable sections after the course foundations are in place.</p>
+                            </div>
+                        </div>
+                        <div class="cs-creator-section-body">
+                            <div class="d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-2">
+                                <div class="cs-inline-note"><i class="fas fa-layer-group"></i><span>Modules determine the sequence learners move through inside this course.</span></div>
+                                <a href="{% url 'lms:module_create' course_slug=form.instance.slug %}" class="cs-creator-mini-btn"><i class="fas fa-plus-circle"></i> Add module</a>
+                            </div>
+
+                            {% if form.instance.modules.all %}
+                            <div class="cs-module-list">
+                                {% for module in form.instance.modules.all|dictsort:"order" %}
+                                <div class="cs-module-item">
+                                    <div>
+                                        <h3><i class="fas fa-book-open me-1" aria-hidden="true"></i> {{ module.title }}</h3>
+                                        <p>Order {{ module.order }}{% if module.description %} · {{ module.description|striptags|truncatewords:18 }}{% endif %}</p>
+                                    </div>
+                                    <div class="cs-module-actions">
+                                        <a href="{% url 'lms:module_update' course_slug=form.instance.slug module_id=module.id %}" class="cs-creator-mini-btn"><i class="fas fa-edit"></i> Edit</a>
+                                        <a href="{% url 'lms:module_delete' course_slug=form.instance.slug module_id=module.id %}" class="cs-creator-mini-btn" onclick="return confirm('Are you sure you want to delete this module?');"><i class="fas fa-trash"></i> Delete</a>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
                             {% else %}
-                                <div class="alert alert-info mb-0">
-                                    <i class="fas fa-info-circle me-2"></i>No modules yet. 
-                                    <a href="{% url 'lms:module_create' course_slug=form.instance.slug %}" class="alert-link">Create your first module</a>
-                                </div>
+                            <div class="cs-inline-note mt-3"><i class="fas fa-info-circle"></i><span>No modules yet. Add the first module to start shaping the learning path.</span></div>
                             {% endif %}
                         </div>
-                        {% endif %}
-                        
-                        <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-5">
-                            <a href="{% url 'lms:course_list' %}" class="btn btn-outline-secondary me-md-2 px-4 py-2">
-                                <i class="fas fa-times me-2"></i>Cancel
-                            </a>
-                            <button type="submit" class="btn btn-primary px-5 py-2">
-                                <i class="fas fa-save me-2"></i>Save Course
+                    </section>
+                    {% endif %}
+
+                    <div class="cs-creator-actions">
+                        <div class="cs-creator-actions-copy">
+                            <strong>{% if form.instance.id %}Keep the learning experience current.{% else %}Your course foundation is ready to save.{% endif %}</strong>
+                            <span>{% if form.instance.id %}Save these details before leaving the studio.{% else %}After saving, you can add modules, lessons, and assessments.{% endif %}</span>
+                        </div>
+                        <div class="cs-creator-actions-buttons">
+                            <a href="{% url 'lms:course_list' %}" class="cs-creator-cancel">Cancel</a>
+                            <button type="submit" class="cs-creator-submit">
+                                <i class="fas fa-save" aria-hidden="true"></i>
+                                {% if form.instance.id %}Save changes{% else %}Create course{% endif %}
                             </button>
                         </div>
-                    </form>
-                </div>
+                    </div>
+                </form>
             </div>
-        </div>
-        
-        <div class="col-12 col-xl-4">
-            <div class="card border-0 shadow rounded-3 mb-4">
-                <div class="card-header bg-light bg-gradient py-3">
-                    <h5 class="mb-0 text-primary">
-                        <i class="fas fa-lightbulb me-2"></i>Tips for Creating Courses
-                    </h5>
+
+            <aside class="cs-creator-aside" aria-label="Course creation guide">
+                <div class="cs-creator-panel">
+                    <h2>Course blueprint</h2>
+                    <p>Jump between the parts of the course without losing your place.</p>
+                    <nav class="cs-creator-nav" aria-label="Course form sections">
+                        <a href="#course-essentials"><span class="cs-creator-nav-index">01</span><span>Essentials</span></a>
+                        <a href="#course-learning"><span class="cs-creator-nav-index">02</span><span>Learning</span></a>
+                        <a href="#course-access"><span class="cs-creator-nav-index">03</span><span>Access</span></a>
+                        <a href="#course-academic" class="cs-academic-nav-link" {% if form.course_type.value != 'university' %}hidden{% endif %}><span class="cs-creator-nav-index">04</span><span>Academic</span></a>
+                        <a href="#course-team"><span class="cs-creator-nav-index">05</span><span>Team</span></a>
+                        {% if form.instance.id %}<a href="#course-modules"><span class="cs-creator-nav-index">06</span><span>Modules</span></a>{% endif %}
+                    </nav>
                 </div>
-                <div class="card-body p-4">
-                    <ul class="list-group list-group-flush">
-                        <li class="list-group-item border-0 px-0 py-3">
-                            <div class="d-flex">
-                                <div class="flex-shrink-0">
-                                    <span class="badge rounded-pill bg-primary p-2">
-                                        <i class="fas fa-check"></i>
-                                    </span>
-                                </div>
-                                <div class="flex-grow-1 ms-3">
-                                    <h6 class="fw-bold mb-1">Descriptive Title</h6>
-                                    <p class="text-muted mb-0">Use a clear, descriptive title that accurately represents your course content.</p>
-                                </div>
-                            </div>
-                        </li>
-                        <li class="list-group-item border-0 px-0 py-3">
-                            <div class="d-flex">
-                                <div class="flex-shrink-0">
-                                    <span class="badge rounded-pill bg-primary p-2">
-                                        <i class="fas fa-check"></i>
-                                    </span>
-                                </div>
-                                <div class="flex-grow-1 ms-3">
-                                    <h6 class="fw-bold mb-1">Standardized Course Code</h6>
-                                    <p class="text-muted mb-0">Course codes should follow your institution's format (e.g., CS101).</p>
-                                </div>
-                            </div>
-                        </li>
-                        <li class="list-group-item border-0 px-0 py-3">
-                            <div class="d-flex">
-                                <div class="flex-shrink-0">
-                                    <span class="badge rounded-pill bg-primary p-2">
-                                        <i class="fas fa-check"></i>
-                                    </span>
-                                </div>
-                                <div class="flex-grow-1 ms-3">
-                                    <h6 class="fw-bold mb-1">Detailed Summary</h6>
-                                    <p class="text-muted mb-0">Write a thorough summary to help students understand course content and objectives.</p>
-                                </div>
-                            </div>
-                        </li>
-                        <li class="list-group-item border-0 px-0 py-3">
-                            <div class="d-flex">
-                                <div class="flex-shrink-0">
-                                    <span class="badge rounded-pill bg-primary p-2">
-                                        <i class="fas fa-check"></i>
-                                    </span>
-                                </div>
-                                <div class="flex-grow-1 ms-3">
-                                    <h6 class="fw-bold mb-1">Next Steps</h6>
-                                    <p class="text-muted mb-0">After creating the course, you can add modules, content, and quizzes.</p>
-                                </div>
-                            </div>
-                        </li>
+
+                <div class="cs-creator-panel">
+                    <h3>Design for completion</h3>
+                    <ul class="cs-creator-tip-list">
+                        <li><i class="fas fa-check"></i><span>Promise a concrete outcome instead of describing a broad topic.</span></li>
+                        <li><i class="fas fa-check"></i><span>Keep the summary short enough to scan and the detailed content structured.</span></li>
+                        <li><i class="fas fa-check"></i><span>Build modules around milestones so learners always know what comes next.</span></li>
                     </ul>
                 </div>
-            </div>
-            
-            <div class="card border-0 shadow rounded-3 bg-light bg-gradient">
-                <div class="card-body p-4">
-                    <h5 class="text-primary">
-                        <i class="fas fa-question-circle me-2"></i>Need Help?
-                    </h5>
-                    <p class="mb-0">Check the <a href="#">Instructor's Guide</a> for detailed instructions on creating and managing courses.</p>
+
+                <div class="cs-creator-panel">
+                    <h3>What happens next?</h3>
+                    <p>{% if form.instance.id %}Use the modules section to continue building or refining the course structure.{% else %}Save the course first. ChuoSmart will then let you add modules, content, and assessments.{% endif %}</p>
                 </div>
-            </div>
+            </aside>
         </div>
     </div>
 </div>
 
-<!-- Program Creation Modal -->
-<div class="modal fade" id="createProgramModal" tabindex="-1" aria-labelledby="createProgramModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
+<div class="modal fade cs-creator-modal" id="createProgramModal" tabindex="-1" aria-labelledby="createProgramModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title" id="createProgramModalLabel">
-                    <i class="fas fa-graduation-cap me-2"></i>Create New Program
-                </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            <div class="modal-header">
+                <div>
+                    <div class="cs-creator-kicker mb-1"><span class="cs-creator-kicker-icon"><i class="fas fa-sitemap"></i></span> Academic setup</div>
+                    <h2 class="modal-title" id="createProgramModalLabel">Create a programme</h2>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form method="post" action="">
                 {% csrf_token %}
                 <div class="modal-body">
-                    <div class="mb-3">
-                        <label for="{{ program_form.title.id_for_label }}" class="form-label fw-bold">Program Title</label>
+                    <div class="cs-field{% if program_form.title.errors %} has-error{% endif %}">
+                        <label for="{{ program_form.title.id_for_label }}"><i class="fas fa-heading"></i> Programme title</label>
                         {{ program_form.title|add_class:"form-control" }}
-                        {% if program_form.title.errors %}
-                            <div class="text-danger small mt-1">
-                                <i class="fas fa-exclamation-circle me-1"></i>{{ program_form.title.errors }}
-                            </div>
-                        {% endif %}
-                        <div class="form-text">Enter a unique title for the educational program</div>
+                        <span class="cs-field-help">Enter the official or recognisable name of the educational programme.</span>
+                        {% for error in program_form.title.errors %}<span class="cs-field-error"><i class="fas fa-exclamation-circle"></i>{{ error }}</span>{% endfor %}
                     </div>
-                    <div class="mb-3">
-                        <label for="{{ program_form.summary.id_for_label }}" class="form-label fw-bold">Program Summary</label>
+                    <div class="cs-field mt-3{% if program_form.summary.errors %} has-error{% endif %}">
+                        <label for="{{ program_form.summary.id_for_label }}"><i class="fas fa-align-left"></i> Programme summary</label>
                         {{ program_form.summary|add_class:"form-control" }}
-                        {% if program_form.summary.errors %}
-                            <div class="text-danger small mt-1">
-                                <i class="fas fa-exclamation-circle me-1"></i>{{ program_form.summary.errors }}
-                            </div>
-                        {% endif %}
-                        <div class="form-text">Provide a brief description of this program</div>
+                        <span class="cs-field-help">Add a concise description that helps instructors choose the right programme.</span>
+                        {% for error in program_form.summary.errors %}<span class="cs-field-error"><i class="fas fa-exclamation-circle"></i>{{ error }}</span>{% endfor %}
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                    <button type="submit" name="create_program" class="btn btn-primary">
-                        <i class="fas fa-save me-2"></i>Save Program
-                    </button>
+                    <button type="button" class="cs-creator-cancel" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" name="create_program" class="cs-creator-submit"><i class="fas fa-plus"></i> Create programme</button>
                 </div>
             </form>
         </div>
     </div>
 </div>
-
 {% endblock main-content %}
 
 {% block extra_scripts %}
+{{ block.super }}
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Function to toggle university fields based on selected course type
-        function toggleUniversityFields() {
-            const courseType = document.getElementById('id_course_type');
-            const universityFields = document.querySelectorAll('.university-fields');
-            
-            if (courseType.value === 'university') {
-                // Show university-specific fields
-                universityFields.forEach(function(field) {
-                    field.style.display = 'block';
-                });
-            } else {
-                // Hide university-specific fields
-                universityFields.forEach(function(field) {
-                    field.style.display = 'none';
-                });
-            }
-        }
-        
-        // Add event listener to course type select field
-        const courseType = document.getElementById('id_course_type');
-        if (courseType) {
-            // Initial toggle based on selected value
-            toggleUniversityFields();
-            
-            // Toggle on change
-            courseType.addEventListener('change', toggleUniversityFields);
-        }
-    });
+document.addEventListener('DOMContentLoaded', function () {
+    const courseType = document.getElementById('id_course_type');
+    const universityFields = Array.from(document.querySelectorAll('.cs-university-fields'));
+    const academicNavLink = document.querySelector('.cs-academic-nav-link');
+    const isFree = document.getElementById('{{ form.is_free.id_for_label }}');
+    const priceWrap = document.getElementById('course-price-wrap');
+
+    function syncCourseType() {
+        const showUniversity = Boolean(courseType && courseType.value === 'university');
+        universityFields.forEach(function (field) { field.hidden = !showUniversity; });
+        if (academicNavLink) academicNavLink.hidden = !showUniversity;
+    }
+
+    function syncPricing() {
+        if (!priceWrap || !isFree) return;
+        priceWrap.hidden = isFree.checked;
+    }
+
+    if (courseType) courseType.addEventListener('change', syncCourseType);
+    if (isFree) isFree.addEventListener('change', syncPricing);
+    syncCourseType();
+    syncPricing();
+
+    const sections = Array.from(document.querySelectorAll('[data-creator-section]'));
+    const navLinks = Array.from(document.querySelectorAll('.cs-creator-nav a'));
+    if ('IntersectionObserver' in window && sections.length && navLinks.length) {
+        const observer = new IntersectionObserver(function (entries) {
+            const visible = entries.filter(function (entry) { return entry.isIntersecting && !entry.target.hidden; })
+                .sort(function (a, b) { return b.intersectionRatio - a.intersectionRatio; })[0];
+            if (!visible) return;
+            navLinks.forEach(function (link) {
+                link.classList.toggle('is-active', link.getAttribute('href') === '#' + visible.target.id);
+            });
+        }, { rootMargin: '-20% 0px -65% 0px', threshold: [0.01, 0.25, 0.5] });
+        sections.forEach(function (section) { observer.observe(section); });
+    }
+
+    {% if program_form.errors %}
+    const programModalEl = document.getElementById('createProgramModal');
+    if (programModalEl && window.bootstrap) {
+        bootstrap.Modal.getOrCreateInstance(programModalEl).show();
+    }
+    {% endif %}
+});
 </script>
 {% endblock extra_scripts %}

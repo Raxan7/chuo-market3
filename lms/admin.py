@@ -498,8 +498,8 @@ class PaymentMethodAdmin(admin.ModelAdmin):
 @admin.register(CourseEnrollment)
 class CourseEnrollmentAdmin(admin.ModelAdmin):
     """Admin interface for course enrollments with payment management"""
-    list_display = ('student', 'course', 'date_enrolled', 'payment_status', 'admin_granted_access', 'admin_granted_certificate', 'certificate_prepaid')
-    list_filter = ('payment_status', 'admin_granted_access', 'admin_granted_certificate', 'certificate_prepaid', 'date_enrolled')
+    list_display = ('student', 'course', 'date_enrolled', 'payment_status', 'admin_granted_access', 'admin_granted_certificate', 'certificate_prepaid', 'admin_override_completion')
+    list_filter = ('payment_status', 'admin_granted_access', 'admin_granted_certificate', 'certificate_prepaid', 'admin_override_completion', 'date_enrolled')
     search_fields = ('student__user__username', 'student__user__email', 'course__title')
     readonly_fields = ('date_enrolled', 'payment_date', 'payment_approved_date', 'payment_approved_by')
     raw_id_fields = ('student', 'course')
@@ -512,12 +512,12 @@ class CourseEnrollmentAdmin(admin.ModelAdmin):
                      'payment_approved_by', 'payment_approved_date', 'payment_notes')
         }),
         (_('Admin Granted Access'), {
-            'fields': ('admin_granted_access', 'admin_granted_certificate', 'certificate_prepaid', 'granted_by'),
+            'fields': ('admin_granted_access', 'admin_granted_certificate', 'certificate_prepaid', 'admin_override_completion', 'granted_by'),
             'description': _('Grant course access without requiring payment. Certificate access is separate. Use "Certificate prepaid" when the certificate was included in a bundled course payment.')
         }),
     )
     
-    actions = ['approve_payments', 'reject_payments', 'grant_course_access', 'grant_certificate_access', 'revoke_admin_granted_access']
+    actions = ['approve_payments', 'reject_payments', 'grant_course_access', 'grant_certificate_access', 'revoke_admin_granted_access', 'override_course_completion']
     
     def approve_payments(self, request, queryset):
         """Bulk approve pending payments"""

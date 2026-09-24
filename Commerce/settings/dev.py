@@ -3,7 +3,14 @@ from .base import *
 DEBUG = True
 CANONICAL_REDIRECT_ENABLED = False
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '[::1]', 'chuosmart.com', 'www.chuosmart.com']
+ALLOWED_HOSTS = [
+    'localhost',
+    '127.0.0.1',
+    '[::1]',
+    'host.docker.internal',
+    'chuosmart.com',
+    'www.chuosmart.com',
+]
 
 CSRF_TRUSTED_ORIGINS = [
     'http://localhost:8080',
@@ -12,6 +19,7 @@ CSRF_TRUSTED_ORIGINS = [
     'http://127.0.0.1:8000',
     'https://chuosmart.com',
     'https://www.chuosmart.com',
+    'http://host.docker.internal',
 ]
 
 SECURE_SSL_REDIRECT = False

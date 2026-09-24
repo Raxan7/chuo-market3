@@ -10,6 +10,7 @@ ALLOWED_HOSTS = [
     'www.chuosmart.com',
     'mail.chuosmart.com',
     '6aa8-154-74-175-23.ngrok-free.app',
+    'host.docker.internal',
 ]
 
 CSRF_TRUSTED_ORIGINS = [

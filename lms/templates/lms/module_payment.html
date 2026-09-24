@@ -39,7 +39,7 @@
                             <i class="fas fa-lock-open me-2"></i>{% trans "Pay Now" %} — TSh {{ module_price|floatformat:2 }}
                         </button>
                     </form>
-                    <p class="small text-muted mt-2 mb-0">{% trans "Do not tap repeatedly; an active checkout will be reused." %}</p>
+                    <p class="small text-muted mt-2 mb-0">{% trans "Do not tap repeatedly. If a payment is already being confirmed, ChuoSmart will check its status first." %}</p>
                 </div>
             </div>
             {% else %}

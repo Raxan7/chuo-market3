@@ -205,6 +205,13 @@ if not AGENTIC_AI_API_KEY and not CEREBRAS_API_KEY:
 
 SNIPPE_API_KEY = os.getenv('SNIPPE_API_KEY', '')
 SNIPPE_WEBHOOK_SECRET = os.getenv('SNIPPE_WEBHOOK_SECRET', '')
+SNIPPE_BASE_URL = os.getenv('SNIPPE_BASE_URL', 'https://api.snippe.sh').rstrip('/')
+SNIPPE_WEBHOOK_BASE_URL = os.getenv('SNIPPE_WEBHOOK_BASE_URL', '').rstrip('/')
+SNIPPE_ALLOWED_METHODS = tuple(
+    method.strip()
+    for method in os.getenv('SNIPPE_ALLOWED_METHODS', 'mobile_money,card').split(',')
+    if method.strip()
+)
 CERTIFICATE_SIGNING_SECRET = os.getenv('CERTIFICATE_SIGNING_SECRET', '')
 CERTIFICATE_PRICE = 15000
 
