@@ -98,6 +98,30 @@ class SecurityHeadersMiddleware(MiddlewareMixin):
         for directive, sources in self.CSP_DIRECTIVES.items():
             if isinstance(sources, str):
                 sources = [sources]
+            else:
+                # Never mutate the class-level directive lists while building a
+                # response-specific policy.
+                sources = list(sources)
+
+            if directive == 'form-action':
+                # Payment forms normally submit to the current origin. In
+                # production, however, an allowed alias such as
+                # ``www.chuosmart.com`` can render a form whose canonical target
+                # is ``https://chuosmart.com``. CSP considers those different
+                # origins, so ``'self'`` alone blocks the payment POST before it
+                # reaches Django. Permit only the configured canonical HTTPS
+                # origin in addition to self.
+                canonical_domain = str(
+                    getattr(settings, 'CANONICAL_DOMAIN', '') or ''
+                ).strip().rstrip('/')
+                if canonical_domain and canonical_domain != '*':
+                    if '://' in canonical_domain:
+                        canonical_origin = canonical_domain
+                    else:
+                        canonical_origin = f'https://{canonical_domain}'
+                    if canonical_origin not in sources:
+                        sources.append(canonical_origin)
+
             parts.append(f"{directive} {' '.join(sources)}")
         return '; '.join(parts)
 
