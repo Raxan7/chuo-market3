@@ -2261,7 +2261,10 @@ def certificate_payment_init(request, certificate_id):
         created_at__gte=timezone.now() - timedelta(minutes=50),
     ).order_by('-created_at').first()
     if reusable_payment and not force_new_checkout:
-        return redirect('lms:certificate_payment_success', certificate_id=certificate.certificate_id)
+        # Resume the existing Snippe checkout. The success URL is only for the
+        # provider's post-checkout return; sending an unpaid user there here
+        # strands them on the confirmation screen without ever opening Snippe.
+        return redirect(reusable_payment.checkout_url)
 
     snippe_api_key = getattr(settings, 'SNIPPE_API_KEY', '')
     if not snippe_api_key:
@@ -3305,7 +3308,10 @@ def course_payment_init(request, slug):
         created_at__gte=timezone.now() - timedelta(minutes=50),
     ).order_by('-created_at').first()
     if reusable_payment and not force_new_checkout:
-        return redirect('lms:course_payment_success', slug=course.slug)
+        # Resume the existing Snippe checkout instead of jumping directly to
+        # our post-checkout confirmation page. This also prevents duplicate
+        # sessions while still allowing the customer to actually pay.
+        return redirect(reusable_payment.checkout_url)
 
     payment = CoursePayment.objects.create(
         user=request.user,
@@ -3537,7 +3543,9 @@ def module_payment_init(request, course_slug, module_id):
         created_at__gte=timezone.now() - timedelta(minutes=50),
     ).order_by('-created_at').first()
     if reusable_payment and not force_new_checkout:
-        return redirect('lms:module_payment_success', course_slug=course.slug, module_id=module.id)
+        # Resume the existing Snippe checkout. The confirmation screen must
+        # only be reached after Snippe redirects the customer back.
+        return redirect(reusable_payment.checkout_url)
 
     payment = ModulePayment.objects.create(
         user=request.user,

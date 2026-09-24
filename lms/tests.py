@@ -537,6 +537,35 @@ class CoursePaymentTests(TestCase):
         self.assertEqual(payload['allowed_methods'], ['mobile_money'])
         self.assertEqual(payload['webhook_url'], 'http://host.docker.internal:8000/lms/webhooks/snippe/')
 
+    @override_settings(SNIPPE_API_KEY='test_key')
+    def test_course_payment_init_resumes_existing_pending_checkout(self):
+        """A reusable pending session must reopen Snippe, not the success page."""
+        from unittest.mock import patch
+
+        self.client.login(username='student', password='testpassword')
+        checkout_url = 'https://pay.snippe.sh/sess_existing_course'
+        CoursePayment.objects.create(
+            user=self.student_user,
+            course=self.paid_course,
+            amount=self.paid_course.price,
+            status='pending',
+            snippe_session_id='sess_existing_course',
+            checkout_url=checkout_url,
+        )
+
+        with patch('lms.views.requests.post') as mock_post:
+            response = self.client.post(
+                reverse('lms:course_payment_init', kwargs={'slug': self.paid_course.slug}),
+            )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response['Location'], checkout_url)
+        mock_post.assert_not_called()
+        self.assertEqual(
+            CoursePayment.objects.filter(user=self.student_user, course=self.paid_course).count(),
+            1,
+        )
+
     def test_course_payment_init_rejects_get(self):
         self.client.login(username='student', password='testpassword')
         response = self.client.get(reverse('lms:course_payment_init', kwargs={'slug': self.paid_course.slug}))
@@ -936,6 +965,35 @@ class ModulePaymentTests(TestCase):
         self.assertEqual(payment.status, 'pending')
         self.assertEqual(payment.snippe_session_id, 'sess_module_123')
         self.assertEqual(payment.amount, self.priced_module.price)
+
+    @override_settings(SNIPPE_API_KEY='test_key')
+    def test_module_payment_init_resumes_existing_pending_checkout(self):
+        """A reusable module session must reopen Snippe instead of confirmation."""
+        from unittest.mock import patch
+
+        checkout_url = 'https://pay.snippe.sh/sess_existing_module'
+        ModulePayment.objects.create(
+            user=self.student_user,
+            module=self.priced_module,
+            amount=self.priced_module.price,
+            status='pending',
+            snippe_session_id='sess_existing_module',
+            checkout_url=checkout_url,
+        )
+
+        with patch('lms.views.requests.post') as mock_post:
+            response = self.client.post(reverse('lms:module_payment_init', kwargs={
+                'course_slug': self.course.slug,
+                'module_id': self.priced_module.id,
+            }))
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response['Location'], checkout_url)
+        mock_post.assert_not_called()
+        self.assertEqual(
+            ModulePayment.objects.filter(user=self.student_user, module=self.priced_module).count(),
+            1,
+        )
 
     @override_settings(SNIPPE_API_KEY='')
     def test_module_payment_init_falls_back_when_snippe_unconfigured(self):
