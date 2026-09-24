@@ -22,8 +22,25 @@ class SecurityHeadersMiddlewareTests(SimpleTestCase):
         )
         self.assertEqual(
             form_action,
-            "form-action 'self' https://chuosmart.com",
+            "form-action 'self' https://pay.snippe.sh https://chuosmart.com",
         )
+
+    @override_settings(DEBUG=False, CANONICAL_DOMAIN='chuosmart.com')
+    def test_form_action_allows_snippe_hosted_checkout_redirect(self):
+        request = RequestFactory().post(
+            '/lms/courses/example/payment/pay-online/',
+            HTTP_HOST='chuosmart.com',
+            secure=True,
+        )
+        response = SecurityHeadersMiddleware(lambda _request: HttpResponse('ok'))(request)
+
+        csp = response['Content-Security-Policy']
+        form_action = next(
+            part.strip()
+            for part in csp.split(';')
+            if part.strip().startswith('form-action ')
+        )
+        self.assertIn('https://pay.snippe.sh', form_action.split())
 
     @override_settings(DEBUG=False, CANONICAL_DOMAIN='*')
     def test_form_action_does_not_add_wildcard_canonical_domain(self):
@@ -36,4 +53,4 @@ class SecurityHeadersMiddlewareTests(SimpleTestCase):
             for part in csp.split(';')
             if part.strip().startswith('form-action ')
         )
-        self.assertEqual(form_action, "form-action 'self'")
+        self.assertEqual(form_action, "form-action 'self' https://pay.snippe.sh")
