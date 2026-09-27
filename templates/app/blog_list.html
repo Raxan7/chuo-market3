@@ -51,13 +51,13 @@
                     </a>
                 </div>
             </div>
-            {% if forloop.counter|divisibleby:3 %}
-                {% if forloop.counter|divisibleby:6 %}
-                    <div class="col-md-6 col-lg-4">
-                        {% include 'app/partials/adsterra_ad_card.html' %}
-                    </div>
-                {% else %}
-                    {% if show_list_ads %}
+            {% if show_list_ads %}
+                {% if forloop.counter|divisibleby:3 %}
+                    {% if forloop.counter|divisibleby:6 %}
+                        <div class="col-md-6 col-lg-4">
+                            {% include 'app/partials/adsterra_ad_card.html' %}
+                        </div>
+                    {% else %}
                         <div class="col-md-6 col-lg-4">
                             {% include 'app/partials/list_ad_card.html' %}
                         </div>
