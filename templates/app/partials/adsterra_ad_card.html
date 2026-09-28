@@ -1,25 +1,23 @@
 {% load ad_tags %}
 {% if show_list_ads %}
   {% adsterra_smartlink forloop.counter as smartlink %}
-<a
-  class="card border-0 shadow-sm list-ad-card adsterra-ad-card h-100 text-decoration-none text-reset"
-  href="{{ smartlink.url }}"
-  target="_blank"
-  rel="sponsored nofollow noopener"
-  referrerpolicy="strict-origin-when-cross-origin"
-  data-adsterra-smartlink
-  data-smartlink-number="{{ smartlink.number }}"
-  aria-label="Open sponsored content in a new tab"
->
+<div class="card border-0 shadow-sm list-ad-card adsterra-ad-card h-100">
   <div class="card-body p-2 p-md-3 d-flex flex-column">
     <div class="small text-uppercase text-muted mb-2">Sponsored</div>
-    <div class="flex-grow-1 d-flex align-items-center justify-content-center text-center py-4 px-2">
-      <div>
-        <i class="fas fa-external-link-alt fa-2x mb-3 text-primary" aria-hidden="true"></i>
-        <div class="fw-semibold">Sponsored content</div>
-        <div class="small text-muted mt-1">View offer</div>
-      </div>
+    <div class="flex-grow-1 position-relative ad-iframe-wrap">
+      <iframe
+        class="ad-iframe adsterra-native-iframe"
+        title="Sponsored Ad"
+        loading="lazy"
+        src="about:blank"
+        data-ad-type="adsterra-native"
+        data-ad-script-src="https://pl31147888.profitableratecpmnetwork.com/6ecede6ab74b91de2adf4bd985213f25/invoke.js"
+        data-ad-container-id="container-6ecede6ab74b91de2adf4bd985213f25"
+        data-smartlink-number="{{ smartlink.number }}"
+        sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation"
+        scrolling="no"
+      ></iframe>
     </div>
   </div>
-</a>
+</div>
 {% endif %}

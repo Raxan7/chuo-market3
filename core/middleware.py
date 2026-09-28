@@ -36,6 +36,7 @@ class SecurityHeadersMiddleware(MiddlewareMixin):
             'https://js.stripe.com',
             'https://fundingchoicesmessages.google.com',
             'https://ad.doubleclick.net',
+            'https://pl31147888.profitableratecpmnetwork.com',
         ],
         'style-src': [
             "'self'",
@@ -73,6 +74,7 @@ class SecurityHeadersMiddleware(MiddlewareMixin):
             'https://res.cloudinary.com',
             'https://ad.doubleclick.net',
             'https://fundingchoicesmessages.google.com',
+            'https://pl31147888.profitableratecpmnetwork.com',
             'wss:',
         ],
         'frame-src': [
@@ -86,6 +88,7 @@ class SecurityHeadersMiddleware(MiddlewareMixin):
             'https://ep2.adtrafficquality.google',
             'https://www.google.com',
             'https://www.profitableratecpmnetwork.com',
+            'https://pl31147888.profitableratecpmnetwork.com',
         ],
         'object-src': ["'none'"],
         'base-uri': ["'self'"],

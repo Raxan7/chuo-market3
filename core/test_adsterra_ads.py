@@ -17,6 +17,14 @@ from core.templatetags.ad_tags import (
 )
 
 
+ADSTERRA_NATIVE_SCRIPT_ORIGIN = "https://pl31147888.profitableratecpmnetwork.com"
+ADSTERRA_NATIVE_SCRIPT_URL = (
+    f"{ADSTERRA_NATIVE_SCRIPT_ORIGIN}/"
+    "6ecede6ab74b91de2adf4bd985213f25/invoke.js"
+)
+ADSTERRA_NATIVE_CONTAINER_ID = "container-6ecede6ab74b91de2adf4bd985213f25"
+
+
 class AdsterraSmartlinkTests(SimpleTestCase):
     def setUp(self):
         self.factory = RequestFactory()
@@ -45,7 +53,7 @@ class AdsterraSmartlinkTests(SimpleTestCase):
         second = select_adsterra_smartlink("/blog/?page=3", occurrence=12)
         self.assertEqual(first, second)
 
-    def test_adsterra_card_is_sponsored_outbound_link_not_iframe(self):
+    def test_adsterra_card_renders_native_preview_iframe(self):
         request = self.factory.get("/marketplace/?page=2")
         request.user = AnonymousUser()
         html = render_to_string(
@@ -54,11 +62,20 @@ class AdsterraSmartlinkTests(SimpleTestCase):
             request=request,
         )
         selected = select_adsterra_smartlink(request.get_full_path(), occurrence=6)
-        self.assertIn(selected["url"], html)
-        self.assertIn('target="_blank"', html)
-        self.assertIn('rel="sponsored nofollow noopener"', html)
-        self.assertIn("data-adsterra-smartlink", html)
-        self.assertNotIn("<iframe", html)
+        self.assertIn("<iframe", html)
+        self.assertIn('data-ad-type="adsterra-native"', html)
+        self.assertIn(f'data-ad-script-src="{ADSTERRA_NATIVE_SCRIPT_URL}"', html)
+        self.assertIn(
+            f'data-ad-container-id="{ADSTERRA_NATIVE_CONTAINER_ID}"',
+            html,
+        )
+        self.assertIn(
+            f'data-smartlink-number="{selected["number"]}"',
+            html,
+        )
+        self.assertIn("allow-top-navigation-by-user-activation", html)
+        self.assertNotIn('target="_blank"', html)
+        self.assertNotIn(">View offer<", html)
 
     def test_list_ad_switch_suppresses_adsterra_card(self):
         request = self.factory.get("/marketplace/")
@@ -68,14 +85,28 @@ class AdsterraSmartlinkTests(SimpleTestCase):
             {"show_list_ads": False, "forloop": {"counter": 6}},
             request=request,
         )
-        self.assertNotIn(ADSTERRA_SMARTLINK_HOST, html)
-        self.assertNotIn("data-adsterra-smartlink", html)
+        self.assertNotIn(ADSTERRA_NATIVE_SCRIPT_ORIGIN, html)
+        self.assertNotIn('data-ad-type="adsterra-native"', html)
 
-    def test_csp_already_recognizes_adsterra_host(self):
-        self.assertIn(
-            "https://www.profitableratecpmnetwork.com",
-            SecurityHeadersMiddleware.CSP_DIRECTIVES["frame-src"],
+    def test_csp_allows_native_adsterra_zone_without_broad_https_script_access(self):
+        for directive in ("script-src", "connect-src", "frame-src"):
+            self.assertIn(
+                ADSTERRA_NATIVE_SCRIPT_ORIGIN,
+                SecurityHeadersMiddleware.CSP_DIRECTIVES[directive],
+            )
+        self.assertNotIn("https:", SecurityHeadersMiddleware.CSP_DIRECTIVES["script-src"])
+
+    def test_ad_initializer_waits_for_measurable_width_and_builds_native_zone(self):
+        source = (Path(settings.BASE_DIR) / "static/app/js/base.js").read_text(
+            encoding="utf-8"
         )
+        self.assertIn("getBoundingClientRect().width > 0", source)
+        self.assertIn("ResizeObserver", source)
+        self.assertIn("data-initialization-pending", source)
+        self.assertIn("adsterra-native", source)
+        self.assertIn("data-ad-script-src", source)
+        self.assertIn(ADSTERRA_NATIVE_SCRIPT_ORIGIN, source)
+        self.assertIn("width:100%!important;min-width:1px", source)
 
 
 class ListAdTemplateWiringTests(SimpleTestCase):
