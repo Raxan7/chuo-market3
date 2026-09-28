@@ -148,121 +148,215 @@ document.addEventListener("DOMContentLoaded", function() {
   }
 });
 
-/* ---- Ad iFrame Auto-loading ----
-   Ads are rendered as cards matching the dimensions of sibling
-   course/product/blog cards. Each ad is housed in an <iframe> and is
-   initialized only after the iframe has a measurable width. This avoids
-   AdSense's "No slot size for availableWidth=0" error on grids that start
-   hidden behind skeleton loaders, and keeps repeated Adsterra native zones
-   isolated from one another. */
-function buildAdsterraNativeDocument(scriptSrc, containerId) {
-  var safeContainerId = String(containerId || '').replace(/[^a-zA-Z0-9_-]/g, '');
-  var allowedPrefix = 'https://pl31147888.profitableratecpmnetwork.com/';
-  if (!safeContainerId || !scriptSrc || scriptSrc.indexOf(allowedPrefix) !== 0) {
-    return '';
-  }
+/* ---- Responsive list-ad initialization ----
+   Google AdSense renders directly in the page DOM so its responsive unit
+   measures the real card width. Adsterra display banners stay isolated in
+   their own iframe and choose exactly one format: 728x90 when the full-width
+   row can fit it, otherwise 320x50. */
 
-  return '<!DOCTYPE html><html><head>'
-    + '<meta name="viewport" content="width=device-width,initial-scale=1">'
-    + '<style>html,body{margin:0;padding:0;width:100%;height:100%;background:transparent;overflow:hidden;}'
-    + 'body{display:flex;align-items:center;justify-content:center;}'
-    + '#' + safeContainerId + '{width:100%;max-width:100%;}</style>'
-    + '</head><body>'
-    + '<div id="' + safeContainerId + '"></div>'
-    + '<script async="async" data-cfasync="false" src="' + scriptSrc + '"><\/script>'
-    + '</body></html>';
-}
-
-function initializeAdIframe(iframe) {
-  if (!iframe || iframe.hasAttribute('data-initialized')) {
-    return;
-  }
-
-  var adType = iframe.getAttribute('data-ad-type');
-  var adSrc = iframe.getAttribute('data-ad-src');
-
-  if (adType === 'adsense') {
-    // Build an inline HTML document that loads the AdSense unit only after
-    // the outer iframe has a real layout width.
-    var client = iframe.getAttribute('data-ad-client');
-    var slot = iframe.getAttribute('data-ad-slot');
-    var doc = '<!DOCTYPE html><html><head>'
-      + '<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=' + client + '" crossorigin="anonymous"><\/script>'
-      + '<style>html,body{margin:0;padding:0;width:100%;height:100%;background:transparent;overflow:hidden;}'
-      + 'ins.adsbygoogle{display:block!important;width:100%!important;min-width:1px;}</style>'
-      + '</head><body>'
-      + '<ins class="adsbygoogle" data-ad-client="' + client + '" data-ad-slot="' + slot + '" data-ad-format="auto" data-full-width-responsive="true"></ins>'
-      + '<script>(adsbygoogle = window.adsbygoogle || []).push({});<\/script>'
-      + '</body></html>';
-    iframe.srcdoc = doc;
-  } else if (adType === 'adsterra-native') {
-    var nativeDoc = buildAdsterraNativeDocument(
-      iframe.getAttribute('data-ad-script-src'),
-      iframe.getAttribute('data-ad-container-id')
-    );
-    if (nativeDoc) {
-      iframe.srcdoc = nativeDoc;
-    }
-  } else if (adSrc) {
-    // Legacy direct-link iframe support for any older placement still using it.
-    iframe.src = adSrc;
-  }
-
-  iframe.removeAttribute('data-initialization-pending');
-  iframe.setAttribute('data-initialized', 'true');
-}
-
-function queueAdIframeInitialization(iframe) {
+function whenAdElementHasWidth(element, minimumWidth, callback) {
   if (
-    !iframe ||
-    iframe.hasAttribute('data-initialized') ||
-    iframe.hasAttribute('data-initialization-pending')
+    !element ||
+    element.hasAttribute('data-chuosmart-width-wait')
   ) {
     return;
   }
 
-  var hasUsableWidth = function() {
-    return iframe.getBoundingClientRect().width > 0;
+  var isReady = function() {
+    return (
+      element.isConnected &&
+      element.getBoundingClientRect().width >= minimumWidth
+    );
   };
 
-  if (hasUsableWidth()) {
-    initializeAdIframe(iframe);
+  if (isReady()) {
+    callback();
     return;
   }
 
-  iframe.setAttribute('data-initialization-pending', 'true');
+  element.setAttribute('data-chuosmart-width-wait', 'true');
 
   if ('ResizeObserver' in window) {
     var observer = new ResizeObserver(function() {
-      if (hasUsableWidth()) {
-        observer.disconnect();
-        initializeAdIframe(iframe);
+      if (!isReady()) {
+        return;
       }
+
+      observer.disconnect();
+      element.removeAttribute('data-chuosmart-width-wait');
+      callback();
     });
-    observer.observe(iframe);
+
+    observer.observe(element);
     return;
   }
 
-  // Older-browser fallback: retry briefly until the hidden grid is revealed.
   var attempts = 0;
   var timer = window.setInterval(function() {
     attempts += 1;
-    if (hasUsableWidth()) {
+
+    if (isReady()) {
       window.clearInterval(timer);
-      initializeAdIframe(iframe);
-    } else if (attempts >= 40) {
+      element.removeAttribute('data-chuosmart-width-wait');
+      callback();
+      return;
+    }
+
+    if (attempts >= 40 || !element.isConnected) {
       window.clearInterval(timer);
-      iframe.removeAttribute('data-initialization-pending');
+      element.removeAttribute('data-chuosmart-width-wait');
     }
   }, 250);
 }
 
-function initAdIframes(root) {
+
+function initializeAdsenseUnit(unit) {
+  if (
+    !unit ||
+    unit.hasAttribute('data-chuosmart-ad-initialized')
+  ) {
+    return;
+  }
+
+  whenAdElementHasWidth(unit, 120, function() {
+    if (unit.hasAttribute('data-chuosmart-ad-initialized')) {
+      return;
+    }
+
+    try {
+      unit.setAttribute(
+        'data-chuosmart-ad-initialized',
+        'true'
+      );
+
+      window.adsbygoogle = window.adsbygoogle || [];
+      window.adsbygoogle.push({});
+    } catch (error) {
+      unit.removeAttribute('data-chuosmart-ad-initialized');
+      console.warn('Unable to initialize responsive AdSense unit', error);
+    }
+  });
+}
+
+
+function initAdsenseUnits(root) {
   var container = root || document;
-  var iframes = container.querySelectorAll(
-    'iframe.ad-iframe:not([data-initialized]):not([data-initialization-pending])'
+
+  var units = container.querySelectorAll(
+    'ins.adsbygoogle.list-adsense-unit:not([data-chuosmart-ad-initialized])'
   );
-  iframes.forEach(queueAdIframeInitialization);
+
+  units.forEach(initializeAdsenseUnit);
+}
+
+
+function buildAdsterraDisplayDocument(config) {
+  var allowedPrefix = 'https://www.highrevenueformat.com/';
+
+  if (
+    !config ||
+    !config.key ||
+    !config.scriptSrc ||
+    config.scriptSrc.indexOf(allowedPrefix) !== 0
+  ) {
+    return '';
+  }
+
+  var options = {
+    key: config.key,
+    format: 'iframe',
+    height: config.height,
+    width: config.width,
+    params: {}
+  };
+
+  return '<!doctype html><html><head>'
+    + '<meta name="viewport" content="width=device-width,initial-scale=1">'
+    + '<style>'
+    + 'html,body{margin:0;padding:0;width:100%;height:100%;'
+    + 'background:transparent;overflow:hidden;}'
+    + 'body{display:flex;align-items:center;justify-content:center;}'
+    + '</style>'
+    + '</head><body>'
+    + '<script>window.atOptions='
+    + JSON.stringify(options)
+    + ';<\/script>'
+    + '<script src="'
+    + config.scriptSrc
+    + '"><\/script>'
+    + '</body></html>';
+}
+
+
+function initializeAdsterraDisplayFrame(frame) {
+  if (
+    !frame ||
+    frame.hasAttribute('data-chuosmart-ad-initialized')
+  ) {
+    return;
+  }
+
+  whenAdElementHasWidth(frame, 120, function() {
+    if (frame.hasAttribute('data-chuosmart-ad-initialized')) {
+      return;
+    }
+
+    var availableWidth = frame.getBoundingClientRect().width;
+    var useMobile = availableWidth < 728;
+
+    var config = useMobile
+      ? {
+          key: frame.getAttribute('data-mobile-key'),
+          width: Number(frame.getAttribute('data-mobile-width')),
+          height: Number(frame.getAttribute('data-mobile-height')),
+          scriptSrc: frame.getAttribute('data-mobile-script-src')
+        }
+      : {
+          key: frame.getAttribute('data-desktop-key'),
+          width: Number(frame.getAttribute('data-desktop-width')),
+          height: Number(frame.getAttribute('data-desktop-height')),
+          scriptSrc: frame.getAttribute('data-desktop-script-src')
+        };
+
+    var doc = buildAdsterraDisplayDocument(config);
+
+    if (!doc) {
+      console.warn('Invalid Adsterra display-banner configuration');
+      return;
+    }
+
+    frame.style.width = config.width + 'px';
+    frame.style.height = config.height + 'px';
+    frame.style.maxWidth = '100%';
+
+    frame.setAttribute('width', String(config.width));
+    frame.setAttribute('height', String(config.height));
+    frame.srcdoc = doc;
+
+    frame.setAttribute(
+      'data-chuosmart-ad-initialized',
+      'true'
+    );
+  });
+}
+
+
+function initAdsterraDisplayFrames(root) {
+  var container = root || document;
+
+  var frames = container.querySelectorAll(
+    'iframe.adsterra-display-frame:not([data-chuosmart-ad-initialized])'
+  );
+
+  frames.forEach(initializeAdsterraDisplayFrame);
+}
+
+
+/* Keep the existing public initializer name because marketplace/blog
+   infinite-scroll code already calls window.initializeListAds(). */
+function initAdIframes(root) {
+  initAdsenseUnits(root);
+  initAdsterraDisplayFrames(root);
 }
 
 window.initializeListAds = function(listContainer) {

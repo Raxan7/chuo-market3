@@ -17,12 +17,17 @@ from core.templatetags.ad_tags import (
 )
 
 
-ADSTERRA_NATIVE_SCRIPT_ORIGIN = "https://pl31147888.profitableratecpmnetwork.com"
-ADSTERRA_NATIVE_SCRIPT_URL = (
-    f"{ADSTERRA_NATIVE_SCRIPT_ORIGIN}/"
-    "6ecede6ab74b91de2adf4bd985213f25/invoke.js"
+ADSTERRA_DISPLAY_SCRIPT_ORIGIN = "https://www.highrevenueformat.com"
+ADSTERRA_DESKTOP_KEY = "bddb20c8197be539197c4b2ee02363f0"
+ADSTERRA_DESKTOP_SCRIPT_URL = (
+    f"{ADSTERRA_DISPLAY_SCRIPT_ORIGIN}/"
+    f"{ADSTERRA_DESKTOP_KEY}/invoke.js"
 )
-ADSTERRA_NATIVE_CONTAINER_ID = "container-6ecede6ab74b91de2adf4bd985213f25"
+ADSTERRA_MOBILE_KEY = "ec22a6cfe1b3a979c2c1167a8f7e4d47"
+ADSTERRA_MOBILE_SCRIPT_URL = (
+    f"{ADSTERRA_DISPLAY_SCRIPT_ORIGIN}/"
+    f"{ADSTERRA_MOBILE_KEY}/invoke.js"
+)
 
 
 class AdsterraSmartlinkTests(SimpleTestCase):
@@ -53,60 +58,121 @@ class AdsterraSmartlinkTests(SimpleTestCase):
         second = select_adsterra_smartlink("/blog/?page=3", occurrence=12)
         self.assertEqual(first, second)
 
-    def test_adsterra_card_renders_native_preview_iframe(self):
+    def test_adsterra_card_renders_responsive_display_banner(self):
         request = self.factory.get("/marketplace/?page=2")
         request.user = AnonymousUser()
+
         html = render_to_string(
             "app/partials/adsterra_ad_card.html",
             {"show_list_ads": True, "forloop": {"counter": 6}},
             request=request,
         )
-        selected = select_adsterra_smartlink(request.get_full_path(), occurrence=6)
+
         self.assertIn("<iframe", html)
-        self.assertIn('data-ad-type="adsterra-native"', html)
-        self.assertIn(f'data-ad-script-src="{ADSTERRA_NATIVE_SCRIPT_URL}"', html)
+        self.assertIn('data-ad-type="adsterra-display"', html)
         self.assertIn(
-            f'data-ad-container-id="{ADSTERRA_NATIVE_CONTAINER_ID}"',
+            f'data-desktop-key="{ADSTERRA_DESKTOP_KEY}"',
             html,
         )
         self.assertIn(
-            f'data-smartlink-number="{selected["number"]}"',
+            f'data-desktop-script-src="{ADSTERRA_DESKTOP_SCRIPT_URL}"',
             html,
         )
-        self.assertIn("allow-top-navigation-by-user-activation", html)
-        self.assertNotIn('target="_blank"', html)
+        self.assertIn(
+            f'data-mobile-key="{ADSTERRA_MOBILE_KEY}"',
+            html,
+        )
+        self.assertIn(
+            f'data-mobile-script-src="{ADSTERRA_MOBILE_SCRIPT_URL}"',
+            html,
+        )
+        self.assertNotIn("pl31147888.profitableratecpmnetwork.com", html)
         self.assertNotIn(">View offer<", html)
+
+    def test_adsense_card_uses_direct_page_markup(self):
+        html = render_to_string("app/partials/list_ad_card.html")
+
+        self.assertIn(
+            'class="adsbygoogle list-adsense-unit"',
+            html,
+        )
+        self.assertIn(
+            'data-ad-client="ca-pub-1815335112679958"',
+            html,
+        )
+        self.assertIn('data-ad-slot="9477202901"', html)
+        self.assertNotIn("<iframe", html)
 
     def test_list_ad_switch_suppresses_adsterra_card(self):
         request = self.factory.get("/marketplace/")
         request.user = AnonymousUser()
+
         html = render_to_string(
             "app/partials/adsterra_ad_card.html",
             {"show_list_ads": False, "forloop": {"counter": 6}},
             request=request,
         )
-        self.assertNotIn(ADSTERRA_NATIVE_SCRIPT_ORIGIN, html)
-        self.assertNotIn('data-ad-type="adsterra-native"', html)
 
-    def test_csp_allows_native_adsterra_zone_without_broad_https_script_access(self):
+        self.assertNotIn(ADSTERRA_DISPLAY_SCRIPT_ORIGIN, html)
+        self.assertNotIn('data-ad-type="adsterra-display"', html)
+
+    def test_csp_allows_adsterra_display_banner_origins(self):
         for directive in ("script-src", "connect-src", "frame-src"):
             self.assertIn(
-                ADSTERRA_NATIVE_SCRIPT_ORIGIN,
+                ADSTERRA_DISPLAY_SCRIPT_ORIGIN,
                 SecurityHeadersMiddleware.CSP_DIRECTIVES[directive],
             )
-        self.assertNotIn("https:", SecurityHeadersMiddleware.CSP_DIRECTIVES["script-src"])
 
-    def test_ad_initializer_waits_for_measurable_width_and_builds_native_zone(self):
-        source = (Path(settings.BASE_DIR) / "static/app/js/base.js").read_text(
-            encoding="utf-8"
+        for directive in ("connect-src", "frame-src"):
+            self.assertIn(
+                "https://*.highrevenueformat.com",
+                SecurityHeadersMiddleware.CSP_DIRECTIVES[directive],
+            )
+            self.assertIn(
+                "https://*.profitableratecpmnetwork.com",
+                SecurityHeadersMiddleware.CSP_DIRECTIVES[directive],
+            )
+
+        self.assertNotIn(
+            "https:",
+            SecurityHeadersMiddleware.CSP_DIRECTIVES["script-src"],
         )
-        self.assertIn("getBoundingClientRect().width > 0", source)
-        self.assertIn("ResizeObserver", source)
-        self.assertIn("data-initialization-pending", source)
-        self.assertIn("adsterra-native", source)
-        self.assertIn("data-ad-script-src", source)
-        self.assertIn(ADSTERRA_NATIVE_SCRIPT_ORIGIN, source)
-        self.assertIn("width:100%!important;min-width:1px", source)
+
+    def test_ad_initializer_uses_direct_adsense_and_display_banners(self):
+        js_source = (
+            Path(settings.BASE_DIR) / "static/app/js/base.js"
+        ).read_text(encoding="utf-8")
+
+        adsense_template = (
+            Path(settings.BASE_DIR)
+            / "templates/app/partials/list_ad_card.html"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn(
+            'class="adsbygoogle list-adsense-unit"',
+            adsense_template,
+        )
+        self.assertNotIn("<iframe", adsense_template)
+
+        self.assertIn("function initAdsenseUnits", js_source)
+        self.assertIn(
+            "getBoundingClientRect().width",
+            js_source,
+        )
+        self.assertIn(
+            "window.adsbygoogle = window.adsbygoogle || []",
+            js_source,
+        )
+
+        self.assertIn("adsterra-display", js_source)
+        self.assertIn("window.atOptions", js_source)
+        self.assertIn("data-desktop-key", js_source)
+        self.assertIn("data-mobile-key", js_source)
+        self.assertNotIn(
+            "buildAdsterraNativeDocument",
+            js_source,
+        )
+
 
 
 class ListAdTemplateWiringTests(SimpleTestCase):
@@ -132,3 +198,4 @@ class ListAdTemplateWiringTests(SimpleTestCase):
             with self.subTest(template=relative_path):
                 source = (Path(settings.BASE_DIR) / relative_path).read_text(encoding="utf-8")
                 self.assertRegex(source, self.pattern)
+                self.assertIn("adsterra-full-width-slot", source)

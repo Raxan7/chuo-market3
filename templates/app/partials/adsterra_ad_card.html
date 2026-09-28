@@ -1,21 +1,30 @@
-{% load ad_tags %}
 {% if show_list_ads %}
-  {% adsterra_smartlink forloop.counter as smartlink %}
-<div class="card border-0 shadow-sm list-ad-card adsterra-ad-card h-100">
-  <div class="card-body p-2 p-md-3 d-flex flex-column">
+<div class="card border-0 shadow-sm adsterra-ad-card w-100">
+  <div class="card-body p-2 p-md-3">
     <div class="small text-uppercase text-muted mb-2">Sponsored</div>
-    <div class="flex-grow-1 position-relative ad-iframe-wrap">
+
+    <div
+      class="d-flex align-items-center justify-content-center overflow-hidden w-100"
+      style="min-height:50px;"
+    >
       <iframe
-        class="ad-iframe adsterra-native-iframe"
-        title="Sponsored Ad"
+        class="adsterra-display-frame"
+        title="Sponsored banner"
         loading="lazy"
         src="about:blank"
-        data-ad-type="adsterra-native"
-        data-ad-script-src="https://pl31147888.profitableratecpmnetwork.com/6ecede6ab74b91de2adf4bd985213f25/invoke.js"
-        data-ad-container-id="container-6ecede6ab74b91de2adf4bd985213f25"
-        data-smartlink-number="{{ smartlink.number }}"
-        sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation"
+        data-ad-type="adsterra-display"
+        data-desktop-key="bddb20c8197be539197c4b2ee02363f0"
+        data-desktop-width="728"
+        data-desktop-height="90"
+        data-desktop-script-src="https://www.highrevenueformat.com/bddb20c8197be539197c4b2ee02363f0/invoke.js"
+        data-mobile-key="ec22a6cfe1b3a979c2c1167a8f7e4d47"
+        data-mobile-width="320"
+        data-mobile-height="50"
+        data-mobile-script-src="https://www.highrevenueformat.com/ec22a6cfe1b3a979c2c1167a8f7e4d47/invoke.js"
+        referrerpolicy="strict-origin-when-cross-origin"
+        sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox allow-forms allow-top-navigation-by-user-activation"
         scrolling="no"
+        style="display:block;border:0;width:100%;max-width:100%;height:90px;"
       ></iframe>
     </div>
   </div>
