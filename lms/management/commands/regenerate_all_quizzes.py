@@ -33,6 +33,16 @@ class Command(BaseCommand):
             action="store_true",
             help="Keep processing remaining modules after a failure instead of terminating",
         )
+        parser.add_argument(
+            "--max-attempts",
+            type=int,
+            default=None,
+            help=(
+                "Provider attempts per module. 0 keeps retrying transient gateway "
+                "failures forever (Ctrl-C to stop). Defaults to "
+                "AI_ASSESSMENT_MAX_ATTEMPTS."
+            ),
+        )
 
     def write(self, msg, style=None):
         msg = safe_text(msg)
@@ -52,6 +62,7 @@ class Command(BaseCommand):
         max_modules = options["max_modules"]
         force = options["force"]
         continue_on_error = options["continue_on_error"]
+        max_attempts = options["max_attempts"]
 
         modules_qs = CourseModule.objects.filter(skip_assessment=False).order_by("course__title", "order", "id")
         if options["course_id"]:
@@ -92,6 +103,7 @@ class Command(BaseCommand):
         self.write(f"Sleep between modules: {sleep_seconds}s")
         self.write(f"Force regenerate: {force}")
         self.write(f"Continue on error: {continue_on_error}")
+        self.write(f"Max attempts per module: {max_attempts if max_attempts is not None else 'from settings'}")
         self.write(f"Dry run: {dry_run}")
         self.write("-" * 70)
 
@@ -118,6 +130,7 @@ class Command(BaseCommand):
                     module,
                     question_count=question_count,
                     force=True,
+                    max_attempts=max_attempts,
                 )
 
                 question_total = quiz.questions.count() if quiz else 0

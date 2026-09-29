@@ -247,6 +247,75 @@ class AgenticQuizGenerationTests(TestCase):
 
     @patch('lms.ai_assessments.time.sleep')
     @patch('lms.ai_assessments.chat_completion')
+    def test_unlimited_attempts_keeps_trying_until_success(self, chat_completion, sleep):
+        """max_attempts=0 must not give up on a long provider outage."""
+        chat_completion.side_effect = [
+            *[AgenticAIError('Agentic AI gateway returned HTTP 503', status_code=503)] * 8,
+            (AI_QUIZ_JSON, {'provider': 'gemini', 'model': 'gemini-2.5-flash'}),
+        ]
+
+        quiz = ensure_module_assessment(self.module, force=True, max_attempts=0)
+
+        self.assertTrue(quiz.ai_generated)
+        self.assertEqual(chat_completion.call_count, 9)
+        self.assertEqual(sleep.call_count, 8)
+
+    @patch('lms.ai_assessments.time.sleep')
+    @patch('lms.ai_assessments.chat_completion')
+    def test_unlimited_attempts_still_gives_up_on_permanent_4xx(self, chat_completion, sleep):
+        """A bad gateway key must not spin forever."""
+        chat_completion.side_effect = AgenticAIError(
+            'Agentic AI gateway returned HTTP 401', status_code=401
+        )
+
+        with self.assertRaises(RuntimeError):
+            ensure_module_assessment(self.module, force=True, max_attempts=0)
+
+        self.assertEqual(chat_completion.call_count, 1)
+        sleep.assert_not_called()
+
+    @patch('lms.ai_assessments.time.sleep')
+    @patch('lms.ai_assessments.chat_completion')
+    def test_backoff_grows_exponentially_and_is_capped(self, chat_completion, sleep):
+        chat_completion.side_effect = AgenticAIError(
+            'Agentic AI gateway returned HTTP 503', status_code=503
+        )
+
+        with self.assertRaises(RuntimeError):
+            ensure_module_assessment(self.module, force=True, max_attempts=6)
+
+        # Base 2.0s doubling each retry.
+        delays = [call.args[0] for call in sleep.call_args_list]
+        self.assertEqual(delays, [2.0, 4.0, 8.0, 16.0, 32.0])
+
+    @patch('lms.ai_assessments.time.sleep')
+    @patch('lms.ai_assessments.chat_completion')
+    def test_backoff_never_exceeds_configured_maximum(self, chat_completion, sleep):
+        chat_completion.side_effect = AgenticAIError(
+            'Agentic AI gateway returned HTTP 503', status_code=503
+        )
+
+        with self.assertRaises(RuntimeError):
+            ensure_module_assessment(self.module, force=True, max_attempts=8)
+
+        delays = [call.args[0] for call in sleep.call_args_list]
+        self.assertLessEqual(max(delays), 60.0)
+
+    @patch('lms.ai_assessments.time.sleep')
+    @patch('lms.ai_assessments.chat_completion')
+    def test_token_growth_is_capped_during_unlimited_retries(self, chat_completion, sleep):
+        chat_completion.side_effect = [
+            *[AgenticAIError('Agentic AI gateway returned HTTP 503', status_code=503)] * 6,
+            (AI_QUIZ_JSON, {'provider': 'gemini', 'model': 'gemini-2.5-flash'}),
+        ]
+
+        ensure_module_assessment(self.module, force=True, max_attempts=0)
+
+        tokens = [call.kwargs['max_tokens'] for call in chat_completion.call_args_list]
+        self.assertLessEqual(max(tokens), 4000 * 3)
+
+    @patch('lms.ai_assessments.time.sleep')
+    @patch('lms.ai_assessments.chat_completion')
     def test_rate_limited_is_retried_in_process(self, chat_completion, sleep):
         chat_completion.side_effect = [
             AgenticAIError('Rate limit reached', status_code=429, response_body='quota exceeded'),
@@ -334,6 +403,36 @@ class RegenerateAllQuizzesCommandTests(TestCase):
 
         self.assertEqual(ctx.exception.code, 1)
         self.assertEqual(ensure_assessment.call_count, 1)
+
+    @patch('lms.management.commands.regenerate_all_quizzes.ensure_module_assessment')
+    def test_max_attempts_flag_is_passed_through(self, ensure_assessment):
+        self._module('Only Module')
+        ensure_assessment.return_value = MagicMock(
+            questions=MagicMock(count=MagicMock(return_value=5))
+        )
+
+        from django.core.management import call_command
+        from io import StringIO
+
+        out = StringIO()
+        call_command('regenerate_all_quizzes', '--max-attempts', '0', stdout=out, stderr=out)
+
+        self.assertEqual(ensure_assessment.call_args.kwargs['max_attempts'], 0)
+
+    @patch('lms.management.commands.regenerate_all_quizzes.ensure_module_assessment')
+    def test_max_attempts_defaults_to_settings(self, ensure_assessment):
+        self._module('Only Module')
+        ensure_assessment.return_value = MagicMock(
+            questions=MagicMock(count=MagicMock(return_value=5))
+        )
+
+        from django.core.management import call_command
+        from io import StringIO
+
+        out = StringIO()
+        call_command('regenerate_all_quizzes', stdout=out, stderr=out)
+
+        self.assertIsNone(ensure_assessment.call_args.kwargs['max_attempts'])
 
 
 class InstructorModuleCrudTests(TestCase):

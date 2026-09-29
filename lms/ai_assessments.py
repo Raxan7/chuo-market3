@@ -687,7 +687,7 @@ def _is_transient_gateway_error(exc):
     return 'network error' in str(exc).lower()
 
 
-def _call_agentic_gateway_for_questions(module, context, question_count):
+def _call_agentic_gateway_for_questions(module, context, question_count, max_attempts=None):
     """Call the multi-provider agentic AI gateway and return the legacy status tuple."""
     if not gateway_configured():
         msg = f"Module {getattr(module, 'id', '?')}: agentic AI gateway is not configured"
@@ -708,14 +708,29 @@ def _call_agentic_gateway_for_questions(module, context, question_count):
     ]
 
     base_max_tokens = int(getattr(settings, 'AI_ASSESSMENT_MAX_TOKENS', 4000) or 4000)
-    max_attempts = int(getattr(settings, 'AI_ASSESSMENT_MAX_ATTEMPTS', 3) or 3)
+    if max_attempts is None:
+        max_attempts = int(getattr(settings, 'AI_ASSESSMENT_MAX_ATTEMPTS', 3) or 3)
     backoff = float(getattr(settings, 'AI_ASSESSMENT_RETRY_BACKOFF_SECONDS', 2.0) or 0)
+    max_backoff = float(getattr(settings, 'AI_ASSESSMENT_MAX_RETRY_BACKOFF_SECONDS', 60.0) or 0)
+    max_token_ceiling = int(getattr(settings, 'AI_ASSESSMENT_MAX_TOKENS_CEILING', 0) or 0)
+    if not max_token_ceiling:
+        # Default to a 3x budget: enough headroom for reasoning tokens on a
+        # couple of retries, without an unbounded loop asking for a huge budget.
+        max_token_ceiling = base_max_tokens * 3
     last_json_error = None
+    attempt = 0
+    attempt_label = 'unlimited' if max_attempts <= 0 else str(max_attempts)
 
-    for attempt in range(1, max_attempts + 1):
+    # max_attempts <= 0 means "keep trying indefinitely". The loop is otherwise
+    # identical, so a single provider blip cannot fail a whole batch.
+    while max_attempts <= 0 or attempt < max_attempts:
+        attempt += 1
         # Reasoning models spend part of the budget on thinking, so grow the
-        # allowance on each retry to leave room for the JSON body itself.
+        # allowance on each retry to leave room for the JSON body itself. Cap it
+        # so an unlimited retry loop cannot request an absurd token budget.
         max_tokens = base_max_tokens * attempt
+        if max_token_ceiling:
+            max_tokens = min(max_tokens, max_token_ceiling)
 
         try:
             payload_text, meta = chat_completion(
@@ -731,7 +746,7 @@ def _call_agentic_gateway_for_questions(module, context, question_count):
                 'payload_chars=%s finish_reason=%s payload_preview=%s',
                 getattr(module, 'id', '?'),
                 attempt,
-                max_attempts,
+                attempt_label,
                 meta.get('provider'),
                 meta.get('model'),
                 len(payload_text or ''),
@@ -745,7 +760,7 @@ def _call_agentic_gateway_for_questions(module, context, question_count):
                 'Agentic AI JSON parsed module_id=%s attempt=%s/%s questions_raw=%s',
                 getattr(module, 'id', '?'),
                 attempt,
-                max_attempts,
+                attempt_label,
                 len(parsed.get('questions', [])) if isinstance(parsed, dict) else 'not_dict',
             )
 
@@ -754,14 +769,19 @@ def _call_agentic_gateway_for_questions(module, context, question_count):
             )
 
         except AgenticAIError as exc:
-            if _is_transient_gateway_error(exc) and attempt < max_attempts:
-                delay = backoff * attempt
+            has_attempts_left = max_attempts <= 0 or attempt < max_attempts
+
+            if _is_transient_gateway_error(exc) and has_attempts_left:
+                # The gateway pools are shared and free-tier quotas reset on their
+                # own schedule, so back off exponentially (capped) rather than
+                # giving up on a module over a temporary outage.
+                delay = min(backoff * (2 ** (attempt - 1)), max_backoff)
                 logger.warning(
                     'Module %s: agentic AI gateway transient failure (attempt %s/%s): %s. '
-                    'Retrying in %ss. body=%s',
+                    'Retrying in %.1fs. body=%s',
                     getattr(module, 'id', '?'),
                     attempt,
-                    max_attempts,
+                    attempt_label,
                     exc,
                     delay,
                     str(exc.response_body or '')[:200],
@@ -781,7 +801,7 @@ def _call_agentic_gateway_for_questions(module, context, question_count):
             last_json_error = exc
             msg = (
                 f"Module {getattr(module, 'id', '?')}: invalid JSON from agentic AI gateway "
-                f"(attempt {attempt}/{max_attempts}): {exc}"
+                f"(attempt {attempt}/{attempt_label}): {exc}"
             )
             logger.warning(msg)
             messages = _build_json_repair_messages(module, context, question_count)
@@ -797,7 +817,7 @@ def _call_agentic_gateway_for_questions(module, context, question_count):
     return None, 'invalid_json', final_msg
 
 
-def _call_configured_ai_for_questions(module, context, question_count):
+def _call_configured_ai_for_questions(module, context, question_count, max_attempts=None):
     """Use the configured quiz provider, preferring the multi-provider gateway in auto mode."""
     provider = getattr(settings, 'AI_ASSESSMENT_PROVIDER', 'auto').strip().lower()
 
@@ -805,7 +825,7 @@ def _call_configured_ai_for_questions(module, context, question_count):
         return None, 'api_error', f"Unsupported AI_ASSESSMENT_PROVIDER={provider!r}"
 
     if provider in {'auto', 'agentic'} and gateway_configured():
-        return _call_agentic_gateway_for_questions(module, context, question_count)
+        return _call_agentic_gateway_for_questions(module, context, question_count, max_attempts)
 
     if provider == 'agentic':
         return None, 'missing_api_key', 'Agentic AI gateway selected but AGENTIC_AI_BASE_URL/API_KEY are not configured.'
@@ -819,7 +839,8 @@ def _call_configured_ai_for_questions(module, context, question_count):
     return None, 'missing_api_key', 'No AI quiz provider is configured.'
 
 
-def ensure_module_assessment(module, student=None, question_count=DEFAULT_QUESTION_COUNT, force=False):
+def ensure_module_assessment(module, student=None, question_count=DEFAULT_QUESTION_COUNT, force=False,
+                             max_attempts=None):
     """
     Generate one shared AI quiz for a module.
     No fallback questions are created. Bad AI output fails the job instead of creating bogus quizzes.
@@ -875,6 +896,7 @@ def ensure_module_assessment(module, student=None, question_count=DEFAULT_QUESTI
         module,
         context,
         question_count,
+        max_attempts=max_attempts,
     )
 
     _log_assessment_event(

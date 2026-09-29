@@ -89,7 +89,7 @@ By default the command stops at the first failure. To attempt every module and g
 python manage.py regenerate_all_quizzes --sleep 30 --continue-on-error
 ```
 
-The command exits non-zero when any module failed, so it stays safe to use from cron.
+The command exits non-zero when any module failed, so it stays safe to use from cron. Add `--max-attempts 0` to retry transient provider failures indefinitely until each module succeeds (see section 8).
 
 If you intentionally want to regenerate every module assessment, including existing AI quizzes:
 
@@ -132,29 +132,50 @@ AI_ASSESSMENT_MAX_TOKENS=8000
 AGENTIC_AI_ROUTE=structured
 ```
 
-## 8. Troubleshooting `HTTP 503` from the gateway
+## 8. Troubleshooting gateway `HTTP 503`
 
-A 503 means the gateway had no upstream provider available at that moment
-(cold start on Render, or the free Groq/Gemini/OpenRouter pool exhausted).
-These are transient, so the generator now retries them in-process with a
-short linear backoff instead of failing the module on the first response:
-
-```env
-AI_ASSESSMENT_MAX_ATTEMPTS=3
-AI_ASSESSMENT_RETRY_BACKOFF_SECONDS=2.0
-```
-
-`max_attempts` is shared between JSON retries and transient-failure retries.
-A 4xx such as 401 is never retried, since it will not fix itself.
-
-If 503s persist for a long stretch, the gateway itself is saturated or cold.
-Check it directly before re-running:
+A 503 means the gateway had no upstream provider available for that request.
+Check which pool is broken before re-running — the causes need different fixes:
 
 ```bash
-curl -fsS https://agentic-ai-engine.onrender.com/health
+curl -fsS https://agentic-ai-engine.onrender.com/v1/providers -H "X-API-Key: $AGENTIC_AI_API_KEY"
 ```
 
-Because the last two modules will keep hitting the same saturated pool, run
-them with `--continue-on-error` so one 503 does not block the other, and
-re-run the command later for anything that failed. Successfully generated
-modules are skipped automatically, so re-running is always safe.
+That reports `configured`, `quarantined`, `quarantine_reason`, `failures` and
+`disabled_for_seconds` per provider. The response body's `attempts` array in the
+503 also names each provider, its model and the upstream `http_status`.
+
+| Upstream error | Meaning | Fix |
+|---|---|---|
+| 403 `error code: 1010` | Cloudflare rejected the client signature | Fixed in the engine (browser-like `User-Agent`); redeploy the engine. |
+| 403 `model_permission_blocked_org` | All models disabled on the Groq org | Enable models at <https://console.groq.com/settings/limits>, or clear `GROQ_API_KEYS` so failover starts at Gemini. |
+| 401 | Key revoked or wrong | Replace the key. |
+| 429 Gemini quota | Free-tier quota exhausted | Wait for the quota window to reset. |
+| 429 `free-models-per-day` | OpenRouter's 50/day allowance is spent | Wait for the daily reset, or add credits. |
+| `status: quarantined` | A permanent failure disabled that provider earlier | Fix the credential, then redeploy the engine (quarantine is in-memory). |
+
+Transient failures (429/5xx/network) are retried automatically with exponential
+backoff. To keep retrying indefinitely until a module succeeds, run with
+`--max-attempts 0`:
+
+```bash
+python manage.py regenerate_all_quizzes --sleep 5 --continue-on-error --max-attempts 0
+```
+
+This is the right choice when the outage is expected to clear on its own (a
+Render cold start, or a daily free-tier quota resetting). Press Ctrl-C to stop.
+A permanent 4xx such as 401 is still never retried, because retrying a bad key
+cannot succeed and would hang the command forever.
+
+Relevant settings:
+
+```env
+# 0 = retry forever. Positive values bound the attempts per module.
+AI_ASSESSMENT_MAX_ATTEMPTS=3
+AI_ASSESSMENT_RETRY_BACKOFF_SECONDS=2.0
+AI_ASSESSMENT_MAX_RETRY_BACKOFF_SECONDS=60
+# Caps per-retry token growth. Blank/0 means 3x AI_ASSESSMENT_MAX_TOKENS.
+AI_ASSESSMENT_MAX_TOKENS_CEILING=0
+```
+
+The command exits non-zero when any module failed, so it stays safe for cron.

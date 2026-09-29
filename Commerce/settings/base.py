@@ -191,6 +191,12 @@ AI_ASSESSMENT_MAX_TOKENS = int(os.getenv('AI_ASSESSMENT_MAX_TOKENS', '4000'))
 # management command run stays responsive.
 AI_ASSESSMENT_MAX_ATTEMPTS = int(os.getenv('AI_ASSESSMENT_MAX_ATTEMPTS', '3'))
 AI_ASSESSMENT_RETRY_BACKOFF_SECONDS = float(os.getenv('AI_ASSESSMENT_RETRY_BACKOFF_SECONDS', '2.0'))
+# Exponential backoff for transient gateway failures, capped so a long outage
+# does not stretch a single module into hours of waiting.
+AI_ASSESSMENT_MAX_RETRY_BACKOFF_SECONDS = float(os.getenv('AI_ASSESSMENT_MAX_RETRY_BACKOFF_SECONDS', '60'))
+# Upper bound on the per-retry token growth. Blank/0 means "3x AI_ASSESSMENT_MAX_TOKENS",
+# so an unlimited retry loop cannot request an absurd token budget.
+AI_ASSESSMENT_MAX_TOKENS_CEILING = int(os.getenv('AI_ASSESSMENT_MAX_TOKENS_CEILING', '0') or 0)
 # Deterministic fallback quizzes are intentionally disabled by default. A failed
 # AI call must stay pending/failed instead of silently publishing repeated quiz text.
 AI_ASSESSMENT_ALLOW_DETERMINISTIC_FALLBACK = os.getenv(
