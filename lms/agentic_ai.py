@@ -80,12 +80,19 @@ def chat_completion(messages, *, route='structured', temperature=0.0, max_tokens
         raise AgenticAIError('Agentic AI gateway returned invalid JSON', response_body=raw[:1000]) from exc
 
     try:
-        content = data['choices'][0]['message']['content']
+        choice = data['choices'][0]
+        content = choice['message']['content']
     except (KeyError, IndexError, TypeError) as exc:
         raise AgenticAIError(
             'Agentic AI gateway response did not contain choices[0].message.content',
             response_body=raw[:1000],
         ) from exc
+
+    meta = dict(data.get('gateway_meta') or {})
+    # finish_reason='length' means max_tokens cut the answer off mid-generation,
+    # which is the usual cause of "invalid JSON" from reasoning models.
+    meta.setdefault('finish_reason', choice.get('finish_reason'))
+    meta.setdefault('response_id', data.get('id'))
 
     # Some OpenAI-compatible providers can return content parts instead of one string.
     if isinstance(content, list):
@@ -97,4 +104,4 @@ def chat_completion(messages, *, route='structured', temperature=0.0, max_tokens
                 chunks.append(str(part))
         content = ''.join(chunks)
 
-    return str(content), data.get('gateway_meta') or {}
+    return str(content or ''), meta

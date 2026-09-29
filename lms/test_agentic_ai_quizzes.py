@@ -6,7 +6,7 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from .agentic_ai import chat_completion
-from .ai_assessments import ensure_module_assessment
+from .ai_assessments import ensure_module_assessment, _extract_json_object
 from .models import Course, CourseContent, CourseModule, LMSProfile, Quiz
 
 
@@ -72,6 +72,57 @@ class AgenticGatewayClientContractTests(TestCase):
         )
 
 
+class ExtractJsonObjectTests(TestCase):
+    def test_plain_json_is_returned_unchanged(self):
+        payload = {'questions': [{'question': 'Q?'}]}
+        self.assertEqual(_extract_json_object(json.dumps(payload)), payload)
+
+    def test_reasoning_preamble_before_json_is_ignored(self):
+        text = (
+            'User Safety: safe\n'
+            'We need to generate exactly 5 multiple choice questions '
+            'based on the module content, which is in Swahili.\n'
+            '{"questions":[{"question":"Je?"}]}'
+        )
+        self.assertEqual(_extract_json_object(text), {'questions': [{'question': 'Je?'}]})
+
+    def test_think_block_wrapping_json_is_stripped(self):
+        text = '<think>The user wants a quiz about {braces}</think>\n{"questions": []}'
+        self.assertEqual(_extract_json_object(text), {'questions': []})
+
+    def test_unclosed_think_block_keeps_trailing_json_out(self):
+        with self.assertRaises(ValueError):
+            _extract_json_object('<think>still reasoning {"questions": []}')
+
+    def test_json_wrapped_in_code_fence_is_parsed(self):
+        self.assertEqual(
+            _extract_json_object('```json\n{"questions": []}\n```'),
+            {'questions': []},
+        )
+
+    def test_nested_braces_inside_strings_do_not_break_extraction(self):
+        text = 'Sure!\n{"questions":[{"question":"What is {JSON}?"}]}\nHope that helps.'
+        self.assertEqual(
+            _extract_json_object(text),
+            {'questions': [{'question': 'What is {JSON}?'}]},
+        )
+
+    def test_truncated_payload_recovers_complete_questions(self):
+        text = (
+            '{"questions":['
+            '{"question":"Q1","choices":["a","b","c","d"],"correct_index":0,"explanation":"E1"},'
+            '{"question":"Q2","choices":["a","b","c","d"],"correct_index":1,"explanation":"E2"},'
+            '{"question":"Q3 partial'
+        )
+        parsed = _extract_json_object(text)
+        self.assertEqual(len(parsed['questions']), 2)
+        self.assertEqual(parsed['questions'][1]['question'], 'Q2')
+
+    def test_purely_non_json_output_raises(self):
+        with self.assertRaises(ValueError):
+            _extract_json_object('User Safety: safe')
+
+
 @override_settings(
     AGENTIC_AI_BASE_URL='https://ai-gateway.example.test',
     AGENTIC_AI_API_KEY='test-gateway-key',
@@ -112,6 +163,57 @@ class AgenticQuizGenerationTests(TestCase):
         payload = chat_completion.call_args.args[0]
         self.assertIn('Photosynthesis', payload[1]['content'])
 
+    @patch('lms.ai_assessments.chat_completion')
+    def test_reasoning_preamble_before_json_still_produces_a_quiz(self, chat_completion):
+        chat_completion.return_value = (
+            'User Safety: safe\nWe need to generate 5 questions.\n' + AI_QUIZ_JSON,
+            {'provider': 'groq', 'model': 'qwen/qwen3.8-27b'},
+        )
+
+        quiz = ensure_module_assessment(self.module, force=True)
+
+        self.assertTrue(quiz.ai_generated)
+        self.assertEqual(quiz.questions.count(), 5)
+
+    @patch('lms.ai_assessments.chat_completion')
+    def test_invalid_json_is_retried_before_failing(self, chat_completion):
+        chat_completion.side_effect = [
+            ('User Safety: safe', {'provider': 'groq', 'model': 'qwen/qwen3.8-27b'}),
+            (AI_QUIZ_JSON, {'provider': 'groq', 'model': 'qwen/qwen3.8-27b'}),
+        ]
+
+        quiz = ensure_module_assessment(self.module, force=True)
+
+        self.assertTrue(quiz.ai_generated)
+        self.assertEqual(chat_completion.call_count, 2)
+        # The retry must ask for JSON explicitly rather than repeating the original prompt.
+        retry_prompt = chat_completion.call_args_list[1].args[0][1]['content']
+        self.assertIn('not valid JSON', retry_prompt)
+
+    @patch('lms.ai_assessments.chat_completion')
+    def test_persistently_invalid_json_fails_after_three_attempts(self, chat_completion):
+        chat_completion.return_value = ('User Safety: safe', {'provider': 'groq'})
+
+        with self.assertRaises(RuntimeError):
+            ensure_module_assessment(self.module, force=True)
+
+        self.assertEqual(chat_completion.call_count, 3)
+        quiz = Quiz.objects.get(module=self.module, generated_for__isnull=True, draft=False)
+        self.assertFalse(quiz.ai_generated)
+        self.assertEqual(quiz.generation_status, 'failed')
+        self.assertIn('after 3 attempts', quiz.generation_message)
+
+    @patch('lms.ai_assessments.chat_completion')
+    def test_retry_escalates_max_tokens(self, chat_completion):
+        chat_completion.return_value = ('User Safety: safe', {'provider': 'groq'})
+
+        with self.assertRaises(RuntimeError):
+            ensure_module_assessment(self.module, force=True)
+
+        tokens = [call.kwargs['max_tokens'] for call in chat_completion.call_args_list]
+        self.assertEqual(tokens, sorted(tokens))
+        self.assertGreater(tokens[-1], tokens[0])
+
     @override_settings(AGENTIC_AI_BASE_URL='', AGENTIC_AI_API_KEY='')
     def test_missing_ai_provider_never_silently_publishes_deterministic_fallback(self):
         with self.assertRaises(RuntimeError):
@@ -121,6 +223,60 @@ class AgenticQuizGenerationTests(TestCase):
         self.assertFalse(quiz.ai_generated)
         self.assertEqual(quiz.questions.count(), 0)
         self.assertEqual(quiz.generation_status, 'failed')
+
+
+class RegenerateAllQuizzesCommandTests(TestCase):
+    def setUp(self):
+        self.course = Course.objects.create(title='Regen Course', summary='Regen course')
+
+    def _module(self, title):
+        return CourseModule.objects.create(
+            course=self.course,
+            title=title,
+            description='Module description',
+            order=CourseModule.objects.filter(course=self.course).count() + 1,
+        )
+
+    @patch('lms.management.commands.regenerate_all_quizzes.ensure_module_assessment')
+    def test_continue_on_error_processes_every_module_and_reports_failures(self, ensure_assessment):
+        first = self._module('First Module')
+        second = self._module('Second Module')
+        self._module('Third Module')
+
+        def generate(module, **kwargs):
+            if module.id == second.id:
+                raise RuntimeError('invalid JSON from AI provider')
+            return MagicMock(questions=MagicMock(count=MagicMock(return_value=5)))
+
+        ensure_assessment.side_effect = generate
+
+        from django.core.management import call_command
+        from io import StringIO
+
+        out = StringIO()
+        with self.assertRaises(SystemExit) as ctx:
+            call_command('regenerate_all_quizzes', '--continue-on-error', stdout=out, stderr=out)
+
+        self.assertEqual(ctx.exception.code, 1)
+        self.assertEqual(ensure_assessment.call_count, 3)
+        self.assertIn('Failed: 1 module(s)', out.getvalue())
+        self.assertIn('Second Module', out.getvalue())
+
+    @patch('lms.management.commands.regenerate_all_quizzes.ensure_module_assessment')
+    def test_default_still_stops_at_first_failure(self, ensure_assessment):
+        self._module('First Module')
+        self._module('Second Module')
+        ensure_assessment.side_effect = RuntimeError('invalid JSON from AI provider')
+
+        from django.core.management import call_command
+        from io import StringIO
+
+        out = StringIO()
+        with self.assertRaises(SystemExit) as ctx:
+            call_command('regenerate_all_quizzes', stdout=out, stderr=out)
+
+        self.assertEqual(ctx.exception.code, 1)
+        self.assertEqual(ensure_assessment.call_count, 1)
 
 
 class InstructorModuleCrudTests(TestCase):

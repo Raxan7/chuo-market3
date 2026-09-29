@@ -81,6 +81,14 @@ python manage.py regenerate_all_quizzes --sleep 30
 
 The command skips already confirmed AI-generated quizzes. A successfully regenerated quiz is marked `ai_generated=True`. If a free-provider rate limit interrupts the run, resolve/wait for the provider and rerun the command; already successful AI quizzes are skipped automatically.
 
+By default the command stops at the first failure. To attempt every module and get a full list of failures at the end, add `--continue-on-error`:
+
+```bash
+python manage.py regenerate_all_quizzes --sleep 30 --continue-on-error
+```
+
+The command exits non-zero when any module failed, so it stays safe to use from cron.
+
 If you intentionally want to regenerate every module assessment, including existing AI quizzes:
 
 ```bash
@@ -101,3 +109,23 @@ After deployment, create or edit one small test module with factual lesson text.
 4. The questions reference the module content rather than generic repeated wording.
 5. Instructor Edit Module saves successfully.
 6. Instructor Delete Module displays confirmation and removes the chosen module after POST.
+
+## 7. Troubleshooting `invalid_json` failures
+
+Some reasoning models (`qwen3.8-27b`, `openai/gpt-oss-120b`) return their thinking
+text — for example `User Safety: safe` — instead of the JSON body. The generator now:
+
+- strips `<think>`/`<reasoning>` blocks and leading commentary before parsing,
+- locates the JSON object with balanced-brace scanning so braces inside string
+  values do not break extraction,
+- recovers complete questions from a payload truncated by `max_tokens`,
+- retries up to 3 times with a strict JSON-only repair prompt, growing
+  `max_tokens` on each attempt, and
+- logs `finish_reason` plus a 300-character payload preview.
+
+If failures persist, raise the token budget and prefer a non-reasoning route:
+
+```env
+AI_ASSESSMENT_MAX_TOKENS=8000
+AGENTIC_AI_ROUTE=structured
+```

@@ -28,6 +28,11 @@ class Command(BaseCommand):
         parser.add_argument("--start-at", type=int, default=0, help="Skip first N modules (for resuming)")
         parser.add_argument("--max-modules", type=int, default=0, help="Max modules to process (0 = all)")
         parser.add_argument("--force", action="store_true", help="Regenerate even ai_generated=True quizzes")
+        parser.add_argument(
+            "--continue-on-error",
+            action="store_true",
+            help="Keep processing remaining modules after a failure instead of terminating",
+        )
 
     def write(self, msg, style=None):
         msg = safe_text(msg)
@@ -46,6 +51,7 @@ class Command(BaseCommand):
         start_at = options["start_at"]
         max_modules = options["max_modules"]
         force = options["force"]
+        continue_on_error = options["continue_on_error"]
 
         modules_qs = CourseModule.objects.filter(skip_assessment=False).order_by("course__title", "order", "id")
         if options["course_id"]:
@@ -85,6 +91,7 @@ class Command(BaseCommand):
         self.write(f"Questions per quiz: {question_count}")
         self.write(f"Sleep between modules: {sleep_seconds}s")
         self.write(f"Force regenerate: {force}")
+        self.write(f"Continue on error: {continue_on_error}")
         self.write(f"Dry run: {dry_run}")
         self.write("-" * 70)
 
@@ -95,6 +102,7 @@ class Command(BaseCommand):
             return
 
         completed = 0
+        failures = []
 
         for index, module in enumerate(needs_gen):
             close_old_connections()
@@ -118,18 +126,22 @@ class Command(BaseCommand):
 
             except Exception as exc:
                 self.write(f"  FAILED: {exc}", self.style.ERROR)
-                self.error(
-                    f"\nFATAL: Quiz generation failed for Module #{module.id} \"{safe_text(module.title)}\""
-                    f"\n  Course: {safe_text(module.course.title)}"
-                    f"\n  Error: {exc}"
-                    f"\n\nTERMINATING. Fix the AI/provider issue and re-run the same command. "
-                    f"Modules already regenerated successfully are skipped automatically."
-                )
                 logger.exception(
                     "Quiz generation failed for module_id=%s course_id=%s",
                     module.id, module.course.id,
                 )
-                sys.exit(1)
+                failures.append((module, exc))
+
+                if not continue_on_error:
+                    self.error(
+                        f"\nFATAL: Quiz generation failed for Module #{module.id} \"{safe_text(module.title)}\""
+                        f"\n  Course: {safe_text(module.course.title)}"
+                        f"\n  Error: {exc}"
+                        f"\n\nTERMINATING. Fix the AI/provider issue and re-run the same command. "
+                        f"Modules already regenerated successfully are skipped automatically."
+                        f"\n\nTo process every module and collect all failures, re-run with --continue-on-error."
+                    )
+                    sys.exit(1)
 
             if index < total - 1 and sleep_seconds > 0:
                 self.write(f"  Waiting {sleep_seconds}s...")
@@ -138,3 +150,17 @@ class Command(BaseCommand):
         self.write("")
         self.write("=" * 70)
         self.write(f"Done. {completed}/{total} module(s) completed successfully.", self.style.SUCCESS)
+
+        if failures:
+            self.write(f"Failed: {len(failures)} module(s)", self.style.ERROR)
+            for module, exc in failures:
+                self.write(
+                    f"  Module #{module.id} [{safe_text(module.course.title)}] "
+                    f"{safe_text(module.title)}: {exc}"
+                )
+            self.write(
+                "\nRe-run the same command once the provider issue is resolved. "
+                "Successful modules are skipped automatically.",
+                self.style.WARNING,
+            )
+            sys.exit(1)

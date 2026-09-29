@@ -220,44 +220,174 @@ MODULE CONTENT:
 """.strip()
 
 
+def _strip_reasoning_blocks(text):
+    """
+    Remove reasoning/thinking blocks that some OpenAI-compatible gateways
+    concatenate into message.content ahead of the real answer.
+    """
+    cleaned = re.sub(
+        r'<(think|thinking|reasoning|reflection|scratchpad)\b[^>]*>.*?</\1\s*>',
+        ' ',
+        text,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    # Unclosed trailing reasoning block: everything from the tag onwards is reasoning.
+    cleaned = re.sub(
+        r'<(?:think|thinking|reasoning|reflection|scratchpad)\b[^>]*>.*\Z',
+        ' ',
+        cleaned,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    return cleaned.strip()
+
+
+def _iter_json_candidates(text):
+    """
+    Yield balanced ``{...}`` substrings, outermost first, ignoring braces that
+    appear inside JSON string literals.
+    """
+    length = len(text)
+    index = 0
+
+    while index < length:
+        if text[index] != '{':
+            index += 1
+            continue
+
+        depth = 0
+        in_string = False
+        escaped = False
+        cursor = index
+
+        while cursor < length:
+            char = text[cursor]
+
+            if in_string:
+                if escaped:
+                    escaped = False
+                elif char == '\\':
+                    escaped = True
+                elif char == '"':
+                    in_string = False
+            else:
+                if char == '"':
+                    in_string = True
+                elif char == '{':
+                    depth += 1
+                elif char == '}':
+                    depth -= 1
+                    if depth == 0:
+                        yield text[index:cursor + 1]
+                        index = cursor + 1
+                        break
+
+            cursor += 1
+        else:
+            return
+
+
+def _close_truncated_json(text):
+    """
+    Best-effort recovery of a payload cut off by max_tokens.
+    Rewinds to the last complete array element and closes the brackets that
+    were still open at that point.
+    """
+    start = text.find('{')
+    if start == -1:
+        return None
+
+    stack = []
+    in_string = False
+    escaped = False
+    # (end_index, stack_snapshot) of the last point we can safely cut at.
+    safe_cut = None
+    cursor = start
+
+    while cursor < len(text):
+        char = text[cursor]
+
+        if in_string:
+            if escaped:
+                escaped = False
+            elif char == '\\':
+                escaped = True
+            elif char == '"':
+                in_string = False
+        else:
+            if char == '"':
+                in_string = True
+            elif char in '{[':
+                stack.append('}' if char == '{' else ']')
+            elif char in '}]':
+                if not stack:
+                    break
+                stack.pop()
+                if not stack:
+                    # Whole payload completed after all.
+                    return None
+                if stack[-1] == ']':
+                    # Just finished an element of the enclosing array.
+                    safe_cut = (cursor + 1, list(stack))
+            elif char == ',' and stack and stack[-1] == ']':
+                safe_cut = (cursor, list(stack))
+
+        cursor += 1
+
+    if safe_cut is None:
+        return None
+
+    cut_index, cut_stack = safe_cut
+    body = text[start:cut_index].rstrip().rstrip(',').rstrip()
+
+    return body + ''.join(reversed(cut_stack))
+
+
 def _extract_json_object(text):
     """
     Try to extract a valid JSON object from model output.
-    Attempts basic repair for common LLM JSON errors.
+    Handles code fences, reasoning preambles, leading/trailing commentary and
+    common LLM JSON errors. Recovers truncated payloads when possible.
     """
     if not text:
         raise ValueError('empty response from AI provider')
 
     text = str(text).strip()
+    text = _strip_reasoning_blocks(text)
 
     if text.startswith('```'):
         text = re.sub(r'^```(?:json)?\s*', '', text, flags=re.IGNORECASE)
         text = re.sub(r'\s*```$', '', text)
+    text = text.strip()
 
     def _attempt_parse(raw):
         raw = raw.strip()
+        if not raw:
+            return None
         try:
             return json.loads(raw)
         except json.JSONDecodeError:
             return None
 
-    # Try raw text
     result = _attempt_parse(text)
     if result is not None:
         return result
 
-    # Extract outermost { ... } block
-    start = text.find('{')
-    end = text.rfind('}')
-    if start != -1 and end != -1 and end > start:
-        candidate = text[start:end + 1]
+    for candidate in _iter_json_candidates(text):
         result = _attempt_parse(candidate)
         if result is not None:
             return result
 
-        # Try basic repair: escape unescaped quotes inside strings
-        repaired = _repair_json_strings(candidate)
-        result = _attempt_parse(repaired)
+        repaired = _attempt_parse(_repair_json_strings(candidate))
+        if repaired is not None:
+            return repaired
+
+    salvaged = _close_truncated_json(text)
+    if salvaged:
+        result = _attempt_parse(salvaged)
+        if result is not None:
+            return result
+
+        result = _attempt_parse(_repair_json_strings(salvaged))
         if result is not None:
             return result
 
@@ -509,6 +639,35 @@ def _call_cerebras_for_questions(module, context, question_count):
     return None, 'invalid_json', final_msg
 
 
+def _build_json_repair_messages(module, context, question_count):
+    """Retry prompt used when a provider returns reasoning text instead of JSON."""
+    return [
+        {
+            'role': 'system',
+            'content': (
+                'You output one raw JSON object and nothing else. '
+                'Do not think out loud, do not describe your plan, do not repeat the instructions. '
+                'The first characters of your reply must be { and the last character must be }.'
+            ),
+        },
+        {
+            'role': 'user',
+            'content': (
+                'Your previous reply was not valid JSON. '
+                'Regenerate the quiz now. Output only the minified JSON object, '
+                'no Markdown, no code fences, no trailing commas, no commentary. '
+                'Use exactly this schema: '
+                '{"questions":[{"question":"Question text",'
+                '"choices":["Choice A","Choice B","Choice C","Choice D"],'
+                '"correct_index":0,"explanation":"Brief explanation"}]}'
+                f"\n\nGenerate exactly {question_count} questions."
+                f"\n\nMODULE TITLE:\n{module.title}"
+                f"\n\nMODULE CONTENT:\n{context}"
+            ),
+        },
+    ]
+
+
 def _call_agentic_gateway_for_questions(module, context, question_count):
     """Call the multi-provider agentic AI gateway and return the legacy status tuple."""
     if not gateway_configured():
@@ -522,45 +681,78 @@ def _call_agentic_gateway_for_questions(module, context, question_count):
             'role': 'system',
             'content': (
                 'You generate accurate course assessments grounded only in the supplied module content. '
-                'Return only valid JSON, with no Markdown or commentary.'
+                'Reply with one raw JSON object only. No Markdown, no code fences, no commentary, '
+                'and do not include your reasoning.'
             ),
         },
         {'role': 'user', 'content': prompt},
     ]
 
-    try:
-        payload_text, meta = chat_completion(
-            messages,
-            route=getattr(settings, 'AGENTIC_AI_ROUTE', 'structured'),
-            temperature=0.0,
-            max_tokens=getattr(settings, 'AI_ASSESSMENT_MAX_TOKENS', 4000),
-            response_format={'type': 'json_object'},
-        )
-        parsed = _extract_json_object(payload_text)
-        logger.info(
-            'Agentic AI response module_id=%s provider=%s model=%s attempts=%s payload_chars=%s',
-            getattr(module, 'id', '?'),
-            meta.get('provider'),
-            meta.get('model'),
-            len(meta.get('attempts') or []),
-            len(payload_text or ''),
-        )
-        return parsed, 'success', (
-            f"provider={meta.get('provider') or 'unknown'} model={meta.get('model') or 'unknown'}"
-        )
-    except AgenticAIError as exc:
-        status = 'rate_limited' if exc.rate_limited else 'api_error'
-        msg = f"Module {getattr(module, 'id', '?')}: agentic AI gateway failed: {exc}"
-        logger.warning(msg)
-        return None, status, msg
-    except ValueError as exc:
-        msg = f"Module {getattr(module, 'id', '?')}: invalid JSON from agentic AI gateway: {exc}"
-        logger.warning(msg)
-        return None, 'invalid_json', msg
-    except Exception as exc:
-        msg = f"Module {getattr(module, 'id', '?')}: unexpected agentic AI error: {type(exc).__name__}: {exc}"
-        logger.exception(msg)
-        return None, 'api_error', msg
+    base_max_tokens = int(getattr(settings, 'AI_ASSESSMENT_MAX_TOKENS', 4000) or 4000)
+    last_json_error = None
+
+    for attempt in range(1, 4):
+        # Reasoning models spend part of the budget on thinking, so grow the
+        # allowance on each retry to leave room for the JSON body itself.
+        max_tokens = base_max_tokens * attempt
+
+        try:
+            payload_text, meta = chat_completion(
+                messages,
+                route=getattr(settings, 'AGENTIC_AI_ROUTE', 'structured'),
+                temperature=0.0,
+                max_tokens=max_tokens,
+                response_format={'type': 'json_object'},
+            )
+
+            logger.info(
+                'Agentic AI response module_id=%s attempt=%s/3 provider=%s model=%s '
+                'payload_chars=%s finish_reason=%s payload_preview=%s',
+                getattr(module, 'id', '?'),
+                attempt,
+                meta.get('provider'),
+                meta.get('model'),
+                len(payload_text or ''),
+                meta.get('finish_reason'),
+                str(payload_text or '')[:300],
+            )
+
+            parsed = _extract_json_object(payload_text)
+
+            logger.info(
+                'Agentic AI JSON parsed module_id=%s attempt=%s/3 questions_raw=%s',
+                getattr(module, 'id', '?'),
+                attempt,
+                len(parsed.get('questions', [])) if isinstance(parsed, dict) else 'not_dict',
+            )
+
+            return parsed, 'success', (
+                f"provider={meta.get('provider') or 'unknown'} model={meta.get('model') or 'unknown'}"
+            )
+
+        except AgenticAIError as exc:
+            status = 'rate_limited' if exc.rate_limited else 'api_error'
+            msg = f"Module {getattr(module, 'id', '?')}: agentic AI gateway failed: {exc}"
+            logger.warning(msg)
+            return None, status, msg
+        except ValueError as exc:
+            last_json_error = exc
+            msg = (
+                f"Module {getattr(module, 'id', '?')}: invalid JSON from agentic AI gateway "
+                f"(attempt {attempt}/3): {exc}"
+            )
+            logger.warning(msg)
+            messages = _build_json_repair_messages(module, context, question_count)
+        except Exception as exc:
+            msg = f"Module {getattr(module, 'id', '?')}: unexpected agentic AI error: {type(exc).__name__}: {exc}"
+            logger.exception(msg)
+            return None, 'api_error', msg
+
+    final_msg = (
+        f"Module {getattr(module, 'id', '?')}: invalid JSON from agentic AI gateway "
+        f"after 3 attempts: {last_json_error}"
+    )
+    return None, 'invalid_json', final_msg
 
 
 def _call_configured_ai_for_questions(module, context, question_count):
