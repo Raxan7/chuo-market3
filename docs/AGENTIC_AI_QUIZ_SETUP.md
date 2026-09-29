@@ -49,6 +49,8 @@ AGENTIC_AI_ROUTE=structured
 AGENTIC_AI_TIMEOUT_SECONDS=240
 AI_ASSESSMENT_CONTEXT_LIMIT=12000
 AI_ASSESSMENT_MAX_TOKENS=4000
+AI_ASSESSMENT_MAX_ATTEMPTS=3
+AI_ASSESSMENT_RETRY_BACKOFF_SECONDS=2.0
 AI_ASSESSMENT_ALLOW_DETERMINISTIC_FALLBACK=false
 ```
 
@@ -129,3 +131,30 @@ If failures persist, raise the token budget and prefer a non-reasoning route:
 AI_ASSESSMENT_MAX_TOKENS=8000
 AGENTIC_AI_ROUTE=structured
 ```
+
+## 8. Troubleshooting `HTTP 503` from the gateway
+
+A 503 means the gateway had no upstream provider available at that moment
+(cold start on Render, or the free Groq/Gemini/OpenRouter pool exhausted).
+These are transient, so the generator now retries them in-process with a
+short linear backoff instead of failing the module on the first response:
+
+```env
+AI_ASSESSMENT_MAX_ATTEMPTS=3
+AI_ASSESSMENT_RETRY_BACKOFF_SECONDS=2.0
+```
+
+`max_attempts` is shared between JSON retries and transient-failure retries.
+A 4xx such as 401 is never retried, since it will not fix itself.
+
+If 503s persist for a long stretch, the gateway itself is saturated or cold.
+Check it directly before re-running:
+
+```bash
+curl -fsS https://agentic-ai-engine.onrender.com/health
+```
+
+Because the last two modules will keep hitting the same saturated pool, run
+them with `--continue-on-error` so one 503 does not block the other, and
+re-run the command later for anything that failed. Successfully generated
+modules are skipped automatically, so re-running is always safe.

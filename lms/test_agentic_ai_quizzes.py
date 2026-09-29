@@ -5,7 +5,7 @@ from django.contrib.auth.models import User
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
-from .agentic_ai import chat_completion
+from .agentic_ai import AgenticAIError, chat_completion
 from .ai_assessments import ensure_module_assessment, _extract_json_object
 from .models import Course, CourseContent, CourseModule, LMSProfile, Quiz
 
@@ -213,6 +213,63 @@ class AgenticQuizGenerationTests(TestCase):
         tokens = [call.kwargs['max_tokens'] for call in chat_completion.call_args_list]
         self.assertEqual(tokens, sorted(tokens))
         self.assertGreater(tokens[-1], tokens[0])
+
+    @patch('lms.ai_assessments.time.sleep')
+    @patch('lms.ai_assessments.chat_completion')
+    def test_transient_503_is_retried_then_succeeds(self, chat_completion, sleep):
+        chat_completion.side_effect = [
+            AgenticAIError('Agentic AI gateway returned HTTP 503', status_code=503),
+            (AI_QUIZ_JSON, {'provider': 'groq', 'model': 'qwen/qwen3.8-27b'}),
+        ]
+
+        quiz = ensure_module_assessment(self.module, force=True)
+
+        self.assertTrue(quiz.ai_generated)
+        self.assertEqual(quiz.questions.count(), 5)
+        self.assertEqual(chat_completion.call_count, 2)
+        sleep.assert_called_once()
+
+    @patch('lms.ai_assessments.time.sleep')
+    @patch('lms.ai_assessments.chat_completion')
+    def test_persistent_503_fails_after_all_attempts(self, chat_completion, sleep):
+        chat_completion.side_effect = AgenticAIError(
+            'Agentic AI gateway returned HTTP 503', status_code=503
+        )
+
+        with self.assertRaises(RuntimeError) as ctx:
+            ensure_module_assessment(self.module, force=True)
+
+        self.assertEqual(chat_completion.call_count, 3)
+        self.assertIn('after 3 attempt(s)', str(ctx.exception))
+        self.assertEqual(sleep.call_count, 2)
+        quiz = Quiz.objects.get(module=self.module, generated_for__isnull=True, draft=False)
+        self.assertEqual(quiz.generation_status, 'failed')
+
+    @patch('lms.ai_assessments.time.sleep')
+    @patch('lms.ai_assessments.chat_completion')
+    def test_rate_limited_is_retried_in_process(self, chat_completion, sleep):
+        chat_completion.side_effect = [
+            AgenticAIError('Rate limit reached', status_code=429, response_body='quota exceeded'),
+            (AI_QUIZ_JSON, {'provider': 'groq', 'model': 'qwen/qwen3.8-27b'}),
+        ]
+
+        quiz = ensure_module_assessment(self.module, force=True)
+
+        self.assertTrue(quiz.ai_generated)
+        self.assertEqual(chat_completion.call_count, 2)
+
+    @patch('lms.ai_assessments.time.sleep')
+    @patch('lms.ai_assessments.chat_completion')
+    def test_non_transient_4xx_is_not_retried(self, chat_completion, sleep):
+        chat_completion.side_effect = AgenticAIError(
+            'Agentic AI gateway returned HTTP 401', status_code=401
+        )
+
+        with self.assertRaises(RuntimeError):
+            ensure_module_assessment(self.module, force=True)
+
+        self.assertEqual(chat_completion.call_count, 1)
+        sleep.assert_not_called()
 
     @override_settings(AGENTIC_AI_BASE_URL='', AGENTIC_AI_API_KEY='')
     def test_missing_ai_provider_never_silently_publishes_deterministic_fallback(self):

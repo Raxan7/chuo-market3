@@ -3,6 +3,7 @@
 import json
 import logging
 import re
+import time
 
 from django.conf import settings
 from django.db import IntegrityError, transaction
@@ -668,6 +669,24 @@ def _build_json_repair_messages(module, context, question_count):
     ]
 
 
+def _is_transient_gateway_error(exc):
+    """
+    429/5xx responses and network blips from the free-tier gateway are temporary.
+    These are worth retrying in-process; a hard 4xx is not.
+    """
+    if not isinstance(exc, AgenticAIError):
+        return False
+
+    if exc.rate_limited:
+        return True
+
+    status_code = exc.status_code
+    if isinstance(status_code, int) and 500 <= status_code < 600:
+        return True
+
+    return 'network error' in str(exc).lower()
+
+
 def _call_agentic_gateway_for_questions(module, context, question_count):
     """Call the multi-provider agentic AI gateway and return the legacy status tuple."""
     if not gateway_configured():
@@ -689,9 +708,11 @@ def _call_agentic_gateway_for_questions(module, context, question_count):
     ]
 
     base_max_tokens = int(getattr(settings, 'AI_ASSESSMENT_MAX_TOKENS', 4000) or 4000)
+    max_attempts = int(getattr(settings, 'AI_ASSESSMENT_MAX_ATTEMPTS', 3) or 3)
+    backoff = float(getattr(settings, 'AI_ASSESSMENT_RETRY_BACKOFF_SECONDS', 2.0) or 0)
     last_json_error = None
 
-    for attempt in range(1, 4):
+    for attempt in range(1, max_attempts + 1):
         # Reasoning models spend part of the budget on thinking, so grow the
         # allowance on each retry to leave room for the JSON body itself.
         max_tokens = base_max_tokens * attempt
@@ -706,10 +727,11 @@ def _call_agentic_gateway_for_questions(module, context, question_count):
             )
 
             logger.info(
-                'Agentic AI response module_id=%s attempt=%s/3 provider=%s model=%s '
+                'Agentic AI response module_id=%s attempt=%s/%s provider=%s model=%s '
                 'payload_chars=%s finish_reason=%s payload_preview=%s',
                 getattr(module, 'id', '?'),
                 attempt,
+                max_attempts,
                 meta.get('provider'),
                 meta.get('model'),
                 len(payload_text or ''),
@@ -720,9 +742,10 @@ def _call_agentic_gateway_for_questions(module, context, question_count):
             parsed = _extract_json_object(payload_text)
 
             logger.info(
-                'Agentic AI JSON parsed module_id=%s attempt=%s/3 questions_raw=%s',
+                'Agentic AI JSON parsed module_id=%s attempt=%s/%s questions_raw=%s',
                 getattr(module, 'id', '?'),
                 attempt,
+                max_attempts,
                 len(parsed.get('questions', [])) if isinstance(parsed, dict) else 'not_dict',
             )
 
@@ -731,15 +754,34 @@ def _call_agentic_gateway_for_questions(module, context, question_count):
             )
 
         except AgenticAIError as exc:
+            if _is_transient_gateway_error(exc) and attempt < max_attempts:
+                delay = backoff * attempt
+                logger.warning(
+                    'Module %s: agentic AI gateway transient failure (attempt %s/%s): %s. '
+                    'Retrying in %ss. body=%s',
+                    getattr(module, 'id', '?'),
+                    attempt,
+                    max_attempts,
+                    exc,
+                    delay,
+                    str(exc.response_body or '')[:200],
+                )
+                if delay > 0:
+                    time.sleep(delay)
+                continue
+
             status = 'rate_limited' if exc.rate_limited else 'api_error'
-            msg = f"Module {getattr(module, 'id', '?')}: agentic AI gateway failed: {exc}"
+            msg = (
+                f"Module {getattr(module, 'id', '?')}: agentic AI gateway failed after "
+                f"{attempt} attempt(s): {exc}"
+            )
             logger.warning(msg)
             return None, status, msg
         except ValueError as exc:
             last_json_error = exc
             msg = (
                 f"Module {getattr(module, 'id', '?')}: invalid JSON from agentic AI gateway "
-                f"(attempt {attempt}/3): {exc}"
+                f"(attempt {attempt}/{max_attempts}): {exc}"
             )
             logger.warning(msg)
             messages = _build_json_repair_messages(module, context, question_count)
@@ -750,7 +792,7 @@ def _call_agentic_gateway_for_questions(module, context, question_count):
 
     final_msg = (
         f"Module {getattr(module, 'id', '?')}: invalid JSON from agentic AI gateway "
-        f"after 3 attempts: {last_json_error}"
+        f"after {max_attempts} attempts: {last_json_error}"
     )
     return None, 'invalid_json', final_msg
 
