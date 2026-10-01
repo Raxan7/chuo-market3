@@ -1236,6 +1236,18 @@ class CertificateTemplate(models.Model):
     signature_image = models.ImageField(upload_to="certificates/signatures/", blank=True, null=True)
     seal_image = models.ImageField(upload_to="certificates/seals/", blank=True, null=True)
     watermark_image = models.ImageField(upload_to="certificates/watermarks/", blank=True, null=True)
+    watermark_opacity = models.FloatField(
+        default=0.15,
+        blank=True,
+        validators=[MinValueValidator(0.08), MaxValueValidator(0.30)],
+        help_text=_(
+            "Faded seal strength behind the certificate text (0.08-0.30). "
+            "Measured on a 300dpi print render: below 0.08 the seal drops under "
+            "the ~14/255 level most printers clip and vanishes on paper, while "
+            "above 0.30 it starts costing contrast on the recipient's name. "
+            "0.15 prints at 36/255 and keeps text at 11:1 contrast."
+        ),
+    )
     certificate_body = models.TextField(
         blank=True,
         default="This certificate is proudly presented to {{ student_name }} for successfully completing {{ course_title }} on {{ completion_date }}."

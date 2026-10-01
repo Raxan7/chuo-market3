@@ -103,12 +103,12 @@
 
     .watermark {
         position: absolute;
-        top: 42mm;
+        top: 38mm;
         left: 50%;
-        width: 106mm;
-        height: 106mm;
-        margin-left: -53mm;
-        opacity: 0.04;
+        width: 118mm;
+        height: 118mm;
+        margin-left: -59mm;
+        opacity: {{ watermark_opacity }};
         z-index: 1;
     }
 
@@ -117,6 +117,29 @@
         height: 100%;
         object-fit: contain;
         display: block;
+    }
+
+    /* The seal watermark sits behind every line of certificate text. A white
+       halo keeps the glyph edges crisp so the recipient's name and course
+       title stay dominant even at a watermark strength that prints visibly. */
+    .org,
+    .title,
+    .subtitle,
+    .presented,
+    .name,
+    .body-text,
+    .course,
+    .date,
+    .id-pill,
+    .signature-name,
+    .sig-label,
+    .meta-lbl,
+    .meta-id,
+    .verify-link,
+    .footer-note {
+        text-shadow:
+            0 0 1.1mm rgba(255, 255, 255, 0.92),
+            0 0 2.4mm rgba(255, 255, 255, 0.75);
     }
 
     .content {
@@ -420,12 +443,12 @@
             <span class="id-pill">{{ certificate.certificate_id }}</span>
 
             <div class="watermark">
-                <img src="{% static 'lms/images/chuosmart_seal.png' %}" alt="">
+                <img src="{{ watermark_image_url }}" alt="">
             </div>
 
             <div class="content">
                 <div class="logo">
-                    <img src="{% static 'app/images/logo.png' %}" alt="ChuoSmart">
+                    <img src="{{ logo_url }}" alt="{{ organization_name }}">
                 </div>
 
                 <div class="org">
@@ -467,7 +490,7 @@
                 <div class="footer-cell left">
                     <div class="signature-block">
                         <div class="signature-name">
-                            {{ instructor_name|default:"Course Instructor" }}
+                            {{ signature_name|default:instructor_name|default:"Course Instructor" }}
                         </div>
 
                         <span class="signature-line"></span>
@@ -481,7 +504,7 @@
 
                 <div class="footer-cell center">
                     <div class="seal">
-                        <img src="{% static 'lms/images/chuosmart_seal.png' %}" alt="Seal">
+                        <img src="{{ seal_url }}" alt="{{ organization_name }} seal">
                     </div>
                 </div>
 

@@ -13,6 +13,19 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
+# WeasyPrint renders certificate PDFs and links against pango/cairo at runtime.
+# Without these the import fails and certificate downloads return a 302 instead
+# of a file. Debian bookworm ships harfbuzz as libharfbuzz0b.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        libpango-1.0-0 \
+        libpangoft2-1.0-0 \
+        libharfbuzz0b \
+        libgdk-pixbuf-2.0-0 \
+        shared-mime-info \
+        libffi8 \
+    && rm -rf /var/lib/apt/lists/*
+
 # Keep dependency installation in its own cacheable layer.
 COPY requirements.txt ./requirements.txt
 RUN python -m pip install --upgrade pip \

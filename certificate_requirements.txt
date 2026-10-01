@@ -1,9 +1,19 @@
 # Certificate Generation Requirements
 
 # PDF Generation
-reportlab==4.0.5            # PDF generation library
+weasyprint==60.1            # HTML to PDF renderer used for certificate downloads
+# WeasyPrint 60.1 declares pydyf>=0.8.0 with no upper bound, but that is wrong:
+# it still calls PDF(version, identifier), a signature removed in pydyf 0.11.0.
+# Unpinned installs resolve to 0.12.x and certificate downloads die with
+# "PDF.__init__() takes 1 positional argument but 3 were given". Verified
+# working: 0.10.0.
+pydyf==0.10.0
 qrcode==7.4.2               # For QR code generation in certificates
-weasyprint==60.1            # Alternative HTML to PDF renderer
+# WeasyPrint additionally needs native libraries, installed in the Dockerfile:
+#   libpango-1.0-0, libpangoft2-1.0-0, libharfbuzz0b, libgdk-pixbuf-2.0-0,
+#   shared-mime-info, libffi8
+# (local pip installs may need: apt-get install libpango-1.0-0 libpangoft2-1.0-0
+#  libharfbuzz0b libgdk-pixbuf-2.0-0 shared-mime-info)
 
 # Django Extensions
 django-cleanup==8.0.0       # Auto-delete files when model is deleted

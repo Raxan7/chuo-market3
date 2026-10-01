@@ -66,3 +66,10 @@ whitenoise==6.9.0
 snippe==0.1.4
 yarl==1.20.1
 
+# Certificate PDF rendering (lms/views.py certificate downloads).
+# weasyprint needs native pango/cairo libraries; the Dockerfile installs them.
+weasyprint==60.1
+# Must stay pinned: see certificate_requirements.txt for why 0.10.0 specifically.
+pydyf==0.10.0
+qrcode==7.4.2
+

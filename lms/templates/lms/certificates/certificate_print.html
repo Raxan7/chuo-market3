@@ -273,7 +273,7 @@
                 <div class="frame-inner">
 
                     <div class="cs-preview-logo">
-                        <img src="{% static 'app/images/logo.png' %}" alt="ChuoSmart" width="80" height="80">
+                        <img src="{{ logo_url }}" alt="{{ organization_name }}" width="80" height="80">
                     </div>
 
                     <div class="cs-preview-org">{{ organization_name }}</div>
@@ -298,7 +298,7 @@
                         </div>
 
                         <div class="cs-preview-seal">
-                            <img src="{% static 'lms/images/chuosmart_seal.png' %}" alt="ChuoSmart Seal" width="72" height="72">
+                            <img src="{{ seal_url }}" alt="{{ organization_name }} seal" width="72" height="72">
                         </div>
 
                         <div class="cs-preview-meta">
