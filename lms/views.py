@@ -50,6 +50,7 @@ from .forms import (
 )
 
 from .forms import PaymentMethodForm
+from .course_discovery import rank_courses_for_discovery
 
 
 def _snippe_base_url():
@@ -642,7 +643,7 @@ class CourseListView(ListView):
         if level:
             queryset = queryset.filter(level=level)
 
-        return queryset
+        return rank_courses_for_discovery(queryset)
 
     def _active_filters(self):
         """Describe the filters currently narrowing the list.

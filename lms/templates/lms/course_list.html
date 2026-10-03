@@ -192,7 +192,7 @@ View free and paid courses for students in Tanzania. Browse programs, levels, an
         
         <div class="col-12 col-lg-9 col-xl-10">
             {% if courses %}
-                <div class="row">
+                <div class="row" data-course-grid="true">
                     {% for course in courses %}
                     <div class="col-12 col-sm-6 col-md-4 col-xl-3 mb-3 mb-md-4">
                         {% include "lms/partials/_course_card.html" %}

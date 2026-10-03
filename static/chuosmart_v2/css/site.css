@@ -1430,4 +1430,294 @@ html[data-cs-theme] body.cs-v2-site button:focus-visible {
     }
 }
 
+/* CHUOSMART COURSE CATALOG REFRESH V1 */
 
+/*
+ * Course catalogue:
+ * keep sponsored content visible without allowing it to make every
+ * course card 600-700px tall.
+ */
+[data-course-grid="true"] {
+  align-items: flex-start !important;
+  row-gap: 1.5rem !important;
+}
+
+[data-course-grid="true"] > [class*="col-"] {
+  align-self: flex-start !important;
+}
+
+/*
+ * On large screens prioritise usable course-card width.
+ * Sponsored units naturally wrap instead of squeezing the courses.
+ */
+@media (min-width: 1200px) {
+  [data-course-grid="true"] > [class*="col-"]:has(.course-card) {
+    flex: 0 0 33.333333% !important;
+    width: 33.333333% !important;
+    max-width: 33.333333% !important;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1199.98px) {
+  [data-course-grid="true"] > [class*="col-"]:has(.course-card) {
+    flex: 0 0 50% !important;
+    width: 50% !important;
+    max-width: 50% !important;
+  }
+}
+
+[data-course-grid="true"] .course-card,
+.course-card {
+  height: auto !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+
+  border:
+    1px solid
+    color-mix(
+      in srgb,
+      var(--bs-body-color, #111827) 12%,
+      transparent
+    ) !important;
+
+  border-radius: 18px !important;
+
+  background:
+    var(--bs-body-bg, #ffffff) !important;
+
+  color:
+    var(--bs-body-color, #111827) !important;
+
+  box-shadow:
+    0 8px 24px
+    color-mix(
+      in srgb,
+      #000000 9%,
+      transparent
+    ) !important;
+
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    border-color 180ms ease !important;
+}
+
+[data-course-grid="true"] .course-card:hover,
+.course-card:hover {
+  transform: translateY(-4px) !important;
+
+  border-color:
+    color-mix(
+      in srgb,
+      #6c4dff 42%,
+      transparent
+    ) !important;
+
+  box-shadow:
+    0 16px 38px
+    color-mix(
+      in srgb,
+      #000000 14%,
+      transparent
+    ) !important;
+}
+
+/*
+ * The old h-100 utility is one of the main reasons cards expand to
+ * match tall sponsored units.
+ */
+[data-course-grid="true"] .course-card.h-100,
+[data-course-grid="true"] .course-card .h-100,
+.course-card.h-100 {
+  height: auto !important;
+  min-height: 0 !important;
+}
+
+[data-course-grid="true"] .course-card .course-image,
+[data-course-grid="true"] .course-card .card-img-top,
+.course-card .course-image,
+.course-card .card-img-top {
+  display: block !important;
+
+  width: 100% !important;
+  height: 168px !important;
+
+  object-fit: cover !important;
+  object-position: center !important;
+
+  transition: transform 220ms ease !important;
+}
+
+[data-course-grid="true"] .course-card:hover .course-image,
+[data-course-grid="true"] .course-card:hover .card-img-top {
+  transform: scale(1.025) !important;
+}
+
+[data-course-grid="true"] .course-card .course-image-placeholder,
+.course-card .course-image-placeholder {
+  height: 168px !important;
+  min-height: 168px !important;
+}
+
+[data-course-grid="true"] .course-card .card-body,
+.course-card .card-body {
+  display: flex !important;
+  flex: 0 0 auto !important;
+  flex-direction: column !important;
+
+  height: auto !important;
+  min-height: 0 !important;
+
+  padding: 16px 16px 14px !important;
+}
+
+[data-course-grid="true"] .course-card .card-title,
+[data-course-grid="true"] .course-card h3,
+[data-course-grid="true"] .course-card h4,
+[data-course-grid="true"] .course-card h5,
+.course-card .card-title {
+  display: -webkit-box;
+
+  margin-bottom: 9px !important;
+
+  overflow: hidden;
+
+  font-size: 1rem !important;
+  font-weight: 750 !important;
+  line-height: 1.35 !important;
+
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+
+  line-clamp: 2;
+}
+
+[data-course-grid="true"] .course-card p.card-text,
+.course-card p.card-text {
+  display: -webkit-box;
+
+  overflow: hidden;
+
+  margin-bottom: 12px !important;
+
+  font-size: 0.875rem !important;
+  line-height: 1.48 !important;
+
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+
+  line-clamp: 2;
+}
+
+[data-course-grid="true"] .course-card .badge,
+.course-card .badge {
+  border-radius: 999px !important;
+
+  font-size: 0.68rem !important;
+  font-weight: 700 !important;
+  line-height: 1 !important;
+}
+
+[data-course-grid="true"] .course-card .text-muted,
+.course-card .text-muted {
+  opacity: 0.78;
+}
+
+[data-course-grid="true"] .course-card hr,
+.course-card hr {
+  margin: 12px 0 !important;
+  opacity: 0.14 !important;
+}
+
+[data-course-grid="true"] .course-card .mt-auto,
+.course-card .mt-auto {
+  margin-top: 12px !important;
+}
+
+/*
+ * Keep metadata compact instead of allowing it to float at the bottom
+ * of an oversized flex card.
+ */
+[data-course-grid="true"] .course-card .card-body > div,
+.course-card .card-body > div {
+  max-width: 100%;
+}
+
+/* Course pricing + CTA area. */
+[data-course-grid="true"] .course-card .card-footer,
+.course-card .card-footer {
+  padding: 0 !important;
+
+  border-top:
+    1px solid
+    color-mix(
+      in srgb,
+      var(--bs-body-color, #111827) 10%,
+      transparent
+    ) !important;
+
+  background: transparent !important;
+}
+
+[data-course-grid="true"] .course-card .btn-primary,
+[data-course-grid="true"] .course-card .btn:not(.badge),
+.course-card .card-footer .btn {
+  min-height: 42px;
+
+  border-radius: 0 0 17px 17px !important;
+
+  font-size: 0.84rem !important;
+  font-weight: 750 !important;
+}
+
+/*
+ * Some versions of the card place the action directly inside card-body.
+ */
+[data-course-grid="true"] .course-card .card-body > .btn:last-child,
+.course-card .card-body > .btn:last-child {
+  margin-top: 14px !important;
+
+  border-radius: 11px !important;
+}
+
+/*
+ * Dark/System themes: use the actual theme tokens instead of hard-coded
+ * mismatched card colours.
+ */
+[data-bs-theme="dark"] .course-card,
+[data-theme="dark"] .course-card,
+[data-theme="midnight"] .course-card {
+  background:
+    color-mix(
+      in srgb,
+      var(--bs-body-bg, #0d1420) 88%,
+      white 12%
+    ) !important;
+}
+
+/*
+ * Mobile becomes a clean single-column catalogue with a slightly
+ * taller thumbnail.
+ */
+@media (max-width: 767.98px) {
+  [data-course-grid="true"] > [class*="col-"]:has(.course-card) {
+    width: 100% !important;
+    max-width: 100% !important;
+    flex: 0 0 100% !important;
+  }
+
+  [data-course-grid="true"] .course-card .course-image,
+  [data-course-grid="true"] .course-card .card-img-top,
+  .course-card .course-image,
+  .course-card .card-img-top {
+    height: 190px !important;
+  }
+
+  [data-course-grid="true"] .course-card .course-image-placeholder,
+  .course-card .course-image-placeholder {
+    height: 190px !important;
+    min-height: 190px !important;
+  }
+}
+
+/* END CHUOSMART COURSE CATALOG REFRESH V1 */
