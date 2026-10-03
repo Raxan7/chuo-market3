@@ -303,8 +303,8 @@ class LMSModuleGatingTests(TestCase):
         self.assertFalse(response.context['has_full_course_access'])
         self.assertEqual([module.id for module in response.context['granted_modules']], [first_module.id])
         self.assertContains(response, 'You are enrolled with special module access')
-        self.assertContains(response, 'All other modules are locked')
-        self.assertContains(response, 'This module is not included in your special access')
+        self.assertContains(response, 'Continue module by module')
+        self.assertContains(response, 'Complete the previous module and pass its assessment')
 
         content_response = self.client.get(
             reverse('lms:content_detail', kwargs={'course_slug': self.course.slug, 'content_id': first_content.id}),

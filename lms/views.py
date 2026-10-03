@@ -22,7 +22,7 @@ from django.core.exceptions import ValidationError
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 from django.views.generic import (
-    
+
     ListView, DetailView, CreateView, UpdateView, DeleteView, FormView, TemplateView, View
 )
 from django.db.models import Q, Count, Avg, Sum
@@ -228,7 +228,7 @@ def delete_payment_method(request, pk):
 def is_instructor(user):
     """
     Check if user is an instructor
-    
+
     This function checks:
     1. If user has an LMS profile with instructor role
     2. If not, checks if they have an approved instructor request
@@ -237,20 +237,20 @@ def is_instructor(user):
         # First check if they have the instructor role directly
         if hasattr(user, 'lms_profile') and user.lms_profile.role == 'instructor':
             return True
-            
+
         # If not, check if they have an approved instructor request
         has_approved_request = InstructorRequest.objects.filter(
             user=user,
             status='approved'
         ).exists()
-        
+
         # If they have an approved request but role not updated,
         # update their role now
         if has_approved_request and hasattr(user, 'lms_profile') and user.lms_profile.role != 'instructor':
             user.lms_profile.role = 'instructor'
             user.lms_profile.save()
             return True
-            
+
         return False
     except Exception:
         return False
@@ -279,10 +279,10 @@ def is_course_instructor(user, course):
     """
     if not user.is_authenticated:
         return False
-    
+
     if not hasattr(user, 'lms_profile'):
         return False
-        
+
     return is_admin(user) or course.instructors.filter(id=user.lms_profile.id).exists()
 
 
@@ -421,33 +421,33 @@ def set_legal_name(request):
 class InstructorRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
     """Mixin to restrict views to instructors only"""
     login_url = '/login/'  # Use the main app's login URL
-    
+
     def test_func(self):
         if not self.request.user.is_authenticated:
             return False
         return is_instructor(self.request.user) or is_admin(self.request.user)
-    
+
     def handle_no_permission(self):
         if not self.request.user.is_authenticated:
             return super().handle_no_permission()
-        
+
         # If authenticated but not an instructor, check if they have a pending request
         messages.warning(self.request, _("You need instructor privileges to access this area."))
-        
+
         # Check if user has a pending instructor request
         if hasattr(self.request.user, 'lms_profile'):
             pending_request = InstructorRequest.objects.filter(
-                user=self.request.user, 
+                user=self.request.user,
                 status='pending'
             ).exists()
-            
+
             if pending_request:
                 messages.info(self.request, _("Your instructor request is pending approval."))
                 return redirect('lms:instructor_request_status')
             else:
                 messages.info(self.request, _("You can request to become an instructor."))
                 return redirect('lms:request_instructor_role')
-        
+
         return super().handle_no_permission()
 
 
@@ -467,7 +467,7 @@ class AdminRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
 
 def lms_home(request):
     """LMS home page view - accessible without login"""
-    
+
     # Create profile if user is authenticated and doesn't have one
     user_profile = None
     if request.user.is_authenticated:
@@ -491,45 +491,45 @@ def lms_home(request):
                 'reason': 'certificate',
             })
             return redirect(f"{reverse('lms:set_legal_name')}?{params}")
-    
+
     # Get current semester
     current_semester = Semester.objects.filter(is_current_semester=True).first()
-    
+
     context = {
         'user_profile': user_profile,
         'current_semester': current_semester,
         'is_authenticated': request.user.is_authenticated,
     }
-    
+
     if request.user.is_authenticated:
         if is_student(request.user):
             # Get student's enrolled courses
             enrolled_courses = Course.objects.filter(courseenrollment__student=user_profile)
-            
+
             # Get upcoming quizzes
             upcoming_quizzes = Quiz.objects.filter(
                 course__in=enrolled_courses,
                 draft=False,
                 due_date__gt=timezone.now()
             ).order_by('due_date')[:5]
-            
+
             context.update({
                 'enrolled_courses': enrolled_courses,
                 'upcoming_quizzes': upcoming_quizzes,
             })
-        
+
         elif is_instructor(request.user):
             # Get courses taught by instructor
             teaching_courses = Course.objects.filter(instructors=user_profile)
-            
+
             # Get recent quizzes created by instructor
             recent_quizzes = Quiz.objects.filter(course__instructors=user_profile).order_by('-timestamp')[:5]
-            
+
             context.update({
                 'teaching_courses': teaching_courses,
                 'recent_quizzes': recent_quizzes,
             })
-        
+
         elif is_admin(request.user):
             # Get system statistics
             stats = {
@@ -538,10 +538,10 @@ def lms_home(request):
                 'total_instructors': LMSProfile.objects.filter(role='instructor').count(),
                 'total_quizzes': Quiz.objects.count(),
             }
-            
+
             # Get recent activity logs
             recent_activities = ActivityLog.objects.all()[:10]
-            
+
             context.update({
                 'stats': stats,
                 'recent_activities': recent_activities,
@@ -552,7 +552,7 @@ def lms_home(request):
         context.update({
             'featured_courses': featured_courses,
         })
-    
+
     return render(request, 'lms/home.html', context)
 
 
@@ -568,7 +568,7 @@ class ProgramDetailView(DetailView):
     model = Program
     template_name = 'lms/program_detail.html'
     context_object_name = 'program'
-    
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         program = self.get_object()
@@ -669,7 +669,7 @@ class CourseListView(ListView):
             query = urlencode(remaining)
             chips.append((key, label, f'?{query}' if query else reverse('lms:course_list')))
         return chips
-    
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['programs'] = Program.objects.all()
@@ -702,18 +702,18 @@ class CourseDetailView(DetailView):
     model = Course
     template_name = 'lms/course_detail.html'
     context_object_name = 'course'
-    
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         course = self.get_object()
-        
+
         # Get course modules with contents - accessible to everyone
         modules = CourseModule.objects.filter(course=course).prefetch_related('contents')
-        
+
         # Get quizzes for this course. Personalized AI quizzes must not leak
         # into another learner's course list.
         quizzes = Quiz.objects.filter(course=course, draft=False, generated_for__isnull=True)
-        
+
         # Check if user is enrolled and get enrollment status
         is_enrolled = False
         student_profile = None
@@ -723,7 +723,7 @@ class CourseDetailView(DetailView):
         has_full_course_access = course.is_free
         granted_modules = []
         can_view_content = False
-        
+
         if self.request.user.is_authenticated and hasattr(self.request.user, 'lms_profile'):
             student_profile = self.request.user.lms_profile
             granted_modules = list(
@@ -767,11 +767,17 @@ class CourseDetailView(DetailView):
                     module__course=course,
                 ).select_related('module', 'payment')
             }
-            # Compute which modules are eligible for a new access request
-            for mod in modules:
-                if mod.is_request_eligible_for(self.request.user.lms_profile):
-                    request_eligible_modules.add(mod.id)
-        
+            # CHUOSMART PAY-AS-YOU-LEARN UI GATE V1
+            # Use the exact same progression rule as module_payment_init().
+            # This prevents the course-detail UI and checkout backend from
+            # disagreeing about whether the next module can be purchased.
+            from .module_progression import request_eligible_module_ids
+
+            request_eligible_modules = request_eligible_module_ids(
+                course,
+                self.request.user.lms_profile,
+            )
+
         # Check if user is instructor for this course
         is_course_instructor = False
         if self.request.user.is_authenticated and hasattr(self.request.user, 'lms_profile'):
@@ -780,7 +786,7 @@ class CourseDetailView(DetailView):
             if is_course_instructor:
                 has_access = True
                 has_full_course_access = True
-        
+
         # Get course progress if user is enrolled and has access
         course_progress = None
         module_states = []
@@ -803,11 +809,22 @@ class CourseDetailView(DetailView):
             module_states = get_module_progress_states(course, student_profile)
             if granted_modules and not has_full_course_access:
                 granted_module_ids = {grant.module_id for grant in granted_modules}
+
                 for state in module_states:
-                    if state['module'].id not in granted_module_ids:
+                    module_id = state['module'].id
+
+                    if module_id in granted_module_ids:
+                        continue
+
+                    if module_id in request_eligible_modules:
                         state['lock_message'] = _(
-                            'This module is not included in your special access. '
-                            'Full-course payment is required to unlock it.'
+                            'This module is ready to unlock. '
+                            'Pay for this module to continue learning.'
+                        )
+                    else:
+                        state['lock_message'] = _(
+                            'Complete the previous module and pass its '
+                            'assessment before unlocking this module.'
                         )
             if course_progress.get('course_completed'):
                 issued_certificate = issue_certificate_if_eligible(course, student_profile)
@@ -817,10 +834,10 @@ class CourseDetailView(DetailView):
                         student=self.request.user,
                         course=course
                     ).first()
-            
+
         # Add is_free status to context
         context['is_free'] = course.is_free
-        
+
         # If user is instructor, get progress data for all enrolled students
         students_progress = None
         if is_course_instructor:
@@ -833,12 +850,12 @@ class CourseDetailView(DetailView):
                 draft=False,
                 generated_for__isnull=True,
             ).order_by('module__order', 'module__id', 'title', 'id')
-        
+
         # Get payment methods for premium courses
         payment_methods = None
         if not course.is_free:
             payment_methods = PaymentMethod.objects.filter(is_active=True)
-        
+
         context.update({
             'modules': modules,
             'quizzes': quizzes,
@@ -918,23 +935,23 @@ class CourseDetailView(DetailView):
 def enroll_course(request, slug):
     """Enroll in a course"""
     course = get_object_or_404(Course, slug=slug)
-    
+
     # Create LMS profile if not exists
     if not hasattr(request.user, 'lms_profile'):
         profile = LMSProfile.objects.create(user=request.user, role='student')
     else:
         profile = request.user.lms_profile
-    
+
     # Check if already enrolled
     enrollment = CourseEnrollment.objects.filter(student=profile, course=course).first()
     if enrollment:
         messages.info(request, _("You are already enrolled in this course."))
         return redirect('lms:course_detail', slug=course.slug)
-    
+
     # For free courses, enroll immediately
     if course.is_free:
         enrollment = CourseEnrollment.objects.create(
-            student=profile, 
+            student=profile,
             course=course,
             payment_status='not_required'
         )
@@ -953,19 +970,19 @@ def enroll_course(request, slug):
 def unenroll_course(request, slug):
     """Unenroll from a course"""
     course = get_object_or_404(Course, slug=slug)
-    
+
     if not hasattr(request.user, 'lms_profile'):
         messages.error(request, _("You don't have an LMS profile."))
         return redirect('lms:course_detail', slug=course.slug)
-    
+
     profile = request.user.lms_profile
-    
+
     # Check if enrolled
     enrollment = CourseEnrollment.objects.filter(student=profile, course=course).first()
     if not enrollment:
         messages.info(request, _("You are not enrolled in this course."))
         return redirect('lms:course_detail', slug=course.slug)
-    
+
     # Block unenroll if the student has active module-level grants (partially enrolled).
     # These represent paid access that should not be silently orphaned.
     if ModuleAccessGrant.objects.filter(
@@ -979,15 +996,15 @@ def unenroll_course(request, slug):
               "Please contact support to remove individual module access before unenrolling."),
         )
         return redirect('lms:course_detail', slug=course.slug)
-    
+
     # Delete enrollment
     enrollment.delete()
-    
+
     # Log activity
     ActivityLog.objects.create(
         message=_(f"User {request.user.username} unenrolled from course {course.title}.")
     )
-    
+
     messages.success(request, _(f"You have successfully unenrolled from {course.title}."))
     return redirect('lms:course_list')
 
@@ -997,11 +1014,11 @@ class QuizDetailView(DetailView):
     model = Quiz
     template_name = 'lms/quiz_detail.html'
     context_object_name = 'quiz'
-    
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         quiz = self.get_object()
-        
+
         # Default values
         can_take_quiz = False
         is_instructor = False
@@ -1013,36 +1030,36 @@ class QuizDetailView(DetailView):
         generation_status = getattr(quiz, 'generation_status', 'ready')
         generation_message = getattr(quiz, 'generation_message', '')
         quiz_is_ready = bool(quiz.questions.exists()) and generation_status == 'ready'
-        
+
         context['is_authenticated'] = self.request.user.is_authenticated
-        
+
         if self.request.user.is_authenticated and hasattr(self.request.user, 'lms_profile'):
             profile = self.request.user.lms_profile
-            
+
             # Check if enrolled in course (full access or module-level grant)
             is_enrolled = quiz.course.user_has_any_access(self.request.user)
-            
+
             # Check if instructor
             is_instructor = is_course_instructor(self.request.user, quiz.course)
-            
+
             # Get previous attempts
             previous_attempts = QuizTaker.objects.filter(
                 user=profile,
                 quiz=quiz
             ).order_by('-date_started')
-            
+
             # Get the most recent completed attempt if any
             completed_attempt = previous_attempts.filter(completed=True).first()
             if completed_attempt:
                 user_score = completed_attempt.get_score_percentage()
-            
+
             # Module-level payment gate: quizzes for a module require paid access
             no_module_access = False
             if is_enrolled and quiz.module:
                 if not _user_has_module_access(self.request.user, quiz.module):
                     no_module_access = True
                     can_take_quiz = False
-            
+
             if is_enrolled and not no_module_access:
                 if quiz.module and getattr(quiz.module, 'skip_assessment', False):
                     module_locked = False
@@ -1059,13 +1076,13 @@ class QuizDetailView(DetailView):
                     can_take_quiz = False
                 else:
                     can_take_quiz = True
-        
+
         # Check if quiz is past due date
         is_past_due = False
         if quiz.due_date and timezone.now() > quiz.due_date:
             is_past_due = True
             can_take_quiz = False
-        
+
         context.update({
             'user_can_take_quiz': can_take_quiz,
             'user_is_instructor': is_instructor,
@@ -1085,7 +1102,7 @@ class QuizDetailView(DetailView):
             'is_generating': generation_status in {'pending', 'processing'},
             'generation_failed': generation_status == 'failed' and not quiz_is_ready,
         })
-        
+
         return context
 
 
@@ -1093,17 +1110,17 @@ class QuizDetailView(DetailView):
 def start_quiz(request, slug):
     """Start a quiz"""
     quiz = get_object_or_404(Quiz, slug=slug)
-    
+
     if not hasattr(request.user, 'lms_profile'):
         messages.error(request, _("You don't have an LMS profile."))
         return redirect('lms:quiz_detail', slug=quiz.slug)
-    
+
     profile = request.user.lms_profile
-    
+
     # Check if enrolled or instructor (full access or module-level grant)
     is_enrolled = quiz.course.user_has_any_access(request.user)
     is_instructor = is_course_instructor(request.user, quiz.course)
-    
+
     if not is_enrolled and not is_instructor:
         messages.error(request, _("You must be enrolled in the course to take this quiz."))
         return redirect('lms:quiz_detail', slug=quiz.slug)
@@ -1124,13 +1141,13 @@ def start_quiz(request, slug):
                 _("You need to purchase access to this module to take its quiz."),
             )
             return redirect('lms:course_detail', slug=quiz.course.slug)
-    
+
     # Check single attempt restriction
     completed_attempt = QuizTaker.objects.filter(user=profile, quiz=quiz, completed=True).first()
     if quiz.single_attempt and completed_attempt and completed_attempt.score >= quiz.pass_mark:
         messages.error(request, _("You have already passed this quiz."))
         return redirect('lms:quiz_detail', slug=quiz.slug)
-    
+
     # Check if quiz is past due date
     if quiz.due_date and timezone.now() > quiz.due_date:
         messages.error(request, _("This quiz is past its due date."))
@@ -1139,7 +1156,7 @@ def start_quiz(request, slug):
     if not quiz.questions.exists():
         messages.error(request, _("This quiz does not have any questions yet."))
         return redirect('lms:quiz_detail', slug=quiz.slug)
-    
+
     quiz_taker, created = QuizTaker.objects.get_or_create(user=profile, quiz=quiz)
 
     if not created and quiz_taker.completed and quiz_taker.score < quiz.pass_mark:
@@ -1152,7 +1169,7 @@ def start_quiz(request, slug):
     elif created:
         quiz_taker.date_started = timezone.now()
         quiz_taker.save()
-    
+
     # Redirect to first question
     return redirect('lms:quiz_question', quiz_id=quiz.id, quiz_taker_id=quiz_taker.id, question_number=1)
 
@@ -1162,21 +1179,21 @@ def quiz_question(request, quiz_id, quiz_taker_id, question_number):
     """Show a quiz question and process answers"""
     quiz = get_object_or_404(Quiz, id=quiz_id)
     quiz_taker = get_object_or_404(QuizTaker, id=quiz_taker_id, user=request.user.lms_profile)
-    
+
     # Get all questions for this quiz
     if quiz.random_order:
         questions = list(Question.objects.filter(quiz=quiz).order_by('?'))
     else:
         questions = list(Question.objects.filter(quiz=quiz).order_by('order', 'id'))
-    
+
     # Check if question_number is valid
     if question_number < 1 or question_number > len(questions):
         messages.error(request, _("Invalid question number."))
         return redirect('lms:quiz_detail', slug=quiz.slug)
-    
+
     # Get current question
     question = get_question_kind(questions[question_number - 1])
-    
+
     # Handle form submission
     if request.method == 'POST':
         # Process different question types
@@ -1186,7 +1203,7 @@ def quiz_question(request, quiz_id, quiz_taker_id, question_number):
             if form.is_valid():
                 selected_choice = form.cleaned_data['choice']
                 is_correct = question.check_if_correct(selected_choice)
-                
+
                 # Save answer
                 StudentAnswer.objects.update_or_create(
                     quiz_taker=quiz_taker,
@@ -1196,14 +1213,14 @@ def quiz_question(request, quiz_id, quiz_taker_id, question_number):
                         'is_correct': is_correct
                     }
                 )
-            
+
         elif isinstance(question, TF_Question):
             # Handle true/false
             form = TFAnswerForm(request.POST)
             if form.is_valid():
                 selected_answer = form.cleaned_data['answer'] == 'true'
                 is_correct = selected_answer == question.correct
-                
+
                 # Save answer
                 StudentAnswer.objects.update_or_create(
                     quiz_taker=quiz_taker,
@@ -1213,7 +1230,7 @@ def quiz_question(request, quiz_id, quiz_taker_id, question_number):
                         'is_correct': is_correct
                     }
                 )
-        
+
         elif isinstance(question, Essay_Question):
             # Handle essay
             form = EssayAnswerForm(request.POST, request.FILES)
@@ -1228,17 +1245,17 @@ def quiz_question(request, quiz_id, quiz_taker_id, question_number):
                         'is_correct': None
                     }
                 )
-        
+
         # Move to next question or finish quiz
         if question_number < len(questions):
-            return redirect('lms:quiz_question', 
+            return redirect('lms:quiz_question',
                            quiz_id=quiz.id,
-                           quiz_taker_id=quiz_taker.id, 
+                           quiz_taker_id=quiz_taker.id,
                            question_number=question_number + 1)
         else:
             # Complete quiz
             return redirect('lms:complete_quiz', quiz_taker_id=quiz_taker.id)
-    
+
     # Prepare question context
     context = {
         'quiz': quiz,
@@ -1246,7 +1263,7 @@ def quiz_question(request, quiz_id, quiz_taker_id, question_number):
         'question_number': question_number,
         'total_questions': len(questions),
     }
-    
+
     # Add specific context based on question type
     if isinstance(question, MCQuestion):
         context['choices'] = Choice.objects.filter(question=question)
@@ -1254,13 +1271,13 @@ def quiz_question(request, quiz_id, quiz_taker_id, question_number):
         previous_answer = StudentAnswer.objects.filter(quiz_taker=quiz_taker, question=question).first()
         if previous_answer:
             context['previous_answer'] = previous_answer.mc_answer
-    
+
     elif isinstance(question, TF_Question):
         # Check if user already answered
         previous_answer = StudentAnswer.objects.filter(quiz_taker=quiz_taker, question=question).first()
         if previous_answer and previous_answer.tf_answer is not None:
             context['previous_answer'] = previous_answer.tf_answer
-    
+
     elif isinstance(question, Essay_Question):
         # Essay form
         context['essay_form'] = EssayAnswerForm()
@@ -1269,7 +1286,7 @@ def quiz_question(request, quiz_id, quiz_taker_id, question_number):
         if previous_answer:
             context['previous_text_answer'] = previous_answer.essay_text_answer
             context['previous_file_answer'] = previous_answer.essay_file_answer
-    
+
     return render(request, 'lms/quiz_question.html', context)
 
 
@@ -1278,25 +1295,25 @@ def complete_quiz(request, quiz_taker_id):
     """Complete a quiz and show results"""
     quiz_taker = get_object_or_404(QuizTaker, id=quiz_taker_id, user=request.user.lms_profile)
     quiz = quiz_taker.quiz
-    
+
     # If already completed, just show the results
     if quiz_taker.completed:
         return redirect('lms:quiz_results', quiz_taker_id=quiz_taker.id)
-    
+
     # Calculate score
     total_questions = Question.objects.filter(quiz=quiz).count()
     correct_answers = StudentAnswer.objects.filter(quiz_taker=quiz_taker, is_correct=True).count()
-    
+
     # Handle case where there are essay questions
     essay_questions = Essay_Question.objects.filter(quiz=quiz).count()
     total_non_essay = total_questions - essay_questions
-    
+
     if total_non_essay > 0:
         score_percentage = (correct_answers / total_non_essay) * 100
     else:
         # If only essay questions, score will be determined by instructor
         score_percentage = 0
-    
+
     # Update quiz taker
     quiz_taker.score = score_percentage
     quiz_taker.completed = True
@@ -1307,7 +1324,7 @@ def complete_quiz(request, quiz_taker_id):
     issued_certificate = None
     next_module = None
     unlock_message = None
-    
+
     from django.db import transaction
     with transaction.atomic():
         if quiz.module:
@@ -1323,7 +1340,7 @@ def complete_quiz(request, quiz_taker_id):
                     ) % {'module': next_module.title}
                 else:
                     unlock_message = _("You unlocked the final module in this course.")
-        
+
         # Create activity log
         ActivityLog.objects.create(
             message=_(f"User {request.user.username} completed quiz '{quiz.title}' with score {score_percentage:.1f}%.")
@@ -1338,7 +1355,7 @@ def complete_quiz(request, quiz_taker_id):
                 return redirect(f"{reverse('lms:course_detail', kwargs={'slug': quiz.course.slug})}#collapse{next_module.id}")
         else:
             messages.warning(request, _("You need at least 70% to unlock the next module. Review this module and try again."))
-        
+
         return redirect('lms:quiz_results', quiz_taker_id=quiz_taker.id)
 
 
@@ -1347,13 +1364,13 @@ def quiz_results(request, quiz_taker_id):
     """Show quiz results"""
     quiz_taker = get_object_or_404(QuizTaker, id=quiz_taker_id, user=request.user.lms_profile)
     quiz = quiz_taker.quiz
-    
+
     # Get all answers
     answers = StudentAnswer.objects.filter(quiz_taker=quiz_taker).select_related('question')
-    
+
     # Check if passed
     passed = quiz_taker.score >= quiz.pass_mark
-    
+
     # Issue certificate if course is now fully completed
     issued_certificate = None
     if passed and quiz.module and hasattr(request.user, 'lms_profile'):
@@ -1366,7 +1383,7 @@ def quiz_results(request, quiz_taker_id):
                     student=request.user,
                     course=quiz.course
                 ).first()
-    
+
     context = {
         'quiz_taker': quiz_taker,
         'quiz': quiz,
@@ -1384,7 +1401,7 @@ def course_content_detail(request, course_slug, content_id):
     """Show course content details - accessible without login"""
     course = get_object_or_404(Course, slug=course_slug)
     content = get_object_or_404(CourseContent, id=content_id, module__course=course)
-    
+
     # Check if user is enrolled or is instructor
     is_enrolled = False
     is_instructor = False
@@ -1430,7 +1447,7 @@ def course_content_detail(request, course_slug, content_id):
         if not is_enrolled and not is_instructor and not getattr(content.module, 'skip_assessment', False):
             messages.info(request, _("You need to enroll in this course to save progress."))
             return redirect('lms:enroll_course', slug=course.slug)
-    
+
     # Allow access to all: unauthenticated users, students, and instructors.
     # By this point access is guaranteed (instructor, free skip_assessment
     # module, or enrolled with access). Track content access for any
@@ -1456,7 +1473,7 @@ def course_content_detail(request, course_slug, content_id):
                 return redirect('lms:quiz_detail', slug=quiz.slug)
             messages.success(request, _("Content marked as completed!"))
             return redirect('lms:content_detail', course_slug=course_slug, content_id=content_id)
-    
+
     # Check if this content is completed by the student
     content_completed = False
     if profile:
@@ -1465,7 +1482,7 @@ def course_content_detail(request, course_slug, content_id):
             content=content,
             completed=True
         ).exists()
-    
+
     context = {
         'course': course,
         'content': content,
@@ -1475,7 +1492,7 @@ def course_content_detail(request, course_slug, content_id):
         'is_authenticated': request.user.is_authenticated,
         'can_save_progress': bool(profile and is_enrolled and not is_instructor),
     }
-    
+
     return render(request, 'lms/course_content_detail.html', context)
 
 
@@ -1484,7 +1501,7 @@ class CourseCreateView(InstructorRequiredMixin, CreateView):
     model = Course
     form_class = CourseForm
     template_name = 'lms/course_form.html'
-    
+
     # Explicitly tell the view to accept file uploads
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
@@ -1493,14 +1510,14 @@ class CourseCreateView(InstructorRequiredMixin, CreateView):
                 'files': self.request.FILES,
             })
         return kwargs
-    
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         # Check if there are any programs
         context['has_programs'] = Program.objects.exists()
         context['program_form'] = ProgramForm()
         return context
-    
+
     def post(self, request, *args, **kwargs):
         # Check if this is a program creation submission
         if 'create_program' in request.POST:
@@ -1520,23 +1537,23 @@ class CourseCreateView(InstructorRequiredMixin, CreateView):
                     )
                 )
         return super().post(request, *args, **kwargs)
-    
+
     def form_valid(self, form):
         # Check if we need to create a program
         if not Program.objects.exists() and 'program' not in form.cleaned_data:
             messages.error(self.request, _("You must create a program before creating a course."))
             return self.form_invalid(form)
-            
+
         # Set instructor
         response = super().form_valid(form)
         course = self.object
         course.instructors.add(self.request.user.lms_profile)
-        
+
         # Create activity log
         ActivityLog.objects.create(
             message=_(f"Instructor {self.request.user.username} created course '{course.title}'.")
         )
-        
+
         messages.success(self.request, _("Course created successfully."))
         return response
 
@@ -1546,7 +1563,7 @@ class CourseUpdateView(InstructorRequiredMixin, UpdateView):
     model = Course
     form_class = CourseForm
     template_name = 'lms/course_form.html'
-    
+
     # Explicitly tell the view to accept file uploads
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
@@ -1555,18 +1572,18 @@ class CourseUpdateView(InstructorRequiredMixin, UpdateView):
                 'files': self.request.FILES,
             })
         return kwargs
-    
+
     def get_queryset(self):
         # Limit to courses where user is instructor
         if is_admin(self.request.user):
             return Course.objects.all()
         return Course.objects.filter(instructors=self.request.user.lms_profile)
-    
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['program_form'] = ProgramForm()
         return context
-    
+
     def post(self, request, *args, **kwargs):
         # Check if this is a program creation submission
         if 'create_program' in request.POST:
@@ -1588,23 +1605,23 @@ class CourseUpdateView(InstructorRequiredMixin, UpdateView):
 
         # Set self.object before processing the form
         self.object = self.get_object()
-        
+
         # Get the form instance with POST data and FILES
         form = self.get_form()
-        
+
         if form.is_valid():
             return self.form_valid(form)
         else:
             return self.form_invalid(form)
-    
+
     def form_valid(self, form):
         response = super().form_valid(form)
-        
+
         # Create activity log
         ActivityLog.objects.create(
             message=_(f"Instructor {self.request.user.username} updated course '{self.object.title}'.")
         )
-        
+
         messages.success(self.request, _("Course updated successfully."))
         return response
 
@@ -1614,45 +1631,45 @@ class CourseModuleCreateView(InstructorRequiredMixin, CreateView):
     model = CourseModule
     form_class = CourseModuleForm
     template_name = 'lms/module_form.html'
-    
+
     def dispatch(self, request, *args, **kwargs):
         # First check if the user is authenticated
         if not request.user.is_authenticated:
             messages.error(request, _("You need to log in to access this page."))
             return self.handle_no_permission()
-        
+
         # Then check if the user has an LMS profile
         if not hasattr(request.user, 'lms_profile'):
             messages.error(request, _("You don't have an LMS profile. Please contact an administrator."))
             return redirect('lms:lms_home')
-            
+
         # Now get the course
         self.course = get_object_or_404(Course, slug=self.kwargs['course_slug'])
-        
+
         # Check if user is instructor for this course
         if not is_admin(request.user) and not self.course.instructors.filter(id=request.user.lms_profile.id).exists():
             messages.error(request, _("You are not an instructor for this course."))
             return redirect('lms:course_detail', slug=self.course.slug)
-        
+
         return super().dispatch(request, *args, **kwargs)
-    
+
     def form_valid(self, form):
         form.instance.course = self.course
         response = super().form_valid(form)
-        
+
         # Create activity log
         ActivityLog.objects.create(
             message=_(f"Instructor {self.request.user.username} added module '{form.instance.title}' to course '{self.course.title}'.")
         )
-        
+
         messages.success(self.request, _("Module created successfully."))
         return response
-    
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['course'] = self.course
         return context
-    
+
     def get_success_url(self):
         return reverse('lms:course_detail', kwargs={'slug': self.course.slug})
 
@@ -1663,47 +1680,47 @@ class CourseModuleUpdateView(InstructorRequiredMixin, UpdateView):
     form_class = CourseModuleForm
     template_name = 'lms/module_form.html'
     pk_url_kwarg = 'module_id'
-    
+
     def dispatch(self, request, *args, **kwargs):
         # First check if the user is authenticated
         if not request.user.is_authenticated:
             messages.error(request, _("You need to log in to access this page."))
             return self.handle_no_permission()
-        
+
         # Then check if the user has an LMS profile
         if not hasattr(request.user, 'lms_profile'):
             messages.error(request, _("You don't have an LMS profile. Please contact an administrator."))
             return redirect('lms:lms_home')
-            
+
         # Now get the course
         self.course = get_object_or_404(Course, slug=self.kwargs['course_slug'])
-        
+
         # Check if user is instructor for this course
         if not is_admin(request.user) and not self.course.instructors.filter(id=request.user.lms_profile.id).exists():
             messages.error(request, _("You are not an instructor for this course."))
             return redirect('lms:course_detail', slug=self.course.slug)
-        
+
         return super().dispatch(request, *args, **kwargs)
-    
+
     def get_queryset(self):
         return CourseModule.objects.filter(course=self.course)
-    
+
     def form_valid(self, form):
         response = super().form_valid(form)
-        
+
         # Create activity log
         ActivityLog.objects.create(
             message=_(f"Instructor {self.request.user.username} updated module '{form.instance.title}' in course '{self.course.title}'.")
         )
-        
+
         messages.success(self.request, _("Module updated successfully."))
         return response
-    
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['course'] = self.course
         return context
-    
+
     def get_success_url(self):
         return reverse('lms:course_detail', kwargs={'slug': self.course.slug})
 
@@ -1713,31 +1730,31 @@ class CourseModuleDeleteView(InstructorRequiredMixin, DeleteView):
     model = CourseModule
     pk_url_kwarg = 'module_id'
     template_name = 'lms/module_confirm_delete.html'
-    
+
     def dispatch(self, request, *args, **kwargs):
         # First check if the user is authenticated
         if not request.user.is_authenticated:
             messages.error(request, _("You need to log in to access this page."))
             return self.handle_no_permission()
-        
+
         # Then check if the user has an LMS profile
         if not hasattr(request.user, 'lms_profile'):
             messages.error(request, _("You don't have an LMS profile. Please contact an administrator."))
             return redirect('lms:lms_home')
-            
+
         # Now get the course
         self.course = get_object_or_404(Course, slug=self.kwargs['course_slug'])
-        
+
         # Check if user is instructor for this course
         if not is_admin(request.user) and not self.course.instructors.filter(id=request.user.lms_profile.id).exists():
             messages.error(request, _("You are not an instructor for this course."))
             return redirect('lms:course_detail', slug=self.course.slug)
-        
+
         return super().dispatch(request, *args, **kwargs)
-    
+
     def get_queryset(self):
         return CourseModule.objects.filter(course=self.course)
-    
+
     def form_valid(self, form):
         module_title = self.object.title
 
@@ -1746,7 +1763,7 @@ class CourseModuleDeleteView(InstructorRequiredMixin, DeleteView):
         )
         messages.success(self.request, _("Module deleted successfully."))
         return super().form_valid(form)
-    
+
     def get_success_url(self):
         return reverse('lms:course_detail', kwargs={'slug': self.course.slug})
 
@@ -1756,32 +1773,32 @@ class CourseContentCreateView(InstructorRequiredMixin, CreateView):
     model = CourseContent
     form_class = CourseContentForm
     template_name = 'lms/content_form.html'
-    
+
     def dispatch(self, request, *args, **kwargs):
         # First check if the user is authenticated
         if not request.user.is_authenticated:
             messages.error(request, _("You need to log in to access this page."))
             return self.handle_no_permission()
-        
+
         # Then check if the user has an LMS profile
         if not hasattr(request.user, 'lms_profile'):
             messages.error(request, _("You don't have an LMS profile. Please contact an administrator."))
             return redirect('lms:lms_home')
-            
+
         # Now get the course and module
         self.course = get_object_or_404(Course, slug=self.kwargs['course_slug'])
         self.module = get_object_or_404(CourseModule, id=self.kwargs['module_id'], course=self.course)
-        
+
         # Check if user is instructor for this course
         if not is_admin(request.user) and not self.course.instructors.filter(id=request.user.lms_profile.id).exists():
             messages.error(request, _("You are not an instructor for this course."))
             return redirect('lms:course_detail', slug=self.course.slug)
-        
+
         return super().dispatch(request, *args, **kwargs)
-    
+
     def form_valid(self, form):
         form.instance.module = self.module
-        
+
         # Set proper fields based on content type
         content_type = form.cleaned_data.get('content_type')
         if content_type == 'text':
@@ -1800,23 +1817,23 @@ class CourseContentCreateView(InstructorRequiredMixin, CreateView):
             form.instance.text_content = None
             form.instance.document = None
             form.instance.video_url = None
-            
+
         response = super().form_valid(form)
-        
+
         # Create activity log
         ActivityLog.objects.create(
             message=_(f"Instructor {self.request.user.username} added content '{form.instance.title}' to module '{self.module.title}'.")
         )
-        
+
         messages.success(self.request, _("Content created successfully."))
         return response
-    
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['course'] = self.course
         context['module'] = self.module
         return context
-    
+
     def get_success_url(self):
         return reverse('lms:course_detail', kwargs={'slug': self.course.slug})
 
@@ -1827,31 +1844,31 @@ class CourseContentUpdateView(InstructorRequiredMixin, UpdateView):
     form_class = CourseContentForm
     template_name = 'lms/content_form.html'
     pk_url_kwarg = 'content_id'
-    
+
     def dispatch(self, request, *args, **kwargs):
         # First check if the user is authenticated
         if not request.user.is_authenticated:
             messages.error(request, _("You need to log in to access this page."))
             return self.handle_no_permission()
-        
+
         # Then check if the user has an LMS profile
         if not hasattr(request.user, 'lms_profile'):
             messages.error(request, _("You don't have an LMS profile. Please contact an administrator."))
             return redirect('lms:lms_home')
-            
+
         # Now get the course
         self.course = get_object_or_404(Course, slug=self.kwargs['course_slug'])
-        
+
         # Check if user is instructor for this course
         if not is_admin(request.user) and not self.course.instructors.filter(id=request.user.lms_profile.id).exists():
             messages.error(request, _("You are not an instructor for this course."))
             return redirect('lms:course_detail', slug=self.course.slug)
-        
+
         return super().dispatch(request, *args, **kwargs)
-    
+
     def get_queryset(self):
         return CourseContent.objects.filter(module__course=self.course)
-    
+
     def form_valid(self, form):
         # Set proper fields based on content type
         content_type = form.cleaned_data.get('content_type')
@@ -1871,23 +1888,23 @@ class CourseContentUpdateView(InstructorRequiredMixin, UpdateView):
             form.instance.text_content = None
             form.instance.document = None
             form.instance.video_url = None
-            
+
         response = super().form_valid(form)
-        
+
         # Create activity log
         ActivityLog.objects.create(
             message=_(f"Instructor {self.request.user.username} updated content '{form.instance.title}' in course '{self.course.title}'.")
         )
-        
+
         messages.success(self.request, _("Content updated successfully."))
         return response
-    
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['course'] = self.course
         context['module'] = self.object.module
         return context
-    
+
     def get_success_url(self):
         return reverse('lms:course_detail', kwargs={'slug': self.course.slug})
 
@@ -1901,23 +1918,23 @@ class QuizCreateView(InstructorRequiredMixin, CreateView):
     model = Quiz
     form_class = QuizForm
     template_name = 'lms/quiz_form.html'
-    
+
     def dispatch(self, request, *args, **kwargs):
         # First check if the user is authenticated and has an LMS profile
         # This is redundant with the InstructorRequiredMixin, but we'll keep it to be safe
         if not request.user.is_authenticated:
             messages.error(request, _("You must be logged in to create quizzes."))
             return redirect('login')  # Redirect to login page
-            
+
         # Get the course
         self.course = get_object_or_404(Course, slug=self.kwargs['course_slug'])
-        
+
         # Module is optional
         self.module = None
         module_id = self.kwargs.get('module_id')
         if module_id:
             self.module = get_object_or_404(CourseModule, id=module_id, course=self.course)
-        
+
         # Check if user is instructor for this course, safely
         # First check if user is admin
         if is_admin(request.user):
@@ -1931,7 +1948,7 @@ class QuizCreateView(InstructorRequiredMixin, CreateView):
             # User is not an instructor for this course
             messages.error(request, _("You are not an instructor for this course."))
             return redirect('lms:course_detail', slug=self.course.slug)
-        
+
         if not self.module:
             messages.info(
                 request,
@@ -1956,28 +1973,28 @@ class QuizCreateView(InstructorRequiredMixin, CreateView):
         if quiz:
             return redirect('lms:quiz_detail', slug=quiz.slug)
         return redirect('lms:course_detail', slug=self.course.slug)
-    
+
     def form_valid(self, form):
         form.instance.course = self.course
         if self.module:
             form.instance.module = self.module
-        
+
         response = super().form_valid(form)
-        
+
         # Create activity log
         ActivityLog.objects.create(
             message=_(f"Instructor {self.request.user.username} created quiz '{form.instance.title}' for course '{self.course.title}'.")
         )
-        
+
         messages.success(self.request, _("Quiz created successfully. Now add some questions."))
         return response
-    
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['course'] = self.course
         context['module'] = self.module
         return context
-    
+
     def get_success_url(self):
         return reverse('lms:quiz_detail', kwargs={'slug': self.object.slug})
 
@@ -2021,13 +2038,13 @@ def add_essay_question(request, quiz_id):
             return redirect('lms:quiz_detail', slug=quiz.slug)
     else:
         form = EssayQuestionForm()
-    
+
     context = {
         'form': form,
         'quiz': quiz,
         'question_type': 'Essay'
     }
-    
+
     return render(request, 'lms/essay_question_form.html', context)
 
 
@@ -2037,23 +2054,23 @@ class GradeListView(LoginRequiredMixin, ListView):
     model = Grade
     template_name = 'lms/grade_list.html'
     context_object_name = 'grades'
-    
+
     def get_queryset(self):
         # For students, show only their own grades
         if is_student(self.request.user):
             return Grade.objects.filter(student=self.request.user.lms_profile)
-        
+
         # For instructors, show grades for their courses
         elif is_instructor(self.request.user):
             return Grade.objects.filter(course__instructors=self.request.user.lms_profile)
-        
+
         # For admins, show all grades
         else:
             return Grade.objects.all()
-    
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        
+
         # Group grades by course and semester
         grades_by_course = {}
         for grade in self.get_queryset():
@@ -2061,10 +2078,10 @@ class GradeListView(LoginRequiredMixin, ListView):
             if course_key not in grades_by_course:
                 grades_by_course[course_key] = []
             grades_by_course[course_key].append(grade)
-        
+
         context['grades_by_course'] = grades_by_course
         context['is_student'] = is_student(self.request.user)
-        
+
         return context
 
 
@@ -2867,22 +2884,22 @@ def snippe_webhook(request):
 def grade_students(request, course_slug):
     """Grade students for a course"""
     course = get_object_or_404(Course, slug=course_slug)
-    
+
     # Check permissions
     if not is_admin(request.user) and not course.instructors.filter(id=request.user.lms_profile.id).exists():
         messages.error(request, _("You are not authorized to grade students for this course."))
         return redirect('lms:course_detail', slug=course_slug)
-    
+
     # Get current semester
     current_semester = Semester.objects.filter(is_current_semester=True).first()
     if not current_semester:
         messages.error(request, _("No active semester found. Please set a current semester first."))
         return redirect('lms:course_detail', slug=course_slug)
-    
+
     # Get enrolled students
     enrollments = CourseEnrollment.objects.filter(course=course)
     students = [enrollment.student for enrollment in enrollments]
-    
+
     if request.method == 'POST':
         # Process grade submissions
         for student in students:
@@ -2892,17 +2909,17 @@ def grade_students(request, course_slug):
                 course=course,
                 semester=current_semester
             )
-            
+
             # Update grade values
             grade.attendance = float(request.POST.get(f'attendance_{student.id}', 0))
             grade.assignment = float(request.POST.get(f'assignment_{student.id}', 0))
             grade.mid_exam = float(request.POST.get(f'mid_exam_{student.id}', 0))
             grade.final_exam = float(request.POST.get(f'final_exam_{student.id}', 0))
             grade.save()  # This will trigger calculation of total and grade
-        
+
         messages.success(request, _("Grades saved successfully."))
         return redirect('lms:course_detail', slug=course_slug)
-    
+
     # Get existing grades
     grades = {}
     for student in students:
@@ -2911,16 +2928,16 @@ def grade_students(request, course_slug):
             course=course,
             semester=current_semester
         ).first()
-        
+
         grades[student.id] = grade
-    
+
     context = {
         'course': course,
         'students': students,
         'grades': grades,
         'semester': current_semester
     }
-    
+
     return render(request, 'lms/grade_students.html', context)
 
 
@@ -2935,27 +2952,27 @@ def student_dashboard(request):
 
     # Get current semester
     current_semester = Semester.objects.filter(is_current_semester=True).first()
-    
+
     # Get enrolled courses
     enrollments = CourseEnrollment.objects.filter(student=profile)
     courses = [enrollment.course for enrollment in enrollments]
-    
+
     # Get grades
     grades = Grade.objects.filter(student=profile)
     certificates = StudentCertificate.objects.filter(student=request.user).select_related('course')
-    
+
     # Get upcoming quizzes
     upcoming_quizzes = Quiz.objects.filter(
         course__in=courses,
         draft=False,
         due_date__gt=timezone.now()
     ).order_by('due_date')[:5]
-    
+
     # Get recent course activities
     recent_contents = CourseContent.objects.filter(
         module__course__in=courses
     ).order_by('-date_added')[:10]
-    
+
     # Calculate progress for each course and auto-issue certificates for completed ones
     from .utils import calculate_course_progress, issue_certificate_if_eligible
     course_progress = {}
@@ -2969,7 +2986,7 @@ def student_dashboard(request):
             issue_certificate_if_eligible(course, profile)
         else:
             in_progress_courses.append(course)
-    
+
     # Re-fetch certificates after any auto-issuance
     certificates = StudentCertificate.objects.filter(student=request.user).select_related('course', 'template', 'template__course')
 
@@ -2998,12 +3015,12 @@ def instructor_dashboard(request):
     if not hasattr(request.user, 'lms_profile') or not is_instructor(request.user):
         messages.error(request, _("You are not registered as an instructor."))
         return redirect('lms:lms_home')
-    
+
     profile = request.user.lms_profile
-    
+
     # Get current semester
     current_semester = Semester.objects.filter(is_current_semester=True).first()
-    
+
     # Get teaching courses
     teaching_courses = Course.objects.filter(instructors=profile)
 
@@ -3021,15 +3038,15 @@ def instructor_dashboard(request):
     # Explicit ordering: the queryset was previously unordered, so a newly
     # created course had no guaranteed position in the panel.
     my_courses = my_courses.order_by('-created_at', '-id')
-    
+
     # Get student enrollments in instructor's courses
     enrollments = CourseEnrollment.objects.filter(course__in=teaching_courses)
-    
+
     # Get recent quizzes
     recent_quizzes = Quiz.objects.filter(
         course__in=teaching_courses
     ).order_by('-timestamp')[:10]
-    
+
     # Get quiz statistics
     quiz_stats = {}
     for course in teaching_courses:
@@ -3041,13 +3058,13 @@ def instructor_dashboard(request):
                 'attempts': attempts.count(),
                 'avg_score': avg_score
             }
-    
+
     # Calculate student progress for each course
     from .utils import get_all_enrolled_students_progress
     courses_student_progress = {}
     for course in teaching_courses:
         courses_student_progress[course.id] = get_all_enrolled_students_progress(course)
-    
+
     # Calculate course completion statistics (quiz-completion based)
     course_completion_stats = {}
     for course in teaching_courses:
@@ -3069,17 +3086,17 @@ def instructor_dashboard(request):
                         'completed_100': len([r for r in completion_rates if r >= 100]),
                         'started_count': len([r for r in completion_rates if r > 0]),
                     }
-    
+
     # Calculate the total number of students
     total_students = len(set(enrollment.student.id for enrollment in enrollments))
-    
+
     # Count active quizzes
     active_quizzes = Quiz.objects.filter(
         course__in=teaching_courses,
         draft=False,
         due_date__gt=timezone.now()
     ).count()
-    
+
     # Count incomplete courses (less than 70% of modules have content)
     incomplete_courses = 0
     for course in teaching_courses:
@@ -3088,7 +3105,7 @@ def instructor_dashboard(request):
             empty_modules = modules.annotate(content_count=Count('contents')).filter(content_count=0).count()
             if empty_modules / modules.count() > 0.3:  # More than 30% of modules are empty
                 incomplete_courses += 1
-    
+
     # Get instructor's payment methods
     payment_methods = PaymentMethod.objects.filter(instructor=profile)
 
@@ -3164,10 +3181,10 @@ def request_instructor_role(request):
     """View for users to request instructor status"""
     # Check if user already has a pending or approved request
     existing_request = InstructorRequest.objects.filter(
-        user=request.user, 
+        user=request.user,
         status__in=['pending', 'approved']
     ).first()
-    
+
     if existing_request:
         if existing_request.status == 'approved':
             messages.info(request, _("Your request to become an instructor has already been approved."))
@@ -3175,33 +3192,33 @@ def request_instructor_role(request):
         else:
             messages.info(request, _("You already have a pending instructor request."))
             return redirect('lms:instructor_request_status')
-    
+
     # Check if user is already an instructor
     if hasattr(request.user, 'lms_profile') and request.user.lms_profile.role == 'instructor':
         messages.info(request, _("You are already registered as an instructor."))
         return redirect('lms:instructor_dashboard')
-    
+
     if request.method == 'POST':
         form = InstructorRequestForm(request.POST, request.FILES)
         if form.is_valid():
             instructor_request = form.save(commit=False)
             instructor_request.user = request.user
             instructor_request.save()
-            
+
             # Log the activity
             ActivityLog.objects.create(
                 message=_(f"User {request.user.username} submitted an instructor request.")
             )
-            
+
             messages.success(request, _("Your instructor request has been submitted successfully and is pending review."))
             return redirect('lms:instructor_request_status')
     else:
         form = InstructorRequestForm()
-    
+
     context = {
         'form': form
     }
-    
+
     return render(request, 'lms/instructor_request_form.html', context)
 
 
@@ -3209,15 +3226,15 @@ def request_instructor_role(request):
 def instructor_request_status(request):
     """View for users to check their instructor request status"""
     instructor_request = InstructorRequest.objects.filter(user=request.user).order_by('-created_at').first()
-    
+
     if not instructor_request:
         messages.info(request, _("You haven't submitted an instructor request yet."))
         return redirect('lms:request_instructor_role')
-    
+
     context = {
         'instructor_request': instructor_request
     }
-    
+
     return render(request, 'lms/instructor_request_status.html', context)
 
 
@@ -3229,10 +3246,10 @@ def session_keep_alive(request):
     """
     if request.headers.get('X-Requested-With') != 'XMLHttpRequest':
         raise Http404("This endpoint is for AJAX requests only")
-        
+
     # Update the last activity timestamp
     request.session['last_activity'] = time.time()
-    
+
     # Return a simple OK response
     return JsonResponse({"status": "ok"})
 
@@ -3254,7 +3271,7 @@ def debug_upload_view(request):
             print(f"DEBUG UPLOAD: File name: {file.name}")
             print(f"DEBUG UPLOAD: File size: {file.size}")
             print(f"DEBUG UPLOAD: File content type: {file.content_type}")
-            
+
             # Save the file using a generated filename to avoid path manipulation.
             import os
             from pathlib import Path
@@ -3266,13 +3283,13 @@ def debug_upload_view(request):
             relative_path = os.path.join('lms', 'debug_uploads', safe_name)
             saved_path = default_storage.save(relative_path, file)
             file_path = default_storage.path(saved_path)
-                    
+
             return render(request, 'lms/debug_upload.html', {
                 'success': True,
                 'file_name': file.name,
                 'file_path': file_path
             })
-    
+
     return render(request, 'lms/debug_upload.html')
 
 @login_required
@@ -3284,7 +3301,7 @@ def toggle_ad_exemption(request, user_id):
     Only staff members can access this view
     """
     user = get_object_or_404(User, id=user_id)
-    
+
     try:
         # If exemption exists, delete it
         exemption = AdExemptUser.objects.get(user=user)
@@ -3295,7 +3312,7 @@ def toggle_ad_exemption(request, user_id):
         reason = request.POST.get('reason', 'Staff exemption')
         AdExemptUser.objects.create(user=user, reason=reason)
         messages.success(request, f"Ad exemption for {user.username} has been added.")
-    
+
     # Redirect to the user's admin page
     return redirect(f'/admin/auth/user/{user.id}/change/')
 
@@ -3304,18 +3321,18 @@ def toggle_ad_exemption(request, user_id):
 def payment_form(request, slug):
     """View for submitting payment proof for a premium course"""
     course = get_object_or_404(Course, slug=slug)
-    
+
     # Redirect if course is free
     if course.is_free:
         messages.warning(request, _("This is a free course and does not require payment."))
         return redirect('lms:course_detail', slug=course.slug)
-    
+
     # Get user's profile
     if not hasattr(request.user, 'lms_profile'):
         profile = LMSProfile.objects.create(user=request.user, role='student')
     else:
         profile = request.user.lms_profile
-    
+
     # Try to get enrollment
     enrollment = CourseEnrollment.objects.filter(student=profile, course=course).first()
     # Don't allow payment if already approved
@@ -3399,19 +3416,19 @@ def payment_form(request, slug):
 def payment_pending(request, slug):
     """View for showing payment pending status"""
     course = get_object_or_404(Course, slug=slug)
-    
+
     # Get user's profile
     if not hasattr(request.user, 'lms_profile'):
         return redirect('lms:course_detail', slug=course.slug)
-    
+
     profile = request.user.lms_profile
-    
+
     # Get enrollment
     try:
         enrollment = CourseEnrollment.objects.get(student=profile, course=course)
     except CourseEnrollment.DoesNotExist:
         return redirect('lms:course_detail', slug=course.slug)
-    
+
     # Redirect if payment is not pending
     if enrollment.payment_status == 'approved':
         messages.success(request, _("Your payment has been approved! You now have full access to the course."))
@@ -3421,7 +3438,7 @@ def payment_pending(request, slug):
         return redirect('lms:payment_form', slug=course.slug)
     elif enrollment.payment_status == 'not_required':
         return redirect('lms:course_detail', slug=course.slug)
-    
+
     # Show pending page for pending status
     user_role = profile.role if hasattr(profile, 'role') else 'student'
     return render(request, 'lms/payment_pending.html', {

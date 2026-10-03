@@ -227,3 +227,181 @@ def assessment_allows_module_purchase(
             previous,
         )
     )
+
+
+# CHUOSMART PAY-AS-YOU-LEARN ELIGIBILITY V1
+
+def build_module_purchase_eligibility(
+    modules,
+    student,
+    approved_module_ids=None,
+):
+    """
+    Return the IDs of paid modules the learner may purchase now.
+
+    This deliberately delegates progression to
+    CourseModule.previous_module_accessible_for_request(), which is
+    also the backend checkout gate.
+
+    Result: course-detail UI and payment backend use one source of truth.
+    """
+    approved = set(
+        approved_module_ids or ()
+    )
+
+    eligible = set()
+
+    if student is None:
+        return eligible
+
+    for module in modules:
+        module_id = (
+            getattr(module, "pk", None)
+            or getattr(module, "id", None)
+        )
+
+        if module_id is None:
+            continue
+
+        if module_id in approved:
+            continue
+
+        price = getattr(
+            module,
+            "price",
+            None,
+        )
+
+        # Only paid modules need a purchase CTA.
+        if not price:
+            continue
+
+        try:
+            may_purchase = (
+                module
+                .previous_module_accessible_for_request(
+                    student
+                )
+            )
+        except Exception:
+            # Never expose paid content if progression evaluation
+            # itself failed unexpectedly.
+            may_purchase = False
+
+        if may_purchase:
+            eligible.add(
+                module_id
+            )
+
+    return eligible
+
+
+def request_eligible_module_ids(
+    course,
+    student,
+):
+    """
+    Return paid module IDs that this learner may purchase NOW.
+
+    This is the course-detail equivalent of the backend payment gate.
+
+    A module is not offered for payment when:
+      - the learner owns the full course;
+      - an approved/pending module request already exists;
+      - an active ModuleAccessGrant already gives access;
+      - progression prerequisites have not been completed.
+
+    Progression itself remains delegated to
+    CourseModule.previous_module_accessible_for_request().
+    """
+    if (
+        course is None
+        or student is None
+    ):
+        return set()
+
+    from django.apps import apps
+
+    CourseEnrollment = apps.get_model(
+        "lms",
+        "CourseEnrollment",
+    )
+
+    CourseModule = apps.get_model(
+        "lms",
+        "CourseModule",
+    )
+
+    ModuleAccessRequest = apps.get_model(
+        "lms",
+        "ModuleAccessRequest",
+    )
+
+    ModuleAccessGrant = apps.get_model(
+        "lms",
+        "ModuleAccessGrant",
+    )
+
+    # Full-course buyers should never see module-level purchase CTAs.
+    full_course_access = (
+        CourseEnrollment.objects
+        .filter(
+            student=student,
+            course=course,
+            payment_status="approved",
+        )
+        .exists()
+    )
+
+    if full_course_access:
+        return set()
+
+    # A pending payment must not create another checkout opportunity,
+    # and an approved request is already owned.
+    unavailable_module_ids = set(
+        ModuleAccessRequest.objects
+        .filter(
+            student=student,
+            module__course=course,
+            status__in=(
+                "pending",
+                "approved",
+            ),
+        )
+        .values_list(
+            "module_id",
+            flat=True,
+        )
+    )
+
+    # Some historical/admin/webhook paths grant access directly.
+    # Those modules must not be sold to the learner a second time.
+    unavailable_module_ids.update(
+        ModuleAccessGrant.objects
+        .filter(
+            student=student,
+            module__course=course,
+            active=True,
+        )
+        .values_list(
+            "module_id",
+            flat=True,
+        )
+    )
+
+    modules = (
+        CourseModule.objects
+        .filter(
+            course=course
+        )
+        .order_by(
+            "order",
+            "id",
+        )
+    )
+
+    return build_module_purchase_eligibility(
+        modules,
+        student,
+        approved_module_ids=unavailable_module_ids,
+    )

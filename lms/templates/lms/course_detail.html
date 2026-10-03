@@ -31,7 +31,7 @@
                                 <i class="fas fa-times"></i> Unenroll
                             </a>
                         </div>
-                        
+
                         {% if not has_access and not course.is_free %}
                             {% if payment_status == 'pending' %}
                                 <div class="mt-2">
@@ -358,18 +358,18 @@
                         <span class="badge bg-light text-dark border px-2 px-sm-3 py-1 py-sm-2"><strong>{{ course.price }}</strong><span class="d-none d-sm-inline"> TZS</span></span>
                         {% endif %}
                     </div>
-                    
+
                     <!-- Course Type Badge -->
                     <div class="mb-3">
                         <span class="badge {% if course.course_type == 'university' %}bg-primary{% else %}bg-success{% endif %} me-1">
                             {{ course.get_course_type_display }}
                         </span>
                     </div>
-                    
+
                     {% if course.course_type == 'university' %}
                     <!-- University course specific fields -->
                     <h4 class="card-subtitle mb-3 text-muted">{{ course.code }}</h4>
-                    
+
                     <div class="mb-4">
                         <span class="badge bg-primary me-1">{{ course.get_level_display }}</span>
                         <span class="badge bg-secondary me-1">{{ course.get_semester_display }} Semester</span>
@@ -380,21 +380,21 @@
                         <span class="badge bg-dark">Core</span>
                         {% endif %}
                     </div>
-                    
+
                     {% if course.is_current_semester %}
                     <div class="alert alert-success">
                         This course is offered in the current semester
                     </div>
                     {% endif %}
                     {% endif %}
-                    
+
                     <div class="card-text">
                         {% if course.course_type == 'university' %}
                         <p><strong>Program:</strong> {{ course.program.title }}</p>
                         <p><strong>Credits:</strong> {{ course.credit }}</p>
                         {% endif %}
                     </div>
-                    
+
                     {% if not is_enrolled and user.is_authenticated %}
                     <div class="mt-4">
                         <a href="{% url 'lms:enroll_course' slug=course.slug %}" class="btn btn-success btn-lg">
@@ -427,10 +427,10 @@
                         {% if has_special_module_access %}
                         <p class="mb-0">
                             You can access: <strong>{% for module in granted_modules %}{{ module.title }}{% if not forloop.last %}, {% endif %}{% endfor %}</strong>.
-                            All other modules are locked. Pay for the full course to unlock them.
+                            Continue module by module. After completing and passing your current module, the next eligible module becomes available to unlock.
                         </p>
                         {% endif %}
-                        
+
                         {% if course_progress %}
                         <div class="mt-3 w-100">
                             <div class="d-flex flex-column flex-sm-row justify-content-between align-items-start gap-1 mb-1">
@@ -438,9 +438,9 @@
                                 <span class="badge bg-info">{{ course_progress.module_percentage }}% complete</span>
                             </div>
                             <div class="progress" style="height: 20px;">
-                                <div class="progress-bar bg-success" role="progressbar" 
-                                     style="width: {{ course_progress.module_percentage }}%;" 
-                                     aria-valuenow="{{ course_progress.module_percentage }}" 
+                                <div class="progress-bar bg-success" role="progressbar"
+                                     style="width: {{ course_progress.module_percentage }}%;"
+                                     aria-valuenow="{{ course_progress.module_percentage }}"
                                      aria-valuemin="0" aria-valuemax="100">
                                     <span class="d-none d-md-inline">{{ course_progress.module_percentage }}%</span>
                                 </div>
@@ -454,7 +454,7 @@
                     {% endif %}
                 </div>
             </div>
-            
+
             {% if show_promo_video and promotional_video %}
             <div class="card mb-4">
                 <div class="card-header bg-info text-white">
@@ -521,9 +521,9 @@
 
                     {% if has_special_module_access %}
                     <div class="alert alert-info">
-                        <strong>Special module access:</strong>
+                        <strong>Pay-as-you-learn access:</strong>
                         You can open {% for module in granted_modules %}<strong>{{ module.title }}</strong>{% if not forloop.last %}, {% endif %}{% endfor %}.
-                        All other modules remain locked until full-course payment is approved.
+                        Complete this module and pass its assessment. The next eligible module will then become available to unlock.
                     </div>
                     {% elif not has_access and is_enrolled and not course.is_free and not is_course_instructor %}
                     <div class="alert alert-warning">
@@ -538,7 +538,7 @@
                         {% with module=state.module %}
                         <div class="accordion-item">
                             <h2 class="accordion-header" id="heading{{ module.id }}">
-                                {% if state.unlocked or is_course_instructor %}
+                                {% if state.unlocked or is_course_instructor or module.id in request_eligible_modules %}
                                 <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
                                         data-bs-target="#collapse{{ module.id }}" aria-expanded="false" aria-controls="collapse{{ module.id }}">
                                 {% else %}
@@ -551,6 +551,10 @@
                                         <span class="badge bg-success">Completed</span>
                                     {% elif state.unlocked %}
                                         <span class="badge bg-primary">Unlocked</span>
+                                    {% elif module.id in request_eligible_modules %}
+                                        <span class="badge bg-warning text-dark">
+                                            <i class="fas fa-key me-1"></i>Ready to unlock
+                                        </span>
                                     {% else %}
                                         <span class="badge bg-secondary"><i class="fas fa-lock me-1"></i>Locked</span>
                                     {% endif %}
@@ -796,7 +800,7 @@
                     {% endif %}
                 </div>
             </div>
-            
+
             <!-- Course Assessment Summary (replaces the duplicate quizzes table) -->
             <div class="card shadow-sm">
                 <div class="card-header bg-light d-flex justify-content-between align-items-center">
@@ -839,7 +843,7 @@
                 </div>
             </div>
         </div>
-        
+
         <div class="col-12 col-lg-4">
             <!-- Instructors -->
             <div class="card shadow-sm mb-4">
@@ -870,7 +874,7 @@
                     {% endif %}
                 </div>
             </div>
-            
+
             {% if is_course_instructor %}
             <!-- Instructor Tools -->
             <div class="card shadow-sm mb-4">
@@ -888,7 +892,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <!-- Student Progress Tracking (For Instructors) -->
             <div class="card shadow-sm mb-4">
                 <div class="card-header bg-light d-flex justify-content-between align-items-center">
@@ -950,7 +954,7 @@
                 </div>
             </div>
             {% endif %}
-            
+
             <!-- Course Info -->
             <div class="card shadow-sm">
                 <div class="card-header bg-light">
@@ -964,7 +968,7 @@
                                 {{ course.get_course_type_display }}
                             </span>
                         </li>
-                        
+
                         {% if course.course_type == 'university' %}
                         <!-- University-specific course information -->
                         <li class="list-group-item d-flex justify-content-between align-items-center">
@@ -1000,7 +1004,7 @@
                 </div>
             </div>
         </div>
-        
+
     </div>
 </div>
 
