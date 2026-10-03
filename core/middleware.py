@@ -173,19 +173,36 @@ class SessionIdleTimeoutMiddleware:
 
         return self.get_response(request)
 
-
 # CHUOSMART_MONETAG_CSP_MIDDLEWARE_V1
 class MonetagCSPMiddleware:
     """
-    Extend the application's existing CSP with the exact Monetag
-    origins currently used by ChuoSmart.
+    Extend ChuoSmart's existing Content-Security-Policy with only
+    the origins required by the configured Monetag zones.
 
-    This middleware deliberately does not use wildcards and does not
-    replace the existing CSP. It only extends the directives required
-    by the configured provider.
+    Primary JS:
+      - nap5k.com
+      - n6wxm.com
+
+    Provider network/config requests:
+      - my.rtmark.net
+      - jhnwr.com
+      - ldrws.com
     """
 
-    ORIGINS = (
+    SCRIPT_ORIGINS = (
+        "https://nap5k.com",
+        "https://n6wxm.com",
+    )
+
+    CONNECT_ORIGINS = (
+        "https://nap5k.com",
+        "https://n6wxm.com",
+        "https://my.rtmark.net",
+        "https://jhnwr.com",
+        "https://ldrws.com",
+    )
+
+    FRAME_ORIGINS = (
         "https://nap5k.com",
         "https://n6wxm.com",
     )
@@ -193,68 +210,95 @@ class MonetagCSPMiddleware:
     def __init__(self, get_response):
         self.get_response = get_response
 
-    @classmethod
-    def _extend_policy(cls, policy):
-        if not policy:
-            return policy
-
+    @staticmethod
+    def _parse_policy(policy):
         parts = [
             part.strip()
             for part in policy.split(";")
             if part.strip()
         ]
 
-        directives = {}
+        return parts
 
-        for index, part in enumerate(parts):
-            pieces = part.split()
+    @staticmethod
+    def _extend_directive(parts, directive, origins, create=True):
+        index = None
 
-            if not pieces:
-                continue
+        for i, part in enumerate(parts):
+            tokens = part.split()
 
-            directives[pieces[0].lower()] = index
+            if tokens and tokens[0].lower() == directive:
+                index = i
+                break
 
-        required_directives = (
-            "script-src",
-            "script-src-elem",
-            "connect-src",
-            "frame-src",
-        )
-
-        for directive in required_directives:
-            if directive in directives:
-                index = directives[directive]
-
-                tokens = parts[index].split()
-
-                for origin in cls.ORIGINS:
-                    if origin not in tokens:
-                        tokens.append(origin)
-
-                parts[index] = " ".join(tokens)
-
-            elif directive != "script-src-elem":
-                # script-src-elem may legitimately be absent and
-                # therefore inherit script-src.
+        if index is None:
+            if create:
                 parts.append(
                     "{} 'self' {}".format(
                         directive,
-                        " ".join(cls.ORIGINS),
+                        " ".join(origins),
                     )
                 )
+
+            return parts
+
+        tokens = parts[index].split()
+
+        for origin in origins:
+            if origin not in tokens:
+                tokens.append(origin)
+
+        parts[index] = " ".join(tokens)
+
+        return parts
+
+    @classmethod
+    def _extend_policy(cls, policy):
+        if not policy:
+            return policy
+
+        parts = cls._parse_policy(policy)
+
+        parts = cls._extend_directive(
+            parts,
+            "script-src",
+            cls.SCRIPT_ORIGINS,
+        )
+
+        # If script-src-elem already exists it needs the same
+        # primary script hosts. Otherwise the browser correctly
+        # falls back to script-src.
+        parts = cls._extend_directive(
+            parts,
+            "script-src-elem",
+            cls.SCRIPT_ORIGINS,
+            create=False,
+        )
+
+        parts = cls._extend_directive(
+            parts,
+            "connect-src",
+            cls.CONNECT_ORIGINS,
+        )
+
+        parts = cls._extend_directive(
+            parts,
+            "frame-src",
+            cls.FRAME_ORIGINS,
+        )
 
         return "; ".join(parts) + ";"
 
     def __call__(self, request):
         response = self.get_response(request)
 
-        header = response.get(
+        policy = response.get(
             "Content-Security-Policy"
         )
 
-        if header:
+        if policy:
             response[
                 "Content-Security-Policy"
-            ] = self._extend_policy(header)
+            ] = self._extend_policy(policy)
 
         return response
