@@ -974,3 +974,220 @@ body.cs-v2-site .btn-lg {
     min-height: 250px;
   }
 }
+
+/* CHUOSMART COURSE GRID DESKTOP COLUMNS V3 */
+
+/*
+ * Do not use auto-fit here.
+ *
+ * The catalogue has a persistent desktop filter sidebar, so relying on
+ * auto-fit/minmax caused the browser to collapse the course area into
+ * one very wide track in production.
+ *
+ * We explicitly control every responsive breakpoint instead.
+ */
+
+/* Large desktop: maximum four cards. */
+@media (min-width: 1400px) {
+  .cs-course-catalog-grid {
+    display: grid !important;
+
+    grid-template-columns:
+      repeat(4, minmax(0, 1fr)) !important;
+
+    gap: 22px !important;
+
+    width: 100% !important;
+    max-width: none !important;
+
+    align-items: stretch !important;
+  }
+}
+
+
+/* Standard desktop / laptop: always three cards. */
+@media (min-width: 992px) and (max-width: 1399.98px) {
+  .cs-course-catalog-grid {
+    display: grid !important;
+
+    grid-template-columns:
+      repeat(3, minmax(0, 1fr)) !important;
+
+    gap: 20px !important;
+
+    width: 100% !important;
+    max-width: none !important;
+
+    align-items: stretch !important;
+  }
+}
+
+
+/* Tablet. */
+@media (min-width: 768px) and (max-width: 991.98px) {
+  .cs-course-catalog-grid {
+    display: grid !important;
+
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr)) !important;
+
+    gap: 18px !important;
+
+    width: 100% !important;
+  }
+}
+
+
+/* Phone only. */
+@media (max-width: 767.98px) {
+  .cs-course-catalog-grid {
+    display: grid !important;
+
+    grid-template-columns: 1fr !important;
+
+    gap: 18px !important;
+
+    width: 100% !important;
+  }
+}
+
+
+/*
+ * Kill any Bootstrap/flex sizing that may survive from the old
+ * catalogue implementation.
+ */
+.cs-course-catalog-grid
+> .cs-course-catalog-item {
+  display: flex !important;
+
+  flex:
+    0 0 auto !important;
+
+  width: auto !important;
+  max-width: none !important;
+  min-width: 0 !important;
+
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+
+/*
+ * Every course fills exactly one grid cell.
+ */
+.cs-course-catalog-item
+.course-card {
+  display: flex !important;
+
+  flex-direction: column !important;
+
+  width: 100% !important;
+  max-width: 100% !important;
+
+  height: 100% !important;
+  min-height: 0 !important;
+
+  margin: 0 !important;
+}
+
+
+/*
+ * Prevent thumbnails from turning into huge desktop banners.
+ */
+.cs-course-catalog-item
+.course-card
+.course-image,
+
+.cs-course-catalog-item
+.course-card
+.card-img-top,
+
+.cs-course-catalog-item
+.course-image-placeholder {
+  display: block !important;
+
+  width: 100% !important;
+  height: 160px !important;
+
+  min-height: 160px !important;
+  max-height: 160px !important;
+
+  object-fit: cover !important;
+  object-position: center !important;
+}
+
+
+/*
+ * Keep content compact and aligned.
+ */
+.cs-course-catalog-item
+.course-card
+.card-body {
+  display: flex !important;
+  flex: 1 1 auto !important;
+  flex-direction: column !important;
+
+  min-height: 0 !important;
+
+  padding: 14px 15px !important;
+}
+
+
+.cs-course-catalog-item
+.course-card
+.card-title {
+  display: -webkit-box;
+
+  overflow: hidden;
+
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+
+  line-clamp: 2;
+
+  min-height: 2.7em;
+}
+
+
+.cs-course-catalog-item
+.course-card
+.card-text {
+  display: -webkit-box;
+
+  overflow: hidden;
+
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+
+  line-clamp: 2;
+}
+
+
+.cs-course-catalog-item
+.course-card
+.card-footer {
+  margin-top: auto !important;
+}
+
+
+/*
+ * Slightly taller image on a phone where there is only one column.
+ */
+@media (max-width: 767.98px) {
+  .cs-course-catalog-item
+  .course-card
+  .course-image,
+
+  .cs-course-catalog-item
+  .course-card
+  .card-img-top,
+
+  .cs-course-catalog-item
+  .course-image-placeholder {
+    height: 190px !important;
+    min-height: 190px !important;
+    max-height: 190px !important;
+  }
+}
+
+/* END CHUOSMART COURSE GRID DESKTOP COLUMNS V3 */
