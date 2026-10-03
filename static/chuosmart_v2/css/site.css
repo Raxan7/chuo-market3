@@ -1853,3 +1853,214 @@ body.cs-v2-site
 }
 
 /* END CHUOSMART DASHBOARD THEME HARDENING V1 */
+
+/* CHUOSMART COURSE GRID NO-HOLES V2 */
+
+/*
+ * The catalogue is deliberately NOT a Bootstrap .row.
+ *
+ * Variable-height Bootstrap flex rows caused shorter cards to leave
+ * large empty areas underneath while the next course waited for the
+ * tallest card in that row.
+ */
+.cs-course-catalog-grid {
+  display: grid !important;
+
+  grid-template-columns:
+    repeat(
+      auto-fit,
+      minmax(
+        min(100%, 240px),
+        1fr
+      )
+    );
+
+  grid-auto-flow: row dense;
+
+  align-items: stretch;
+
+  gap: 24px;
+
+  width: 100%;
+
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.cs-course-catalog-item {
+  display: flex;
+
+  min-width: 0;
+  width: 100%;
+
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/*
+ * Every course consumes its entire grid cell. Variable descriptions,
+ * titles and metadata therefore cannot produce outside-the-card holes.
+ */
+.cs-course-catalog-item > .course-card,
+.cs-course-catalog-item .course-card {
+  display: flex !important;
+  flex-direction: column !important;
+
+  width: 100% !important;
+  height: 100% !important;
+
+  min-width: 0;
+  min-height: 0 !important;
+
+  margin: 0 !important;
+}
+
+.cs-course-catalog-item .course-card .card-body {
+  display: flex !important;
+  flex: 1 1 auto !important;
+  flex-direction: column !important;
+
+  height: auto !important;
+  min-height: 0 !important;
+}
+
+/*
+ * Keep image geometry consistent between uploaded thumbnails.
+ */
+.cs-course-catalog-item .course-image,
+.cs-course-catalog-item .card-img-top,
+.cs-course-catalog-item .course-image-placeholder {
+  width: 100% !important;
+
+  height: 160px !important;
+
+  object-fit: cover !important;
+  object-position: center !important;
+}
+
+/*
+ * Prevent one course with a very long title/description from setting
+ * an excessive row height.
+ */
+.cs-course-catalog-item .card-title,
+.cs-course-catalog-item .course-card h3,
+.cs-course-catalog-item .course-card h4,
+.cs-course-catalog-item .course-card h5 {
+  display: -webkit-box;
+
+  overflow: hidden;
+
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+
+  line-clamp: 2;
+}
+
+.cs-course-catalog-item .course-card p.card-text {
+  display: -webkit-box;
+
+  overflow: hidden;
+
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+
+  line-clamp: 2;
+}
+
+/*
+ * CTA / pricing belongs at the bottom of the card, rather than
+ * producing random card heights.
+ */
+.cs-course-catalog-item .course-card .mt-auto {
+  margin-top: auto !important;
+}
+
+.cs-course-catalog-item .course-card .card-footer {
+  margin-top: auto !important;
+}
+
+.cs-course-catalog-item
+.course-card
+.card-body > .btn:last-child {
+  margin-top: auto !important;
+}
+
+
+/*
+ * Sponsored monetization is deliberately separated from the courses.
+ * It cannot consume an invisible grid cell anymore.
+ */
+.cs-catalog-sponsored-strip {
+  width: 100%;
+
+  margin: 24px 0 8px;
+}
+
+.cs-catalog-sponsored-strip
+.cs-monetag-fallback-card {
+  display: flex;
+
+  align-items: center;
+  gap: 18px;
+
+  width: 100%;
+
+  min-height: 0;
+
+  padding: 14px 16px;
+}
+
+.cs-catalog-sponsored-strip
+.cs-monetag-fallback-head {
+  flex: 0 0 auto;
+
+  margin: 0;
+}
+
+.cs-catalog-sponsored-strip
+.cs-monetag-fallback-body {
+  flex: 1 1 auto;
+}
+
+.cs-catalog-sponsored-strip
+.cs-monetag-fallback-cta {
+  flex: 0 0 auto;
+
+  width: auto;
+
+  min-width: 140px;
+
+  margin-top: 0;
+  padding: 0 18px;
+}
+
+
+/*
+ * Explicit breakpoints keep catalogue rhythm predictable.
+ */
+@media (max-width: 767.98px) {
+  .cs-course-catalog-grid {
+    grid-template-columns: 1fr;
+
+    gap: 18px;
+  }
+
+  .cs-course-catalog-item .course-image,
+  .cs-course-catalog-item .card-img-top,
+  .cs-course-catalog-item .course-image-placeholder {
+    height: 190px !important;
+  }
+
+  .cs-catalog-sponsored-strip
+  .cs-monetag-fallback-card {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .cs-catalog-sponsored-strip
+  .cs-monetag-fallback-cta {
+    width: 100%;
+  }
+}
+
+/* END CHUOSMART COURSE GRID NO-HOLES V2 */

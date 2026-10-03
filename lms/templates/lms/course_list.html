@@ -105,7 +105,7 @@ View free and paid courses for students in Tanzania. Browse programs, levels, an
                                 <input type="text" name="q" id="q" class="form-control form-control-lg" placeholder="Search courses..." value="{{ current_filters.q }}">
                             </div>
                         </div>
-                        
+
                         <div class="accordion mb-3" id="filterAccordion">
                             <div class="accordion-item">
                                 <h2 class="accordion-header" id="filterHeading">
@@ -135,7 +135,7 @@ View free and paid courses for students in Tanzania. Browse programs, levels, an
                                                 <option value="general" {% if current_filters.course_type == 'general' %}selected{% endif %}>General Courses</option>
                                             </select>
                                         </div>
-                                        
+
                                         <div class="mb-3">
                                             <label for="program" class="form-label fw-bold"><i class="fas fa-book me-2"></i>Program</label>
                                             <select name="program" id="program" class="form-select">
@@ -145,7 +145,7 @@ View free and paid courses for students in Tanzania. Browse programs, levels, an
                                                 {% endfor %}
                                             </select>
                                         </div>
-                                        
+
                                         <div class="row">
                                             <div class="col-md-6">
                                                 <div class="mb-3">
@@ -176,7 +176,7 @@ View free and paid courses for students in Tanzania. Browse programs, levels, an
                                 </div>
                             </div>
                         </div>
-                        
+
                         <div class="d-flex gap-2">
                             <button type="submit" class="btn btn-primary flex-grow-1">
                                 <i class="fas fa-filter me-2"></i>Apply Filters
@@ -189,28 +189,25 @@ View free and paid courses for students in Tanzania. Browse programs, levels, an
                 </div>
             </div>
         </div>
-        
+
         <div class="col-12 col-lg-9 col-xl-10">
             {% if courses %}
-                <div class="row" data-course-grid="true">
+                <div class="cs-course-catalog-grid" data-course-grid="true">
                     {% for course in courses %}
-                    <div class="col-12 col-sm-6 col-md-4 col-xl-3 mb-3 mb-md-4">
+                    <div class="cs-course-catalog-item">
                         {% include "lms/partials/_course_card.html" %}
                     </div>
-                    {% if show_list_ads %}
-                        {% if forloop.counter|divisibleby:3 %}
-                            {% if forloop.counter|divisibleby:6 %}
-                            </div>
-                            {% else %}
-                            <div class="col-12 col-sm-6 col-md-4 col-xl-3 mb-3 mb-md-4">
-                                {% include 'app/partials/list_ad_card.html' %}
-                            </div>
-                            {% endif %}
-                        {% endif %}
-                    {% endif %}
                     {% endfor %}
                 </div>
-                
+                <!-- CHUOSMART CATALOG SPONSORED STRIP START -->
+                {% if show_list_ads %}
+                <div class="cs-catalog-sponsored-strip">
+                    {% include 'app/partials/list_ad_card.html' %}
+                </div>
+                {% endif %}
+                <!-- CHUOSMART CATALOG SPONSORED STRIP END -->
+
+
                 {% if is_paginated %}
                 <nav aria-label="Page navigation" class="mt-4">
                     <ul class="pagination justify-content-center">
@@ -226,7 +223,7 @@ View free and paid courses for students in Tanzania. Browse programs, levels, an
                             </a>
                         </li>
                         {% endif %}
-                        
+
                         {% for num in page_obj.paginator.page_range %}
                             {% if page_obj.number == num %}
                             <li class="page-item active">
@@ -238,7 +235,7 @@ View free and paid courses for students in Tanzania. Browse programs, levels, an
                             </li>
                             {% endif %}
                         {% endfor %}
-                        
+
                         {% if page_obj.has_next %}
                         <li class="page-item">
                             <a class="page-link" href="?page={{ page_obj.next_page_number }}{% for key, value in current_filters.items %}{% if value %}&{{ key }}={{ value }}{% endif %}{% endfor %}" aria-label="Next">
