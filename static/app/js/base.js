@@ -206,44 +206,8 @@ function whenAdElementHasWidth(element, minimumWidth, callback) {
 }
 
 
-function initializeAdsenseUnit(unit) {
-  if (
-    !unit ||
-    unit.hasAttribute('data-chuosmart-ad-initialized')
-  ) {
-    return;
-  }
-
-  whenAdElementHasWidth(unit, 120, function() {
-    if (unit.hasAttribute('data-chuosmart-ad-initialized')) {
-      return;
-    }
-
-    try {
-      unit.setAttribute(
-        'data-chuosmart-ad-initialized',
-        'true'
-      );
-
-      window.adsbygoogle = window.adsbygoogle || [];
-      window.adsbygoogle.push({});
-    } catch (error) {
-      unit.removeAttribute('data-chuosmart-ad-initialized');
-      console.warn('Unable to initialize responsive AdSense unit', error);
-    }
-  });
-}
 
 
-function initAdsenseUnits(root) {
-  var container = root || document;
-
-  var units = container.querySelectorAll(
-    'ins.adsbygoogle.list-adsense-unit:not([data-chuosmart-ad-initialized])'
-  );
-
-  units.forEach(initializeAdsenseUnit);
-}
 
 
 
@@ -255,7 +219,6 @@ function initAdsenseUnits(root) {
 /* Keep the existing public initializer name because marketplace/blog
    infinite-scroll code already calls window.initializeListAds(). */
 function initAdIframes(root) {
-  initAdsenseUnits(root);
 }
 
 window.initializeListAds = function(listContainer) {
