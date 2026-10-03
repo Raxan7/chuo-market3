@@ -70,10 +70,10 @@ class ActivityLog(models.Model):
     """
     timestamp = models.DateTimeField(auto_now_add=True)
     message = models.TextField()
-    
+
     class Meta:
         ordering = ['-timestamp']
-    
+
     def __str__(self):
         return f"{self.timestamp}: {self.message}"
 
@@ -85,10 +85,10 @@ class Semester(models.Model):
     year = models.IntegerField(choices=YEARS, default=1)
     semester = models.CharField(choices=SEMESTER_CHOICES, max_length=10, default='First')
     is_current_semester = models.BooleanField(default=False)
-    
+
     def __str__(self):
         return f"{self.get_semester_display()} Semester - Year {self.get_year_display()}"
-    
+
     class Meta:
         unique_together = ['semester', 'year']
 
@@ -132,10 +132,10 @@ class Program(models.Model):
     """
     title = models.CharField(max_length=150, unique=True)
     summary = models.TextField(blank=True)
-    
+
     def __str__(self):
         return self.title
-    
+
     def get_absolute_url(self):
         return reverse("lms:program_detail", kwargs={"pk": self.pk})
 
@@ -148,10 +148,10 @@ class Course(models.Model):
         ('university', _('University Course')),
         ('general', _('General Course')),
     )
-    
+
     course_type = models.CharField(
-        max_length=10, 
-        choices=COURSE_TYPE_CHOICES, 
+        max_length=10,
+        choices=COURSE_TYPE_CHOICES,
         default='university',
         help_text=_("University courses require academic fields like course code, program, etc.")
     )
@@ -163,9 +163,9 @@ class Course(models.Model):
     image = models.ImageField(upload_to='lms/course_images/', blank=True, null=True)
     instructors = models.ManyToManyField(LMSProfile, related_name='courses_teaching',
                                         limit_choices_to={'role': 'instructor'})
-    students = models.ManyToManyField(LMSProfile, through='CourseEnrollment', 
+    students = models.ManyToManyField(LMSProfile, through='CourseEnrollment',
                                      related_name='courses_enrolled')
-    
+
     # Fields specific to university courses (nullable for general courses)
     code = models.CharField(max_length=20, unique=True, null=True, blank=True,
                           help_text=_("Required for university courses only"))
@@ -183,12 +183,12 @@ class Course(models.Model):
     is_pinned = models.BooleanField(default=False, help_text=_("Pin this course at the top of listings"))
     price = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, help_text=_('Price for paid course'))
     created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True, help_text=_("Date the course was created"))
-    
+
     def __str__(self):
         if self.course_type == 'university' and self.code:
             return f"{self.title} ({self.code})"
         return self.title
-    
+
     @property
     def enrolled_students_count(self):
         """Use a queryset annotation when available, otherwise count lazily."""
@@ -207,23 +207,23 @@ class Course(models.Model):
 
     def get_absolute_url(self):
         return reverse("lms:course_detail", kwargs={"slug": self.slug})
-        
+
     def get_direct_url(self):
         """Get URL that bypasses the advertisement"""
         return reverse("lms:course_detail_direct", kwargs={"slug": self.slug})
-    
+
     @property
     def is_current_semester(self):
         current_semester = Semester.objects.filter(is_current_semester=True).first()
         return self.semester == current_semester.semester if current_semester else False
-        
+
     def user_has_access(self, user):
         """
         Check if the user has access to this course
         """
         if self.is_free:
             return True
-            
+
         if not user.is_authenticated:
             return False
 
@@ -235,10 +235,10 @@ class Course(models.Model):
                 return True
             if self.instructors.filter(id=user.lms_profile.id).exists():
                 return True
-            
+
         try:
             enrollment = CourseEnrollment.objects.get(
-                student__user=user, 
+                student__user=user,
                 course=self
             )
             return enrollment.payment_status == 'approved' or enrollment.admin_granted_access or enrollment.admin_override_completion
@@ -303,44 +303,44 @@ class CourseEnrollment(models.Model):
         ('approved', _('Approved')),
         ('rejected', _('Rejected')),
     )
-    
+
     student = models.ForeignKey(LMSProfile, on_delete=models.CASCADE)
     course = models.ForeignKey(Course, on_delete=models.CASCADE)
     date_enrolled = models.DateTimeField(auto_now_add=True)
-    
+
     # Payment related fields
     payment_status = models.CharField(
-        max_length=20, 
-        choices=PAYMENT_STATUS_CHOICES, 
+        max_length=20,
+        choices=PAYMENT_STATUS_CHOICES,
         default='not_required',
         help_text=_("Payment status for premium courses")
     )
     payment_proof = models.ImageField(
         upload_to='lms/payment_proofs/',
         storage=private_payment_storage,
-        blank=True, 
+        blank=True,
         null=True,
         help_text=_("Upload proof of payment for premium courses")
     )
     payment_date = models.DateTimeField(blank=True, null=True)
     payment_method = models.ForeignKey(
-        PaymentMethod, 
-        on_delete=models.SET_NULL, 
-        blank=True, 
+        PaymentMethod,
+        on_delete=models.SET_NULL,
+        blank=True,
         null=True,
         help_text=_("Payment method used")
     )
     payment_approved_by = models.ForeignKey(
-        User, 
-        on_delete=models.SET_NULL, 
-        blank=True, 
-        null=True, 
+        User,
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True,
         related_name='approved_enrollments',
         help_text=_("Admin who approved the payment")
     )
     payment_approved_date = models.DateTimeField(blank=True, null=True)
     payment_notes = models.TextField(blank=True, null=True)
-    
+
     # Admin granted access fields
     admin_granted_access = models.BooleanField(
         default=False,
@@ -366,30 +366,30 @@ class CourseEnrollment(models.Model):
         related_name='granted_enrollments',
         help_text=_("Admin who granted this access")
     )
-    
+
     class Meta:
         unique_together = ['student', 'course']
-    
+
     def __str__(self):
         return f"{self.student.user.username} enrolled in {self.course.title}"
-    
+
     @property
     def has_access(self):
         """Determine if student has access to the course"""
         if self.course.is_free:
             return True
         return self.payment_status == 'approved' or self.admin_granted_access or self.admin_override_completion
-        
+
     def save(self, *args, **kwargs):
         # For free courses, automatically set payment_status to not_required
         if self.course.is_free and self.payment_status == 'pending':
             self.payment_status = 'not_required'
-        
+
         # If payment proof is uploaded, update status to pending
         if self.payment_proof and self.payment_status == 'not_required' and not self.course.is_free:
             self.payment_status = 'pending'
             self.payment_date = timezone.now()
-            
+
         super().save(*args, **kwargs)
 
 
@@ -410,10 +410,10 @@ class CourseModule(models.Model):
         verbose_name=_("Skip Assessment"),
         help_text=_("Mark this module as an overview or introduction module without a quiz.")
     )
-    
+
     class Meta:
         ordering = ['order']
-        
+
     def __str__(self):
         return f"{self.title} - {self.course.title}"
 
@@ -424,12 +424,12 @@ class CourseModule(models.Model):
     def get_previous_module(self):
         return CourseModule.objects.filter(
             models.Q(course=self.course) & (
-                models.Q(order__lt=self.order) | 
+                models.Q(order__lt=self.order) |
                 models.Q(order=self.order, id__lt=self.id)
             )
         ).order_by('-order', '-id').first()
 
-    def previous_module_accessible_for_request(self, student):
+    def _legacy_previous_module_accessible_for_request(self, student):
         """Check if the previous module is accessible AND completed, enforcing sequential access.
 
         Returns True if:
@@ -487,6 +487,19 @@ class CourseModule(models.Model):
 
         return False
 
+    # CHUOSMART MODULEWISE PROGRESSION V2
+    def previous_module_accessible_for_request(self, student):
+        """Single gate used by UI and module-payment backend."""
+        if self._legacy_previous_module_accessible_for_request(student):
+            return True
+
+        from lms.module_progression import assessment_allows_module_purchase
+
+        return assessment_allows_module_purchase(
+            self,
+            student,
+        )
+
     def is_request_eligible_for(self, student):
         """Check if a student can request access to this module.
 
@@ -529,7 +542,7 @@ class CourseModule(models.Model):
     def get_next_module(self):
         return CourseModule.objects.filter(
             models.Q(course=self.course) & (
-                models.Q(order__gt=self.order) | 
+                models.Q(order__gt=self.order) |
                 models.Q(order=self.order, id__gt=self.id)
             )
         ).order_by('order', 'id').first()
@@ -643,13 +656,13 @@ class CourseContent(models.Model):
         ('link', _('External Link')),
         ('text', _('Text Content')),
     )
-    
+
     title = models.CharField(max_length=200)
     module = models.ForeignKey(CourseModule, on_delete=models.CASCADE, related_name='contents')
     content_type = models.CharField(max_length=10, choices=CONTENT_TYPES)
     document = models.FileField(
         upload_to='lms/course_documents/',
-        blank=True, 
+        blank=True,
         null=True,
         validators=[
             FileExtensionValidator(allowed_extensions=['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx', 'txt'])
@@ -660,10 +673,10 @@ class CourseContent(models.Model):
     text_content = models.TextField(blank=True, null=True)
     order = models.PositiveIntegerField(default=0)
     date_added = models.DateTimeField(auto_now_add=True)
-    
+
     class Meta:
         ordering = ['order']
-        
+
     def __str__(self):
         return self.title
 
@@ -683,11 +696,11 @@ class ContentAccess(models.Model):
     accessed_at = models.DateTimeField(auto_now_add=True)
     completed = models.BooleanField(default=False)
     completed_at = models.DateTimeField(null=True, blank=True)
-    
+
     class Meta:
         unique_together = ['student', 'content']
         ordering = ['-accessed_at']
-    
+
     def __str__(self):
         return f"{self.student.user.username} accessed {self.content.title}"
 
@@ -974,7 +987,7 @@ class Quiz(models.Model):
     generation_started_at = models.DateTimeField(blank=True, null=True)
     generation_completed_at = models.DateTimeField(blank=True, null=True)
     timestamp = models.DateTimeField(auto_now=True)
-    
+
     class Meta:
         verbose_name = _("Quiz")
         verbose_name_plural = _("Quizzes")
@@ -991,7 +1004,7 @@ class Quiz(models.Model):
                 name='unique_shared_ai_quiz_per_module',
             ),
         ]
-    
+
     def __str__(self):
         return self.title
 
@@ -1008,7 +1021,7 @@ class Quiz(models.Model):
             self.slug = slugify('-'.join(suffix_parts))[:max_len]
 
         super().save(*args, **kwargs)
-    
+
     def get_absolute_url(self):
         return reverse("lms:quiz_detail", kwargs={"slug": self.slug})
 
@@ -1049,10 +1062,10 @@ class Question(models.Model):
         help_text=_("Explanation to be shown after the question has been answered.")
     )
     order = models.IntegerField(default=0)
-    
+
     class Meta:
         ordering = ['order']
-        
+
     def __str__(self):
         return self.content
 
@@ -1066,7 +1079,7 @@ class MCQuestion(Question):
         choices=CHOICE_ORDER_OPTIONS,
         help_text=_("The order in which multichoice choice options are displayed")
     )
-    
+
     def check_if_correct(self, selected_choice):
         return selected_choice.correct
 
@@ -1078,7 +1091,7 @@ class Choice(models.Model):
     question = models.ForeignKey(MCQuestion, on_delete=models.CASCADE, related_name='choices')
     content = models.TextField(help_text=_("Enter the choice text that you want displayed"))
     correct = models.BooleanField(default=False)
-    
+
     def __str__(self):
         return self.content
 
@@ -1088,7 +1101,7 @@ class TF_Question(Question):
     True/False Question
     """
     correct = models.BooleanField(default=False)
-    
+
     def check_if_correct(self, selected_choice):
         return selected_choice == self.correct
 
@@ -1114,10 +1127,10 @@ class QuizTaker(models.Model):
     completed = models.BooleanField(default=False)
     date_started = models.DateTimeField(auto_now_add=True)
     date_completed = models.DateTimeField(null=True, blank=True)
-    
+
     class Meta:
         unique_together = ['user', 'quiz']
-        
+
     def __str__(self):
         return f"{self.user.user.username}: {self.quiz.title}"
 
@@ -1344,13 +1357,13 @@ class StudentAnswer(models.Model):
     question = models.ForeignKey(Question, on_delete=models.CASCADE)
     # For MC questions
     mc_answer = models.ForeignKey(Choice, on_delete=models.CASCADE, null=True, blank=True)
-    # For T/F questions  
+    # For T/F questions
     tf_answer = models.BooleanField(null=True, blank=True)
     # For essay questions
     essay_text_answer = models.TextField(null=True, blank=True)
     essay_file_answer = models.FileField(upload_to='lms/essay_answers/', null=True, blank=True)
     is_correct = models.BooleanField(default=False)
-    
+
     class Meta:
         unique_together = ['quiz_taker', 'question']
 
@@ -1362,26 +1375,26 @@ class Grade(models.Model):
     student = models.ForeignKey(LMSProfile, on_delete=models.CASCADE)
     course = models.ForeignKey(Course, on_delete=models.CASCADE)
     semester = models.ForeignKey(Semester, on_delete=models.CASCADE)
-    
+
     attendance = models.DecimalField(max_digits=5, decimal_places=2, default=0)
     assignment = models.DecimalField(max_digits=5, decimal_places=2, default=0)
     mid_exam = models.DecimalField(max_digits=5, decimal_places=2, default=0)
     final_exam = models.DecimalField(max_digits=5, decimal_places=2, default=0)
-    
+
     total = models.DecimalField(max_digits=5, decimal_places=2, default=0)
     grade = models.CharField(max_length=5, blank=True, null=True)
     comment = models.TextField(blank=True, null=True)
-    
+
     class Meta:
         unique_together = ['student', 'course', 'semester']
-        
+
     def __str__(self):
         return f"{self.student.user.username} - {self.course.title} - {self.grade}"
-    
+
     def calculate_total(self):
         self.total = self.attendance + self.assignment + self.mid_exam + self.final_exam
         return self.total
-    
+
     def calculate_grade(self):
         total = self.calculate_total()
         if total >= 90:
@@ -1394,18 +1407,18 @@ class Grade(models.Model):
             return 'D'
         else:
             return 'F'
-    
+
     def save(self, *args, **kwargs):
         self.total = self.calculate_total()
         self.grade = self.calculate_grade()
-        
+
         if self.grade == 'F':
             self.comment = "Failed. Please retake the course."
         elif self.grade == 'D':
             self.comment = "Passed with warning. Consider reviewing course materials."
         else:
             self.comment = "Passed successfully."
-            
+
         super().save(*args, **kwargs)
 
 
@@ -1418,21 +1431,21 @@ class InstructorRequest(models.Model):
         ('approved', _('Approved')),
         ('denied', _('Denied')),
     )
-    
+
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='instructor_requests')
     reason = models.TextField(help_text=_("Explain why you want to become an instructor"))
     qualifications = models.TextField(help_text=_("Describe your qualifications and experience"))
-    cv = models.FileField(upload_to='lms/instructor_requests/cv/', blank=True, null=True, 
+    cv = models.FileField(upload_to='lms/instructor_requests/cv/', blank=True, null=True,
                          help_text=_("Upload your CV or resume (optional)"))
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
-    admin_notes = models.TextField(blank=True, null=True, 
+    admin_notes = models.TextField(blank=True, null=True,
                                  help_text=_("Admin notes about this request (not visible to the requester)"))
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
     def __str__(self):
         return f"{self.user.username} - {self.get_status_display()}"
-    
+
     class Meta:
         ordering = ['-created_at']
 
@@ -1456,22 +1469,22 @@ def unique_slug_generator(instance, new_slug=None):
         # Remove any emojis or special characters that can't be properly slugified
         import re
         import unicodedata
-        
+
         # Normalize and strip non-ASCII characters
         title = unicodedata.normalize('NFKD', instance.title)
         title = ''.join([c for c in title if not unicodedata.combining(c) and c.isascii()])
-        
+
         # If title is empty after filtering, use a generic name plus random string
         if not title.strip():
             random_string = ''.join(random.choices(string.ascii_lowercase + string.digits, k=8))
             title = f"course-{random_string}"
-        
+
         # Create slug and limit to the model field length to avoid DB field length issues
         slug = slugify(title)[:max_length]
-    
+
     # Get the model class
     Klass = instance.__class__
-    
+
     # Check if slug exists
     qs_exists = Klass.objects.filter(slug=slug).exists()
     if qs_exists:
