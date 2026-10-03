@@ -783,11 +783,15 @@ def search_bar(request):
             Q(title__icontains=query) | Q(description__icontains=query)
         ).select_related('user')[:24]
 
+        # Newest first so a freshly created course cannot be pushed out of the
+        # result window by older, similarly-named courses. This search covers
+        # the whole site, so the cap has to be generous enough to be useful
+        # across 100+ courses.
         courses = Course.objects.filter(
             Q(title__icontains=query) |
             Q(code__icontains=query) |
             Q(summary__icontains=query)
-        ).order_by('-is_pinned', 'title')[:24]
+        ).order_by('-is_pinned', '-created_at', 'title')[:60]
 
         blogs = Blog.objects.filter(
             Q(title__icontains=query) |

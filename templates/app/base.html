@@ -111,6 +111,7 @@
           {% endif %}
           {% if can_use_instructor_dashboard %}
             <li><a class="dropdown-item" href="{% url 'lms:instructor_dashboard' %}"><i class="fas fa-chalkboard-teacher fa-fw me-2"></i>Instructor dashboard</a></li>
+            <li><a class="dropdown-item" href="{% url 'lms:instructor_course_list' %}"><i class="fas fa-list-alt fa-fw me-2"></i>My courses</a></li>
           {% endif %}
         </ul>
       </div>
@@ -210,6 +211,7 @@
                 {% endif %}
                 {% if can_use_instructor_dashboard %}
                   <li><a class="dropdown-item" href="{% url 'lms:instructor_dashboard' %}"><i class="fas fa-chalkboard-teacher fa-fw me-2"></i>Instructor dashboard</a></li>
+                  <li><a class="dropdown-item" href="{% url 'lms:instructor_course_list' %}"><i class="fas fa-list-alt fa-fw me-2"></i>My courses</a></li>
                 {% endif %}
               </ul>
             </div>
@@ -239,6 +241,7 @@
                   {% endif %}
                   {% if can_use_instructor_dashboard %}
                     <li><a class="dropdown-item" href="{% url 'lms:instructor_dashboard' %}"><i class="fas fa-chalkboard-teacher fa-fw me-2"></i>Instructor dashboard</a></li>
+                    <li><a class="dropdown-item" href="{% url 'lms:instructor_course_list' %}"><i class="fas fa-list-alt fa-fw me-2"></i>My courses</a></li>
                   {% endif %}
                 {% endif %}
                 <li><hr class="dropdown-divider"></li>

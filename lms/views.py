@@ -6,7 +6,7 @@ import json
 import time
 from datetime import timedelta
 from decimal import Decimal, InvalidOperation
-from urllib.parse import urlparse
+from urllib.parse import urlencode, urlparse
 
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse, reverse_lazy
@@ -581,13 +581,41 @@ class CourseListView(ListView):
     template_name = 'lms/course_list.html'
     context_object_name = 'courses'
     paginate_by = 10
-    
+
+    # Human labels for the filter chips, so the collapsed filter panel never
+    # hides state that is quietly narrowing the result set.
+    FILTER_LABELS = {
+        'course_type': {'university': 'University courses', 'general': 'General courses'},
+        'pricing': {'free': 'Free only', 'paid': 'Paid only'},
+        'semester': {'First': 'First semester', 'Second': 'Second semester'},
+        'level': {str(n): f'Level {n}' for n in range(1, 7)},
+    }
+    FILTER_KEYS = ('course_type', 'pricing', 'semester', 'level', 'program')
+
     def get_queryset(self):
-        # Randomize the base queryset so the course list feels fresh across layouts.
         queryset = (Course.objects.select_related('program').prefetch_related('instructors')
                     .annotate(student_count=Count('students', distinct=True), annotated_instructor_count=Count('instructors', distinct=True))
                     .order_by('-is_pinned', '-created_at', '-id'))
-        
+
+        query = (self.request.GET.get('q') or '').strip()
+
+        # An explicit search wins over the browse filters.
+        #
+        # The filters live in one GET form and are repopulated from the query
+        # string, so they persist across every later search and are invisible
+        # while the filter panel is collapsed. That produced the support case
+        # this replaces: an instructor created a course, went to search for it
+        # by title, and got "No Courses Found" because a level filter they had
+        # set days earlier was still narrowing the list. Because the search box
+        # still showed their title it read as "the search is broken" rather than
+        # "a filter is on".
+        if query:
+            return queryset.filter(
+                Q(title__icontains=query) |
+                Q(code__icontains=query) |
+                Q(summary__icontains=query)
+            )
+
         # Filter by course type if provided
         course_type = self.request.GET.get('course_type')
         if course_type:
@@ -598,32 +626,48 @@ class CourseListView(ListView):
             queryset = queryset.filter(is_free=True)
         elif pricing == 'paid':
             queryset = queryset.filter(is_free=False)
-        
+
         # Filter by semester if provided
         semester = self.request.GET.get('semester')
         if semester:
             queryset = queryset.filter(semester=semester)
-        
+
         # Filter by program if provided
         program = self.request.GET.get('program')
         if program:
             queryset = queryset.filter(program__id=program)
-        
+
         # Filter by level if provided
         level = self.request.GET.get('level')
         if level:
             queryset = queryset.filter(level=level)
-        
-        # Search query
-        query = self.request.GET.get('q')
-        if query:
-            queryset = queryset.filter(
-                Q(title__icontains=query) | 
-                Q(code__icontains=query) |
-                Q(summary__icontains=query)
-            )
-        
+
         return queryset
+
+    def _active_filters(self):
+        """Describe the filters currently narrowing the list.
+
+        Returns a list of ``(key, label, clear_url)`` so the template can show
+        each filter as a removable chip, and ``clear_url`` drops a single
+        filter while keeping the rest of the query string intact.
+        """
+        get = self.request.GET
+        chips = []
+        for key in self.FILTER_KEYS:
+            value = (get.get(key) or '').strip()
+            if not value:
+                continue
+
+            if key == 'program':
+                program = Program.objects.filter(pk=value).first()
+                label = program.title if program else f'Programme {value}'
+            else:
+                label = self.FILTER_LABELS.get(key, {}).get(value, value)
+
+            remaining = {k: v for k, v in get.items() if k not in (key, 'page') and v}
+            query = urlencode(remaining)
+            chips.append((key, label, f'?{query}' if query else reverse('lms:course_list')))
+        return chips
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -637,6 +681,12 @@ class CourseListView(ListView):
             'pricing': self.request.GET.get('pricing', ''),
             'q': self.request.GET.get('q', ''),
         }
+        context['active_filters'] = self._active_filters()
+        # A search deliberately ignores the browse filters (see get_queryset),
+        # so the panel has to say so or the dropdowns look ignored.
+        context['search_overrides_filters'] = bool(
+            context['current_filters']['q']
+        ) and bool(context['active_filters'])
         context['course_listing_json_ld'] = {
             '@context': 'https://schema.org',
             '@type': 'CollectionPage',
@@ -2955,6 +3005,21 @@ def instructor_dashboard(request):
     
     # Get teaching courses
     teaching_courses = Course.objects.filter(instructors=profile)
+
+    # Display queryset for the "Your Courses" panel: searchable, newest first.
+    # Kept separate from teaching_courses because the stats aggregates below
+    # must always cover every course, not just the ones matching the search.
+    course_search_q = (request.GET.get('course_q') or '').strip()
+    my_courses = teaching_courses.select_related('program')
+    if course_search_q:
+        my_courses = my_courses.filter(
+            Q(title__icontains=course_search_q) |
+            Q(code__icontains=course_search_q) |
+            Q(summary__icontains=course_search_q)
+        )
+    # Explicit ordering: the queryset was previously unordered, so a newly
+    # created course had no guaranteed position in the panel.
+    my_courses = my_courses.order_by('-created_at', '-id')
     
     # Get student enrollments in instructor's courses
     enrollments = CourseEnrollment.objects.filter(course__in=teaching_courses)
@@ -3030,6 +3095,9 @@ def instructor_dashboard(request):
         'profile': profile,
         'current_semester': current_semester,
         'teaching_courses': teaching_courses,
+        'my_courses': my_courses,
+        'course_search_q': course_search_q,
+        'total_teaching_courses': teaching_courses.count(),
         'enrollments': enrollments,
         'recent_quizzes': recent_quizzes,
         'quiz_stats': quiz_stats,
@@ -3043,6 +3111,51 @@ def instructor_dashboard(request):
     }
 
     return render(request, 'lms/instructor_dashboard.html', context)
+
+
+class InstructorCourseListView(ListView):
+    """Searchable list of the courses the signed-in instructor teaches.
+
+    Scoped to ``courses_teaching`` so an instructor can confirm that a course
+    they just created exists, without having to know which of the 100+ public
+    courses belongs to them.
+    """
+    model = Course
+    template_name = 'lms/instructor_course_list.html'
+    context_object_name = 'my_courses'
+    paginate_by = 20
+
+    def dispatch(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return redirect(f"{reverse('login')}?{urlencode({'next': request.get_full_path()})}")
+        if not hasattr(request.user, 'lms_profile') or not is_instructor(request.user):
+            messages.error(request, _("You are not registered as an instructor."))
+            return redirect('lms:lms_home')
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_queryset(self):
+        queryset = Course.objects.filter(
+            instructors=self.request.user.lms_profile
+        ).select_related('program').prefetch_related('instructors').annotate(
+            student_count=Count('students', distinct=True),
+        )
+
+        query = (self.request.GET.get('q') or '').strip()
+        if query:
+            queryset = queryset.filter(
+                Q(title__icontains=query) |
+                Q(code__icontains=query) |
+                Q(summary__icontains=query)
+            )
+        return queryset.order_by('-created_at', '-id')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['course_search_q'] = (self.request.GET.get('q') or '').strip()
+        context['total_teaching_courses'] = Course.objects.filter(
+            instructors=self.request.user.lms_profile
+        ).count()
+        return context
 
 
 @login_required(login_url='login')

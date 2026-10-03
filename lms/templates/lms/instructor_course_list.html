@@ -1,0 +1,142 @@
+{% extends "app/base.html" %}
+
+{% block title %}My Courses{% endblock %}
+
+{% block main-content %}
+<div class="container-fluid py-4 py-md-5 bg-light mb-4">
+    <div class="container">
+        <div class="row align-items-center g-3">
+            <div class="col-12 col-md-8">
+                <h1 class="display-6 fw-bold text-primary mb-1">My Courses</h1>
+                <p class="text-muted mb-0">
+                    {{ total_teaching_courses }} course{{ total_teaching_courses|pluralize }} you teach, newest first.
+                </p>
+            </div>
+            <div class="col-12 col-md-4 text-start text-md-end">
+                <a href="{% url 'lms:course_create' %}" class="btn btn-primary">
+                    <i class="fas fa-plus me-2"></i>Create Course
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container my-3 my-md-4">
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <form method="get" role="search" class="mb-0">
+                <div class="input-group">
+                    <span class="input-group-text bg-light"><i class="fas fa-search"></i></span>
+                    <input type="search" name="q" class="form-control" id="course-q"
+                           placeholder="Search your courses by title, code or summary..."
+                           value="{{ course_search_q }}" aria-label="Search your courses">
+                    <button type="submit" class="btn btn-primary">Search</button>
+                    {% if course_search_q %}
+                    <a href="{% url 'lms:instructor_course_list' %}" class="btn btn-outline-secondary">Clear</a>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {% if my_courses %}
+        {% if course_search_q %}
+        <p class="small text-muted mb-3" role="status">
+            <i class="fas fa-info-circle me-1"></i>
+            {{ page_obj.paginator.count }} of {{ total_teaching_courses }} course{{ total_teaching_courses|pluralize }}
+            matching &ldquo;{{ course_search_q }}&rdquo;.
+        </p>
+        {% endif %}
+
+        <div class="row g-3 g-md-4">
+            {% for course in my_courses %}
+            <div class="col-12 col-sm-6 col-md-4 col-xl-3 mb-3 mb-md-4">
+                <div class="position-relative">
+                    {% include "lms/partials/_course_card.html" with show_enrolled=False show_instructor=False %}
+
+                    <div class="d-flex justify-content-between align-items-center mt-2 px-1 small text-muted">
+                        <span><i class="fas fa-users me-1"></i>{{ course.student_count }} enrolled</span>
+                        {% if course.created_at %}
+                        <span title="{{ course.created_at|date:'j M Y' }}">
+                            <i class="fas fa-calendar me-1"></i>{{ course.created_at|date:"j M Y" }}
+                        </span>
+                        {% endif %}
+                    </div>
+                    <div class="d-flex gap-1 mt-2">
+                        <a href="{% url 'lms:course_update' course.slug %}" class="btn btn-sm btn-outline-secondary w-100">
+                            <i class="fas fa-edit me-1"></i>Edit Course
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        {% if is_paginated %}
+        <nav aria-label="Page navigation" class="mt-4">
+            <ul class="pagination justify-content-center">
+                {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page=1{% if course_search_q %}&amp;q={{ course_search_q|urlencode }}{% endif %}" aria-label="First">
+                        <span aria-hidden="true">&laquo;&laquo;</span>
+                    </a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if course_search_q %}&amp;q={{ course_search_q|urlencode }}{% endif %}" aria-label="Previous">
+                        <span aria-hidden="true">&laquo;</span>
+                    </a>
+                </li>
+                {% endif %}
+
+                {% for num in page_obj.paginator.page_range %}
+                    {% if num == page_obj.number %}
+                    <li class="page-item active" aria-current="page">
+                        <span class="page-link">{{ num }}</span>
+                    </li>
+                    {% elif num > page_obj.number|add:"-3" and num < page_obj.number|add:"3" %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ num }}{% if course_search_q %}&amp;q={{ course_search_q|urlencode }}{% endif %}">{{ num }}</a>
+                    </li>
+                    {% endif %}
+                {% endfor %}
+
+                {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if course_search_q %}&amp;q={{ course_search_q|urlencode }}{% endif %}" aria-label="Next">
+                        <span aria-hidden="true">&raquo;</span>
+                    </a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if course_search_q %}&amp;q={{ course_search_q|urlencode }}{% endif %}" aria-label="Last">
+                        <span aria-hidden="true">&raquo;&raquo;</span>
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+    {% else %}
+        <div class="card shadow-sm">
+            <div class="card-body text-center py-5">
+                <i class="fas fa-graduation-cap fa-3x text-secondary mb-3 d-block"></i>
+                {% if course_search_q %}
+                <h2 class="h4">No Courses Match &ldquo;{{ course_search_q }}&rdquo;</h2>
+                <p class="text-muted">
+                    You are teaching {{ total_teaching_courses }} course{{ total_teaching_courses|pluralize }},
+                    but none match that search.
+                </p>
+                <a href="{% url 'lms:instructor_course_list' %}" class="btn btn-primary">
+                    <i class="fas fa-times me-2"></i>Clear search
+                </a>
+                {% else %}
+                <h2 class="h4">You Have Not Created Any Courses Yet</h2>
+                <p class="text-muted">Once you create a course it will appear here as soon as it is saved.</p>
+                <a href="{% url 'lms:course_create' %}" class="btn btn-primary">
+                    <i class="fas fa-plus me-2"></i>Create Your First Course
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    {% endif %}
+</div>
+{% endblock main-content %}

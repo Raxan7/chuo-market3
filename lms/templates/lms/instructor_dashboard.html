@@ -91,14 +91,37 @@
             </div>
 
             <div class="card shadow-sm mb-4">
-                <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">Your Courses</h5>
-                    <small class="text-muted">Progress is based on module quizzes passed</small>
+                <div class="card-header bg-light d-flex justify-content-between align-items-center gap-2">
+                    <div>
+                        <h5 class="mb-0">Your Courses</h5>
+                        <small class="text-muted">Progress is based on module quizzes passed</small>
+                    </div>
+                    <a href="{% url 'lms:instructor_course_list' %}" class="small link-underline text-nowrap">
+                        View all {{ total_teaching_courses }}
+                    </a>
                 </div>
                 <div class="card-body">
-                    {% if teaching_courses %}
+                    <form method="get" class="mb-3" role="search">
+                        <div class="input-group">
+                            <span class="input-group-text bg-light"><i class="fas fa-search"></i></span>
+                            <input type="search" name="course_q" class="form-control"
+                                   placeholder="Search your courses by title or code..."
+                                   value="{{ course_search_q }}"
+                                   aria-label="Search your courses">
+                            {% if course_search_q %}
+                            <a class="btn btn-outline-secondary" href="{% url 'lms:instructor_dashboard' %}">Clear</a>
+                            {% endif %}
+                        </div>
+                    </form>
+                    {% if course_search_q %}
+                    <p class="small text-muted mb-3">
+                        <i class="fas fa-info-circle me-1"></i>
+                        {{ my_courses|length }} of {{ total_teaching_courses }} course{{ total_teaching_courses|pluralize }} matching &ldquo;{{ course_search_q }}&rdquo;.
+                    </p>
+                    {% endif %}
+                    {% if my_courses %}
                         <div class="row g-3">
-                            {% for course in teaching_courses %}
+                            {% for course in my_courses %}
                                 {% with stats=course_completion_stats|get_item:course.id %}
                                 <div class="col-12 col-md-6 col-xl-4">
                                     <div class="position-relative">
@@ -128,12 +151,21 @@
                             {% endfor %}
                         </div>
                     {% else %}
+                        {% if course_search_q %}
+                        <div class="alert alert-warning" data-testid="no-course-search-match">
+                            <h5 class="alert-heading">No Courses Match &ldquo;{{ course_search_q }}&rdquo;</h5>
+                            <p>You are teaching {{ total_teaching_courses }} course{{ total_teaching_courses|pluralize }}, but none match that search.</p>
+                            <hr>
+                            <a href="{% url 'lms:instructor_dashboard' %}" class="btn btn-primary">Clear search</a>
+                        </div>
+                        {% else %}
                         <div class="alert alert-info">
                             <h5 class="alert-heading">No Courses Yet</h5>
                             <p>You are not currently teaching any courses.</p>
                             <hr>
                             <a href="{% url 'lms:course_create' %}" class="btn btn-primary">Create Your First Course</a>
                         </div>
+                        {% endif %}
                     {% endif %}
                 </div>
             </div> <!-- end Your Courses card -->
