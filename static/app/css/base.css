@@ -489,6 +489,3 @@ a, button, .btn, input, select, textarea, label, .nav-link, .dropdown-item,
 
 /* Ensure ad cards stretch to match sibling card heights */
 .list-ad-card,
-.adsterra-ad-card {
-  height: 100%;
-}

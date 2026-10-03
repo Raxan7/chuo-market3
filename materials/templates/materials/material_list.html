@@ -44,8 +44,6 @@
             {% if show_list_ads %}
                 {% if forloop.counter|divisibleby:3 %}
                     {% if forloop.counter|divisibleby:6 %}
-                    <div class="col-12 adsterra-full-width-slot" style="width:100%;flex:0 0 100%;max-width:100%;">
-                        {% include 'app/partials/adsterra_ad_card.html' %}
                     </div>
                     {% else %}
                     <div class="col">

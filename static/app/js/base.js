@@ -148,11 +148,7 @@ document.addEventListener("DOMContentLoaded", function() {
   }
 });
 
-/* ---- Responsive list-ad initialization ----
-   Google AdSense renders directly in the page DOM so its responsive unit
-   measures the real card width. Adsterra display banners stay isolated in
-   their own iframe and choose exactly one format: 728x90 when the full-width
-   row can fit it, otherwise 320x50. */
+
 
 function whenAdElementHasWidth(element, minimumWidth, callback) {
   if (
@@ -250,113 +246,16 @@ function initAdsenseUnits(root) {
 }
 
 
-function buildAdsterraDisplayDocument(config) {
-  var allowedPrefix = 'https://www.highrevenueformat.com/';
-
-  if (
-    !config ||
-    !config.key ||
-    !config.scriptSrc ||
-    config.scriptSrc.indexOf(allowedPrefix) !== 0
-  ) {
-    return '';
-  }
-
-  var options = {
-    key: config.key,
-    format: 'iframe',
-    height: config.height,
-    width: config.width,
-    params: {}
-  };
-
-  return '<!doctype html><html><head>'
-    + '<meta name="viewport" content="width=device-width,initial-scale=1">'
-    + '<style>'
-    + 'html,body{margin:0;padding:0;width:100%;height:100%;'
-    + 'background:transparent;overflow:hidden;}'
-    + 'body{display:flex;align-items:center;justify-content:center;}'
-    + '</style>'
-    + '</head><body>'
-    + '<script>window.atOptions='
-    + JSON.stringify(options)
-    + ';<\/script>'
-    + '<script src="'
-    + config.scriptSrc
-    + '"><\/script>'
-    + '</body></html>';
-}
 
 
-function initializeAdsterraDisplayFrame(frame) {
-  if (
-    !frame ||
-    frame.hasAttribute('data-chuosmart-ad-initialized')
-  ) {
-    return;
-  }
-
-  whenAdElementHasWidth(frame, 120, function() {
-    if (frame.hasAttribute('data-chuosmart-ad-initialized')) {
-      return;
-    }
-
-    var availableWidth = frame.getBoundingClientRect().width;
-    var useMobile = availableWidth < 728;
-
-    var config = useMobile
-      ? {
-          key: frame.getAttribute('data-mobile-key'),
-          width: Number(frame.getAttribute('data-mobile-width')),
-          height: Number(frame.getAttribute('data-mobile-height')),
-          scriptSrc: frame.getAttribute('data-mobile-script-src')
-        }
-      : {
-          key: frame.getAttribute('data-desktop-key'),
-          width: Number(frame.getAttribute('data-desktop-width')),
-          height: Number(frame.getAttribute('data-desktop-height')),
-          scriptSrc: frame.getAttribute('data-desktop-script-src')
-        };
-
-    var doc = buildAdsterraDisplayDocument(config);
-
-    if (!doc) {
-      console.warn('Invalid Adsterra display-banner configuration');
-      return;
-    }
-
-    frame.style.width = config.width + 'px';
-    frame.style.height = config.height + 'px';
-    frame.style.maxWidth = '100%';
-
-    frame.setAttribute('width', String(config.width));
-    frame.setAttribute('height', String(config.height));
-    frame.srcdoc = doc;
-
-    frame.setAttribute(
-      'data-chuosmart-ad-initialized',
-      'true'
-    );
-  });
-}
 
 
-function initAdsterraDisplayFrames(root) {
-  var container = root || document;
-
-  var frames = container.querySelectorAll(
-    'iframe.adsterra-display-frame:not([data-chuosmart-ad-initialized])'
-  );
-
-  frames.forEach(initializeAdsterraDisplayFrame);
-}
 
 
 /* Keep the existing public initializer name because marketplace/blog
    infinite-scroll code already calls window.initializeListAds(). */
 function initAdIframes(root) {
   initAdsenseUnits(root);
-  initAdsterraDisplayFrames(root);
 }
 
 window.initializeListAds = function(listContainer) {

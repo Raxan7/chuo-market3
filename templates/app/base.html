@@ -404,7 +404,9 @@
   </script>
   <script src="{% static 'app/js/myscript.js' %}"></script>
   <script src="{% static 'app/js/base.js' %}"></script>
-  <script src="{% static 'chuosmart_v2/js/site.js' %}"></script>
+  <script src="{% static 'chuosmart_v2/js/site.js' %}"></script>\n  {% if ads_allowed %}
+  <script defer src="{% static 'chuosmart_v2/js/monetag-direct-links.js' %}"></script>
+  {% endif %}
   {% block extra_scripts %}{% endblock extra_scripts %}
   {% block postloadjs %}{% endblock postloadjs %}
 
