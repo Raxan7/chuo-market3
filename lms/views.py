@@ -3862,3 +3862,69 @@ def module_payment_status(request, course_slug, module_id):
         'message': payment.failure_reason if payment and payment.status in {'failed', 'cancelled', 'expired'} else '',
         'success_url': reverse('lms:course_detail', kwargs={'slug': course.slug}),
     })
+
+
+# CHUOSMART_COURSE_OWNER_DELETE_V1
+from django.contrib.auth.decorators import login_required as _course_delete_login_required
+from django.views.decorators.http import require_POST as _course_delete_require_POST
+from django.core.exceptions import PermissionDenied as _CourseDeletePermissionDenied
+from django.db.models.deletion import ProtectedError as _CourseDeleteProtectedError
+from django.shortcuts import get_object_or_404 as _course_delete_get_object_or_404
+from django.shortcuts import redirect as _course_delete_redirect
+from django.contrib import messages as _course_delete_messages
+
+from .course_permissions import user_owns_course as _user_owns_course
+
+
+@_course_delete_login_required
+@_course_delete_require_POST
+def course_delete(request, slug):
+    """
+    Permanently delete a course only when the requesting user owns it.
+
+    Staff users retain administrative recovery/control access.
+    """
+    course = _course_delete_get_object_or_404(
+        Course,
+        slug=slug,
+    )
+
+    permitted = (
+        _user_owns_course(
+            request.user,
+            course,
+        )
+        or request.user.is_staff
+        or request.user.is_superuser
+    )
+
+    if not permitted:
+        raise _CourseDeletePermissionDenied(
+            "You do not have permission to delete this course."
+        )
+
+    title = course.title
+
+    try:
+        course.delete()
+
+    except _CourseDeleteProtectedError:
+        _course_delete_messages.error(
+            request,
+            "This course cannot be deleted because it is linked "
+            "to protected program or business records."
+        )
+
+        return _course_delete_redirect(
+            "lms:course_detail",
+            slug=course.slug,
+        )
+
+    _course_delete_messages.success(
+        request,
+        f'Course "{title}" was deleted successfully.',
+    )
+
+    return _course_delete_redirect(
+        "user_dashboard",
+    )

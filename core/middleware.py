@@ -172,3 +172,89 @@ class SessionIdleTimeoutMiddleware:
                 request.session.set_expiry(settings.SESSION_COOKIE_AGE)
 
         return self.get_response(request)
+
+
+# CHUOSMART_MONETAG_CSP_MIDDLEWARE_V1
+class MonetagCSPMiddleware:
+    """
+    Extend the application's existing CSP with the exact Monetag
+    origins currently used by ChuoSmart.
+
+    This middleware deliberately does not use wildcards and does not
+    replace the existing CSP. It only extends the directives required
+    by the configured provider.
+    """
+
+    ORIGINS = (
+        "https://nap5k.com",
+        "https://n6wxm.com",
+    )
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    @classmethod
+    def _extend_policy(cls, policy):
+        if not policy:
+            return policy
+
+        parts = [
+            part.strip()
+            for part in policy.split(";")
+            if part.strip()
+        ]
+
+        directives = {}
+
+        for index, part in enumerate(parts):
+            pieces = part.split()
+
+            if not pieces:
+                continue
+
+            directives[pieces[0].lower()] = index
+
+        required_directives = (
+            "script-src",
+            "script-src-elem",
+            "connect-src",
+            "frame-src",
+        )
+
+        for directive in required_directives:
+            if directive in directives:
+                index = directives[directive]
+
+                tokens = parts[index].split()
+
+                for origin in cls.ORIGINS:
+                    if origin not in tokens:
+                        tokens.append(origin)
+
+                parts[index] = " ".join(tokens)
+
+            elif directive != "script-src-elem":
+                # script-src-elem may legitimately be absent and
+                # therefore inherit script-src.
+                parts.append(
+                    "{} 'self' {}".format(
+                        directive,
+                        " ".join(cls.ORIGINS),
+                    )
+                )
+
+        return "; ".join(parts) + ";"
+
+    def __call__(self, request):
+        response = self.get_response(request)
+
+        header = response.get(
+            "Content-Security-Policy"
+        )
+
+        if header:
+            response[
+                "Content-Security-Policy"
+            ] = self._extend_policy(header)
+
+        return response

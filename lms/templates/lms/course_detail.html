@@ -260,6 +260,28 @@
 {% endblock extra_head %}
 
 {% block main-content %}
+<!-- CHUOSMART COURSE OWNER ACTIONS -->
+{% if is_course_instructor or user.is_staff or user.is_superuser %}
+<div class="container mb-3">
+    <div class="d-flex justify-content-end">
+        <form
+            method="post"
+            action="{% url 'lms:course_delete' slug=course.slug %}"
+            onsubmit="return confirm('Delete this course permanently? This action cannot be undone.');"
+        >
+            {% csrf_token %}
+            <button
+                type="submit"
+                class="btn btn-outline-danger btn-sm"
+            >
+                <i class="fas fa-trash-alt me-1"></i>
+                Delete course
+            </button>
+        </form>
+    </div>
+</div>
+{% endif %}
+
 <div class="container my-5 cs-v2-course-detail">
     <div class="row cs-v2-course-detail-row">
         <div class="col-12 col-lg-9 col-xl-8 mx-auto cs-v2-course-detail-column">

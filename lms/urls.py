@@ -7,7 +7,10 @@ from . import views
 
 app_name = 'lms'
 
+from . import views as _course_control_views
+
 urlpatterns = [
+    path('courses/<slug:slug>/delete/', _course_control_views.course_delete, name='course_delete'),
     # Debug views - remove in production
     path('debug/upload/', views.debug_upload_view, name='debug_upload'),
     # Session management
