@@ -58,6 +58,10 @@ class SecurityHeadersMiddleware(MiddlewareMixin):
             'data:',
         ],
         'media-src': ["'self'", 'https:'],
+        'worker-src': [
+            "'self'",
+            'blob:',
+        ],
         'connect-src': [
             "'self'",
             'https://www.google-analytics.com',
@@ -75,6 +79,8 @@ class SecurityHeadersMiddleware(MiddlewareMixin):
             'https://fundingchoicesmessages.google.com',
             'wss:',
             'https://*.acscdn.com',
+            'https://adexchangerapid.com',
+            'https://usrpubtrk.com',
         ],
         'frame-src': [
             "'self'",
@@ -171,129 +177,83 @@ class SessionIdleTimeoutMiddleware:
 # CHUOSMART_ADCASH_CSP_MIDDLEWARE_V1
 class AdcashCSPMiddleware:
     """
-    Extend ChuoSmart's existing Content-Security-Policy with only
-    the origins required by the configured Adcash zones.
-
-    Primary JS:
-      - acscdn.com
-      - *.acscdn.com
-
-    Provider network/config requests:
-      - my.rtmark.net
-      - jhnwr.com
-      - ldrws.com
+    Extend the site's Content-Security-Policy with the sources required
+    by the configured Adcash AutoTag and banner zones.
     """
 
-    SCRIPT_ORIGINS = (
-        "https://acscdn.com",
-        "https://*.acscdn.com",
-    )
-
-    CONNECT_ORIGINS = (
-        "https://acscdn.com",
-        "https://*.acscdn.com",
-        "https://my.rtmark.net",
-        "https://jhnwr.com",
-        "https://ldrws.com",
-    )
-
-    FRAME_ORIGINS = (
-        "https://acscdn.com",
-        "https://*.acscdn.com",
-    )
+    DIRECTIVE_SOURCES = {
+        "script-src": (
+            "https://acscdn.com",
+            "https://*.acscdn.com",
+        ),
+        "connect-src": (
+            "https://acscdn.com",
+            "https://*.acscdn.com",
+            "https://adexchangerapid.com",
+            "https://usrpubtrk.com",
+            "https://my.rtmark.net",
+            "https://jhnwr.com",
+            "https://ldrws.com",
+        ),
+        "worker-src": (
+            "'self'",
+            "blob:",
+        ),
+        "frame-src": (
+            "https://acscdn.com",
+            "https://*.acscdn.com",
+        ),
+    }
 
     def __init__(self, get_response):
         self.get_response = get_response
 
     @staticmethod
-    def _parse_policy(policy):
-        parts = [
-            part.strip()
-            for part in policy.split(";")
-            if part.strip()
-        ]
+    def _extend_policy(policy, additions):
+        directives = []
+        indexes = {}
 
-        return parts
+        for raw_directive in policy.split(";"):
+            raw_directive = raw_directive.strip()
 
-    @staticmethod
-    def _extend_directive(parts, directive, origins, create=True):
-        index = None
+            if not raw_directive:
+                continue
 
-        for i, part in enumerate(parts):
-            tokens = part.split()
+            parts = raw_directive.split()
+            name = parts[0]
+            sources = parts[1:]
 
-            if tokens and tokens[0].lower() == directive:
-                index = i
-                break
+            indexes[name] = len(directives)
+            directives.append([name, sources])
 
-        if index is None:
-            if create:
-                parts.append(
-                    "{} 'self' {}".format(
-                        directive,
-                        " ".join(origins),
-                    )
-                )
+        for name, required_sources in additions.items():
+            if name in indexes:
+                sources = directives[indexes[name]][1]
+            else:
+                indexes[name] = len(directives)
+                sources = []
+                directives.append([name, sources])
 
-            return parts
+            for source in required_sources:
+                if source not in sources:
+                    sources.append(source)
 
-        tokens = parts[index].split()
-
-        for origin in origins:
-            if origin not in tokens:
-                tokens.append(origin)
-
-        parts[index] = " ".join(tokens)
-
-        return parts
-
-    @classmethod
-    def _extend_policy(cls, policy):
-        if not policy:
-            return policy
-
-        parts = cls._parse_policy(policy)
-
-        parts = cls._extend_directive(
-            parts,
-            "script-src",
-            cls.SCRIPT_ORIGINS,
-        )
-
-        # If script-src-elem already exists it needs the same
-        # primary script hosts. Otherwise the browser correctly
-        # falls back to script-src.
-        parts = cls._extend_directive(
-            parts,
-            "script-src-elem",
-            cls.SCRIPT_ORIGINS,
-            create=False,
-        )
-
-        parts = cls._extend_directive(
-            parts,
-            "connect-src",
-            cls.CONNECT_ORIGINS,
-        )
-
-        parts = cls._extend_directive(
-            parts,
-            "frame-src",
-            cls.FRAME_ORIGINS,
-        )
-
-        return "; ".join(parts) + ";"
+        return "; ".join(
+            " ".join([name] + sources)
+            for name, sources in directives
+        ) + ";"
 
     def __call__(self, request):
         response = self.get_response(request)
 
         policy = response.get(
-            "Content-Security-Policy"
+            "Content-Security-Policy",
+            "default-src 'self';",
         )
 
-        if policy:
-            response[
-                "Content-Security-Policy"
-            ] = self._extend_policy(policy)
+        response["Content-Security-Policy"] = self._extend_policy(
+            policy,
+            self.DIRECTIVE_SOURCES,
+        )
 
         return response

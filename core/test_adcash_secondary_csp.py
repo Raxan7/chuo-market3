@@ -117,3 +117,30 @@ class AdcashSecondaryCSPTests(SimpleTestCase):
             "https://www.google-analytics.com",
             policy,
         )
+
+    def test_adcash_runtime_connect_hosts_are_allowed(self):
+        policy = self._policy()
+
+        connect_src = self._directive(
+            policy,
+            "connect-src",
+        )
+
+        self.assertIn(
+            "https://adexchangerapid.com",
+            connect_src,
+        )
+        self.assertIn(
+            "https://usrpubtrk.com",
+            connect_src,
+        )
+
+    def test_adcash_blob_worker_is_allowed(self):
+        policy = self._policy()
+
+        worker_src = self._directive(
+            policy,
+            "worker-src",
+        )
+
+        self.assertIn("blob:", worker_src)
