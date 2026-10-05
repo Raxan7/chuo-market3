@@ -1,0 +1,864 @@
+diff --git a/Commerce/settings/base.py b/Commerce/settings/base.py
+index eef5c53..9051464 100644
+--- a/Commerce/settings/base.py
++++ b/Commerce/settings/base.py
+@@ -64,7 +64,7 @@ MIDDLEWARE = [
+     'django.contrib.auth.middleware.AuthenticationMiddleware',
+     'django.contrib.messages.middleware.MessageMiddleware',
+     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+-    'core.middleware.MonetagCSPMiddleware',
++    'core.middleware.AdcashCSPMiddleware',
+     'core.middleware.SecurityHeadersMiddleware',
+     'core.middleware.SessionIdleTimeoutMiddleware',
+ ]
+diff --git a/core/middleware.py b/core/middleware.py
+index a225241..157cea7 100644
+--- a/core/middleware.py
++++ b/core/middleware.py
+@@ -36,7 +36,6 @@ class SecurityHeadersMiddleware(MiddlewareMixin):
+             'https://js.stripe.com',
+             'https://fundingchoicesmessages.google.com',
+             'https://ad.doubleclick.net',
+-            'https://www.highrevenueformat.com',
+         ],
+         'style-src': [
+             "'self'",
+@@ -74,10 +73,8 @@ class SecurityHeadersMiddleware(MiddlewareMixin):
+             'https://res.cloudinary.com',
+             'https://ad.doubleclick.net',
+             'https://fundingchoicesmessages.google.com',
+-            'https://www.highrevenueformat.com',
+             'wss:',
+-            'https://*.highrevenueformat.com',
+-            'https://*.profitableratecpmnetwork.com',
++            'https://*.acscdn.com',
+         ],
+         'frame-src': [
+             "'self'",
+@@ -89,10 +86,8 @@ class SecurityHeadersMiddleware(MiddlewareMixin):
+             'https://www.googleadservices.com',
+             'https://ep2.adtrafficquality.google',
+             'https://www.google.com',
+-            'https://www.profitableratecpmnetwork.com',
+-            'https://www.highrevenueformat.com',
+-            'https://*.highrevenueformat.com',
+-            'https://*.profitableratecpmnetwork.com',
++            'https://acscdn.com',
++            'https://*.acscdn.com',
+         ],
+         'object-src': ["'none'"],
+         'base-uri': ["'self'"],
+@@ -173,11 +168,11 @@ class SessionIdleTimeoutMiddleware:
+ 
+         return self.get_response(request)
+ 
+-# CHUOSMART_MONETAG_CSP_MIDDLEWARE_V1
+-class MonetagCSPMiddleware:
++# CHUOSMART_ADCASH_CSP_MIDDLEWARE_V1
++class AdcashCSPMiddleware:
+     """
+     Extend ChuoSmart's existing Content-Security-Policy with only
+-    the origins required by the configured Monetag zones.
++    the origins required by the configured Adcash zones.
+ 
+     Primary JS:
+       - nap5k.com
+diff --git a/core/test_adcash_ads.py b/core/test_adcash_ads.py
+new file mode 100644
+index 0000000..d11eb32
+--- /dev/null
++++ b/core/test_adcash_ads.py
+@@ -0,0 +1,33 @@
++from pathlib import Path
++
++from django.conf import settings
++from django.test import SimpleTestCase
++
++
++class AdcashAdsIntegrationTests(SimpleTestCase):
++    def test_base_template_loads_adcash_library(self):
++        path = Path(settings.BASE_DIR) / "templates" / "app" / "base.html"
++        content = path.read_text(encoding="utf-8")
++
++        self.assertIn("acscdn.com/script/aclib.js", content)
++        self.assertIn("aclib.runAutoTag", content)
++        self.assertIn("qlmiolfe5q", content)
++
++    def test_listing_ad_uses_adcash_banner(self):
++        path = (
++            Path(settings.BASE_DIR)
++            / "templates"
++            / "app"
++            / "partials"
++            / "list_ad_card.html"
++        )
++        content = path.read_text(encoding="utf-8")
++
++        self.assertIn("aclib.runBanner", content)
++        self.assertIn("12269306", content)
++
++    def test_old_monetag_loader_is_not_in_base_template(self):
++        path = Path(settings.BASE_DIR) / "templates" / "app" / "base.html"
++        content = path.read_text(encoding="utf-8")
++
++        self.assertNotIn("monetag-direct-links.js", content)
+diff --git a/core/test_monetag_secondary_csp.py b/core/test_adcash_secondary_csp.py
+similarity index 92%
+rename from core/test_monetag_secondary_csp.py
+rename to core/test_adcash_secondary_csp.py
+index 531ec6d..0141e1f 100644
+--- a/core/test_monetag_secondary_csp.py
++++ b/core/test_adcash_secondary_csp.py
+@@ -1,12 +1,12 @@
+ from django.http import HttpResponse
+ from django.test import RequestFactory, SimpleTestCase
+ 
+-from core.middleware import MonetagCSPMiddleware
++from core.middleware import AdcashCSPMiddleware
+ 
+ 
+-class MonetagSecondaryCSPTests(SimpleTestCase):
++class AdcashSecondaryCSPTests(SimpleTestCase):
+     def setUp(self):
+-        self.middleware = MonetagCSPMiddleware(
++        self.middleware = AdcashCSPMiddleware(
+             self._response
+         )
+ 
+@@ -44,7 +44,7 @@ class MonetagSecondaryCSPTests(SimpleTestCase):
+ 
+         return ""
+ 
+-    def test_primary_monetag_hosts_are_allowed_for_scripts(self):
++    def test_primary_adcash_hosts_are_allowed_for_scripts(self):
+         policy = self._policy()
+ 
+         script_src = self._directive(
+diff --git a/core/test_catalog_no_popups.py b/core/test_catalog_no_popups.py
+index dde77dd..5975e37 100644
+--- a/core/test_catalog_no_popups.py
++++ b/core/test_catalog_no_popups.py
+@@ -48,29 +48,30 @@ class CourseGridAndAdExperienceTests(SimpleTestCase):
+                 f"Popup/overlay provider remains active: {token}",
+             )
+ 
+-    def test_direct_link_monetization_remains_enabled(self):
+-        self.assertIn(
+-            "monetag-direct-links.js",
+-            self.base,
+-        )
++    def test_adcash_monetization_remains_enabled(self):
++        base = (
++            Path(settings.BASE_DIR)
++            / "templates"
++            / "app"
++            / "base.html"
++        ).read_text(encoding="utf-8")
+ 
+-        direct_js = (
+-            self.root
+-            / "static"
+-            / "chuosmart_v2"
+-            / "js"
+-            / "monetag-direct-links.js"
++        banner = (
++            Path(settings.BASE_DIR)
++            / "templates"
++            / "app"
++            / "partials"
++            / "list_ad_card.html"
+         ).read_text(encoding="utf-8")
+ 
+-        self.assertIn(
+-            "https://omg10.com/4/10558191",
+-            direct_js,
+-        )
++        self.assertIn("acscdn.com/script/aclib.js", base)
++        self.assertIn("aclib.runAutoTag", base)
++        self.assertIn("qlmiolfe5q", base)
+ 
+-        self.assertIn(
+-            "data-monetag-direct-link",
+-            direct_js,
+-        )
++        self.assertIn("aclib.runBanner", banner)
++        self.assertIn("12269306", banner)
++
++        self.assertNotIn("monetag-direct-links.js", base)
+ 
+     def test_catalogue_uses_dedicated_course_grid(self):
+         self.assertIn(
+diff --git a/core/test_monetag_ads.py b/core/test_monetag_ads.py
+deleted file mode 100644
+index 32cc81c..0000000
+--- a/core/test_monetag_ads.py
++++ /dev/null
+@@ -1,100 +0,0 @@
+-from pathlib import Path
+-
+-from django.conf import settings
+-from django.test import SimpleTestCase
+-
+-
+-class MonetagAdsIntegrationTests(SimpleTestCase):
+-    expected_links = (
+-        "https://omg10.com/4/10558191",
+-        "https://omg10.com/4/10558195",
+-        "https://omg10.com/4/10558194",
+-        "https://omg10.com/4/11939936",
+-        "https://omg10.com/4/10558192",
+-        "https://omg10.com/4/10558193",
+-        "https://omg10.com/4/10558189",
+-        "https://omg10.com/4/10558184",
+-        "https://omg10.com/4/10558188",
+-        "https://omg10.com/4/10558187",
+-    )
+-
+-    def test_monetag_direct_link_asset_contains_all_zones(self):
+-        path = (
+-            Path(settings.BASE_DIR)
+-            / "static"
+-            / "chuosmart_v2"
+-            / "js"
+-            / "monetag-direct-links.js"
+-        )
+-        self.assertTrue(path.exists())
+-
+-        content = path.read_text(encoding="utf-8")
+-
+-        for direct_link in self.expected_links:
+-            self.assertIn(direct_link, content)
+-
+-    def test_base_template_loads_monetag_through_ads_allowed(self):
+-        path = Path(settings.BASE_DIR) / "templates" / "app" / "base.html"
+-        content = path.read_text(encoding="utf-8")
+-
+-        self.assertIn("{% if ads_allowed %}", content)
+-        self.assertIn("chuosmart_v2/js/monetag-direct-links.js", content)
+-
+-    def test_frontend_source_has_no_legacy_network_reference(self):
+-        root = Path(settings.BASE_DIR)
+-
+-        excluded = {
+-            ".git",
+-            ".venv",
+-            "venv",
+-            "node_modules",
+-            "staticfiles",
+-            "media",
+-            "private_media",
+-            "__pycache__",
+-        }
+-
+-        bad_tokens = (
+-            "ad" + "sterra",
+-            "highperformanceformat.com",
+-            "profitabledisplaynetwork.com",
+-        )
+-
+-        leftovers = []
+-
+-        for source_root in (root / "templates", root / "static"):
+-            if not source_root.exists():
+-                continue
+-
+-            for path in source_root.rglob("*"):
+-                if not path.is_file():
+-                    continue
+-
+-                relative = path.relative_to(root)
+-
+-                if any(part in excluded for part in relative.parts):
+-                    continue
+-
+-                if path.suffix.lower() not in {
+-                    ".html", ".htm", ".js", ".jsx",
+-                    ".ts", ".tsx", ".css", ".scss"
+-                }:
+-                    continue
+-
+-                try:
+-                    content = path.read_text(
+-                        encoding="utf-8",
+-                        errors="ignore",
+-                    ).lower()
+-                except OSError:
+-                    continue
+-
+-                if any(token in content for token in bad_tokens):
+-                    leftovers.append(str(relative))
+-
+-        self.assertEqual(
+-            leftovers,
+-            [],
+-            "Old legacy ad-network references remain in: "
+-            + ", ".join(leftovers),
+-        )
+diff --git a/core/test_monetag_provider.py b/core/test_monetag_provider.py
+deleted file mode 100644
+index d73c357..0000000
+--- a/core/test_monetag_provider.py
++++ /dev/null
+@@ -1,53 +0,0 @@
+-from pathlib import Path
+-
+-from django.conf import settings
+-from django.test import SimpleTestCase
+-
+-
+-class MonetagProviderIntegrationTests(SimpleTestCase):
+-    def setUp(self):
+-        self.root = Path(settings.BASE_DIR)
+-
+-        self.base = (
+-            self.root
+-            / "templates"
+-            / "app"
+-            / "base.html"
+-        ).read_text(encoding="utf-8")
+-
+-    def test_popup_provider_formats_are_disabled(self):
+-        for token in (
+-            "nap5k.com/tag.min.js",
+-            "n6wxm.com/vignette.min.js",
+-            "11945562",
+-            "11945568",
+-            "loadMonetagZone(",
+-        ):
+-            self.assertNotIn(
+-                token,
+-                self.base,
+-            )
+-
+-    def test_direct_link_asset_remains_enabled(self):
+-        self.assertIn(
+-            "monetag-direct-links.js",
+-            self.base,
+-        )
+-
+-        javascript = (
+-            self.root
+-            / "static"
+-            / "chuosmart_v2"
+-            / "js"
+-            / "monetag-direct-links.js"
+-        ).read_text(encoding="utf-8")
+-
+-        self.assertIn(
+-            "https://omg10.com/4/10558191",
+-            javascript,
+-        )
+-
+-        self.assertIn(
+-            "data-monetag-direct-link",
+-            javascript,
+-        )
+diff --git a/core/test_production_hotfix.py b/core/test_production_hotfix.py
+index 7417c06..01e90d6 100644
+--- a/core/test_production_hotfix.py
++++ b/core/test_production_hotfix.py
+@@ -5,7 +5,7 @@ from django.conf import settings
+ from django.http import HttpResponse
+ from django.test import RequestFactory, SimpleTestCase
+ 
+-from core.middleware import MonetagCSPMiddleware
++from core.middleware import AdcashCSPMiddleware
+ from lms.course_permissions import user_owns_course
+ 
+ 
+@@ -13,7 +13,7 @@ class ProductionHotfixTests(SimpleTestCase):
+     def setUp(self):
+         self.root = Path(settings.BASE_DIR)
+ 
+-    def test_monetag_csp_extends_script_policy(self):
++    def test_adcash_csp_extends_script_policy(self):
+         def app(_request):
+             response = HttpResponse("ok")
+             response["Content-Security-Policy"] = (
+@@ -25,7 +25,7 @@ class ProductionHotfixTests(SimpleTestCase):
+             )
+             return response
+ 
+-        middleware = MonetagCSPMiddleware(app)
++        middleware = AdcashCSPMiddleware(app)
+ 
+         response = middleware(
+             RequestFactory().get("/lms/courses/")
+@@ -36,7 +36,7 @@ class ProductionHotfixTests(SimpleTestCase):
+         self.assertIn("https://nap5k.com", csp)
+         self.assertIn("https://n6wxm.com", csp)
+ 
+-    def test_monetag_middleware_precedes_security_headers(self):
++    def test_adcash_middleware_precedes_security_headers(self):
+         settings_text = (
+             self.root
+             / "Commerce"
+@@ -44,15 +44,15 @@ class ProductionHotfixTests(SimpleTestCase):
+             / "base.py"
+         ).read_text(encoding="utf-8")
+ 
+-        monetag = settings_text.index(
+-            "core.middleware.MonetagCSPMiddleware"
++        adcash = settings_text.index(
++            "core.middleware.AdcashCSPMiddleware"
+         )
+ 
+         security = settings_text.index(
+             "core.middleware.SecurityHeadersMiddleware"
+         )
+ 
+-        self.assertLess(monetag, security)
++        self.assertLess(adcash, security)
+ 
+     def test_dashboard_theme_patch_is_present(self):
+         template = (
+diff --git a/static/chuosmart_v2/css/monetag-ads.css b/static/chuosmart_v2/css/monetag-ads.css
+deleted file mode 100644
+index 6e8a7af..0000000
+--- a/static/chuosmart_v2/css/monetag-ads.css
++++ /dev/null
+@@ -1,112 +0,0 @@
+-.cs-monetag-fallback-card {
+-  width: 100%;
+-  overflow: hidden;
+-  padding: 16px;
+-  border: 1px solid
+-    color-mix(
+-      in srgb,
+-      var(--bs-body-color, #111827) 12%,
+-      transparent
+-    );
+-  border-radius: 18px;
+-  background:
+-    color-mix(
+-      in srgb,
+-      var(--bs-body-bg, #ffffff) 94%,
+-      #6c4dff 6%
+-    );
+-  color: var(--bs-body-color, #111827);
+-  box-shadow:
+-    0 8px 24px
+-    color-mix(
+-      in srgb,
+-      #000 8%,
+-      transparent
+-    );
+-}
+-
+-.cs-monetag-fallback-head {
+-  display: flex;
+-  align-items: center;
+-  justify-content: space-between;
+-  margin-bottom: 16px;
+-}
+-
+-.cs-monetag-sponsored-label {
+-  font-size: 0.68rem;
+-  font-weight: 800;
+-  letter-spacing: 0.08em;
+-  text-transform: uppercase;
+-  opacity: 0.66;
+-}
+-
+-.cs-monetag-live-dot {
+-  width: 8px;
+-  height: 8px;
+-  border-radius: 999px;
+-  background: #6c4dff;
+-  box-shadow:
+-    0 0 0 5px
+-    color-mix(
+-      in srgb,
+-      #6c4dff 14%,
+-      transparent
+-    );
+-}
+-
+-.cs-monetag-fallback-body {
+-  display: flex;
+-  align-items: flex-start;
+-  gap: 12px;
+-}
+-
+-.cs-monetag-fallback-icon {
+-  display: inline-flex;
+-  flex: 0 0 auto;
+-  align-items: center;
+-  justify-content: center;
+-  width: 42px;
+-  height: 42px;
+-  border-radius: 13px;
+-  background:
+-    color-mix(
+-      in srgb,
+-      #6c4dff 14%,
+-      transparent
+-    );
+-  color: #6c4dff;
+-}
+-
+-.cs-monetag-fallback-body strong {
+-  display: block;
+-  margin: 1px 0 5px;
+-  font-size: 0.95rem;
+-  line-height: 1.3;
+-}
+-
+-.cs-monetag-fallback-body p {
+-  margin: 0;
+-  font-size: 0.8rem;
+-  line-height: 1.5;
+-  opacity: 0.72;
+-}
+-
+-.cs-monetag-fallback-cta {
+-  display: inline-flex;
+-  align-items: center;
+-  justify-content: center;
+-  gap: 8px;
+-  width: 100%;
+-  min-height: 42px;
+-  margin-top: 16px;
+-  border-radius: 11px;
+-  background: #6c4dff;
+-  color: #fff !important;
+-  text-decoration: none !important;
+-  font-size: 0.82rem;
+-  font-weight: 750;
+-}
+-
+-.cs-monetag-fallback-cta:hover {
+-  transform: translateY(-1px);
+-}
+diff --git a/static/chuosmart_v2/css/site.css b/static/chuosmart_v2/css/site.css
+index dff3282..c3c9404 100644
+--- a/static/chuosmart_v2/css/site.css
++++ b/static/chuosmart_v2/css/site.css
+@@ -1997,42 +1997,12 @@ body.cs-v2-site
+ }
+ 
+ .cs-catalog-sponsored-strip
+-.cs-monetag-fallback-card {
+-  display: flex;
+-
+-  align-items: center;
+-  gap: 18px;
+-
+-  width: 100%;
+-
+-  min-height: 0;
+-
+-  padding: 14px 16px;
+-}
+ 
+ .cs-catalog-sponsored-strip
+-.cs-monetag-fallback-head {
+-  flex: 0 0 auto;
+-
+-  margin: 0;
+-}
+ 
+ .cs-catalog-sponsored-strip
+-.cs-monetag-fallback-body {
+-  flex: 1 1 auto;
+-}
+ 
+ .cs-catalog-sponsored-strip
+-.cs-monetag-fallback-cta {
+-  flex: 0 0 auto;
+-
+-  width: auto;
+-
+-  min-width: 140px;
+-
+-  margin-top: 0;
+-  padding: 0 18px;
+-}
+ 
+ 
+ /*
+@@ -2052,15 +2022,8 @@ body.cs-v2-site
+   }
+ 
+   .cs-catalog-sponsored-strip
+-  .cs-monetag-fallback-card {
+-    align-items: stretch;
+-    flex-direction: column;
+-  }
+ 
+   .cs-catalog-sponsored-strip
+-  .cs-monetag-fallback-cta {
+-    width: 100%;
+-  }
+ }
+ 
+ /* END CHUOSMART COURSE GRID NO-HOLES V2 */
+diff --git a/static/chuosmart_v2/js/monetag-direct-links.js b/static/chuosmart_v2/js/monetag-direct-links.js
+deleted file mode 100644
+index 2b2c208..0000000
+--- a/static/chuosmart_v2/js/monetag-direct-links.js
++++ /dev/null
+@@ -1,161 +0,0 @@
+-/*
+- * ChuoSmart Monetag Direct Link fallback.
+- *
+- * Primary provider formats are loaded in base.html.
+- */
+-(function () {
+-  'use strict';
+-
+-  var DIRECT_LINKS = [
+-    "https://omg10.com/4/10558191",
+-    "https://omg10.com/4/10558195",
+-    "https://omg10.com/4/10558194",
+-    "https://omg10.com/4/11939936",
+-    "https://omg10.com/4/10558192",
+-    "https://omg10.com/4/10558193",
+-    "https://omg10.com/4/10558189",
+-    "https://omg10.com/4/10558184",
+-    "https://omg10.com/4/10558188",
+-    "https://omg10.com/4/10558187"
+-  ];
+-
+-  var STORAGE_KEY =
+-    'chuosmart.monetag.directLinkIndex';
+-
+-  function readIndex() {
+-    try {
+-      var value = parseInt(
+-        window.sessionStorage.getItem(
+-          STORAGE_KEY
+-        ),
+-        10
+-      );
+-
+-      return (
+-        Number.isFinite(value)
+-        && value >= 0
+-      )
+-        ? value
+-        : 0;
+-    } catch (error) {
+-      return 0;
+-    }
+-  }
+-
+-  function writeIndex(value) {
+-    try {
+-      window.sessionStorage.setItem(
+-        STORAGE_KEY,
+-        String(value)
+-      );
+-    } catch (error) {
+-      /* restricted storage */
+-    }
+-  }
+-
+-  function currentUrl() {
+-    return DIRECT_LINKS[
+-      readIndex()
+-      % DIRECT_LINKS.length
+-    ];
+-  }
+-
+-  function advance() {
+-    writeIndex(
+-      (
+-        readIndex() + 1
+-      )
+-      % DIRECT_LINKS.length
+-    );
+-  }
+-
+-  function bind(root) {
+-    var scope =
+-      root || document;
+-
+-    scope
+-      .querySelectorAll(
+-        '[data-monetag-direct-link]'
+-        + ':not([data-monetag-bound])'
+-      )
+-      .forEach(
+-        function (link) {
+-          link.dataset
+-            .monetagBound =
+-              'true';
+-
+-          link.href =
+-            currentUrl();
+-
+-          link.target =
+-            '_blank';
+-
+-          link.rel =
+-            'sponsored '
+-            + 'noopener '
+-            + 'noreferrer';
+-
+-          link.addEventListener(
+-            'click',
+-            function () {
+-              advance();
+-
+-              window.setTimeout(
+-                function () {
+-                  link.href =
+-                    currentUrl();
+-                },
+-                0
+-              );
+-            }
+-          );
+-        }
+-      );
+-  }
+-
+-  function openDirectLink() {
+-    var url =
+-      currentUrl();
+-
+-    advance();
+-
+-    return Boolean(
+-      window.open(
+-        url,
+-        '_blank',
+-        'noopener,noreferrer'
+-      )
+-    );
+-  }
+-
+-  window.ChuoSmartMonetag = {
+-    links:
+-      DIRECT_LINKS.slice(),
+-
+-    getDirectLink:
+-      currentUrl,
+-
+-    next:
+-      advance,
+-
+-    bind:
+-      bind,
+-
+-    open:
+-      openDirectLink
+-  };
+-
+-  if (
+-    document.readyState
+-    === 'loading'
+-  ) {
+-    document.addEventListener(
+-      'DOMContentLoaded',
+-      function () {
+-        bind(document);
+-      }
+-    );
+-  } else {
+-    bind(document);
+-  }
+-})();
+diff --git a/templates/app/base.html b/templates/app/base.html
+index 7f79f50..ab7c281 100644
+--- a/templates/app/base.html
++++ b/templates/app/base.html
+@@ -4,6 +4,16 @@
+ {% load sanitize_tags %}
+ <html lang="en">
+ <head>
++  {% if ads_allowed %}
++  <!-- Adcash -->
++  <script id="aclib" type="text/javascript" src="//acscdn.com/script/aclib.js"></script>
++  <script type="text/javascript">
++    aclib.runAutoTag({
++      zoneId: 'qlmiolfe5q',
++    });
++  </script>
++  {% endif %}
++
+ 
+ 
+   <script>
+@@ -78,9 +88,6 @@
+   <link rel="stylesheet" href="{% static 'app/css/style.css' %}">
+   <!-- Patch 14 design layer: intentionally unique static namespace to avoid collectstatic collisions. -->
+   <link rel="stylesheet" href="{% static 'chuosmart_v2/css/site.css' %}">
+-  {% if ads_allowed %}
+-  <link rel="stylesheet" href="{% static 'chuosmart_v2/css/monetag-ads.css' %}">
+-  {% endif %}
+   {% block extra_head %}{% endblock %}
+   <!-- Patch 22: final scale/density normalization layer. -->
+   <link rel="stylesheet" href="{% static 'chuosmart_v2/css/density.css' %}">
+@@ -410,9 +417,6 @@
+   <script src="{% static 'app/js/myscript.js' %}"></script>
+   <script src="{% static 'app/js/base.js' %}"></script>
+   <script src="{% static 'chuosmart_v2/js/site.js' %}"></script>
+-  {% if ads_allowed %}
+-  <script defer src="{% static 'chuosmart_v2/js/monetag-direct-links.js' %}"></script>
+-  {% endif %}
+   {% block extra_scripts %}{% endblock extra_scripts %}
+   {% block postloadjs %}{% endblock postloadjs %}
+ 
+diff --git a/templates/app/partials/list_ad_card.html b/templates/app/partials/list_ad_card.html
+index 421de48..c3fc61f 100644
+--- a/templates/app/partials/list_ad_card.html
++++ b/templates/app/partials/list_ad_card.html
+@@ -1,45 +1,15 @@
++{% if ads_allowed %}
+ <aside
+-  class="cs-monetag-fallback-card"
+-  aria-label="Sponsored offer"
++  class="cs-adcash-banner"
++  aria-label="Advertisement"
++  style="width: 100%; overflow: hidden; margin: 16px auto;"
+ >
+-  <div class="cs-monetag-fallback-head">
+-    <span class="cs-monetag-sponsored-label">
+-      Sponsored
+-    </span>
+-    <span
+-      class="cs-monetag-live-dot"
+-      aria-hidden="true"
+-    ></span>
++  <div style="width: 100%; display: flex; justify-content: center; overflow: hidden;">
++    <script type="text/javascript">
++      aclib.runBanner({
++        zoneId: '12269306',
++      });
++    </script>
+   </div>
+-
+-  <div class="cs-monetag-fallback-body">
+-    <span
+-      class="cs-monetag-fallback-icon"
+-      aria-hidden="true"
+-    >
+-      <i class="fas fa-compass"></i>
+-    </span>
+-
+-    <div>
+-      <strong>Discover more</strong>
+-      <p>
+-        Explore a sponsored offer and
+-        support learning on ChuoSmart.
+-      </p>
+-    </div>
+-  </div>
+-
+-  <a
+-    class="cs-monetag-fallback-cta"
+-    href="https://omg10.com/4/10558191"
+-    data-monetag-direct-link
+-    target="_blank"
+-    rel="sponsored noopener noreferrer"
+-  >
+-    Explore offer
+-    <i
+-      class="fas fa-external-link-alt"
+-      aria-hidden="true"
+-    ></i>
+-  </a>
+ </aside>
++{% endif %}

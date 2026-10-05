@@ -4,6 +4,16 @@
 {% load sanitize_tags %}
 <html lang="en">
 <head>
+  {% if ads_allowed %}
+  <!-- Adcash -->
+  <script id="aclib" type="text/javascript" src="//acscdn.com/script/aclib.js"></script>
+  <script type="text/javascript">
+    aclib.runAutoTag({
+      zoneId: 'qlmiolfe5q',
+    });
+  </script>
+  {% endif %}
+
 
 
   <script>
@@ -78,9 +88,6 @@
   <link rel="stylesheet" href="{% static 'app/css/style.css' %}">
   <!-- Patch 14 design layer: intentionally unique static namespace to avoid collectstatic collisions. -->
   <link rel="stylesheet" href="{% static 'chuosmart_v2/css/site.css' %}">
-  {% if ads_allowed %}
-  <link rel="stylesheet" href="{% static 'chuosmart_v2/css/monetag-ads.css' %}">
-  {% endif %}
   {% block extra_head %}{% endblock %}
   <!-- Patch 22: final scale/density normalization layer. -->
   <link rel="stylesheet" href="{% static 'chuosmart_v2/css/density.css' %}">
@@ -410,9 +417,6 @@
   <script src="{% static 'app/js/myscript.js' %}"></script>
   <script src="{% static 'app/js/base.js' %}"></script>
   <script src="{% static 'chuosmart_v2/js/site.js' %}"></script>
-  {% if ads_allowed %}
-  <script defer src="{% static 'chuosmart_v2/js/monetag-direct-links.js' %}"></script>
-  {% endif %}
   {% block extra_scripts %}{% endblock extra_scripts %}
   {% block postloadjs %}{% endblock postloadjs %}
 

@@ -1,12 +1,12 @@
 from django.http import HttpResponse
 from django.test import RequestFactory, SimpleTestCase
 
-from core.middleware import MonetagCSPMiddleware
+from core.middleware import AdcashCSPMiddleware
 
 
-class MonetagSecondaryCSPTests(SimpleTestCase):
+class AdcashSecondaryCSPTests(SimpleTestCase):
     def setUp(self):
-        self.middleware = MonetagCSPMiddleware(
+        self.middleware = AdcashCSPMiddleware(
             self._response
         )
 
@@ -44,7 +44,7 @@ class MonetagSecondaryCSPTests(SimpleTestCase):
 
         return ""
 
-    def test_primary_monetag_hosts_are_allowed_for_scripts(self):
+    def test_primary_adcash_hosts_are_allowed_for_scripts(self):
         policy = self._policy()
 
         script_src = self._directive(
@@ -53,12 +53,12 @@ class MonetagSecondaryCSPTests(SimpleTestCase):
         )
 
         self.assertIn(
-            "https://nap5k.com",
+            "https://acscdn.com",
             script_src,
         )
 
         self.assertIn(
-            "https://n6wxm.com",
+            "https://*.acscdn.com",
             script_src,
         )
 

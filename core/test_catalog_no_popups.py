@@ -48,29 +48,30 @@ class CourseGridAndAdExperienceTests(SimpleTestCase):
                 f"Popup/overlay provider remains active: {token}",
             )
 
-    def test_direct_link_monetization_remains_enabled(self):
-        self.assertIn(
-            "monetag-direct-links.js",
-            self.base,
-        )
-
-        direct_js = (
-            self.root
-            / "static"
-            / "chuosmart_v2"
-            / "js"
-            / "monetag-direct-links.js"
+    def test_adcash_monetization_remains_enabled(self):
+        base = (
+            Path(settings.BASE_DIR)
+            / "templates"
+            / "app"
+            / "base.html"
         ).read_text(encoding="utf-8")
 
-        self.assertIn(
-            "https://omg10.com/4/10558191",
-            direct_js,
-        )
+        banner = (
+            Path(settings.BASE_DIR)
+            / "templates"
+            / "app"
+            / "partials"
+            / "list_ad_card.html"
+        ).read_text(encoding="utf-8")
 
-        self.assertIn(
-            "data-monetag-direct-link",
-            direct_js,
-        )
+        self.assertIn("acscdn.com/script/aclib.js", base)
+        self.assertIn("aclib.runAutoTag", base)
+        self.assertIn("qlmiolfe5q", base)
+
+        self.assertIn("aclib.runBanner", banner)
+        self.assertIn("12269306", banner)
+
+        self.assertNotIn("monetag-direct-links.js", base)
 
     def test_catalogue_uses_dedicated_course_grid(self):
         self.assertIn(

@@ -36,7 +36,6 @@ class SecurityHeadersMiddleware(MiddlewareMixin):
             'https://js.stripe.com',
             'https://fundingchoicesmessages.google.com',
             'https://ad.doubleclick.net',
-            'https://www.highrevenueformat.com',
         ],
         'style-src': [
             "'self'",
@@ -74,10 +73,8 @@ class SecurityHeadersMiddleware(MiddlewareMixin):
             'https://res.cloudinary.com',
             'https://ad.doubleclick.net',
             'https://fundingchoicesmessages.google.com',
-            'https://www.highrevenueformat.com',
             'wss:',
-            'https://*.highrevenueformat.com',
-            'https://*.profitableratecpmnetwork.com',
+            'https://*.acscdn.com',
         ],
         'frame-src': [
             "'self'",
@@ -89,10 +86,8 @@ class SecurityHeadersMiddleware(MiddlewareMixin):
             'https://www.googleadservices.com',
             'https://ep2.adtrafficquality.google',
             'https://www.google.com',
-            'https://www.profitableratecpmnetwork.com',
-            'https://www.highrevenueformat.com',
-            'https://*.highrevenueformat.com',
-            'https://*.profitableratecpmnetwork.com',
+            'https://acscdn.com',
+            'https://*.acscdn.com',
         ],
         'object-src': ["'none'"],
         'base-uri': ["'self'"],
@@ -173,15 +168,15 @@ class SessionIdleTimeoutMiddleware:
 
         return self.get_response(request)
 
-# CHUOSMART_MONETAG_CSP_MIDDLEWARE_V1
-class MonetagCSPMiddleware:
+# CHUOSMART_ADCASH_CSP_MIDDLEWARE_V1
+class AdcashCSPMiddleware:
     """
     Extend ChuoSmart's existing Content-Security-Policy with only
-    the origins required by the configured Monetag zones.
+    the origins required by the configured Adcash zones.
 
     Primary JS:
-      - nap5k.com
-      - n6wxm.com
+      - acscdn.com
+      - *.acscdn.com
 
     Provider network/config requests:
       - my.rtmark.net
@@ -190,21 +185,21 @@ class MonetagCSPMiddleware:
     """
 
     SCRIPT_ORIGINS = (
-        "https://nap5k.com",
-        "https://n6wxm.com",
+        "https://acscdn.com",
+        "https://*.acscdn.com",
     )
 
     CONNECT_ORIGINS = (
-        "https://nap5k.com",
-        "https://n6wxm.com",
+        "https://acscdn.com",
+        "https://*.acscdn.com",
         "https://my.rtmark.net",
         "https://jhnwr.com",
         "https://ldrws.com",
     )
 
     FRAME_ORIGINS = (
-        "https://nap5k.com",
-        "https://n6wxm.com",
+        "https://acscdn.com",
+        "https://*.acscdn.com",
     )
 
     def __init__(self, get_response):

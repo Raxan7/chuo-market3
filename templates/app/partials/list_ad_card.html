@@ -1,45 +1,15 @@
+{% if ads_allowed %}
 <aside
-  class="cs-monetag-fallback-card"
-  aria-label="Sponsored offer"
+  class="cs-adcash-banner"
+  aria-label="Advertisement"
+  style="width: 100%; overflow: hidden; margin: 16px auto;"
 >
-  <div class="cs-monetag-fallback-head">
-    <span class="cs-monetag-sponsored-label">
-      Sponsored
-    </span>
-    <span
-      class="cs-monetag-live-dot"
-      aria-hidden="true"
-    ></span>
+  <div style="width: 100%; display: flex; justify-content: center; overflow: hidden;">
+    <script type="text/javascript">
+      aclib.runBanner({
+        zoneId: '12269306',
+      });
+    </script>
   </div>
-
-  <div class="cs-monetag-fallback-body">
-    <span
-      class="cs-monetag-fallback-icon"
-      aria-hidden="true"
-    >
-      <i class="fas fa-compass"></i>
-    </span>
-
-    <div>
-      <strong>Discover more</strong>
-      <p>
-        Explore a sponsored offer and
-        support learning on ChuoSmart.
-      </p>
-    </div>
-  </div>
-
-  <a
-    class="cs-monetag-fallback-cta"
-    href="https://omg10.com/4/10558191"
-    data-monetag-direct-link
-    target="_blank"
-    rel="sponsored noopener noreferrer"
-  >
-    Explore offer
-    <i
-      class="fas fa-external-link-alt"
-      aria-hidden="true"
-    ></i>
-  </a>
 </aside>
+{% endif %}

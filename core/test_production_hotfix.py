@@ -5,7 +5,7 @@ from django.conf import settings
 from django.http import HttpResponse
 from django.test import RequestFactory, SimpleTestCase
 
-from core.middleware import MonetagCSPMiddleware
+from core.middleware import AdcashCSPMiddleware
 from lms.course_permissions import user_owns_course
 
 
@@ -13,7 +13,7 @@ class ProductionHotfixTests(SimpleTestCase):
     def setUp(self):
         self.root = Path(settings.BASE_DIR)
 
-    def test_monetag_csp_extends_script_policy(self):
+    def test_adcash_csp_extends_script_policy(self):
         def app(_request):
             response = HttpResponse("ok")
             response["Content-Security-Policy"] = (
@@ -25,7 +25,7 @@ class ProductionHotfixTests(SimpleTestCase):
             )
             return response
 
-        middleware = MonetagCSPMiddleware(app)
+        middleware = AdcashCSPMiddleware(app)
 
         response = middleware(
             RequestFactory().get("/lms/courses/")
@@ -33,10 +33,10 @@ class ProductionHotfixTests(SimpleTestCase):
 
         csp = response["Content-Security-Policy"]
 
-        self.assertIn("https://nap5k.com", csp)
-        self.assertIn("https://n6wxm.com", csp)
+        self.assertIn("https://acscdn.com", csp)
+        self.assertIn("https://*.acscdn.com", csp)
 
-    def test_monetag_middleware_precedes_security_headers(self):
+    def test_adcash_middleware_precedes_security_headers(self):
         settings_text = (
             self.root
             / "Commerce"
@@ -44,15 +44,15 @@ class ProductionHotfixTests(SimpleTestCase):
             / "base.py"
         ).read_text(encoding="utf-8")
 
-        monetag = settings_text.index(
-            "core.middleware.MonetagCSPMiddleware"
+        adcash = settings_text.index(
+            "core.middleware.AdcashCSPMiddleware"
         )
 
         security = settings_text.index(
             "core.middleware.SecurityHeadersMiddleware"
         )
 
-        self.assertLess(monetag, security)
+        self.assertLess(adcash, security)
 
     def test_dashboard_theme_patch_is_present(self):
         template = (

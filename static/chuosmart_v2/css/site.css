@@ -1997,42 +1997,12 @@ body.cs-v2-site
 }
 
 .cs-catalog-sponsored-strip
-.cs-monetag-fallback-card {
-  display: flex;
-
-  align-items: center;
-  gap: 18px;
-
-  width: 100%;
-
-  min-height: 0;
-
-  padding: 14px 16px;
-}
 
 .cs-catalog-sponsored-strip
-.cs-monetag-fallback-head {
-  flex: 0 0 auto;
-
-  margin: 0;
-}
 
 .cs-catalog-sponsored-strip
-.cs-monetag-fallback-body {
-  flex: 1 1 auto;
-}
 
 .cs-catalog-sponsored-strip
-.cs-monetag-fallback-cta {
-  flex: 0 0 auto;
-
-  width: auto;
-
-  min-width: 140px;
-
-  margin-top: 0;
-  padding: 0 18px;
-}
 
 
 /*
@@ -2052,15 +2022,8 @@ body.cs-v2-site
   }
 
   .cs-catalog-sponsored-strip
-  .cs-monetag-fallback-card {
-    align-items: stretch;
-    flex-direction: column;
-  }
 
   .cs-catalog-sponsored-strip
-  .cs-monetag-fallback-cta {
-    width: 100%;
-  }
 }
 
 /* END CHUOSMART COURSE GRID NO-HOLES V2 */
