@@ -10,8 +10,8 @@ class AdcashAdsIntegrationTests(SimpleTestCase):
         content = path.read_text(encoding="utf-8")
 
         self.assertIn("acscdn.com/script/aclib.js", content)
-        self.assertIn("aclib.runAutoTag", content)
-        self.assertIn("qlmiolfe5q", content)
+        self.assertNotIn("aclib.runAutoTag", content)
+        self.assertNotIn("qlmiolfe5q", content)
 
     def test_listing_ad_uses_adcash_banner(self):
         path = (

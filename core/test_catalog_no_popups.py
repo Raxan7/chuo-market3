@@ -65,8 +65,8 @@ class CourseGridAndAdExperienceTests(SimpleTestCase):
         ).read_text(encoding="utf-8")
 
         self.assertIn("acscdn.com/script/aclib.js", base)
-        self.assertIn("aclib.runAutoTag", base)
-        self.assertIn("qlmiolfe5q", base)
+        self.assertNotIn("aclib.runAutoTag", base)
+        self.assertNotIn("qlmiolfe5q", base)
 
         self.assertIn("aclib.runBanner", banner)
         self.assertIn("12269306", banner)
