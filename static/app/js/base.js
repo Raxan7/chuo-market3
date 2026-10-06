@@ -219,6 +219,23 @@ function whenAdElementHasWidth(element, minimumWidth, callback) {
 /* Keep the existing public initializer name because marketplace/blog
    infinite-scroll code already calls window.initializeListAds(). */
 function initAdIframes(root) {
+  var scope = root || document;
+  var scripts = scope.querySelectorAll(
+    'script[data-adcash-inline="true"]:not([data-adcash-initialized="true"])'
+  );
+
+  scripts.forEach(function(oldScript) {
+    if (!oldScript.parentNode) return;
+
+    var replacement = document.createElement('script');
+    Array.from(oldScript.attributes).forEach(function(attr) {
+      if (attr.name !== 'data-adcash-initialized') {
+        replacement.setAttribute(attr.name, attr.value);
+      }
+    });
+    replacement.text = oldScript.textContent;
+    oldScript.parentNode.replaceChild(replacement, oldScript);
+  });
 }
 
 window.initializeListAds = function(listContainer) {

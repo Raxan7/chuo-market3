@@ -55,6 +55,13 @@
         </div>
     </div>
 </div>
+{% if show_list_ads %}
+  {% if forloop.counter == 4 or forloop.counter == 9 %}
+  <div class="p-3 border-bottom">
+    {% include "app/partials/adcash_course_infeed_ad.html" %}
+  </div>
+  {% endif %}
+{% endif %}
 {% empty %}
 <div class="p-5 text-center">
     <div class="mb-4">

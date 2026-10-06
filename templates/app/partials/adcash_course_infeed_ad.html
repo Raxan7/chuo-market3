@@ -1,6 +1,6 @@
 {% if ads_allowed %}
 <aside
-  class="cs-course-grid-ad"
+  class="cs-adcash-infeed cs-course-grid-ad"
   aria-label="Advertisement"
   style="
     width:100%;
@@ -34,8 +34,11 @@
       overflow:hidden;
     "
   >
-    <script type="text/javascript">
+    <script type="text/javascript" data-adcash-inline="true">
       (function () {
+        if (document.currentScript) {
+          document.currentScript.dataset.adcashInitialized = "true";
+        }
         if (
           typeof aclib === "undefined" ||
           typeof aclib.runBanner !== "function"

@@ -327,14 +327,10 @@
           </a>
         </div>
         {% if show_list_ads %}
-          {% if forloop.counter|divisibleby:3 %}
-            {% if forloop.counter|divisibleby:6 %}
-              </div>
-            {% else %}
-              <div class="col-6 col-md-4 col-lg-3 mb-4">
-                {% include 'app/partials/list_ad_card.html' %}
-              </div>
-            {% endif %}
+          {% if forloop.counter == 4 or forloop.counter == 9 %}
+            <div class="col-12 mb-4">
+              {% include "app/partials/adcash_course_infeed_ad.html" %}
+            </div>
           {% endif %}
         {% endif %}
       {% endfor %}

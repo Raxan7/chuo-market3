@@ -147,12 +147,12 @@ def job_list(request):
             'user': request.user,
             'today': timezone.now(),
             'csrf_token': get_token(request),
-        })
+        }, request=request)
         grid_html = render_to_string('jobs/_job_grid_items.html', {
             'jobs': page_jobs,
             'user': request.user,
             'today': timezone.now(),
-        })
+        }, request=request)
         return JsonResponse({
             'list_html': list_html,
             'grid_html': grid_html,
