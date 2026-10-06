@@ -185,6 +185,7 @@ class AdcashCSPMiddleware:
         "script-src": (
             "https://acscdn.com",
             "https://*.acscdn.com",
+            "https://ad.votravis.me",
         ),
         "connect-src": (
             "https://acscdn.com",

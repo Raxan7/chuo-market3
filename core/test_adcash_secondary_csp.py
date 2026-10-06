@@ -144,3 +144,26 @@ class AdcashSecondaryCSPTests(SimpleTestCase):
         )
 
         self.assertIn("blob:", worker_src)
+
+    def test_adcash_creative_script_host_is_allowed(self):
+        from django.http import HttpResponse
+        from django.test import RequestFactory
+
+        def app(_request):
+            response = HttpResponse("ok")
+            response["Content-Security-Policy"] = (
+                "default-src 'self'; "
+                "script-src 'self';"
+            )
+            return response
+
+        response = AdcashCSPMiddleware(app)(
+            RequestFactory().get("/lms/courses/")
+        )
+
+        csp = response["Content-Security-Policy"]
+
+        self.assertIn(
+            "https://ad.votravis.me",
+            csp,
+        )
