@@ -1,0 +1,59 @@
+{% if ads_allowed %}
+<aside
+  class="cs-course-grid-ad"
+  aria-label="Advertisement"
+  style="
+    width:100%;
+    min-height:270px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    overflow:hidden;
+    padding:12px 0;
+  "
+>
+  <small
+    style="
+      display:block;
+      margin-bottom:6px;
+      font-size:11px;
+      opacity:.65;
+      text-align:center;
+    "
+  >
+    Advertisement
+  </small>
+
+  <div
+    style="
+      width:100%;
+      max-width:300px;
+      display:flex;
+      justify-content:center;
+      overflow:hidden;
+    "
+  >
+    <script type="text/javascript">
+      (function () {
+        if (
+          typeof aclib === "undefined" ||
+          typeof aclib.runBanner !== "function"
+        ) {
+          return;
+        }
+
+        var zoneId = window.matchMedia(
+          "(max-width: 767.98px)"
+        ).matches
+          ? "12270198"
+          : "12270190";
+
+        aclib.runBanner({
+          zoneId: zoneId,
+        });
+      })();
+    </script>
+  </div>
+</aside>
+{% endif %}

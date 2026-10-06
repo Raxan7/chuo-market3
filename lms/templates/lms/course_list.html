@@ -197,7 +197,11 @@ View free and paid courses for students in Tanzania. Browse programs, levels, an
                     <div class="cs-course-catalog-item">
                         {% include "lms/partials/_course_card.html" %}
                     </div>
-                    {% endfor %}
+                    
+      {% if forloop.counter == 4 or forloop.counter == 9 %}
+        {% include "app/partials/adcash_course_infeed_ad.html" %}
+      {% endif %}
+{% endfor %}
                 </div>
                 <!-- CHUOSMART CATALOG SPONSORED STRIP START -->
                 {% if show_list_ads %}
