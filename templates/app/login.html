@@ -11,8 +11,8 @@
   <form action="" method="post" novalidate class="shadow p-4 p-md-5 rounded-3 bg-white">
     {% csrf_token %}
     <div class="mb-3">
-     <label for="exampleInputUsername" class="form-label">Username</label>
-     <input type="text" class="form-control" id="exampleInputUsername" name="username" aria-describedby="usernameHelp" {% if form.username.value %}value="{{ form.username.value }}"{% endif %} required>
+     <label for="exampleInputUsername" class="form-label">Username or email</label>
+     <input type="text" class="form-control" id="exampleInputUsername" name="username" aria-describedby="usernameHelp" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="Username or email" {% if form.username.value %}value="{{ form.username.value }}"{% endif %} required>
      {% if form.username.errors %}
         <div class="text-danger small">{{ form.username.errors.0 }}</div>
      {% endif %}

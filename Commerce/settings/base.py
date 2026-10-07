@@ -235,6 +235,13 @@ CLOUDINARY_STORAGE = {
 
 LOGIN_URL = 'login'
 
+# Allow users to authenticate with either their username or the email address
+# attached to the account. The backend subclasses Django's ModelBackend, so
+# normal permission/admin behaviour is preserved.
+AUTHENTICATION_BACKENDS = [
+    'core.auth_backends.UsernameOrEmailBackend',
+]
+
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = os.getenv('EMAIL_HOST', 'server311.web-hosting.com')
 EMAIL_PORT = int(os.getenv('EMAIL_PORT', '465'))

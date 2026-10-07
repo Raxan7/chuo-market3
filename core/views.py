@@ -639,8 +639,8 @@ def user_login(request):
                 messages.success(request, 'You have successfully logged in.')
                 return redirect('home')  # Redirect to the desired page after login
             else:
-                messages.error(request, 'Invalid username or password.')
-                form.add_error(None, 'Invalid username or password.')
+                messages.error(request, 'Invalid username/email or password.')
+                form.add_error(None, 'Invalid username/email or password.')
         else:
             logger.warning("Form data is invalid: %s", form.errors)
             for field, errors in form.errors.items():

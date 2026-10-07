@@ -39,8 +39,11 @@ class RegistrationForm(UserCreationForm):
 
 
 class LoginForm(forms.Form):
-    username = forms.CharField(max_length=150, label="Username")
+    username = forms.CharField(max_length=254, label="Username or email")
     password = forms.CharField(widget=forms.PasswordInput, label="Password")
+
+    def clean_username(self):
+        return self.cleaned_data['username'].strip()
 
 
 class ProductForm(forms.ModelForm):
