@@ -342,3 +342,14 @@ PASSWORD_RESET_TIMEOUT = 86400
 JOBS_MAINTENANCE_TOKEN = os.getenv('JOBS_MAINTENANCE_TOKEN', 'default_token_for_dev')
 
 CSRF_FAILURE_VIEW = 'core.views.csrf_failure'
+
+# Instructor marketplace revenue sharing. These values affect new revenue entries only;
+# every earning snapshots its actual percentage at the time it is recognized.
+INSTRUCTOR_REVENUE_SHARE_PERCENT = os.getenv('INSTRUCTOR_REVENUE_SHARE_PERCENT', '80')
+INSTRUCTOR_PAYOUT_THRESHOLD_TZS = os.getenv('INSTRUCTOR_PAYOUT_THRESHOLD_TZS', '100000')
+INSTRUCTOR_PAYOUT_ALERT_EMAILS = [
+    email.strip() for email in os.getenv(
+        'INSTRUCTOR_PAYOUT_ALERT_EMAILS',
+        'saidi@chuosmart.com,francis@chuosmart.com,support@chuosmart.com',
+    ).split(',') if email.strip()
+]

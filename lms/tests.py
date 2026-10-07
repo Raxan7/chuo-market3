@@ -711,19 +711,22 @@ class CoursePaymentTests(TestCase):
         self.assertEqual(self.paid_course.price, Decimal('50000.00'))
 
     def test_instructor_dashboard_shows_price_badge(self):
-        """Instructor dashboard should show price/Free badge for each course"""
+        """Legacy instructor URL should land on the unified dashboard with prices."""
         self.client.login(username='instructor', password='testpassword')
-        response = self.client.get(reverse('lms:instructor_dashboard'))
+        response = self.client.get(reverse('lms:instructor_dashboard'), follow=True)
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, '25000.00')
+        self.assertContains(response, 'TSh 25,000')
         self.assertContains(response, 'Free')
 
     def test_instructor_dashboard_shows_edit_price_link(self):
-        """Instructor dashboard should have Edit Price links"""
+        """Unified instructor workspace should retain course editing access."""
         self.client.login(username='instructor', password='testpassword')
-        response = self.client.get(reverse('lms:instructor_dashboard'))
+        response = self.client.get(reverse('lms:instructor_dashboard'), follow=True)
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'Edit Price')
+        self.assertContains(
+            response,
+            reverse('lms:course_update', kwargs={'slug': self.paid_course.slug}),
+        )
 
     # ── Certificate price editing ────────────────────────────────────
 

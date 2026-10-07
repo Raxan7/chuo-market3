@@ -183,6 +183,11 @@ class Course(models.Model):
     is_pinned = models.BooleanField(default=False, help_text=_("Pin this course at the top of listings"))
     price = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, help_text=_('Price for paid course'))
     created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True, help_text=_("Date the course was created"))
+    revenue_owner = models.ForeignKey(
+        LMSProfile, on_delete=models.PROTECT, related_name='courses_revenue_owned',
+        null=True, blank=True,
+        help_text=_("Instructor who receives the instructor revenue share for this course."),
+    )
 
     def __str__(self):
         if self.course_type == 'university' and self.code:
@@ -1639,6 +1644,113 @@ class CertificatePayment(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.certificate.certificate_id} - {self.get_status_display()}"
+
+
+class PayoutProfile(models.Model):
+    METHOD_CHOICES = (
+        ('mobile_money', _('Mobile Money')),
+        ('bank', _('Bank Account')),
+    )
+    instructor = models.OneToOneField(LMSProfile, on_delete=models.CASCADE, related_name='payout_profile')
+    payout_method = models.CharField(max_length=20, choices=METHOD_CHOICES)
+    account_name = models.CharField(max_length=150)
+    phone_number = models.CharField(max_length=40, blank=True, default='')
+    mobile_network = models.CharField(max_length=80, blank=True, default='')
+    bank_name = models.CharField(max_length=120, blank=True, default='')
+    bank_account_number = models.CharField(max_length=80, blank=True, default='')
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = _('Instructor Payout Profile')
+        verbose_name_plural = _('Instructor Payout Profiles')
+
+    @property
+    def is_complete(self):
+        if not self.account_name or not self.payout_method:
+            return False
+        if self.payout_method == 'mobile_money':
+            return bool(self.phone_number and self.mobile_network)
+        if self.payout_method == 'bank':
+            return bool(self.bank_name and self.bank_account_number)
+        return False
+
+    @property
+    def snapshot(self):
+        if self.payout_method == 'mobile_money':
+            return f'Mobile Money | {self.mobile_network} | {self.account_name} | {self.phone_number}'
+        return f'Bank | {self.bank_name} | {self.account_name} | {self.bank_account_number}'
+
+    @property
+    def masked_snapshot(self):
+        def mask(value):
+            value = str(value or '')
+            if len(value) <= 4:
+                return '*' * len(value)
+            return '*' * (len(value) - 4) + value[-4:]
+        if self.payout_method == 'mobile_money':
+            return f'Mobile Money | {self.mobile_network} | {self.account_name} | {mask(self.phone_number)}'
+        return f'Bank | {self.bank_name} | {self.account_name} | {mask(self.bank_account_number)}'
+
+    def __str__(self):
+        return f'{self.instructor.user.username} - {self.get_payout_method_display()}'
+
+
+class PayoutRequest(models.Model):
+    STATUS_CHOICES = (
+        ('pending', _('Pending')),
+        ('approved', _('Approved')),
+        ('paid', _('Paid')),
+        ('rejected', _('Rejected')),
+    )
+    instructor = models.ForeignKey(LMSProfile, on_delete=models.PROTECT, related_name='payout_requests')
+    amount = models.DecimalField(max_digits=14, decimal_places=2)
+    payout_method = models.CharField(max_length=20, choices=PayoutProfile.METHOD_CHOICES)
+    payout_details_snapshot = models.TextField(help_text=_('Masked payout details for normal display.'))
+    payout_details_private = models.TextField(help_text=_('Full payout details. Restrict to authorized admins.'))
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    requested_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    paid_at = models.DateTimeField(null=True, blank=True)
+    reviewed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='reviewed_instructor_payouts')
+    admin_note = models.TextField(blank=True, default='')
+
+    class Meta:
+        ordering = ['-requested_at']
+        verbose_name = _('Instructor Payout Request')
+        verbose_name_plural = _('Instructor Payout Requests')
+
+    def __str__(self):
+        return f'#{self.pk} {self.instructor.user.username} TSh {self.amount} ({self.status})'
+
+
+class InstructorRevenue(models.Model):
+    instructor = models.ForeignKey(LMSProfile, on_delete=models.PROTECT, related_name='revenue_entries')
+    student = models.ForeignKey(User, on_delete=models.PROTECT, related_name='instructor_revenue_purchases')
+    course = models.ForeignKey(Course, on_delete=models.PROTECT, related_name='revenue_entries')
+    module = models.ForeignKey(CourseModule, on_delete=models.PROTECT, null=True, blank=True, related_name='revenue_entries')
+    course_payment = models.OneToOneField(CoursePayment, on_delete=models.PROTECT, null=True, blank=True, related_name='revenue_entry')
+    module_payment = models.OneToOneField(ModulePayment, on_delete=models.PROTECT, null=True, blank=True, related_name='revenue_entry')
+    gross_amount = models.DecimalField(max_digits=14, decimal_places=2)
+    instructor_share_percent = models.DecimalField(max_digits=5, decimal_places=2)
+    instructor_amount = models.DecimalField(max_digits=14, decimal_places=2)
+    platform_amount = models.DecimalField(max_digits=14, decimal_places=2)
+    payout_request = models.ForeignKey(PayoutRequest, on_delete=models.PROTECT, null=True, blank=True, related_name='revenue_entries')
+    earned_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-earned_at']
+        verbose_name = _('Instructor Revenue Entry')
+        verbose_name_plural = _('Instructor Revenue Entries')
+        constraints = [
+            models.CheckConstraint(
+                check=(Q(course_payment__isnull=False, module_payment__isnull=True) | Q(course_payment__isnull=True, module_payment__isnull=False)),
+                name='instructor_revenue_exactly_one_source',
+            ),
+        ]
+
+    def __str__(self):
+        return f'{self.instructor.user.username} - {self.course.title} - TSh {self.instructor_amount}'
 
 
 class SnippeWebhookEvent(models.Model):

@@ -39,14 +39,14 @@ from .models import (
     Grade, Semester, CourseEnrollment, ActivityLog, InstructorRequest, SiteSettings,
     AdExemptUser, PaymentMethod, ModuleProgress, CertificateTemplate, StudentCertificate,
     CoursePayment, CertificatePayment, ModuleAccessGrant, ModulePayment, ModuleAccessRequest,
-    SnippeWebhookEvent,
+    SnippeWebhookEvent, PayoutProfile, PayoutRequest, InstructorRevenue,
 )
 from .forms import (
     LMSProfileForm, CourseForm, CourseModuleForm, CourseContentForm,
     QuizForm, MCQuestionForm, ChoiceForm, TFQuestionForm, EssayQuestionForm,
     GradeForm, CourseEnrollForm, EssayAnswerForm, InstructorRequestForm,
     ProgramForm, CertificateTemplateForm, MCAnswerForm, TFAnswerForm,
-    LegalNameForm
+    LegalNameForm, PayoutProfileForm
 )
 
 from .forms import PaymentMethodForm
@@ -1548,6 +1548,9 @@ class CourseCreateView(InstructorRequiredMixin, CreateView):
         response = super().form_valid(form)
         course = self.object
         course.instructors.add(self.request.user.lms_profile)
+        if not course.revenue_owner_id:
+            course.revenue_owner = self.request.user.lms_profile
+            course.save(update_fields=['revenue_owner'])
 
         # Create activity log
         ActivityLog.objects.create(
@@ -2829,6 +2832,10 @@ def snippe_webhook(request):
                 'failure_reason', 'updated_at',
             ])
 
+            if new_status == 'completed' and payment_type in {'course_enrollment', 'module_access'}:
+                from .revenue import recognize_payment_revenue
+                recognize_payment_revenue(payment)
+
             if new_status == 'completed' and payment_type == 'course_enrollment':
                 user = User.objects.filter(pk=user_id).first()
                 if not user:
@@ -3010,125 +3017,49 @@ def student_dashboard(request):
 
 @login_required(login_url='login')
 def instructor_dashboard(request):
-    """Dashboard for instructors"""
-    # Check if user is an instructor
+    """Compatibility URL: instructor work now lives in the unified dashboard."""
     if not hasattr(request.user, 'lms_profile') or not is_instructor(request.user):
         messages.error(request, _("You are not registered as an instructor."))
         return redirect('lms:lms_home')
+    return redirect(f"{reverse('user_dashboard')}?tab=instructor")
 
+
+@login_required(login_url='login')
+@require_POST
+def save_payout_profile(request):
+    if not hasattr(request.user, 'lms_profile') or not is_instructor(request.user):
+        return HttpResponse(status=403)
     profile = request.user.lms_profile
+    payout_profile = PayoutProfile.objects.filter(instructor=profile).first()
+    form = PayoutProfileForm(request.POST, instance=payout_profile)
+    if form.is_valid():
+        obj = form.save(commit=False)
+        obj.instructor = profile
+        obj.save()
+        messages.success(request, _("Payout method saved."))
+    else:
+        for field_errors in form.errors.values():
+            for error in field_errors:
+                messages.error(request, error)
+    return redirect(f"{reverse('user_dashboard')}?tab=instructor")
 
-    # Get current semester
-    current_semester = Semester.objects.filter(is_current_semester=True).first()
 
-    # Get teaching courses
-    teaching_courses = Course.objects.filter(instructors=profile)
-
-    # Display queryset for the "Your Courses" panel: searchable, newest first.
-    # Kept separate from teaching_courses because the stats aggregates below
-    # must always cover every course, not just the ones matching the search.
-    course_search_q = (request.GET.get('course_q') or '').strip()
-    my_courses = teaching_courses.select_related('program')
-    if course_search_q:
-        my_courses = my_courses.filter(
-            Q(title__icontains=course_search_q) |
-            Q(code__icontains=course_search_q) |
-            Q(summary__icontains=course_search_q)
-        )
-    # Explicit ordering: the queryset was previously unordered, so a newly
-    # created course had no guaranteed position in the panel.
-    my_courses = my_courses.order_by('-created_at', '-id')
-
-    # Get student enrollments in instructor's courses
-    enrollments = CourseEnrollment.objects.filter(course__in=teaching_courses)
-
-    # Get recent quizzes
-    recent_quizzes = Quiz.objects.filter(
-        course__in=teaching_courses
-    ).order_by('-timestamp')[:10]
-
-    # Get quiz statistics
-    quiz_stats = {}
-    for course in teaching_courses:
-        course_quizzes = Quiz.objects.filter(course=course)
-        for quiz in course_quizzes:
-            attempts = QuizTaker.objects.filter(quiz=quiz, completed=True)
-            avg_score = attempts.aggregate(Avg('score'))['score__avg'] or 0
-            quiz_stats[quiz.id] = {
-                'attempts': attempts.count(),
-                'avg_score': avg_score
-            }
-
-    # Calculate student progress for each course
-    from .utils import get_all_enrolled_students_progress
-    courses_student_progress = {}
-    for course in teaching_courses:
-        courses_student_progress[course.id] = get_all_enrolled_students_progress(course)
-
-    # Calculate course completion statistics (quiz-completion based)
-    course_completion_stats = {}
-    for course in teaching_courses:
-        if course.id in courses_student_progress:
-            progress_data = courses_student_progress[course.id]
-            if progress_data:
-                completion_rates = [data['progress']['percentage'] for data in progress_data.values()]
-                if completion_rates:
-                    avg_completion = sum(completion_rates) / len(completion_rates)
-                    best_scores = [data['best_score'] for data in progress_data.values() if data.get('best_score')]
-                    avg_best_score = round(sum(best_scores) / len(best_scores), 1) if best_scores else 0
-                    course_completion_stats[course.id] = {
-                        'avg_completion': round(avg_completion, 1),
-                        'avg_best_score': avg_best_score,
-                        'student_count': len(completion_rates),
-                        'completed_25': len([r for r in completion_rates if r >= 25]),
-                        'completed_50': len([r for r in completion_rates if r >= 50]),
-                        'completed_75': len([r for r in completion_rates if r >= 75]),
-                        'completed_100': len([r for r in completion_rates if r >= 100]),
-                        'started_count': len([r for r in completion_rates if r > 0]),
-                    }
-
-    # Calculate the total number of students
-    total_students = len(set(enrollment.student.id for enrollment in enrollments))
-
-    # Count active quizzes
-    active_quizzes = Quiz.objects.filter(
-        course__in=teaching_courses,
-        draft=False,
-        due_date__gt=timezone.now()
-    ).count()
-
-    # Count incomplete courses (less than 70% of modules have content)
-    incomplete_courses = 0
-    for course in teaching_courses:
-        modules = course.modules.all()
-        if modules:
-            empty_modules = modules.annotate(content_count=Count('contents')).filter(content_count=0).count()
-            if empty_modules / modules.count() > 0.3:  # More than 30% of modules are empty
-                incomplete_courses += 1
-
-    # Get instructor's payment methods
-    payment_methods = PaymentMethod.objects.filter(instructor=profile)
-
-    context = {
-        'profile': profile,
-        'current_semester': current_semester,
-        'teaching_courses': teaching_courses,
-        'my_courses': my_courses,
-        'course_search_q': course_search_q,
-        'total_teaching_courses': teaching_courses.count(),
-        'enrollments': enrollments,
-        'recent_quizzes': recent_quizzes,
-        'quiz_stats': quiz_stats,
-        'courses_student_progress': courses_student_progress,
-        'course_completion_stats': course_completion_stats,
-        'total_students': total_students,
-        'active_quizzes': active_quizzes,
-        'incomplete_courses': incomplete_courses,
-        'payment_methods': payment_methods,
-        'needs_legal_name': not profile.has_legal_name,
-    }
-
-    return render(request, 'lms/instructor_dashboard.html', context)
+@login_required(login_url='login')
+@require_POST
+def request_instructor_payout(request):
+    if not hasattr(request.user, 'lms_profile') or not is_instructor(request.user):
+        return HttpResponse(status=403)
+    from .revenue import create_payout_request
+    try:
+        payout = create_payout_request(request.user.lms_profile)
+    except ValueError as exc:
+        messages.error(request, str(exc))
+    else:
+        messages.success(request, _("Payout request #%(id)s for TSh %(amount)s was submitted.") % {
+            'id': payout.pk,
+            'amount': f'{payout.amount:,.0f}',
+        })
+    return redirect(f"{reverse('user_dashboard')}?tab=instructor")
 
 
 class InstructorCourseListView(ListView):

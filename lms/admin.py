@@ -19,7 +19,7 @@ from .models import (
     InstructorRequest, ContentAccess, ModuleAccessGrant, SiteSettings, AdExemptUser, PaymentMethod,
     ModuleProgress, CertificateTemplate, StudentCertificate, CoursePayment, CertificatePayment,
     ModulePayment, ModuleAccessRequest,
-    SnippeWebhookEvent,
+    SnippeWebhookEvent, PayoutProfile, PayoutRequest, InstructorRevenue,
 )
 
 
@@ -83,10 +83,11 @@ class ProgramAdmin(admin.ModelAdmin):
 
 @admin.register(Course)
 class CourseAdmin(admin.ModelAdmin):
-    list_display = ('title', 'code', 'program', 'level', 'semester', 'year', 'is_free', 'is_pinned')
+    list_display = ('title', 'code', 'program', 'revenue_owner', 'level', 'semester', 'year', 'is_free', 'is_pinned')
     list_filter = ('program', 'level', 'semester', 'year', 'is_elective', 'is_free', 'is_pinned')
     list_editable = ('is_pinned',)
-    search_fields = ('title', 'code', 'summary')
+    search_fields = ('title', 'code', 'summary', 'revenue_owner__user__username', 'revenue_owner__user__email')
+    autocomplete_fields = ('revenue_owner',)
     prepopulated_fields = {'slug': ('title',)}
     inlines = [CourseModuleInline, CourseEnrollmentInline]
     filter_horizontal = ('instructors',)
@@ -634,7 +635,13 @@ class CoursePaymentAdmin(admin.ModelAdmin):
     actions = ['mark_completed']
     
     def mark_completed(self, request, queryset):
-        updated = queryset.filter(status='pending').update(status='completed')
+        from .revenue import recognize_payment_revenue
+        updated = 0
+        for payment in queryset.filter(status='pending').select_related('course'):
+            payment.status = 'completed'
+            payment.save(update_fields=['status', 'updated_at'])
+            recognize_payment_revenue(payment)
+            updated += 1
         self.message_user(request, _(f"{updated} payment(s) marked as completed."))
     mark_completed.short_description = _("Mark selected as completed")
 
@@ -652,3 +659,61 @@ class CertificatePaymentAdmin(admin.ModelAdmin):
         updated = queryset.filter(status='pending').update(status='completed')
         self.message_user(request, _(f"{updated} payment(s) marked as completed."))
     mark_completed.short_description = _("Mark selected as completed")
+
+
+@admin.register(PayoutProfile)
+class PayoutProfileAdmin(admin.ModelAdmin):
+    list_display = ('instructor', 'payout_method', 'account_name', 'updated_at')
+    list_filter = ('payout_method',)
+    search_fields = ('instructor__user__username', 'instructor__user__email', 'account_name', 'phone_number', 'bank_account_number')
+
+
+@admin.register(InstructorRevenue)
+class InstructorRevenueAdmin(admin.ModelAdmin):
+    list_display = ('earned_at', 'instructor', 'course', 'gross_amount', 'instructor_amount', 'platform_amount', 'instructor_share_percent', 'payout_request')
+    list_filter = ('earned_at', 'course', 'instructor_share_percent')
+    search_fields = ('instructor__user__username', 'instructor__user__email', 'student__username', 'student__email', 'course__title', 'course_payment__snippe_reference', 'module_payment__snippe_reference')
+    readonly_fields = ('instructor', 'student', 'course', 'module', 'course_payment', 'module_payment', 'gross_amount', 'instructor_share_percent', 'instructor_amount', 'platform_amount', 'payout_request', 'earned_at')
+    date_hierarchy = 'earned_at'
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(PayoutRequest)
+class PayoutRequestAdmin(admin.ModelAdmin):
+    list_display = ('id', 'instructor', 'amount', 'payout_method', 'status', 'requested_at', 'paid_at')
+    list_filter = ('status', 'payout_method', 'requested_at')
+    search_fields = ('instructor__user__username', 'instructor__user__email', 'payout_details_private')
+    readonly_fields = ('instructor', 'amount', 'payout_method', 'payout_details_snapshot', 'payout_details_private', 'requested_at', 'updated_at', 'reviewed_at', 'paid_at', 'reviewed_by')
+    actions = ('approve_selected', 'mark_selected_paid', 'reject_selected')
+
+    @admin.action(description='Approve selected payout requests')
+    def approve_selected(self, request, queryset):
+        from .revenue import set_payout_status
+        changed = 0
+        for payout in queryset.filter(status='pending'):
+            set_payout_status(payout, 'approved', request.user)
+            changed += 1
+        self.message_user(request, f'{changed} payout request(s) approved.')
+
+    @admin.action(description='Mark selected payout requests as paid')
+    def mark_selected_paid(self, request, queryset):
+        from .revenue import set_payout_status
+        changed = 0
+        for payout in queryset.filter(status='approved'):
+            set_payout_status(payout, 'paid', request.user)
+            changed += 1
+        self.message_user(request, f'{changed} payout request(s) marked paid.')
+
+    @admin.action(description='Reject selected payout requests and release reserved earnings')
+    def reject_selected(self, request, queryset):
+        from .revenue import set_payout_status
+        changed = 0
+        for payout in queryset.filter(status__in=['pending', 'approved']):
+            set_payout_status(payout, 'rejected', request.user)
+            changed += 1
+        self.message_user(request, f'{changed} payout request(s) rejected; reserved earnings were released.')

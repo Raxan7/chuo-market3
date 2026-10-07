@@ -1902,11 +1902,72 @@ def user_dashboard(request):
             or preference.industries.exists() or preference.skills.exists()
         )
     )
+
+    # Instructor workspace and revenue accounting live in the unified dashboard.
+    is_instructor_user = bool(lms_profile and lms_profile.role == 'instructor')
+    instructor_context = {}
+    if is_instructor_user:
+        from decimal import Decimal
+        from django.db.models import Sum, Count
+        from lms.forms import PayoutProfileForm
+        from lms.models import InstructorRevenue, PayoutProfile, PayoutRequest, Course
+        from lms.revenue import payout_threshold, instructor_share_percent
+
+        teaching_courses = (
+            Course.objects.filter(instructors=lms_profile)
+            .select_related('program', 'revenue_owner__user')
+            .prefetch_related('instructors')
+            .annotate(student_count=Count('students', distinct=True))
+            .order_by('-created_at', '-id')
+        )
+        earnings = InstructorRevenue.objects.filter(instructor=lms_profile)
+        totals = earnings.aggregate(
+            gross=Sum('gross_amount'),
+            instructor=Sum('instructor_amount'),
+            platform=Sum('platform_amount'),
+        )
+        available = earnings.filter(payout_request__isnull=True).aggregate(
+            total=Sum('instructor_amount')
+        )['total'] or Decimal('0.00')
+        pending = PayoutRequest.objects.filter(
+            instructor=lms_profile, status__in=['pending', 'approved']
+        ).aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
+        paid = PayoutRequest.objects.filter(
+            instructor=lms_profile, status='paid'
+        ).aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
+        payout_profile = PayoutProfile.objects.filter(instructor=lms_profile).first()
+        instructor_context = {
+            'is_instructor_user': True,
+            'teaching_courses': teaching_courses,
+            'teaching_course_count': teaching_courses.count(),
+            'instructor_total_students': CourseEnrollment.objects.filter(
+                course__in=teaching_courses
+            ).values('student_id').distinct().count(),
+            'instructor_gross_sales': totals['gross'] or Decimal('0.00'),
+            'instructor_total_earnings': totals['instructor'] or Decimal('0.00'),
+            'chuosmart_share_from_instructor': totals['platform'] or Decimal('0.00'),
+            'instructor_available_balance': available,
+            'instructor_pending_payout': pending,
+            'instructor_paid_out': paid,
+            'payout_threshold': payout_threshold(),
+            'current_instructor_share_percent': instructor_share_percent(),
+            'can_request_payout': available >= payout_threshold(),
+            'payout_profile': payout_profile,
+            'payout_profile_form': PayoutProfileForm(instance=payout_profile),
+            'recent_revenue_entries': earnings.select_related(
+                'student', 'course', 'module', 'payout_request'
+            )[:20],
+            'recent_payout_requests': PayoutRequest.objects.filter(
+                instructor=lms_profile
+            )[:10],
+        }
     
     # Learners should land on learning first; creators can still switch tabs.
-    default_tab = 'courses' if enrolled_courses_data else 'products'
+    default_tab = 'instructor' if is_instructor_user else ('courses' if enrolled_courses_data else 'products')
     active_tab = request.GET.get('tab', default_tab)
     allowed_tabs = {'products', 'blogs', 'materials', 'courses', 'career'}
+    if is_instructor_user:
+        allowed_tabs.add('instructor')
     if active_tab not in allowed_tabs:
         active_tab = default_tab
 
@@ -1933,6 +1994,7 @@ def user_dashboard(request):
         'job_application_count': application_count,
         'saved_jobs_count': saved_jobs_count,
         'career_profile_complete': career_profile_complete,
+        **instructor_context,
     }
     return render(request, 'app/dashboard.html', context)
 

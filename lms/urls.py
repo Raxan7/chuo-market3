@@ -19,6 +19,8 @@ urlpatterns = [
     path('', views.lms_home, name='lms_home'),
     path('student-dashboard/', views.student_dashboard, name='student_dashboard'),
     path('instructor-dashboard/', views.instructor_dashboard, name='instructor_dashboard'),
+    path('instructor/payout-profile/', views.save_payout_profile, name='save_payout_profile'),
+    path('instructor/request-payout/', views.request_instructor_payout, name='request_instructor_payout'),
     path('instructor/courses/', views.InstructorCourseListView.as_view(), name='instructor_course_list'),
     
     # Programs

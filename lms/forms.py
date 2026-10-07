@@ -11,7 +11,7 @@ import re
 from .models import (
     LMSProfile, Program, Course, CourseModule, CourseContent,
     Quiz, Question, MCQuestion, Choice, TF_Question, Essay_Question,
-    Grade, InstructorRequest, PaymentMethod, CertificateTemplate
+    Grade, InstructorRequest, PaymentMethod, CertificateTemplate, PayoutProfile
 )
 
 # Import utility function from core app
@@ -457,3 +457,35 @@ class CertificateTemplateForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         if user and hasattr(user, 'lms_profile') and user.lms_profile.role == 'instructor':
             self.fields['course'].queryset = Course.objects.filter(instructors=user.lms_profile)
+
+
+class PayoutProfileForm(forms.ModelForm):
+    class Meta:
+        model = PayoutProfile
+        fields = [
+            'payout_method', 'account_name', 'phone_number', 'mobile_network',
+            'bank_name', 'bank_account_number',
+        ]
+        widgets = {
+            'payout_method': forms.Select(attrs={'class': 'form-select'}),
+            'account_name': forms.TextInput(attrs={'class': 'form-control', 'autocomplete': 'name'}),
+            'phone_number': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '+255...'}),
+            'mobile_network': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'M-Pesa, Airtel Money, Mixx, HaloPesa'}),
+            'bank_name': forms.TextInput(attrs={'class': 'form-control'}),
+            'bank_account_number': forms.TextInput(attrs={'class': 'form-control'}),
+        }
+
+    def clean(self):
+        cleaned = super().clean()
+        method = cleaned.get('payout_method')
+        if method == 'mobile_money':
+            if not cleaned.get('phone_number'):
+                self.add_error('phone_number', _('Phone number is required for Mobile Money payouts.'))
+            if not cleaned.get('mobile_network'):
+                self.add_error('mobile_network', _('Mobile network is required for Mobile Money payouts.'))
+        elif method == 'bank':
+            if not cleaned.get('bank_name'):
+                self.add_error('bank_name', _('Bank name is required for bank payouts.'))
+            if not cleaned.get('bank_account_number'):
+                self.add_error('bank_account_number', _('Bank account number is required for bank payouts.'))
+        return cleaned

@@ -179,6 +179,19 @@
                             <span class="badge bg-secondary rounded-pill badge-count">{{ enrolled_courses_count }}</span>
                         </button>
                     </li>
+                    {% if is_instructor_user %}
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link {% if active_tab == 'instructor' %}active{% endif %}"
+                                id="instructor-tab"
+                                data-bs-toggle="pill"
+                                data-bs-target="#instructor"
+                                type="button"
+                                role="tab">
+                            <i class="fas fa-chalkboard-teacher me-2"></i> Instructor & Earnings
+                            <span class="badge bg-success rounded-pill badge-count">{{ teaching_course_count }}</span>
+                        </button>
+                    </li>
+                    {% endif %}
                     <li class="nav-item" role="presentation">
                         <button class="nav-link {% if active_tab == 'career' %}active{% endif %}"
                                 id="career-tab"
@@ -447,6 +460,95 @@
                             </div>
                         {% endif %}
                     </div>
+
+                    {% if is_instructor_user %}
+                    <div class="tab-pane fade {% if active_tab == 'instructor' %}show active{% endif %}" id="instructor" role="tabpanel">
+                        <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
+                            <div>
+                                <h4 class="mb-1">Instructor workspace</h4>
+                                <p class="text-muted mb-0">Manage your courses, track your {{ current_instructor_share_percent|floatformat:0 }}% revenue share, and request payouts.</p>
+                            </div>
+                            <a href="{% url 'lms:course_create' %}" class="btn btn-primary"><i class="fas fa-plus-circle me-2"></i>Create course</a>
+                        </div>
+
+                        <div class="row g-3 mb-4">
+                            <div class="col-6 col-xl-3"><div class="card h-100 border-0 shadow-sm"><div class="card-body"><div class="small text-muted">Gross paid sales</div><div class="h4 mb-0">TSh {{ instructor_gross_sales|floatformat:0|intcomma }}</div></div></div></div>
+                            <div class="col-6 col-xl-3"><div class="card h-100 border-0 shadow-sm"><div class="card-body"><div class="small text-muted">Your earnings</div><div class="h4 mb-0 text-success">TSh {{ instructor_total_earnings|floatformat:0|intcomma }}</div><small class="text-muted">{{ current_instructor_share_percent|floatformat:0 }}% of confirmed paid-course sales</small></div></div></div>
+                            <div class="col-6 col-xl-3"><div class="card h-100 border-0 shadow-sm"><div class="card-body"><div class="small text-muted">Available to withdraw</div><div class="h4 mb-0">TSh {{ instructor_available_balance|floatformat:0|intcomma }}</div></div></div></div>
+                            <div class="col-6 col-xl-3"><div class="card h-100 border-0 shadow-sm"><div class="card-body"><div class="small text-muted">Paid out</div><div class="h4 mb-0">TSh {{ instructor_paid_out|floatformat:0|intcomma }}</div><small class="text-muted">Pending: TSh {{ instructor_pending_payout|floatformat:0|intcomma }}</small></div></div></div>
+                        </div>
+
+                        <div class="row g-4 mb-5">
+                            <div class="col-lg-7">
+                                <div class="card h-100 border-0 shadow-sm">
+                                    <div class="card-body">
+                                        <h5 class="card-title">Payout</h5>
+                                        <p class="text-muted">Minimum available balance: <strong>TSh {{ payout_threshold|floatformat:0|intcomma }}</strong>. A request reserves the current available balance so it cannot be requested twice.</p>
+                                        {% if payout_profile and payout_profile.is_complete %}
+                                            <div class="alert alert-light border"><strong>{{ payout_profile.get_payout_method_display }}</strong><br>{{ payout_profile.masked_snapshot }}</div>
+                                            <form method="post" action="{% url 'lms:request_instructor_payout' %}">
+                                                {% csrf_token %}
+                                                <button class="btn btn-success" type="submit" {% if not can_request_payout %}disabled{% endif %}>Request payout of TSh {{ instructor_available_balance|floatformat:0|intcomma }}</button>
+                                            </form>
+                                            {% if not can_request_payout %}<small class="text-muted d-block mt-2">Keep earning until your available balance reaches TSh {{ payout_threshold|floatformat:0|intcomma }}.</small>{% endif %}
+                                        {% else %}
+                                            <div class="alert alert-info">Save a payout method before requesting your first withdrawal.</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-lg-5">
+                                <div class="card h-100 border-0 shadow-sm">
+                                    <div class="card-body">
+                                        <h5 class="card-title">Payout method</h5>
+                                        <form method="post" action="{% url 'lms:save_payout_profile' %}">
+                                            {% csrf_token %}
+                                            <div class="mb-2"><label class="form-label">Method</label>{{ payout_profile_form.payout_method }}</div>
+                                            <div class="mb-2"><label class="form-label">Account name</label>{{ payout_profile_form.account_name }}</div>
+                                            <div class="mb-2"><label class="form-label">Mobile number</label>{{ payout_profile_form.phone_number }}</div>
+                                            <div class="mb-2"><label class="form-label">Mobile network</label>{{ payout_profile_form.mobile_network }}</div>
+                                            <div class="mb-2"><label class="form-label">Bank name</label>{{ payout_profile_form.bank_name }}</div>
+                                            <div class="mb-3"><label class="form-label">Bank account number</label>{{ payout_profile_form.bank_account_number }}</div>
+                                            <button class="btn btn-outline-primary" type="submit">Save payout method</button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between align-items-center mb-3"><h5 class="mb-0">Your teaching courses</h5><span class="text-muted">{{ instructor_total_students }} unique students</span></div>
+                        <div class="table-responsive mb-5">
+                            <table class="table align-middle">
+                                <thead><tr><th>Course</th><th>Students</th><th>Revenue owner</th><th></th></tr></thead>
+                                <tbody>
+                                {% for course in teaching_courses %}
+                                    <tr><td><strong>{{ course.title }}</strong><br><small class="text-muted">{% if course.is_free %}Free{% else %}Paid · TSh {{ course.price|floatformat:0|intcomma }}{% endif %}</small></td><td>{{ course.student_count }}</td><td>{% if course.revenue_owner %}{{ course.revenue_owner.user.get_full_name|default:course.revenue_owner.user.username }}{% else %}<span class="text-danger">Not assigned</span>{% endif %}</td><td class="text-end"><a href="{% url 'lms:course_detail' course.slug %}" class="btn btn-sm btn-outline-primary">Open</a> <a href="{% url 'lms:course_update' course.slug %}" class="btn btn-sm btn-outline-secondary">Edit</a></td></tr>
+                                {% empty %}<tr><td colspan="4" class="text-muted">You have not created a course yet.</td></tr>{% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <h5 class="mb-3">Recent earnings</h5>
+                        <div class="table-responsive mb-5">
+                            <table class="table table-sm align-middle">
+                                <thead><tr><th>Date</th><th>Course / module</th><th>Student paid</th><th>Your share</th><th>Status</th></tr></thead>
+                                <tbody>
+                                {% for entry in recent_revenue_entries %}
+                                    <tr><td>{{ entry.earned_at|date:"M d, Y H:i" }}</td><td>{{ entry.course.title }}{% if entry.module %}<br><small class="text-muted">{{ entry.module.title }}</small>{% endif %}</td><td>TSh {{ entry.gross_amount|floatformat:0|intcomma }}</td><td><strong>TSh {{ entry.instructor_amount|floatformat:0|intcomma }}</strong> <small class="text-muted">({{ entry.instructor_share_percent|floatformat:0 }}%)</small></td><td>{% if entry.payout_request %}<span class="badge bg-secondary">{{ entry.payout_request.get_status_display }}</span>{% else %}<span class="badge bg-success">Available</span>{% endif %}</td></tr>
+                                {% empty %}<tr><td colspan="5" class="text-muted">No paid-course earnings recorded yet.</td></tr>{% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <h5 class="mb-3">Payout history</h5>
+                        <div class="table-responsive">
+                            <table class="table table-sm align-middle">
+                                <thead><tr><th>Request</th><th>Date</th><th>Amount</th><th>Method</th><th>Status</th></tr></thead>
+                                <tbody>{% for payout in recent_payout_requests %}<tr><td>#{{ payout.id }}</td><td>{{ payout.requested_at|date:"M d, Y H:i" }}</td><td>TSh {{ payout.amount|floatformat:0|intcomma }}</td><td>{{ payout.get_payout_method_display }}</td><td><span class="badge {% if payout.status == 'paid' %}bg-success{% elif payout.status == 'rejected' %}bg-danger{% else %}bg-warning text-dark{% endif %}">{{ payout.get_status_display }}</span></td></tr>{% empty %}<tr><td colspan="5" class="text-muted">No payout requests yet.</td></tr>{% endfor %}</tbody>
+                            </table>
+                        </div>
+                    </div>
+                    {% endif %}
 
                     <!-- Career Tab -->
                     <div class="tab-pane fade {% if active_tab == 'career' %}show active{% endif %}" id="career" role="tabpanel">
