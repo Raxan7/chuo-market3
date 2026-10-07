@@ -1,12 +1,17 @@
+import hashlib
+import hmac
+import json
+import time
 from decimal import Decimal
 
 from django.contrib.auth.models import User
 from django.core import mail
 from django.test import TestCase, override_settings
+from django.urls import reverse
 
 from .models import (
-    Course, CourseModule, CoursePayment, InstructorRevenue, LMSProfile,
-    ModulePayment, PayoutProfile, PayoutRequest,
+    CertificatePayment, Course, CourseModule, CoursePayment, InstructorRevenue, LMSProfile,
+    ModulePayment, PayoutProfile, PayoutRequest, StudentCertificate,
 )
 from .revenue import create_payout_request, recognize_payment_revenue, set_payout_status
 
@@ -63,6 +68,96 @@ class InstructorRevenueTests(TestCase):
         )
         self.assertIsNone(recognize_payment_revenue(payment))
         self.assertEqual(InstructorRevenue.objects.count(), 0)
+
+    def test_free_course_paid_certificate_splits_80_20(self):
+        free = Course.objects.create(title='Free Course With Paid Certificate', is_free=True, revenue_owner=self.instructor)
+        free.instructors.add(self.instructor)
+        certificate = StudentCertificate.objects.create(student=self.student, course=free)
+        payment = CertificatePayment.objects.create(
+            user=self.student, certificate=certificate, amount=Decimal('15000.00'), status='completed'
+        )
+
+        first = recognize_payment_revenue(payment)
+        second = recognize_payment_revenue(payment)
+
+        self.assertEqual(first.pk, second.pk)
+        self.assertEqual(first.certificate_payment, payment)
+        self.assertEqual(first.course, free)
+        self.assertEqual(first.instructor_amount, Decimal('12000.00'))
+        self.assertEqual(first.platform_amount, Decimal('3000.00'))
+
+    @override_settings(SNIPPE_WEBHOOK_SECRET='certificate-revenue-secret')
+    def test_certificate_webhook_records_revenue_for_free_course(self):
+        free = Course.objects.create(title='Webhook Free Course', is_free=True, revenue_owner=self.instructor)
+        free.instructors.add(self.instructor)
+        certificate = StudentCertificate.objects.create(student=self.student, course=free)
+        payment = CertificatePayment.objects.create(
+            user=self.student, certificate=certificate, amount=Decimal('15000.00'), status='pending'
+        )
+        payload = json.dumps({
+            'id': 'evt_certificate_revenue_001',
+            'type': 'payment.completed',
+            'data': {
+                'reference': 'cert-ref-001',
+                'amount': {'value': '15000.00', 'currency': 'TZS'},
+                'metadata': {
+                    'payment_type': 'certificate',
+                    'payment_id': payment.pk,
+                    'certificate_id': certificate.certificate_id,
+                    'user_id': self.student.pk,
+                },
+            },
+        })
+        timestamp = str(int(time.time()))
+        signature = hmac.new(
+            b'certificate-revenue-secret',
+            f'{timestamp}.{payload}'.encode('utf-8'),
+            hashlib.sha256,
+        ).hexdigest()
+
+        response = self.client.post(
+            reverse('lms:snippe_webhook'),
+            data=payload,
+            content_type='application/json',
+            HTTP_X_WEBHOOK_SIGNATURE=signature,
+            HTTP_X_WEBHOOK_TIMESTAMP=timestamp,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payment.refresh_from_db()
+        self.assertEqual(payment.status, 'completed')
+        revenue = InstructorRevenue.objects.get(certificate_payment=payment)
+        self.assertEqual(revenue.instructor_amount, Decimal('12000.00'))
+        self.assertEqual(revenue.platform_amount, Decimal('3000.00'))
+
+    def test_course_creation_ignores_submitted_instructor_and_assigns_creator(self):
+        other_user = User.objects.create_user('other-teacher', 'other-teacher@example.com', 'pass')
+        other_instructor = other_user.lms_profile
+        other_instructor.role = 'instructor'
+        other_instructor.save(update_fields=['role'])
+        self.client.force_login(self.instructor_user)
+
+        response = self.client.post(reverse('lms:course_create'), {
+            'title': 'Secure Ownership Course',
+            'course_type': 'general',
+            'code': '',
+            'credit': '3',
+            'summary': 'Ownership must be server controlled.',
+            'content': 'Course content',
+            'program': '',
+            'level': '',
+            'year': '1',
+            'semester': '',
+            'is_free': 'on',
+            'price': '0',
+            # Deliberately malicious/obsolete field: CourseForm must ignore it.
+            'instructors': [str(other_instructor.pk)],
+        })
+
+        self.assertEqual(response.status_code, 302)
+        course = Course.objects.get(title='Secure Ownership Course')
+        self.assertEqual(course.revenue_owner, self.instructor)
+        self.assertEqual(list(course.instructors.all()), [self.instructor])
 
     def test_pending_payment_does_not_generate_revenue(self):
         payment = CoursePayment.objects.create(

@@ -146,7 +146,7 @@ class CourseForm(forms.ModelForm):
     class Meta:
         model = Course
         fields = ['title', 'course_type', 'code', 'credit', 'summary', 'content', 'program', 
-                  'level', 'year', 'semester', 'is_elective', 'is_free', 'price', 'instructors', 'image']
+                  'level', 'year', 'semester', 'is_elective', 'is_free', 'price', 'image']
         widgets = {
             'title': forms.TextInput(attrs={
                 'class': 'form-control',

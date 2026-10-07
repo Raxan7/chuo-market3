@@ -28,6 +28,7 @@ class Command(BaseCommand):
             'EMAIL_HOST_USER': getattr(settings, 'EMAIL_HOST_USER', ''),
             'EMAIL_PASSWORD_CONFIGURED': bool(password),
             'DEFAULT_FROM_EMAIL': getattr(settings, 'DEFAULT_FROM_EMAIL', ''),
+            'PASSWORD_RESET_FROM_EMAIL': getattr(settings, 'PASSWORD_RESET_FROM_EMAIL', ''),
         }
         for key, value in rows.items():
             self.stdout.write(f'{key}={value}')

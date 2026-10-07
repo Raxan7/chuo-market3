@@ -1731,6 +1731,7 @@ class InstructorRevenue(models.Model):
     module = models.ForeignKey(CourseModule, on_delete=models.PROTECT, null=True, blank=True, related_name='revenue_entries')
     course_payment = models.OneToOneField(CoursePayment, on_delete=models.PROTECT, null=True, blank=True, related_name='revenue_entry')
     module_payment = models.OneToOneField(ModulePayment, on_delete=models.PROTECT, null=True, blank=True, related_name='revenue_entry')
+    certificate_payment = models.OneToOneField(CertificatePayment, on_delete=models.PROTECT, null=True, blank=True, related_name='revenue_entry')
     gross_amount = models.DecimalField(max_digits=14, decimal_places=2)
     instructor_share_percent = models.DecimalField(max_digits=5, decimal_places=2)
     instructor_amount = models.DecimalField(max_digits=14, decimal_places=2)
@@ -1744,7 +1745,11 @@ class InstructorRevenue(models.Model):
         verbose_name_plural = _('Instructor Revenue Entries')
         constraints = [
             models.CheckConstraint(
-                check=(Q(course_payment__isnull=False, module_payment__isnull=True) | Q(course_payment__isnull=True, module_payment__isnull=False)),
+                check=(
+                    Q(course_payment__isnull=False, module_payment__isnull=True, certificate_payment__isnull=True)
+                    | Q(course_payment__isnull=True, module_payment__isnull=False, certificate_payment__isnull=True)
+                    | Q(course_payment__isnull=True, module_payment__isnull=True, certificate_payment__isnull=False)
+                ),
                 name='instructor_revenue_exactly_one_source',
             ),
         ]

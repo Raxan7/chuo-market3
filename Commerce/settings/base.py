@@ -243,6 +243,9 @@ EMAIL_HOST_PASSWORD = os.getenv('SUPPORT_EMAIL_HOST_PASSWORD')
 EMAIL_USE_SSL = os.getenv('EMAIL_USE_SSL', 'true').lower() in ('1', 'true', 'yes')
 EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'false').lower() in ('1', 'true', 'yes')
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'ChuoSmart <support@chuosmart.com>')
+# Password reset intentionally uses the bare support mailbox. Some shared-hosting
+# SMTP relays are stricter about envelope senders than normal From headers.
+PASSWORD_RESET_FROM_EMAIL = os.getenv('PASSWORD_RESET_FROM_EMAIL', 'support@chuosmart.com')
 ADMIN_EMAIL = os.getenv('ADMIN_EMAIL', 'support@chuosmart.com')
 EMAIL_TIMEOUT = int(os.getenv('EMAIL_TIMEOUT', '30'))
 

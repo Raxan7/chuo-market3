@@ -44,12 +44,12 @@ def revenue_owner_for_course(course):
 
 
 def recognize_payment_revenue(payment):
-    """Create exactly one instructor earning for a completed paid-course payment.
+    """Create exactly one instructor earning for a completed course-related payment.
 
     The Snippe payment flow is not changed: this only records the accounting split.
     Replays/admin retries are idempotent because each source payment can appear once.
     """
-    from .models import CoursePayment, ModulePayment, InstructorRevenue
+    from .models import CoursePayment, ModulePayment, CertificatePayment, InstructorRevenue
 
     if payment.status != 'completed':
         return None
@@ -66,6 +66,14 @@ def recognize_payment_revenue(payment):
         if course.is_free or Decimal(str(payment.amount or 0)) <= 0:
             return None
         source_kwargs = {'module_payment': payment}
+    elif isinstance(payment, CertificatePayment):
+        module = None
+        course = payment.certificate.course
+        # Certificate sales are revenue even when the underlying course is free.
+        # Only the certificate payment itself must be a positive confirmed charge.
+        if Decimal(str(payment.amount or 0)) <= 0:
+            return None
+        source_kwargs = {'certificate_payment': payment}
     else:
         raise TypeError('Unsupported payment type')
 

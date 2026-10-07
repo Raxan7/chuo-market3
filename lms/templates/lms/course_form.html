@@ -214,23 +214,23 @@
                         </div>
                     </section>
 
-                    <section class="cs-creator-section" id="course-team" data-creator-section>
+                    <section class="cs-creator-section" id="course-identity" data-creator-section>
                         <div class="cs-creator-section-head">
                             <span class="cs-creator-section-number">05</span>
                             <div>
-                                <h2>Teaching team &amp; visual identity</h2>
-                                <p>Choose the instructors attached to the course and give the course a recognisable image.</p>
+                                <h2>Course ownership &amp; visual identity</h2>
+                                <p>You are assigned automatically as the instructor for courses you create. Add a recognisable course image below.</p>
                             </div>
                         </div>
                         <div class="cs-creator-section-body">
                             <div class="cs-creator-grid">
-                                <div class="cs-field col-6{% if form.instructors.errors %} has-error{% endif %}">
-                                    <label for="{{ form.instructors.id_for_label }}"><i class="fas fa-chalkboard-teacher" aria-hidden="true"></i> {{ form.instructors.label }}</label>
-                                    {{ form.instructors|add_class:"form-select" }}
-                                    <span class="cs-field-help">Hold Ctrl on Windows/Linux or Command on macOS to select multiple instructors.</span>
-                                    {% for error in form.instructors.errors %}<span class="cs-field-error"><i class="fas fa-exclamation-circle"></i>{{ error }}</span>{% endfor %}
+                                <div class="cs-field col-12">
+                                    <div class="alert alert-light border mb-3">
+                                        <i class="fas fa-user-shield me-2" aria-hidden="true"></i>
+                                        <strong>Instructor ownership is automatic.</strong> A course cannot be assigned to another instructor from this form.
+                                    </div>
                                 </div>
-                                <div class="cs-field col-6{% if form.image.errors %} has-error{% endif %}">
+                                <div class="cs-field col-12{% if form.image.errors %} has-error{% endif %}">
                                     <label for="{{ form.image.id_for_label }}"><i class="fas fa-image" aria-hidden="true"></i> {{ form.image.label }}</label>
                                     {{ form.image|add_class:"form-control" }}
                                     <span class="cs-field-help">Use a clean landscape image. A 1200×800 image is a good target.</span>

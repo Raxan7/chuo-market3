@@ -656,7 +656,13 @@ class CertificatePaymentAdmin(admin.ModelAdmin):
     actions = ['mark_completed']
     
     def mark_completed(self, request, queryset):
-        updated = queryset.filter(status='pending').update(status='completed')
+        from .revenue import recognize_payment_revenue
+        updated = 0
+        for payment in queryset.filter(status='pending').select_related('certificate__course'):
+            payment.status = 'completed'
+            payment.save(update_fields=['status', 'updated_at'])
+            recognize_payment_revenue(payment)
+            updated += 1
         self.message_user(request, _(f"{updated} payment(s) marked as completed."))
     mark_completed.short_description = _("Mark selected as completed")
 
@@ -672,8 +678,8 @@ class PayoutProfileAdmin(admin.ModelAdmin):
 class InstructorRevenueAdmin(admin.ModelAdmin):
     list_display = ('earned_at', 'instructor', 'course', 'gross_amount', 'instructor_amount', 'platform_amount', 'instructor_share_percent', 'payout_request')
     list_filter = ('earned_at', 'course', 'instructor_share_percent')
-    search_fields = ('instructor__user__username', 'instructor__user__email', 'student__username', 'student__email', 'course__title', 'course_payment__snippe_reference', 'module_payment__snippe_reference')
-    readonly_fields = ('instructor', 'student', 'course', 'module', 'course_payment', 'module_payment', 'gross_amount', 'instructor_share_percent', 'instructor_amount', 'platform_amount', 'payout_request', 'earned_at')
+    search_fields = ('instructor__user__username', 'instructor__user__email', 'student__username', 'student__email', 'course__title', 'course_payment__snippe_reference', 'module_payment__snippe_reference', 'certificate_payment__snippe_reference', 'certificate_payment__certificate__certificate_id')
+    readonly_fields = ('instructor', 'student', 'course', 'module', 'course_payment', 'module_payment', 'certificate_payment', 'gross_amount', 'instructor_share_percent', 'instructor_amount', 'platform_amount', 'payout_request', 'earned_at')
     date_hierarchy = 'earned_at'
 
     def has_add_permission(self, request):

@@ -1,12 +1,12 @@
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
-from lms.models import CoursePayment, ModulePayment
-from lms.revenue import recognize_payment_revenue
+from lms.models import CoursePayment, ModulePayment, CertificatePayment
+from lms.revenue import recognize_payment_revenue, revenue_owner_for_course
 
 
 class Command(BaseCommand):
-    help = 'Preview or create instructor revenue entries for historical completed Snippe course/module payments.'
+    help = 'Preview or create instructor revenue entries for historical completed Snippe course/module/certificate payments.'
 
     def add_arguments(self, parser):
         group = parser.add_mutually_exclusive_group(required=True)
@@ -17,6 +17,7 @@ class Command(BaseCommand):
         sources = [
             ('course', CoursePayment.objects.filter(status='completed').select_related('course', 'user')),
             ('module', ModulePayment.objects.filter(status='completed').select_related('module__course', 'user')),
+            ('certificate', CertificatePayment.objects.filter(status='completed').select_related('certificate__course', 'user')),
         ]
         eligible = 0
         missing_owner = 0
@@ -25,14 +26,24 @@ class Command(BaseCommand):
 
         for kind, queryset in sources:
             for payment in queryset.iterator():
-                course = payment.course if kind == 'course' else payment.module.course
-                if course.is_free or payment.amount <= 0:
-                    continue
+                if kind == 'course':
+                    course = payment.course
+                    if course.is_free or payment.amount <= 0:
+                        continue
+                elif kind == 'module':
+                    course = payment.module.course
+                    if course.is_free or payment.amount <= 0:
+                        continue
+                else:
+                    course = payment.certificate.course
+                    # A free course can still have a paid certificate.
+                    if payment.amount <= 0:
+                        continue
                 relation_exists = hasattr(payment, 'revenue_entry')
                 if relation_exists:
                     existing += 1
                     continue
-                owner = course.revenue_owner or course.instructors.order_by('id').first()
+                owner = revenue_owner_for_course(course)
                 if owner is None:
                     missing_owner += 1
                     self.stdout.write(self.style.WARNING(f'SKIP {kind} payment #{payment.pk}: course #{course.pk} has no revenue owner/instructor'))

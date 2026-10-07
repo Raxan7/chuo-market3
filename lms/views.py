@@ -1544,12 +1544,15 @@ class CourseCreateView(InstructorRequiredMixin, CreateView):
             messages.error(self.request, _("You must create a program before creating a course."))
             return self.form_invalid(form)
 
-        # Set instructor
+        # Course ownership is server-controlled. Instructors never choose another
+        # instructor from submitted form data: the authenticated creator is the
+        # teaching owner and revenue owner for the course.
         response = super().form_valid(form)
         course = self.object
-        course.instructors.add(self.request.user.lms_profile)
-        if not course.revenue_owner_id:
-            course.revenue_owner = self.request.user.lms_profile
+        creator = self.request.user.lms_profile
+        course.instructors.set([creator])
+        if course.revenue_owner_id != creator.pk:
+            course.revenue_owner = creator
             course.save(update_fields=['revenue_owner'])
 
         # Create activity log
@@ -1619,6 +1622,15 @@ class CourseUpdateView(InstructorRequiredMixin, UpdateView):
 
     def form_valid(self, form):
         response = super().form_valid(form)
+
+        # Instructor-facing edits cannot transfer a course to another instructor.
+        # Repair a missing accounting owner only when this is an unambiguous
+        # single-instructor course. Admin ownership changes belong in Django admin.
+        if not is_admin(self.request.user) and not self.object.revenue_owner_id:
+            instructor_ids = list(self.object.instructors.values_list('pk', flat=True)[:2])
+            if instructor_ids == [self.request.user.lms_profile.pk]:
+                self.object.revenue_owner = self.request.user.lms_profile
+                self.object.save(update_fields=['revenue_owner'])
 
         # Create activity log
         ActivityLog.objects.create(
@@ -2832,7 +2844,10 @@ def snippe_webhook(request):
                 'failure_reason', 'updated_at',
             ])
 
-            if new_status == 'completed' and payment_type in {'course_enrollment', 'module_access'}:
+            if new_status == 'completed':
+                # Course, module and certificate payments all contribute to the
+                # instructor/platform revenue ledger. Certificate revenue applies
+                # even when the underlying course itself is free.
                 from .revenue import recognize_payment_revenue
                 recognize_payment_revenue(payment)
 

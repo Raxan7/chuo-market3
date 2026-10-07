@@ -89,14 +89,20 @@ class PasswordResetEmailRegressionTest(TestCase):
             username='reset-user', email='reset@example.com', password='password12345'
         )
 
-    @override_settings(EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend')
-    def test_password_reset_uses_project_email_template_and_sends(self):
+    @override_settings(
+        EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend',
+        DEFAULT_FROM_EMAIL='Wrong Sender <wrong@example.com>',
+        PASSWORD_RESET_FROM_EMAIL='support@chuosmart.com',
+    )
+    def test_password_reset_uses_support_sender_and_project_template(self):
         from django.core import mail
-        response = self.client.post(reverse('password_reset'), {'email': self.user.email})
+        response = self.client.post(reverse('password_reset'), {'email': self.user.email.upper()})
         self.assertEqual(response.status_code, 302)
         self.assertEqual(len(mail.outbox), 1)
         self.assertIn('reset/', mail.outbox[0].body)
         self.assertEqual(mail.outbox[0].to, [self.user.email])
+        self.assertEqual(mail.outbox[0].from_email, 'support@chuosmart.com')
+        self.assertEqual(mail.outbox[0].subject.strip(), 'Reset your ChuoSmart password')
 
 
 @override_settings(

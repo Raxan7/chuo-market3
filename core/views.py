@@ -30,6 +30,7 @@ from core.newsletter import (
 )
 from core.marketing import suppress_email, unsuppress_email
 from core.rate_limit import rate_limit
+from core.auth_views import ChuoSmartPasswordResetView
 from core.storage import private_payment_storage
 
 
@@ -1955,7 +1956,7 @@ def user_dashboard(request):
             'payout_profile': payout_profile,
             'payout_profile_form': PayoutProfileForm(instance=payout_profile),
             'recent_revenue_entries': earnings.select_related(
-                'student', 'course', 'module', 'payout_request'
+                'student', 'course', 'module', 'certificate_payment', 'payout_request'
             )[:20],
             'recent_payout_requests': PayoutRequest.objects.filter(
                 instructor=lms_profile
