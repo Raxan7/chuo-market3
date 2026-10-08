@@ -12,6 +12,11 @@
   "
 >
   <div
+    data-adcash-banner-slot
+    data-zone-mobile="12270198"
+    data-zone-desktop="12270190"
+    data-zone-breakpoint="575.98"
+    data-adcash-state="pending"
     style="
       display: flex;
       justify-content: center;
@@ -20,30 +25,7 @@
       max-width: 100%;
       overflow: hidden;
     "
-  >
-    <script type="text/javascript">
-      (function () {
-        if (
-          typeof aclib === "undefined" ||
-          typeof aclib.runBanner !== "function"
-        ) {
-          return;
-        }
-
-        // Mobile gets 250x250.
-        // Everything larger gets 300x250.
-        var zoneId = window.matchMedia(
-          "(max-width: 575.98px)"
-        ).matches
-          ? "12270198"
-          : "12270190";
-
-        aclib.runBanner({
-          zoneId: zoneId,
-        });
-      })();
-    </script>
-  </div>
+  ></div>
 </section>
 
 <aside
@@ -60,37 +42,13 @@
     z-index: 20;
   "
 >
-  <script type="text/javascript">
-    (function () {
-      // Do not even request the 160x600 ad unless there is
-      // enough viewport space to keep it outside normal content.
-      if (
-        !window.matchMedia(
-          "(min-width: 1800px)"
-        ).matches
-      ) {
-        return;
-      }
-
-      if (
-        typeof aclib === "undefined" ||
-        typeof aclib.runBanner !== "function"
-      ) {
-        return;
-      }
-
-      var rail = document.getElementById(
-        "cs-adcash-wide-rail"
-      );
-
-      if (rail) {
-        rail.style.display = "block";
-      }
-
-      aclib.runBanner({
-        zoneId: "12270182",
-      });
-    })();
-  </script>
+  <div
+    data-adcash-banner-slot
+    data-zone="12270182"
+    data-adcash-min-width="1800"
+    data-adcash-reveal-parent="cs-adcash-wide-rail"
+    data-adcash-state="pending"
+    style="width:160px;min-height:600px;overflow:hidden;"
+  ></div>
 </aside>
 {% endif %}

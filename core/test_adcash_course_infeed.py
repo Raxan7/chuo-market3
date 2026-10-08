@@ -27,8 +27,9 @@ class AdcashCourseInfeedTests(SimpleTestCase):
         self.assertNotIn("aclib.runAutoTag", markup)
         self.assertNotIn("qlmiolfe5q", markup)
 
-    def test_infeed_uses_banner_only(self):
-        self.assertIn("aclib.runBanner", self.infeed)
+    def test_infeed_uses_banner_slot_only(self):
+        self.assertIn("data-adcash-banner-slot", self.infeed)
+        self.assertNotIn("aclib.runBanner", self.infeed)
         self.assertIn("12270190", self.infeed)
         self.assertIn("12270198", self.infeed)
 

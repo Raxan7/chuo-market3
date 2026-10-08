@@ -4,11 +4,7 @@
 {% load sanitize_tags %}
 <html lang="en">
 <head>
-  {% if ads_allowed %}
-  <!-- Adcash -->
-  <script id="aclib" type="text/javascript" src="//acscdn.com/script/aclib.js"></script>
-  {% endif %}
-
+  {# Adcash is loaded lazily by static/app/js/base.js only when a banner slot exists. #}
 
 
   <script>

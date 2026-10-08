@@ -64,11 +64,19 @@ class CourseGridAndAdExperienceTests(SimpleTestCase):
             / "list_ad_card.html"
         ).read_text(encoding="utf-8")
 
-        self.assertIn("acscdn.com/script/aclib.js", base)
-        self.assertNotIn("aclib.runAutoTag", base)
-        self.assertNotIn("qlmiolfe5q", base)
+        runtime = (
+            Path(settings.BASE_DIR)
+            / "static"
+            / "app"
+            / "js"
+            / "base.js"
+        ).read_text(encoding="utf-8")
 
-        self.assertIn("aclib.runBanner", banner)
+        self.assertIn("https://acscdn.com/script/aclib.js", runtime)
+        self.assertNotIn("aclib.runAutoTag", base + runtime)
+        self.assertNotIn("qlmiolfe5q", base + runtime)
+
+        self.assertIn("data-adcash-banner-slot", banner)
         self.assertIn("12269306", banner)
 
         self.assertNotIn("monetag-direct-links.js", base)

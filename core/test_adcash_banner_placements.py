@@ -31,6 +31,10 @@ class AdcashBannerPlacementTests(SimpleTestCase):
             / "list_ad_card.html"
         ).read_text(encoding="utf-8")
 
+        self.runtime = (
+            self.root / "static" / "app" / "js" / "base.js"
+        ).read_text(encoding="utf-8")
+
     def test_global_banner_partial_is_included(self):
         self.assertIn(
             '{% include '
@@ -39,11 +43,7 @@ class AdcashBannerPlacementTests(SimpleTestCase):
         )
 
     def test_popup_adcash_formats_remain_disabled(self):
-        markup = (
-            self.base
-            + self.global_units
-            + self.list_banner
-        )
+        markup = self.base + self.global_units + self.list_banner + self.runtime
 
         self.assertNotIn(
             "aclib.runAutoTag",
@@ -68,7 +68,7 @@ class AdcashBannerPlacementTests(SimpleTestCase):
 
     def test_new_banner_zones_are_present(self):
         self.assertIn(
-            'zoneId: "12270182"',
+            'data-zone="12270182"',
             self.global_units,
         )
         self.assertIn(
@@ -82,7 +82,7 @@ class AdcashBannerPlacementTests(SimpleTestCase):
 
     def test_existing_728_banner_is_preserved(self):
         self.assertIn(
-            "aclib.runBanner",
+            "data-adcash-banner-slot",
             self.list_banner,
         )
         self.assertIn(
@@ -92,12 +92,12 @@ class AdcashBannerPlacementTests(SimpleTestCase):
 
     def test_side_rail_requires_ultra_wide_screen(self):
         self.assertIn(
-            "(min-width: 1800px)",
+            "data-adcash-min-width=\"1800\"",
             self.global_units,
         )
 
     def test_mobile_and_desktop_square_are_exclusive(self):
         self.assertIn(
-            "(max-width: 575.98px)",
+            "data-zone-breakpoint=\"575.98\"",
             self.global_units,
         )

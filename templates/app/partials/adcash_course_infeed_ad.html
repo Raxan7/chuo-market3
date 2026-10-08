@@ -26,37 +26,19 @@
   </small>
 
   <div
+    data-adcash-banner-slot
+    data-zone-mobile="12270198"
+    data-zone-desktop="12270190"
+    data-zone-breakpoint="767.98"
+    data-adcash-state="pending"
     style="
       width:100%;
       max-width:300px;
+      min-height:250px;
       display:flex;
       justify-content:center;
       overflow:hidden;
     "
-  >
-    <script type="text/javascript" data-adcash-inline="true">
-      (function () {
-        if (document.currentScript) {
-          document.currentScript.dataset.adcashInitialized = "true";
-        }
-        if (
-          typeof aclib === "undefined" ||
-          typeof aclib.runBanner !== "function"
-        ) {
-          return;
-        }
-
-        var zoneId = window.matchMedia(
-          "(max-width: 767.98px)"
-        ).matches
-          ? "12270198"
-          : "12270190";
-
-        aclib.runBanner({
-          zoneId: zoneId,
-        });
-      })();
-    </script>
-  </div>
+  ></div>
 </aside>
 {% endif %}
