@@ -26,7 +26,7 @@ def _refresh(course):
         return
 
     try:
-        apply_course_pricing(course)
+        apply_course_pricing(course, auto_raise=True)
     except PricingError as exc:
         # Do not destroy legacy prices when the package is too small.
         # Module checkout independently refuses invalid automatic pricing.

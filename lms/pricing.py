@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+from decimal import Decimal, InvalidOperation, ROUND_CEILING, ROUND_HALF_UP
 
 from django.conf import settings
 
@@ -42,6 +42,16 @@ def _round_to_step(value):
     value = Decimal(value)
     return (
         (value / STEP).quantize(Decimal("1"), rounding=ROUND_HALF_UP)
+        * STEP
+    )
+
+
+def _ceil_to_step(value):
+    """Always round a TZS amount UP to the next valid TSh 500 step."""
+    value = _money(value)
+
+    return (
+        (value / STEP).to_integral_value(rounding=ROUND_CEILING)
         * STEP
     )
 
@@ -100,6 +110,36 @@ def minimum_valid_package_price(module_count):
             return candidate
 
         candidate += STEP
+
+
+def normalize_package_price_for_modules(package_price, module_count):
+    """
+    Return the smallest valid package price that is not below the
+    administrator/instructor's current requested price.
+
+    We NEVER decrease an existing valid package price.
+
+    Invalid prices are increased until:
+      * package price is at least TSh 1,000
+      * package price is a multiple of TSh 500
+      * the certificate remains at the 30% target
+      * every chargeable module is at least TSh 1,000
+      * all resulting component prices remain in TSh 500 increments
+    """
+    current = _money(package_price)
+
+    # Respect the provider's TSh 500 increment rule by rounding upward.
+    rounded_current = max(
+        MIN_COMPONENT,
+        _ceil_to_step(current),
+    )
+
+    minimum_for_modules = minimum_valid_package_price(module_count)
+
+    return max(
+        rounded_current,
+        minimum_for_modules,
+    )
 
 
 def calculate_pricing(package_price, module_count, is_free=False):
@@ -193,8 +233,8 @@ def preview_course_pricing(course):
     )
 
 
-def apply_course_pricing(course):
-    from .models import CertificateTemplate, CourseModule
+def apply_course_pricing(course, auto_raise=False):
+    from .models import CertificateTemplate, Course, CourseModule
 
     all_modules = CourseModule.objects.filter(course=course)
     modules = chargeable_modules(course)
@@ -212,7 +252,25 @@ def apply_course_pricing(course):
             is_free=True,
         )
 
-    plan = calculate_pricing(course.price, len(modules), is_free=False)
+    if auto_raise:
+        normalized_price = normalize_package_price_for_modules(
+            course.price,
+            len(modules),
+        )
+        current_price = _money(course.price)
+
+        if normalized_price > current_price:
+            # QuerySet.update avoids recursively triggering Course post_save.
+            Course.objects.filter(pk=course.pk).update(
+                price=normalized_price
+            )
+            course.price = normalized_price
+
+    plan = calculate_pricing(
+        course.price,
+        len(modules),
+        is_free=False,
+    )
 
     # Overview / skip-assessment modules remain free.
     CourseModule.objects.filter(

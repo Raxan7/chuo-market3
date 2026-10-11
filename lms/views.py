@@ -3356,10 +3356,13 @@ def payment_form(request, slug):
         return redirect('lms:course_detail', slug=course.slug)
 
     if getattr(settings, 'AUTO_COURSE_PRICING_ENABLED', False):
-        from .pricing import PricingError, validate_package_price
+        from .pricing import PricingError, apply_course_pricing
 
         try:
-            validate_package_price(course.price)
+            # Safety net: repair an old/invalid package before handing
+            # its amount to the payment provider.
+            apply_course_pricing(course, auto_raise=True)
+            course.refresh_from_db(fields=['price'])
         except PricingError as exc:
             messages.error(request, str(exc))
             return redirect('lms:course_detail', slug=course.slug)
@@ -3749,7 +3752,8 @@ def module_payment_init(request, course_slug, module_id):
         from .pricing import PricingError, apply_course_pricing
 
         try:
-            apply_course_pricing(course)
+            apply_course_pricing(course, auto_raise=True)
+            course.refresh_from_db(fields=['price'])
             module.refresh_from_db(fields=['price'])
         except PricingError as exc:
             messages.error(
