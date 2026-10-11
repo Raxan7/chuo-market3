@@ -1483,6 +1483,12 @@ def course_content_detail(request, course_slug, content_id):
             completed=True
         ).exists()
 
+    from .media import soundcloud_embed_url
+
+    audio_embed_url = ""
+    if content.content_type == 'link' and content.external_link:
+        audio_embed_url = soundcloud_embed_url(content.external_link)
+
     context = {
         'course': course,
         'content': content,
@@ -1491,6 +1497,7 @@ def course_content_detail(request, course_slug, content_id):
         'is_enrolled': is_enrolled,
         'is_authenticated': request.user.is_authenticated,
         'can_save_progress': bool(profile and is_enrolled and not is_instructor),
+        'audio_embed_url': audio_embed_url,
     }
 
     return render(request, 'lms/course_content_detail.html', context)
@@ -1816,6 +1823,22 @@ class CourseContentCreateView(InstructorRequiredMixin, CreateView):
 
         # Set proper fields based on content type
         content_type = form.cleaned_data.get('content_type')
+
+        from django.core.exceptions import ValidationError
+        from .media import normalize_course_content_media
+
+        try:
+            normalize_course_content_media(
+                form.instance,
+                content_type,
+                video_url=form.cleaned_data.get('video_url'),
+                external_link=form.cleaned_data.get('external_link'),
+            )
+        except ValidationError as exc:
+            field = 'video_url' if content_type == 'video' else 'external_link'
+            form.add_error(field, exc)
+            return self.form_invalid(form)
+
         if content_type == 'text':
             form.instance.document = None
             form.instance.video_url = None
@@ -1887,6 +1910,22 @@ class CourseContentUpdateView(InstructorRequiredMixin, UpdateView):
     def form_valid(self, form):
         # Set proper fields based on content type
         content_type = form.cleaned_data.get('content_type')
+
+        from django.core.exceptions import ValidationError
+        from .media import normalize_course_content_media
+
+        try:
+            normalize_course_content_media(
+                form.instance,
+                content_type,
+                video_url=form.cleaned_data.get('video_url'),
+                external_link=form.cleaned_data.get('external_link'),
+            )
+        except ValidationError as exc:
+            field = 'video_url' if content_type == 'video' else 'external_link'
+            form.add_error(field, exc)
+            return self.form_invalid(form)
+
         if content_type == 'text':
             form.instance.document = None
             form.instance.video_url = None
@@ -2238,6 +2277,14 @@ def certificate_detail(request, certificate_id):
         has_paid = CertificatePayment.objects.filter(
             certificate=certificate, user=request.user, status='completed'
         ).exists()
+
+        if not has_paid:
+            from .pricing import full_course_payment_includes_certificate
+            has_paid = full_course_payment_includes_certificate(
+                request.user,
+                certificate.course,
+            )
+
         # Check if admin granted certificate access or certificate was prepaid
         if not has_paid:
             # Also allow admin to bypass payment check
@@ -2249,12 +2296,15 @@ def certificate_detail(request, certificate_id):
                     Q(admin_granted_certificate=True) | Q(certificate_prepaid=True)
                 ).exists()
 
-    # Determine certificate price
-    template = certificate.template
-    if template and template.certificate_price:
-        cert_price = int(template.certificate_price)
-    else:
-        cert_price = getattr(settings, 'CERTIFICATE_PRICE', 15000)
+    # Certificate price is derived from the course package when the
+    # automatic pricing rollout is enabled.
+    from .pricing import effective_certificate_price
+    cert_price = int(
+        effective_certificate_price(
+            certificate.course,
+            template=certificate.template,
+        )
+    )
 
     ctx = certificate_context(certificate, request=request)
     ctx.update({
@@ -2326,14 +2376,27 @@ def download_certificate(request, certificate_id):
                     )
                     return redirect('lms:certificate_detail', certificate_id=certificate.certificate_id)
             else:
-                logger.info("payment check: no completed payment found for cert=%s user=%s", certificate_id, request.user.id)
-                # Check if admin granted certificate access or certificate was prepaid
-                has_paid = CourseEnrollment.objects.filter(
-                    student__user=request.user,
-                    course=certificate.course,
-                ).filter(
-                    Q(admin_granted_certificate=True) | Q(certificate_prepaid=True)
-                ).exists()
+                from .pricing import full_course_payment_includes_certificate
+                has_paid = full_course_payment_includes_certificate(
+                    request.user,
+                    certificate.course,
+                )
+
+                if not has_paid:
+                    logger.info(
+                        "payment check: no completed certificate/full-course payment "
+                        "found for cert=%s user=%s",
+                        certificate_id,
+                        request.user.id,
+                    )
+
+                    # Check if admin granted certificate access or certificate was prepaid.
+                    has_paid = CourseEnrollment.objects.filter(
+                        student__user=request.user,
+                        course=certificate.course,
+                    ).filter(
+                        Q(admin_granted_certificate=True) | Q(certificate_prepaid=True)
+                    ).exists()
         except Exception as exc:
             logger.error("payment check failed for cert=%s user=%s: %s", certificate_id, request.user.id, exc)
             has_paid = False
@@ -2392,9 +2455,26 @@ def certificate_payment_init(request, certificate_id):
     has_paid = CertificatePayment.objects.filter(
         certificate=certificate, user=request.user, status='completed'
     ).exists()
-    if has_paid:
-        messages.info(request, _("You have already paid for this certificate."))
-        return redirect('lms:certificate_download', certificate_id=certificate.certificate_id)
+
+    from .pricing import full_course_payment_includes_certificate
+    package_includes_certificate = full_course_payment_includes_certificate(
+        request.user,
+        certificate.course,
+    )
+
+    if has_paid or package_includes_certificate:
+        if package_includes_certificate and not has_paid:
+            messages.info(
+                request,
+                _("Your full-course package already includes this certificate."),
+            )
+        else:
+            messages.info(request, _("You have already paid for this certificate."))
+
+        return redirect(
+            'lms:certificate_download',
+            certificate_id=certificate.certificate_id,
+        )
 
     force_new_checkout = request.POST.get('force_new_checkout') == '1'
 
@@ -2421,12 +2501,14 @@ def certificate_payment_init(request, certificate_id):
         messages.error(request, _("Payment system is not configured. Please try again later."))
         return redirect('lms:certificate_detail', certificate_id=certificate.certificate_id)
 
-    # Determine price: template-specific or default
-    template = certificate.template
-    if template and template.certificate_price:
-        amount = int(template.certificate_price)
-    else:
-        amount = getattr(settings, 'CERTIFICATE_PRICE', 15000)
+    # Use the same authoritative package-pricing rule shown to the user.
+    from .pricing import effective_certificate_price
+    amount = int(
+        effective_certificate_price(
+            certificate.course,
+            template=certificate.template,
+        )
+    )
 
     redirect_url = request.build_absolute_uri(
         reverse('lms:certificate_payment_success', kwargs={'certificate_id': certificate.certificate_id})
@@ -3273,6 +3355,15 @@ def payment_form(request, slug):
         messages.warning(request, _("This is a free course and does not require payment."))
         return redirect('lms:course_detail', slug=course.slug)
 
+    if getattr(settings, 'AUTO_COURSE_PRICING_ENABLED', False):
+        from .pricing import PricingError, validate_package_price
+
+        try:
+            validate_package_price(course.price)
+        except PricingError as exc:
+            messages.error(request, str(exc))
+            return redirect('lms:course_detail', slug=course.slug)
+
     # Get user's profile
     if not hasattr(request.user, 'lms_profile'):
         profile = LMSProfile.objects.create(user=request.user, role='student')
@@ -3653,6 +3744,19 @@ def module_payment_init(request, course_slug, module_id):
     """Initiate a Snippe session for single-module access."""
     course = get_object_or_404(Course, slug=course_slug)
     module = get_object_or_404(CourseModule, id=module_id, course=course)
+
+    if getattr(settings, 'AUTO_COURSE_PRICING_ENABLED', False):
+        from .pricing import PricingError, apply_course_pricing
+
+        try:
+            apply_course_pricing(course)
+            module.refresh_from_db(fields=['price'])
+        except PricingError as exc:
+            messages.error(
+                request,
+                _("Module-wise purchase is unavailable for this course: ") + str(exc),
+            )
+            return redirect('lms:course_detail', slug=course.slug)
 
     if not module.price:
         messages.error(request, _("This module is not available for individual purchase."))

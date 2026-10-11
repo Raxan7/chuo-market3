@@ -363,3 +363,7 @@ INSTRUCTOR_PAYOUT_ALERT_EMAILS = [
         'saidi@chuosmart.com,francis@chuosmart.com,support@chuosmart.com',
     ).split(',') if email.strip()
 ]
+
+
+# ChuoSmart package pricing rollout.
+AUTO_COURSE_PRICING_ENABLED = os.getenv('AUTO_COURSE_PRICING_ENABLED', 'false').strip().lower() in {'1', 'true', 'yes', 'on'}

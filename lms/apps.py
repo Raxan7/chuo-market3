@@ -6,4 +6,6 @@ class LmsConfig(AppConfig):
     name = 'lms'
 
     def ready(self):
+
+        from . import pricing_signals  # noqa: F401
         import lms.signals

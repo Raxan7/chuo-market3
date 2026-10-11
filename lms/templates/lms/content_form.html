@@ -54,6 +54,15 @@
                 </div>
                 <div class="card-body p-4">
                     <form method="post" enctype="multipart/form-data">
+<!-- CHUOSMART_EXTERNAL_MEDIA_HELP -->
+<div class="alert alert-info border-0 mb-3">
+    <strong>Video &amp; audio:</strong>
+    For video, choose <strong>Video</strong>, upload it to YouTube as
+    <strong>Unlisted</strong>, then paste the YouTube link.
+    For audio, choose <strong>External Link</strong> and paste a SoundCloud
+    track/private-share link. ChuoSmart stores the link, not the media file.
+</div>
+
                         {% csrf_token %}
                         
                         {% if form.non_field_errors %}
