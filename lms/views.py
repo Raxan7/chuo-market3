@@ -4102,7 +4102,7 @@ def pay_as_you_learn_start(request, slug):
             slug=course.slug,
         )
 
-    profile, _ = LMSProfile.objects.get_or_create(
+    profile, _created = LMSProfile.objects.get_or_create(
         user=request.user,
         defaults={'role': 'student'},
     )
