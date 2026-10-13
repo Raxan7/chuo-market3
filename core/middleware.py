@@ -86,6 +86,8 @@ class SecurityHeadersMiddleware(MiddlewareMixin):
             "'self'",
             'https://www.youtube.com',
             'https://www.youtube-nocookie.com',
+            'https://w.soundcloud.com',
+            'https://soundcloud.com',
             'https://js.stripe.com',
             'https://hooks.stripe.com',
             'https://googleads.g.doubleclick.net',
@@ -247,10 +249,16 @@ class AdcashCSPMiddleware:
     def __call__(self, request):
         response = self.get_response(request)
 
-        policy = response.get(
-            "Content-Security-Policy",
-            "default-src 'self';",
-        )
+        # Only extend an existing site CSP.
+        #
+        # SecurityHeadersMiddleware intentionally does not emit CSP while
+        # DEBUG=True. In that case Adcash must not create a tiny ad-only CSP,
+        # otherwise normal ChuoSmart scripts/styles such as Bootstrap,
+        # Font Awesome and inline development scripts are blocked.
+        policy = response.get("Content-Security-Policy")
+
+        if not policy:
+            return response
 
         response["Content-Security-Policy"] = self._extend_policy(
             policy,
