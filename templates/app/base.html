@@ -4,7 +4,12 @@
 {% load sanitize_tags %}
 <html lang="en">
 <head>
-  {# Adcash is loaded lazily by static/app/js/base.js only when a banner slot exists. #}
+  {% if ads_allowed %}
+  <!-- Google AdSense -->
+  <script async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1815335112679958"
+          crossorigin="anonymous"></script>
+  {% endif %}
 
 
   <script>
@@ -36,11 +41,6 @@
     gtag('config', 'G-T4BGRN2N9W');
   </script>
 
-  {% if ads_allowed %}
-
-
-
-  {% endif %}
 
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -297,7 +297,7 @@
     {% block main-content %}{% endblock main-content %}
   </main>
 
-  {% include "app/partials/adcash_global_units.html" %}
+  {% include "app/partials/adsense_global_units.html" %}
 
   <footer class="cs-v2-footer mt-auto">
     <div class="container">

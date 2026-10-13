@@ -25,6 +25,9 @@ class SecurityHeadersMiddleware(MiddlewareMixin):
             'https://www.google-analytics.com',
             'https://www.google.com',
             'https://pagead2.googlesyndication.com',
+            'https://tpc.googlesyndication.com',
+            'https://*.googlesyndication.com',
+            'https://*.doubleclick.net',
             'https://googleads.g.doubleclick.net',
             'https://www.googleadservices.com',
             'https://ep1.adtrafficquality.google',
@@ -67,6 +70,9 @@ class SecurityHeadersMiddleware(MiddlewareMixin):
             'https://www.google-analytics.com',
             'https://www.google.com',
             'https://pagead2.googlesyndication.com',
+            'https://tpc.googlesyndication.com',
+            'https://*.googlesyndication.com',
+            'https://*.doubleclick.net',
             'https://googleads.g.doubleclick.net',
             'https://www.googleadservices.com',
             'https://ep1.adtrafficquality.google',
@@ -78,9 +84,6 @@ class SecurityHeadersMiddleware(MiddlewareMixin):
             'https://ad.doubleclick.net',
             'https://fundingchoicesmessages.google.com',
             'wss:',
-            'https://*.acscdn.com',
-            'https://adexchangerapid.com',
-            'https://usrpubtrk.com',
         ],
         'frame-src': [
             "'self'",
@@ -91,11 +94,12 @@ class SecurityHeadersMiddleware(MiddlewareMixin):
             'https://js.stripe.com',
             'https://hooks.stripe.com',
             'https://googleads.g.doubleclick.net',
+            'https://tpc.googlesyndication.com',
+            'https://*.googlesyndication.com',
+            'https://*.doubleclick.net',
             'https://www.googleadservices.com',
             'https://ep2.adtrafficquality.google',
             'https://www.google.com',
-            'https://acscdn.com',
-            'https://*.acscdn.com',
         ],
         'object-src': ["'none'"],
         'base-uri': ["'self'"],
@@ -175,94 +179,3 @@ class SessionIdleTimeoutMiddleware:
                 request.session.set_expiry(settings.SESSION_COOKIE_AGE)
 
         return self.get_response(request)
-
-# CHUOSMART_ADCASH_CSP_MIDDLEWARE_V1
-class AdcashCSPMiddleware:
-    """
-    Extend the site's Content-Security-Policy with the sources required
-    by the configured Adcash AutoTag and banner zones.
-    """
-
-    DIRECTIVE_SOURCES = {
-        "script-src": (
-            "https://acscdn.com",
-            "https://*.acscdn.com",
-            "https://ad.votravis.me",
-        ),
-        "connect-src": (
-            "https://acscdn.com",
-            "https://*.acscdn.com",
-            "https://adexchangerapid.com",
-            "https://usrpubtrk.com",
-            "https://my.rtmark.net",
-            "https://jhnwr.com",
-            "https://ldrws.com",
-        ),
-        "worker-src": (
-            "'self'",
-            "blob:",
-        ),
-        "frame-src": (
-            "https://acscdn.com",
-            "https://*.acscdn.com",
-        ),
-    }
-
-    def __init__(self, get_response):
-        self.get_response = get_response
-
-    @staticmethod
-    def _extend_policy(policy, additions):
-        directives = []
-        indexes = {}
-
-        for raw_directive in policy.split(";"):
-            raw_directive = raw_directive.strip()
-
-            if not raw_directive:
-                continue
-
-            parts = raw_directive.split()
-            name = parts[0]
-            sources = parts[1:]
-
-            indexes[name] = len(directives)
-            directives.append([name, sources])
-
-        for name, required_sources in additions.items():
-            if name in indexes:
-                sources = directives[indexes[name]][1]
-            else:
-                indexes[name] = len(directives)
-                sources = []
-                directives.append([name, sources])
-
-            for source in required_sources:
-                if source not in sources:
-                    sources.append(source)
-
-        return "; ".join(
-            " ".join([name] + sources)
-            for name, sources in directives
-        ) + ";"
-
-    def __call__(self, request):
-        response = self.get_response(request)
-
-        # Only extend an existing site CSP.
-        #
-        # SecurityHeadersMiddleware intentionally does not emit CSP while
-        # DEBUG=True. In that case Adcash must not create a tiny ad-only CSP,
-        # otherwise normal ChuoSmart scripts/styles such as Bootstrap,
-        # Font Awesome and inline development scripts are blocked.
-        policy = response.get("Content-Security-Policy")
-
-        if not policy:
-            return response
-
-        response["Content-Security-Policy"] = self._extend_policy(
-            policy,
-            self.DIRECTIVE_SOURCES,
-        )
-
-        return response

@@ -216,167 +216,146 @@ function whenAdElementHasWidth(element, minimumWidth, callback) {
 
 
 
-/* Adcash banner runtime.
-   Keep the provider library untouched: aclib.js performs its own anti-fraud /
-   browser automation checks. ChuoSmart owns only loading, slot targeting and
-   graceful failure handling. */
-var ADCASH_LIBRARY_URL = "https://acscdn.com/script/aclib.js";
-var adcashLibraryPromise = null;
-var adcashSlotSequence = 0;
+/* CHUOSMART_ADSENSE_RUNTIME_V1
+   Preserves the existing ChuoSmart ad-card placements and
+   the public initializeListAds() hook used by infinite scroll. */
 
-function adcashRuntimeWarning(message, error) {
-  if (window.console && typeof window.console.warn === "function") {
-    window.console.warn("[ChuoSmart ads] " + message, error || "");
+function adsenseRuntimeWarning(message, error) {
+  if (
+    window.console &&
+    typeof window.console.warn === "function"
+  ) {
+    window.console.warn(
+      "[ChuoSmart AdSense] " + message,
+      error || ""
+    );
   }
 }
 
-function ensureAdcashLibrary() {
-  if (window.aclib && typeof window.aclib.runBanner === "function") {
-    return Promise.resolve(window.aclib);
-  }
+function adsenseSlotEligible(slot) {
+  var minimumWidth = parseInt(
+    slot.getAttribute(
+      "data-adsense-min-width"
+    ) || "0",
+    10
+  );
 
-  if (adcashLibraryPromise) {
-    return adcashLibraryPromise;
-  }
-
-  adcashLibraryPromise = new Promise(function(resolve, reject) {
-    var script = document.getElementById("aclib") ||
-      document.querySelector('script[data-chuosmart-adcash-library="true"]');
-    var timeoutId = null;
-
-    function cleanup() {
-      if (timeoutId !== null) {
-        window.clearTimeout(timeoutId);
-        timeoutId = null;
-      }
-    }
-
-    function finish() {
-      cleanup();
-      if (window.aclib && typeof window.aclib.runBanner === "function") {
-        resolve(window.aclib);
-      } else {
-        reject(new Error("Adcash library loaded without runBanner"));
-      }
-    }
-
-    function fail() {
-      cleanup();
-      reject(new Error("Adcash library failed to load"));
-    }
-
-    if (!script) {
-      script = document.createElement("script");
-      script.id = "aclib";
-      script.type = "text/javascript";
-      script.async = true;
-      script.src = ADCASH_LIBRARY_URL;
-      script.setAttribute("data-chuosmart-adcash-library", "true");
-      script.addEventListener("load", finish, { once: true });
-      script.addEventListener("error", fail, { once: true });
-      document.head.appendChild(script);
-    } else {
-      if (window.aclib && typeof window.aclib.runBanner === "function") {
-        finish();
-        return;
-      }
-      script.addEventListener("load", finish, { once: true });
-      script.addEventListener("error", fail, { once: true });
-    }
-
-    timeoutId = window.setTimeout(function() {
-      reject(new Error("Timed out waiting for Adcash library"));
-    }, 12000);
-  });
-
-  adcashLibraryPromise.catch(function(error) {
-    adcashRuntimeWarning("library unavailable; page continues without ads", error);
-    adcashLibraryPromise = null;
-  });
-
-  return adcashLibraryPromise;
+  return (
+    !minimumWidth ||
+    window.innerWidth >= minimumWidth
+  );
 }
 
-function adcashZoneForSlot(slot) {
-  var fixedZone = slot.getAttribute("data-zone");
-  if (fixedZone) return String(fixedZone);
+function revealAdsenseParent(slot) {
+  var parentId = slot.getAttribute(
+    "data-adsense-reveal-parent"
+  );
 
-  var mobileZone = slot.getAttribute("data-zone-mobile");
-  var desktopZone = slot.getAttribute("data-zone-desktop");
-  var breakpoint = parseFloat(slot.getAttribute("data-zone-breakpoint") || "767.98");
-
-  if (!mobileZone || !desktopZone || !Number.isFinite(breakpoint)) {
-    return null;
-  }
-
-  return window.matchMedia("(max-width: " + breakpoint + "px)").matches
-    ? String(mobileZone)
-    : String(desktopZone);
-}
-
-function adcashSlotIsEligible(slot) {
-  var minimumWidth = parseInt(slot.getAttribute("data-adcash-min-width") || "0", 10);
-  return !minimumWidth || window.innerWidth >= minimumWidth;
-}
-
-function revealAdcashSlotParent(slot) {
-  var parentId = slot.getAttribute("data-adcash-reveal-parent");
   if (!parentId) return;
-  var parent = document.getElementById(parentId);
-  if (parent) parent.style.display = "block";
+
+  var parent = document.getElementById(
+    parentId
+  );
+
+  if (parent) {
+    parent.style.display = "block";
+  }
 }
 
-function renderAdcashSlot(slot) {
-  if (!slot || !slot.isConnected) return;
-
-  var state = slot.getAttribute("data-adcash-state");
-  if (state === "loading" || state === "requested" || state === "failed") return;
-
-  if (!adcashSlotIsEligible(slot)) {
-    slot.setAttribute("data-adcash-state", "waiting-for-width");
+function renderAdsenseSlot(slot) {
+  if (
+    !slot ||
+    !slot.isConnected
+  ) {
     return;
   }
 
-  var zoneId = adcashZoneForSlot(slot);
-  if (!zoneId) {
-    slot.setAttribute("data-adcash-state", "failed");
-    adcashRuntimeWarning("banner slot has no valid zone id");
+  var state = slot.getAttribute(
+    "data-adsense-state"
+  );
+
+  if (
+    state === "requested" ||
+    state === "failed"
+  ) {
     return;
   }
 
-  if (!slot.id) {
-    adcashSlotSequence += 1;
-    slot.id = "cs-adcash-slot-" + adcashSlotSequence;
+  if (!adsenseSlotEligible(slot)) {
+    slot.setAttribute(
+      "data-adsense-state",
+      "waiting-for-width"
+    );
+    return;
   }
 
-  slot.setAttribute("data-adcash-state", "loading");
+  var ad = slot.querySelector(
+    "ins.adsbygoogle"
+  );
 
-  ensureAdcashLibrary().then(function(library) {
-    if (!slot.isConnected) return;
+  if (!ad) {
+    slot.setAttribute(
+      "data-adsense-state",
+      "failed"
+    );
 
-    try {
-      revealAdcashSlotParent(slot);
-      library.runBanner({
-        zoneId: String(zoneId),
-        renderIn: "#" + slot.id
-      });
-      slot.setAttribute("data-adcash-state", "requested");
-    } catch (error) {
-      slot.setAttribute("data-adcash-state", "failed");
-      adcashRuntimeWarning("runBanner failed for zone " + zoneId, error);
-    }
-  }).catch(function() {
-    if (slot.isConnected) {
-      slot.setAttribute("data-adcash-state", "failed");
-    }
-  });
+    adsenseRuntimeWarning(
+      "slot has no adsbygoogle element"
+    );
+
+    return;
+  }
+
+  if (
+    ad.getAttribute(
+      "data-adsbygoogle-status"
+    )
+  ) {
+    revealAdsenseParent(slot);
+
+    slot.setAttribute(
+      "data-adsense-state",
+      "requested"
+    );
+
+    return;
+  }
+
+  try {
+    revealAdsenseParent(slot);
+
+    (
+      window.adsbygoogle =
+      window.adsbygoogle || []
+    ).push({});
+
+    slot.setAttribute(
+      "data-adsense-state",
+      "requested"
+    );
+  } catch (error) {
+    slot.setAttribute(
+      "data-adsense-state",
+      "failed"
+    );
+
+    adsenseRuntimeWarning(
+      "request failed",
+      error
+    );
+  }
 }
 
 function initAdIframes(root) {
   var scope = root || document;
   var slots = [];
 
-  if (scope.matches && scope.matches("[data-adcash-banner-slot]")) {
+  if (
+    scope.matches &&
+    scope.matches(
+      "[data-adsense-slot]"
+    )
+  ) {
     slots.push(scope);
   }
 
@@ -384,31 +363,52 @@ function initAdIframes(root) {
     Array.prototype.push.apply(
       slots,
       scope.querySelectorAll(
-        '[data-adcash-banner-slot][data-adcash-state="pending"], ' +
-        '[data-adcash-banner-slot][data-adcash-state="waiting-for-width"]'
+        '[data-adsense-slot][data-adsense-state="pending"], ' +
+        '[data-adsense-slot][data-adsense-state="waiting-for-width"]'
       )
     );
   }
 
-  slots.forEach(renderAdcashSlot);
+  slots.forEach(
+    renderAdsenseSlot
+  );
 }
 
-/* Keep the public initializer because marketplace/blog infinite-scroll code
-   already calls window.initializeListAds(). */
-window.initializeListAds = function(listContainer) {
-  initAdIframes(listContainer || document);
+/* Existing marketplace/blog infinite-scroll API. */
+window.initializeListAds = function(
+  listContainer
+) {
+  initAdIframes(
+    listContainer || document
+  );
 };
 
-var adcashResizeTimer = null;
-window.addEventListener("resize", function() {
-  if (adcashResizeTimer !== null) {
-    window.clearTimeout(adcashResizeTimer);
-  }
-  adcashResizeTimer = window.setTimeout(function() {
-    initAdIframes(document);
-  }, 200);
-});
+var adsenseResizeTimer = null;
 
-document.addEventListener("DOMContentLoaded", function() {
-  initAdIframes(document);
-});
+window.addEventListener(
+  "resize",
+  function() {
+    if (
+      adsenseResizeTimer !== null
+    ) {
+      window.clearTimeout(
+        adsenseResizeTimer
+      );
+    }
+
+    adsenseResizeTimer =
+      window.setTimeout(
+        function() {
+          initAdIframes(document);
+        },
+        200
+      );
+  }
+);
+
+document.addEventListener(
+  "DOMContentLoaded",
+  function() {
+    initAdIframes(document);
+  }
+);

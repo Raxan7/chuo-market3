@@ -1,0 +1,40 @@
+{% if ads_allowed and not premium_surface %}
+<section
+  class="cs-adsense-after-content"
+  aria-label="Advertisement"
+  style="width:100%;display:flex;justify-content:center;align-items:center;margin:24px auto;overflow:hidden;"
+>
+  <div
+    data-adsense-slot
+    data-adsense-state="pending"
+    style="width:100%;min-height:250px;overflow:hidden;"
+  >
+    <ins class="adsbygoogle"
+         style="display:block"
+         data-ad-format="autorelaxed"
+         data-ad-client="ca-pub-1815335112679958"
+         data-ad-slot="8640009470"></ins>
+  </div>
+</section>
+
+<aside
+  id="cs-adsense-wide-rail"
+  aria-label="Advertisement"
+  style="display:none;position:fixed;top:120px;right:16px;width:160px;min-height:600px;overflow:hidden;z-index:20;"
+>
+  <div
+    data-adsense-slot
+    data-adsense-min-width="1800"
+    data-adsense-reveal-parent="cs-adsense-wide-rail"
+    data-adsense-state="waiting-for-width"
+    style="width:160px;min-height:600px;overflow:hidden;"
+  >
+    <ins class="adsbygoogle"
+         style="display:block;width:160px;min-height:600px;"
+         data-ad-client="ca-pub-1815335112679958"
+         data-ad-slot="1957297035"
+         data-ad-format="auto"
+         data-full-width-responsive="true"></ins>
+  </div>
+</aside>
+{% endif %}

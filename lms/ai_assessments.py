@@ -864,6 +864,282 @@ def _call_configured_ai_for_questions(module, context, question_count, max_attem
     return None, 'missing_api_key', 'No AI quiz provider is configured.'
 
 
+# CHUOSMART_FINAL_EXAM_BATCHING_V1
+def _question_dedupe_key(value):
+    value = re.sub(
+        r'\s+',
+        ' ',
+        str(value or ''),
+    ).strip().casefold()
+
+    return re.sub(
+        r'[^\w\s]',
+        '',
+        value,
+    )
+
+
+def _quiz_has_valid_question_set(quiz, expected_count):
+    """Require exact MCQ count, four choices and one correct answer."""
+    if quiz is None:
+        return False
+
+    try:
+        expected_count = int(expected_count)
+    except (TypeError, ValueError):
+        return False
+
+    if quiz.questions.count() != expected_count:
+        return False
+
+    questions = list(
+        MCQuestion.objects.filter(
+            quiz=quiz,
+        ).order_by(
+            'order',
+            'id',
+        )
+    )
+
+    if len(questions) != expected_count:
+        return False
+
+    for question in questions:
+        choices = Choice.objects.filter(
+            question=question,
+        )
+
+        if choices.count() != 4:
+            return False
+
+        if choices.filter(
+            correct=True,
+        ).count() != 1:
+            return False
+
+    return True
+
+
+def _archive_attempted_quiz_for_regeneration(quiz):
+    """
+    Preserve historical QuizTaker/StudentAnswer records while allowing
+    a fresh assessment version to become the active quiz.
+    """
+    quiz.draft = True
+    quiz.generation_message = (
+        'Archived assessment version; '
+        'historical learner attempts are preserved.'
+    )
+
+    quiz.save(
+        update_fields=[
+            'draft',
+            'generation_message',
+        ]
+    )
+
+
+def _call_configured_ai_for_question_set(
+    module,
+    context,
+    question_count,
+    max_attempts=None,
+):
+    """
+    Generate large assessments in small provider calls.
+
+    Normal module quiz:
+        5 questions -> one AI call.
+
+    Final Exam:
+        20 questions -> 5 + 5 + 5 + 5.
+
+    The questions remain only in memory until the complete validated
+    set exists. ensure_module_assessment() performs the final DB swap
+    atomically.
+    """
+    try:
+        target = max(
+            1,
+            int(question_count),
+        )
+    except (TypeError, ValueError):
+        target = DEFAULT_QUESTION_COUNT
+
+    batch_size = int(
+        getattr(
+            settings,
+            'AI_ASSESSMENT_BATCH_SIZE',
+            DEFAULT_QUESTION_COUNT,
+        )
+        or DEFAULT_QUESTION_COUNT
+    )
+
+    batch_size = max(
+        1,
+        min(batch_size, target),
+    )
+
+    # Ordinary 5-question quizzes keep the original behavior.
+    if target <= batch_size:
+        return _call_configured_ai_for_questions(
+            module,
+            context,
+            target,
+            max_attempts=max_attempts,
+        )
+
+    minimum_calls = (
+        target + batch_size - 1
+    ) // batch_size
+
+    max_calls = int(
+        getattr(
+            settings,
+            'AI_ASSESSMENT_MAX_BATCH_CALLS',
+            minimum_calls + 4,
+        )
+        or (minimum_calls + 4)
+    )
+
+    max_calls = max(
+        minimum_calls,
+        max_calls,
+    )
+
+    collected = []
+    seen = set()
+
+    for batch_number in range(
+        1,
+        max_calls + 1,
+    ):
+        remaining = (
+            target - len(collected)
+        )
+
+        if remaining <= 0:
+            break
+
+        request_count = min(
+            batch_size,
+            remaining,
+        )
+
+        previous = '\n'.join(
+            f'- {item["question"]}'
+            for item in collected
+        )
+
+        if not previous:
+            previous = '- none yet'
+
+        batch_context = (
+            f'{context}\n\n'
+            '--- GENERATION CONTROL: NOT COURSE CONTENT ---\n'
+            f'This is batch {batch_number} of one assessment.\n'
+            f'Generate exactly {request_count} NEW questions.\n'
+            'Do not write questions about this control block.\n'
+            'Do not duplicate or merely reword the following '
+            'questions already generated:\n'
+            f'{previous}\n'
+            '--- END GENERATION CONTROL ---'
+        )
+
+        logger.info(
+            'Assessment batch module_id=%s '
+            'batch=%s request=%s collected=%s/%s',
+            getattr(module, 'id', '?'),
+            batch_number,
+            request_count,
+            len(collected),
+            target,
+        )
+
+        payload, status, message = (
+            _call_configured_ai_for_questions(
+                module,
+                batch_context,
+                request_count,
+                max_attempts=max_attempts,
+            )
+        )
+
+        if (
+            status != 'success'
+            or not payload
+        ):
+            return (
+                None,
+                status,
+                (
+                    f'Final Exam batch {batch_number} '
+                    f'failed: {message}'
+                ),
+            )
+
+        batch_questions = (
+            _normalise_questions(
+                payload,
+                request_count,
+            )
+        )
+
+        added = 0
+
+        for item in batch_questions:
+            key = _question_dedupe_key(
+                item.get('question')
+            )
+
+            if (
+                not key
+                or key in seen
+            ):
+                continue
+
+            seen.add(key)
+            collected.append(item)
+            added += 1
+
+            if len(collected) >= target:
+                break
+
+        logger.info(
+            'Assessment batch complete module_id=%s '
+            'batch=%s valid=%s new=%s total=%s/%s',
+            getattr(module, 'id', '?'),
+            batch_number,
+            len(batch_questions),
+            added,
+            len(collected),
+            target,
+        )
+
+    if len(collected) != target:
+        return (
+            None,
+            'invalid_json',
+            (
+                f'Batched generation produced '
+                f'{len(collected)} unique questions; '
+                f'expected {target}.'
+            ),
+        )
+
+    return (
+        {
+            'questions': collected,
+        },
+        'success',
+        (
+            f'batched assessment ready: '
+            f'{target} unique questions'
+        ),
+    )
+
+
+
 def ensure_module_assessment(module, student=None, question_count=DEFAULT_QUESTION_COUNT, force=False,
                              max_attempts=None):
     """
@@ -895,28 +1171,77 @@ def ensure_module_assessment(module, student=None, question_count=DEFAULT_QUESTI
 
     existing = _get_existing_assessment_quiz(module, student=student)
 
-    if existing and existing.questions.exists() and not force and existing.generation_status == 'ready':
+    if (
+        existing
+        and not force
+        and _quiz_has_valid_question_set(
+            existing,
+            question_count,
+        )
+    ):
+        # A later provider retry may have failed even though a complete
+        # valid question set already exists. Repair status instead of
+        # throwing away good questions.
+        if existing.generation_status != 'ready':
+            _mark_quiz_generation_state(
+                existing,
+                'ready',
+                'Quiz is ready.',
+            )
+
         logger.info(
-            "Reusing existing ready quiz quiz_id=%s module_id=%s questions=%s",
+            "Reusing policy-valid quiz quiz_id=%s "
+            "module_id=%s questions=%s",
             existing.id,
             module.id,
             existing.questions.count(),
         )
+
         return existing
 
+    if existing is not None:
+        from .models import QuizTaker
+
+        attempts = QuizTaker.objects.filter(
+            quiz=existing,
+        )
+
+        if attempts.filter(
+            completed=False,
+        ).exists():
+            raise RuntimeError(
+                f'Refusing to regenerate quiz '
+                f'{existing.id}: an active learner '
+                f'attempt exists.'
+            )
+
+        # Never mutate questions underneath completed historical
+        # attempts. Version the assessment instead.
+        if attempts.exists():
+            _archive_attempted_quiz_for_regeneration(
+                existing
+            )
+            existing = None
+
     if existing is None:
-        existing, _ = _get_or_create_assessment_quiz(module, student=student)
+        existing, _ = _get_or_create_assessment_quiz(
+            module,
+            student=student,
+        )
     else:
         existing.generation_status = 'processing'
         existing.generation_message = 'Quiz is being prepared.'
         existing.generation_started_at = django_timezone.now()
         existing.generation_completed_at = None
-        existing.save(update_fields=[
-            'generation_status',
-            'generation_message',
-            'generation_started_at',
-            'generation_completed_at',
-        ])
+
+        existing.save(
+            update_fields=[
+                'generation_status',
+                'generation_message',
+                'generation_started_at',
+                'generation_completed_at',
+            ]
+        )
 
     context = collect_module_learning_context(module, student=student)
 
@@ -929,7 +1254,7 @@ def ensure_module_assessment(module, student=None, question_count=DEFAULT_QUESTI
         f"Calling configured AI provider for module {module.id}: provider={provider_name}."
     )
 
-    raw_payload, status, msg = _call_configured_ai_for_questions(
+    raw_payload, status, msg = _call_configured_ai_for_question_set(
         module,
         context,
         question_count,
@@ -1088,7 +1413,14 @@ def queue_module_assessment_generation(module, student=None, question_count=DEFA
     Queue quiz generation using the database-backed queue.
     The student argument is ignored so one shared quiz is created per module.
     """
-    from .models import QuizGenerationJob
+    from .models import QuizGenerationJob, QuizTaker
+    from .assessment_policy import assessment_question_count_for_module
+
+    # Store the real policy count in the queue itself:
+    # module quiz=5, Final Exam=20.
+    question_count = assessment_question_count_for_module(
+        module
+    )
 
     if getattr(module, 'skip_assessment', False):
         logger.info(
@@ -1110,16 +1442,58 @@ def queue_module_assessment_generation(module, student=None, question_count=DEFA
     # per module. Personalized offline assessments above remain learner-scoped.
     quiz = _get_existing_assessment_quiz(module)
 
-    if quiz and quiz.generation_status == 'ready' and quiz.questions.exists() and not force:
+    if (
+        quiz
+        and not force
+        and _quiz_has_valid_question_set(
+            quiz,
+            question_count,
+        )
+    ):
+        if quiz.generation_status != 'ready':
+            _mark_quiz_generation_state(
+                quiz,
+                'ready',
+                'Quiz is ready.',
+            )
+
         logger.info(
-            "Not queueing module_id=%s because shared quiz_id=%s is already ready",
+            "Not queueing module_id=%s because "
+            "quiz_id=%s already satisfies policy (%s questions)",
             module.id,
             quiz.id,
+            question_count,
         )
+
         return quiz
 
+    if quiz:
+        attempts = QuizTaker.objects.filter(
+            quiz=quiz,
+        )
+
+        if attempts.filter(
+            completed=False,
+        ).exists():
+            logger.warning(
+                "Not replacing module_id=%s quiz_id=%s "
+                "because an active attempt exists",
+                module.id,
+                quiz.id,
+            )
+
+            return quiz
+
+        if attempts.exists():
+            _archive_attempted_quiz_for_regeneration(
+                quiz
+            )
+            quiz = None
+
     if not quiz:
-        quiz, _ = _get_or_create_assessment_quiz(module)
+        quiz, _ = _get_or_create_assessment_quiz(
+            module
+        )
 
     existing_job = QuizGenerationJob.objects.filter(
         module=module,

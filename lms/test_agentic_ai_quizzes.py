@@ -146,6 +146,17 @@ class AgenticQuizGenerationTests(TestCase):
             order=1,
         )
 
+        # CHUOSMART_AGENTIC_TEST_NON_FINAL_MODULE_V1
+        # AgenticQuizGenerationTests exercise provider/retry behaviour.
+        # Keep self.module as a normal 5-question module; Final Exam
+        # batching has dedicated tests in test_final_exam_batches.py.
+        self.final_module = CourseModule.objects.create(
+            course=self.course,
+            title='Final Module',
+            description='Final module used to keep Grounded Module non-final.',
+            order=2,
+        )
+
     @patch('lms.ai_assessments.chat_completion')
     def test_agentic_gateway_creates_real_ai_quiz_and_marks_it_ai_generated(self, chat_completion):
         chat_completion.return_value = (

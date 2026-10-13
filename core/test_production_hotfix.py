@@ -5,7 +5,6 @@ from django.conf import settings
 from django.http import HttpResponse
 from django.test import RequestFactory, SimpleTestCase
 
-from core.middleware import AdcashCSPMiddleware
 from lms.course_permissions import user_owns_course
 
 
@@ -13,46 +12,34 @@ class ProductionHotfixTests(SimpleTestCase):
     def setUp(self):
         self.root = Path(settings.BASE_DIR)
 
-    def test_adcash_csp_extends_script_policy(self):
-        def app(_request):
-            response = HttpResponse("ok")
-            response["Content-Security-Policy"] = (
-                "default-src 'self'; "
-                "script-src 'self' 'unsafe-inline' "
-                "https://cdn.jsdelivr.net; "
-                "connect-src 'self'; "
-                "frame-src 'self';"
-            )
-            return response
-
-        middleware = AdcashCSPMiddleware(app)
-
-        response = middleware(
-            RequestFactory().get("/lms/courses/")
-        )
-
-        csp = response["Content-Security-Policy"]
-
-        self.assertIn("https://acscdn.com", csp)
-        self.assertIn("https://*.acscdn.com", csp)
-
-    def test_adcash_middleware_precedes_security_headers(self):
-        settings_text = (
+    def test_adsense_replaces_adcash_provider(self):
+        config = (
             self.root
             / "Commerce"
             / "settings"
             / "base.py"
         ).read_text(encoding="utf-8")
 
-        adcash = settings_text.index(
-            "core.middleware.AdcashCSPMiddleware"
+        middleware = (
+            self.root
+            / "core"
+            / "middleware.py"
+        ).read_text(encoding="utf-8")
+
+        self.assertNotIn(
+            "AdcashCSPMiddleware",
+            config + middleware,
         )
 
-        security = settings_text.index(
-            "core.middleware.SecurityHeadersMiddleware"
+        self.assertNotIn(
+            "acscdn.com",
+            middleware,
         )
 
-        self.assertLess(adcash, security)
+        self.assertIn(
+            "pagead2.googlesyndication.com",
+            middleware,
+        )
 
     def test_dashboard_theme_patch_is_present(self):
         template = (

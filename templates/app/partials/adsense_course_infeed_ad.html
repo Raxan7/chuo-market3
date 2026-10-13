@@ -1,0 +1,24 @@
+{% if ads_allowed %}
+<aside
+  class="cs-adsense-infeed cs-course-grid-ad"
+  aria-label="Advertisement"
+  style="width:100%;min-height:270px;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;padding:12px 0;"
+>
+  <small style="display:block;margin-bottom:6px;font-size:11px;opacity:.65;text-align:center;">
+    Advertisement
+  </small>
+
+  <div
+    data-adsense-slot
+    data-adsense-state="pending"
+    style="width:100%;min-height:250px;overflow:hidden;"
+  >
+    <ins class="adsbygoogle"
+         style="display:block"
+         data-ad-format="fluid"
+         data-ad-layout-key="-6t+ed+2i-1n-4w"
+         data-ad-client="ca-pub-1815335112679958"
+         data-ad-slot="9173442074"></ins>
+  </div>
+</aside>
+{% endif %}

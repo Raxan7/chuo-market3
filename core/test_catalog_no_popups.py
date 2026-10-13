@@ -48,7 +48,7 @@ class CourseGridAndAdExperienceTests(SimpleTestCase):
                 f"Popup/overlay provider remains active: {token}",
             )
 
-    def test_adcash_monetization_remains_enabled(self):
+    def test_adsense_monetization_remains_enabled(self):
         base = (
             Path(settings.BASE_DIR)
             / "templates"
@@ -72,14 +72,30 @@ class CourseGridAndAdExperienceTests(SimpleTestCase):
             / "base.js"
         ).read_text(encoding="utf-8")
 
-        self.assertIn("https://acscdn.com/script/aclib.js", runtime)
-        self.assertNotIn("aclib.runAutoTag", base + runtime)
-        self.assertNotIn("qlmiolfe5q", base + runtime)
+        self.assertIn(
+            "pagead2.googlesyndication.com",
+            base,
+        )
 
-        self.assertIn("data-adcash-banner-slot", banner)
-        self.assertIn("12269306", banner)
+        self.assertIn(
+            "ca-pub-1815335112679958",
+            base + banner,
+        )
 
-        self.assertNotIn("monetag-direct-links.js", base)
+        self.assertIn(
+            "data-adsense-slot",
+            banner,
+        )
+
+        self.assertIn(
+            "window.adsbygoogle",
+            runtime,
+        )
+
+        self.assertNotIn(
+            "acscdn.com",
+            base + banner + runtime,
+        )
 
     def test_catalogue_uses_dedicated_course_grid(self):
         self.assertIn(

@@ -3,7 +3,7 @@ import sys
 import time
 
 from django.core.management.base import BaseCommand
-from django.db import close_old_connections
+from django.db import close_old_connections, connection
 
 from lms.models import CourseModule, Quiz
 from lms.ai_assessments import ensure_module_assessment
@@ -64,7 +64,12 @@ class Command(BaseCommand):
         continue_on_error = options["continue_on_error"]
         max_attempts = options["max_attempts"]
 
-        modules_qs = CourseModule.objects.filter(skip_assessment=False).order_by("course__title", "order", "id")
+        modules_qs = (
+            CourseModule.objects
+            .select_related("course")
+            .filter(skip_assessment=False)
+            .order_by("course__title", "order", "id")
+        )
         if options["course_id"]:
             modules_qs = modules_qs.filter(course_id=options["course_id"])
 
@@ -117,7 +122,12 @@ class Command(BaseCommand):
         failures = []
 
         for index, module in enumerate(needs_gen):
-            close_old_connections()
+            # Production commands normally run in autocommit mode and
+            # may safely recycle old DB connections. Django TestCase,
+            # however, owns an outer atomic transaction; closing that
+            # connection makes later ORM access unusable.
+            if not connection.in_atomic_block:
+                close_old_connections()
 
             idx = start_at + index + 1
             self.write("")
