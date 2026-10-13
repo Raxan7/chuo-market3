@@ -1180,11 +1180,64 @@ def quiz_question(request, quiz_id, quiz_taker_id, question_number):
     quiz = get_object_or_404(Quiz, id=quiz_id)
     quiz_taker = get_object_or_404(QuizTaker, id=quiz_taker_id, user=request.user.lms_profile)
 
-    # Get all questions for this quiz
+    # Freeze randomized order for this attempt instead of reshuffling
+    # on every request. This keeps Question N stable during AJAX navigation,
+    # refreshes and ordinary GET/POST fallbacks.
+    question_queryset = Question.objects.filter(quiz=quiz)
+
     if quiz.random_order:
-        questions = list(Question.objects.filter(quiz=quiz).order_by('?'))
+        import random
+
+        order_key = (
+            f"chuosmart.quiz-question-order."
+            f"{quiz_taker.pk}"
+        )
+
+        current_ids = list(
+            question_queryset.values_list(
+                'id',
+                flat=True,
+            )
+        )
+
+        frozen_ids = request.session.get(
+            order_key
+        )
+
+        if (
+            not isinstance(frozen_ids, list)
+            or set(frozen_ids) != set(current_ids)
+            or len(frozen_ids) != len(current_ids)
+        ):
+            frozen_ids = list(current_ids)
+
+            random.SystemRandom().shuffle(
+                frozen_ids
+            )
+
+            request.session[order_key] = (
+                frozen_ids
+            )
+            request.session.modified = True
+
+        question_map = {
+            question.id: question
+            for question in question_queryset
+        }
+
+        questions = [
+            question_map[question_id]
+            for question_id in frozen_ids
+            if question_id in question_map
+        ]
+
     else:
-        questions = list(Question.objects.filter(quiz=quiz).order_by('order', 'id'))
+        questions = list(
+            question_queryset.order_by(
+                'order',
+                'id',
+            )
+        )
 
     # Check if question_number is valid
     if question_number < 1 or question_number > len(questions):
@@ -1257,11 +1310,23 @@ def quiz_question(request, quiz_id, quiz_taker_id, question_number):
             return redirect('lms:complete_quiz', quiz_taker_id=quiz_taker.id)
 
     # Prepare question context
+    from .assessment_policy import (
+        assessment_label_for_quiz,
+        assessment_type_for_quiz,
+    )
+
+    assessment_type = assessment_type_for_quiz(
+        quiz
+    )
+
     context = {
         'quiz': quiz,
         'question': question,
         'question_number': question_number,
         'total_questions': len(questions),
+        'assessment_type': assessment_type,
+        'assessment_label': assessment_label_for_quiz(quiz),
+        'is_final_exam': assessment_type == 'final_exam',
     }
 
     # Add specific context based on question type
@@ -3998,4 +4063,142 @@ def course_delete(request, slug):
 
     return _course_delete_redirect(
         "user_dashboard",
+    )
+
+
+# CHUOSMART_PAY_AS_YOU_LEARN_ENTRY_V1
+@login_required(login_url='login')
+def pay_as_you_learn_start(request, slug):
+    """
+    Resolve the learner's next eligible paid module server-side.
+
+    The client never chooses an arbitrary module ID, preventing learners
+    from bypassing sequential module progression.
+    """
+    course = get_object_or_404(
+        Course,
+        slug=slug,
+    )
+
+    if course.is_free:
+        messages.info(
+            request,
+            _("This course is free. You do not need module payments."),
+        )
+
+        return redirect(
+            'lms:course_detail',
+            slug=course.slug,
+        )
+
+    if course.user_has_access(request.user):
+        messages.info(
+            request,
+            _("You already have full access to this course."),
+        )
+
+        return redirect(
+            'lms:course_detail',
+            slug=course.slug,
+        )
+
+    profile, _ = LMSProfile.objects.get_or_create(
+        user=request.user,
+        defaults={'role': 'student'},
+    )
+
+    # Ensure automated module pricing is current before choosing the
+    # next amount the learner will be asked to pay.
+    if getattr(
+        settings,
+        'AUTO_COURSE_PRICING_ENABLED',
+        False,
+    ):
+        try:
+            import inspect
+
+            from .pricing import (
+                PricingError,
+                apply_course_pricing,
+            )
+
+            pricing_kwargs = {}
+
+            if (
+                'auto_raise'
+                in inspect.signature(
+                    apply_course_pricing
+                ).parameters
+            ):
+                pricing_kwargs['auto_raise'] = True
+
+            apply_course_pricing(
+                course,
+                **pricing_kwargs,
+            )
+
+        except PricingError as exc:
+            messages.error(
+                request,
+                str(exc),
+            )
+
+            return redirect(
+                'lms:course_detail',
+                slug=course.slug,
+            )
+
+    modules = CourseModule.objects.filter(
+        course=course,
+    ).order_by(
+        'order',
+        'id',
+    )
+
+    has_current_module = False
+
+    for module in modules:
+        # Overview/no-assessment modules are intentionally free.
+        if module.skip_assessment:
+            continue
+
+        if _user_has_module_access(
+            request.user,
+            module,
+        ):
+            has_current_module = True
+            continue
+
+        if not module.price:
+            continue
+
+        if module.previous_module_accessible_for_request(
+            profile
+        ):
+            return redirect(
+                'lms:module_access_payment',
+                course_slug=course.slug,
+                module_id=module.id,
+            )
+
+    if has_current_module:
+        messages.info(
+            request,
+            _(
+                "Continue and complete your current module first. "
+                "The next module becomes available automatically."
+            ),
+        )
+    else:
+        messages.info(
+            request,
+            _(
+                "No paid module is currently eligible. "
+                "Complete any required overview or previous module first."
+            ),
+        )
+
+    return redirect(
+        'lms:course_detail',
+        slug=course.slug,
     )

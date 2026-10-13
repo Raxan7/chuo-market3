@@ -42,6 +42,31 @@ def collect_module_learning_context(module, student=None):
     Collect course/module content only.
     Student personalization is intentionally ignored so each module has one shared quiz.
     """
+    # CHUOSMART_FINAL_EXAM_CONTEXT_V1
+    from .assessment_policy import (
+        collect_course_assessment_context,
+        is_final_assessed_module,
+    )
+    _cs_module = locals().get("module")
+    if _cs_module is None and locals().get("module_id"):
+        from .models import CourseModule as _CSCourseModule
+        _cs_module = _CSCourseModule.objects.filter(
+            pk=locals().get("module_id")
+        ).first()
+
+    if _cs_module is not None and is_final_assessed_module(
+        _cs_module
+    ):
+        _cs_limit = (
+            locals().get("limit")
+            or locals().get("max_chars")
+            or 24000
+        )
+
+        return collect_course_assessment_context(
+            _cs_module.course,
+            limit=int(_cs_limit),
+        )
     parts = [
         f"Course: {module.course.title}",
         f"Module: {module.title}",
@@ -845,6 +870,18 @@ def ensure_module_assessment(module, student=None, question_count=DEFAULT_QUESTI
     Generate one shared AI quiz for a module.
     No fallback questions are created. Bad AI output fails the job instead of creating bogus quizzes.
     """
+    # CHUOSMART_FINAL_EXAM_COUNT_V1
+    from .assessment_policy import assessment_question_count_for_module
+    _cs_module = locals().get("module")
+    if _cs_module is None and locals().get("module_id"):
+        from .models import CourseModule as _CSCourseModule
+        _cs_module = _CSCourseModule.objects.filter(
+            pk=locals().get("module_id")
+        ).first()
+    if _cs_module is not None:
+        question_count = assessment_question_count_for_module(
+            _cs_module
+        )
     _log_assessment_event(
         f"AI generation started for module {module.id} ({module.title}), "
         f"question_count={question_count}, force={force}."

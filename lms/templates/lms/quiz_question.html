@@ -83,4 +83,338 @@
         </div>
     </div>
 </div>
+
+
+<!-- CHUOSMART_LEARNING_UPGRADE_V1 -->
+<style>
+.cs-assessment-runtime-banner {
+    border-radius: 16px;
+    padding: .8rem 1rem;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    background: rgba(108, 77, 255, .08);
+    border: 1px solid rgba(108, 77, 255, .16);
+}
+
+.cs-assessment-runtime-banner strong {
+    color: #6C4DFF;
+}
+
+.cs-quiz-saving {
+    opacity: .68;
+    pointer-events: none;
+}
+
+.cs-quiz-loading-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 3px;
+    width: 0;
+    z-index: 99999;
+    background: #6C4DFF;
+    transition: width .2s ease;
+}
+
+.cs-quiz-loading-bar.active {
+    width: 82%;
+}
+
+.cs-quiz-loading-bar.done {
+    width: 100%;
+}
+</style>
+
+<script>
+(function () {
+    var config = {
+        label: "{{ assessment_label|default:'Module Quiz'|escapejs }}",
+        isFinalExam: {{ is_final_exam|yesno:"true,false" }}
+    };
+
+    function mainRoot(doc) {
+        doc = doc || document;
+
+        return (
+            doc.querySelector('#main-content') ||
+            doc.querySelector('main')
+        );
+    }
+
+    function decorateAssessment() {
+        var root = mainRoot();
+
+        if (!root) return;
+
+        if (
+            root.querySelector(
+                '.cs-assessment-runtime-banner'
+            )
+        ) {
+            return;
+        }
+
+        var banner = document.createElement('div');
+
+        banner.className =
+            'cs-assessment-runtime-banner';
+
+        banner.innerHTML =
+            '<strong>' +
+            (config.isFinalExam
+                ? '🏆 Final Exam'
+                : '✓ Module Quiz') +
+            '</strong>' +
+            '<span class="small text-muted">' +
+            (config.isFinalExam
+                ? '20 questions · whole-course assessment · 70% pass mark'
+                : '5-question mastery check · 70% pass mark') +
+            '</span>';
+
+        root.insertBefore(
+            banner,
+            root.firstChild
+        );
+    }
+
+    function loadingBar() {
+        var bar = document.getElementById(
+            'csQuizLoadingBar'
+        );
+
+        if (!bar) {
+            bar = document.createElement('div');
+            bar.id = 'csQuizLoadingBar';
+            bar.className =
+                'cs-quiz-loading-bar';
+            document.body.appendChild(bar);
+        }
+
+        return bar;
+    }
+
+    async function submitWithoutReload(form) {
+        if (!form.reportValidity()) {
+            return;
+        }
+
+        var root = mainRoot();
+
+        if (!root) {
+            form.submit();
+            return;
+        }
+
+        var submitButtons = form.querySelectorAll(
+            'button[type="submit"], input[type="submit"]'
+        );
+
+        submitButtons.forEach(function (button) {
+            button.disabled = true;
+
+            if (
+                button.tagName === 'BUTTON' &&
+                !button.dataset.originalText
+            ) {
+                button.dataset.originalText =
+                    button.innerHTML;
+
+                button.innerHTML =
+                    '<span class="spinner-border spinner-border-sm me-2"></span>Saving...';
+            }
+        });
+
+        root.classList.add(
+            'cs-quiz-saving'
+        );
+
+        var bar = loadingBar();
+
+        bar.classList.remove('done');
+        bar.classList.add('active');
+
+        try {
+            var response = await fetch(
+                form.action || window.location.href,
+                {
+                    method: 'POST',
+                    body: new FormData(form),
+                    credentials: 'same-origin',
+                    headers: {
+                        'X-Requested-With':
+                            'XMLHttpRequest'
+                    },
+                    redirect: 'follow'
+                }
+            );
+
+            if (!response.ok) {
+                throw new Error(
+                    'Assessment save failed with HTTP ' +
+                    response.status
+                );
+            }
+
+            var finalUrl = response.url;
+
+            /*
+             * Once the final answer is submitted, Django redirects to
+             * completion/results/next-module logic. A normal navigation is
+             * fine there. The no-reload requirement applies specifically
+             * between assessment questions.
+             */
+            if (
+                !finalUrl ||
+                finalUrl.indexOf('/question/') === -1
+            ) {
+                window.location.assign(
+                    finalUrl || window.location.href
+                );
+
+                return;
+            }
+
+            var html = await response.text();
+
+            var parser = new DOMParser();
+            var nextDocument = parser.parseFromString(
+                html,
+                'text/html'
+            );
+
+            var nextRoot = mainRoot(
+                nextDocument
+            );
+
+            if (!nextRoot) {
+                window.location.assign(
+                    finalUrl
+                );
+
+                return;
+            }
+
+            root.innerHTML =
+                nextRoot.innerHTML;
+
+            history.pushState(
+                {},
+                '',
+                finalUrl
+            );
+
+            root.classList.remove(
+                'cs-quiz-saving'
+            );
+
+            decorateAssessment();
+
+            bar.classList.add('done');
+
+            setTimeout(function () {
+                bar.classList.remove(
+                    'active',
+                    'done'
+                );
+            }, 250);
+
+            var firstInteractive =
+                root.querySelector(
+                    'input:not([type="hidden"]), textarea, select, button'
+                );
+
+            if (firstInteractive) {
+                firstInteractive.focus({
+                    preventScroll: true
+                });
+            }
+
+            root.scrollIntoView({
+                behavior: 'smooth',
+                block: 'start'
+            });
+
+        } catch (error) {
+            console.error(
+                '[ChuoSmart quiz]',
+                error
+            );
+
+            root.classList.remove(
+                'cs-quiz-saving'
+            );
+
+            bar.classList.remove(
+                'active',
+                'done'
+            );
+
+            submitButtons.forEach(
+                function (button) {
+                    button.disabled = false;
+
+                    if (
+                        button.tagName === 'BUTTON' &&
+                        button.dataset.originalText
+                    ) {
+                        button.innerHTML =
+                            button.dataset.originalText;
+                    }
+                }
+            );
+
+            alert(
+                'Your answer could not be saved. ' +
+                'Please check your connection and try again.'
+            );
+        }
+    }
+
+    document.addEventListener(
+        'submit',
+        function (event) {
+            if (
+                window.location.pathname.indexOf(
+                    '/question/'
+                ) === -1
+            ) {
+                return;
+            }
+
+            var form = event.target;
+
+            if (
+                !form ||
+                form.tagName !== 'FORM' ||
+                !mainRoot()?.contains(form)
+            ) {
+                return;
+            }
+
+            event.preventDefault();
+
+            submitWithoutReload(
+                form
+            );
+        }
+    );
+
+    /*
+     * Browser back/forward should reload the canonical server page.
+     * This keeps history/state simple and secure.
+     */
+    window.addEventListener(
+        'popstate',
+        function () {
+            window.location.reload();
+        }
+    );
+
+    decorateAssessment();
+})();
+</script>
+
 {% endblock main-content %}

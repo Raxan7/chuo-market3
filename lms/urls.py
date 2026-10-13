@@ -128,3 +128,13 @@ urlpatterns = [
     path('instructor/payment-methods/<int:pk>/edit/', views.edit_payment_method, name='edit_payment_method'),
     path('instructor/payment-methods/<int:pk>/delete/', views.delete_payment_method, name='delete_payment_method'),
 ]
+
+
+# CHUOSMART_PAY_AS_YOU_LEARN_URL_V1
+urlpatterns += [
+    path(
+        'courses/<slug:slug>/pay-as-you-learn/start/',
+        views.pay_as_you_learn_start,
+        name='pay_as_you_learn_start',
+    ),
+]
