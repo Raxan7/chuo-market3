@@ -13,6 +13,7 @@ from .rate_limit import rate_limit
 
 urlpatterns = [
     path('', views.home, name='home'),
+    path('ads.txt', views.ads_txt, name='ads_txt'),
     path('manifest.json', views.manifest_json, name='manifest_json'),
     path('for-business/', views.for_business, name='for_business'),
     path('for-business/ai-workforce-accelerator/', views.ai_workforce_accelerator, name='ai_workforce_accelerator'),

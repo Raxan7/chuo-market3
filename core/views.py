@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
-from django.http import HttpResponseRedirect, JsonResponse, HttpResponseForbidden, Http404, FileResponse
+from django.http import HttpResponse, HttpResponseRedirect, JsonResponse, HttpResponseForbidden, Http404, FileResponse
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash, get_user_model
 from django.templatetags.static import static
@@ -64,6 +64,16 @@ def manifest_json(request):
 
     response['Cache-Control'] = 'public, max-age=86400'
 
+    return response
+
+
+def ads_txt(request):
+    """Google AdSense publisher authorization."""
+    response = HttpResponse(
+        "google.com, pub-1815335112679958, DIRECT, f08c47fec0942fa0\n",
+        content_type="text/plain; charset=utf-8",
+    )
+    response["Cache-Control"] = "public, max-age=86400"
     return response
 
 
