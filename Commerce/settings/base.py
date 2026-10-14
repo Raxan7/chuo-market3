@@ -187,6 +187,16 @@ AI_ASSESSMENT_PROVIDER = os.getenv('AI_ASSESSMENT_PROVIDER', 'auto').strip().low
 AI_ASSESSMENT_CONTEXT_LIMIT = int(os.getenv('AI_ASSESSMENT_CONTEXT_LIMIT', '12000'))
 AI_ASSESSMENT_MAX_TOKENS = int(os.getenv('AI_ASSESSMENT_MAX_TOKENS', '4000'))
 
+# Number of questions requested from the assessment provider per AI call.
+# Groq production uses 20 so a Final Exam is generated in one request,
+# avoiding repeated full-course context against the TPM quota.
+AI_ASSESSMENT_BATCH_SIZE = int(
+    os.getenv(
+        'AI_ASSESSMENT_BATCH_SIZE',
+        '5',
+    )
+)
+
 # Direct Groq assessment provider.
 # This bypasses the external Agentic gateway when
 # AI_ASSESSMENT_PROVIDER=groq.
