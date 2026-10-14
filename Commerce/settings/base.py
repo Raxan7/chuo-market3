@@ -186,6 +186,25 @@ AGENTIC_AI_TIMEOUT_SECONDS = float(os.getenv('AGENTIC_AI_TIMEOUT_SECONDS', '240'
 AI_ASSESSMENT_PROVIDER = os.getenv('AI_ASSESSMENT_PROVIDER', 'auto').strip().lower()
 AI_ASSESSMENT_CONTEXT_LIMIT = int(os.getenv('AI_ASSESSMENT_CONTEXT_LIMIT', '12000'))
 AI_ASSESSMENT_MAX_TOKENS = int(os.getenv('AI_ASSESSMENT_MAX_TOKENS', '4000'))
+
+# Direct Groq assessment provider.
+# This bypasses the external Agentic gateway when
+# AI_ASSESSMENT_PROVIDER=groq.
+GROQ_API_KEY = os.getenv('GROQ_API_KEY', '').strip()
+GROQ_API_BASE_URL = os.getenv(
+    'GROQ_API_BASE_URL',
+    'https://api.groq.com/openai/v1',
+).rstrip('/')
+GROQ_ASSESSMENT_MODEL = os.getenv(
+    'GROQ_ASSESSMENT_MODEL',
+    'openai/gpt-oss-120b',
+).strip()
+GROQ_ASSESSMENT_MAX_TOKENS = int(
+    os.getenv(
+        'GROQ_ASSESSMENT_MAX_TOKENS',
+        str(AI_ASSESSMENT_MAX_TOKENS),
+    )
+)
 # Retry budget for a single quiz. Transient gateway failures (429/5xx/network)
 # and invalid JSON both consume attempts, so keep this small enough that a
 # management command run stays responsive.

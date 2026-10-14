@@ -4,6 +4,8 @@ import json
 import logging
 import re
 import time
+from urllib import error as urllib_error
+from urllib import request as urllib_request
 
 from django.conf import settings
 from django.db import IntegrityError, transaction
@@ -842,26 +844,502 @@ def _call_agentic_gateway_for_questions(module, context, question_count, max_att
     return None, 'invalid_json', final_msg
 
 
-def _call_configured_ai_for_questions(module, context, question_count, max_attempts=None):
-    """Use the configured quiz provider, preferring the multi-provider gateway in auto mode."""
-    provider = getattr(settings, 'AI_ASSESSMENT_PROVIDER', 'auto').strip().lower()
+def _call_groq_for_questions(
+    module,
+    context,
+    question_count,
+    max_attempts=None,
+):
+    """
+    Call Groq directly using its OpenAI-compatible Chat Completions API.
 
-    if provider not in {'auto', 'agentic', 'cerebras'}:
-        return None, 'api_error', f"Unsupported AI_ASSESSMENT_PROVIDER={provider!r}"
+    This deliberately avoids an SDK dependency so production only needs
+    GROQ_API_KEY and the Python standard library.
+    """
+    api_key = str(
+        getattr(
+            settings,
+            'GROQ_API_KEY',
+            '',
+        )
+        or ''
+    ).strip()
 
-    if provider in {'auto', 'agentic'} and gateway_configured():
-        return _call_agentic_gateway_for_questions(module, context, question_count, max_attempts)
+    if not api_key:
+        return (
+            None,
+            'missing_api_key',
+            (
+                f'Module {getattr(module, "id", "?")}: '
+                'GROQ_API_KEY is not configured.'
+            ),
+        )
+
+    base_url = str(
+        getattr(
+            settings,
+            'GROQ_API_BASE_URL',
+            'https://api.groq.com/openai/v1',
+        )
+        or 'https://api.groq.com/openai/v1'
+    ).rstrip('/')
+
+    model = str(
+        getattr(
+            settings,
+            'GROQ_ASSESSMENT_MODEL',
+            'openai/gpt-oss-120b',
+        )
+        or 'openai/gpt-oss-120b'
+    ).strip()
+
+    max_tokens = int(
+        getattr(
+            settings,
+            'GROQ_ASSESSMENT_MAX_TOKENS',
+            4000,
+        )
+        or 4000
+    )
+
+    if max_attempts is None:
+        max_attempts = int(
+            getattr(
+                settings,
+                'AI_ASSESSMENT_MAX_ATTEMPTS',
+                3,
+            )
+            or 3
+        )
+
+    if max_attempts <= 0:
+        max_attempts = 3
+
+    endpoint = (
+        f'{base_url}/chat/completions'
+    )
+
+    prompt = _build_quiz_prompt(
+        module,
+        context,
+        question_count,
+    )
+
+    messages = [
+        {
+            'role': 'system',
+            'content': (
+                'You generate accurate course assessments. '
+                'Return exactly one raw JSON object. '
+                'Do not use Markdown or code fences. '
+                'Do not expose reasoning.'
+            ),
+        },
+        {
+            'role': 'user',
+            'content': prompt,
+        },
+    ]
+
+    backoff = float(
+        getattr(
+            settings,
+            'AI_ASSESSMENT_RETRY_BACKOFF_SECONDS',
+            2.0,
+        )
+        or 0
+    )
+
+    last_error = None
+
+    for attempt in range(
+        1,
+        max_attempts + 1,
+    ):
+        request_payload = {
+            'model': model,
+            'messages': messages,
+            'temperature': 0,
+            'max_tokens': max_tokens,
+        }
+
+        request_body = json.dumps(
+            request_payload
+        ).encode('utf-8')
+
+        req = urllib_request.Request(
+            endpoint,
+            data=request_body,
+            headers={
+                'Authorization': (
+                    f'Bearer {api_key}'
+                ),
+                'Content-Type': (
+                    'application/json'
+                ),
+                'Accept': (
+                    'application/json'
+                ),
+            },
+            method='POST',
+        )
+
+        logger.info(
+            'Direct Groq request module_id=%s '
+            'attempt=%s/%s model=%s '
+            'questions=%s context_chars=%s',
+            getattr(module, 'id', '?'),
+            attempt,
+            max_attempts,
+            model,
+            question_count,
+            len(context or ''),
+        )
+
+        try:
+            with urllib_request.urlopen(
+                req,
+                timeout=float(
+                    getattr(
+                        settings,
+                        'AGENTIC_AI_TIMEOUT_SECONDS',
+                        240,
+                    )
+                ),
+            ) as response:
+                raw = response.read().decode(
+                    'utf-8'
+                )
+
+        except urllib_error.HTTPError as exc:
+            body = (
+                exc.read().decode(
+                    'utf-8',
+                    errors='replace',
+                )
+                if exc.fp
+                else ''
+            )
+
+            last_error = (
+                f'Groq HTTP {exc.code}: '
+                f'{body[:500]}'
+            )
+
+            retryable = (
+                exc.code == 429
+                or 500 <= exc.code < 600
+            )
+
+            if (
+                retryable
+                and attempt < max_attempts
+            ):
+                delay = min(
+                    backoff
+                    * (2 ** (attempt - 1)),
+                    60,
+                )
+
+                logger.warning(
+                    'Direct Groq transient failure '
+                    'module_id=%s attempt=%s/%s '
+                    'status=%s retry_in=%ss',
+                    getattr(module, 'id', '?'),
+                    attempt,
+                    max_attempts,
+                    exc.code,
+                    delay,
+                )
+
+                if delay:
+                    time.sleep(delay)
+
+                continue
+
+            status = (
+                'rate_limited'
+                if exc.code == 429
+                else 'api_error'
+            )
+
+            return (
+                None,
+                status,
+                last_error,
+            )
+
+        except (
+            urllib_error.URLError,
+            TimeoutError,
+            OSError,
+        ) as exc:
+            last_error = (
+                f'Groq network error: {exc}'
+            )
+
+            if attempt < max_attempts:
+                delay = min(
+                    backoff
+                    * (2 ** (attempt - 1)),
+                    60,
+                )
+
+                if delay:
+                    time.sleep(delay)
+
+                continue
+
+            return (
+                None,
+                'api_error',
+                last_error,
+            )
+
+        try:
+            response_data = json.loads(
+                raw
+            )
+
+            choice = (
+                response_data[
+                    'choices'
+                ][0]
+            )
+
+            content = (
+                choice[
+                    'message'
+                ][
+                    'content'
+                ]
+            )
+
+            finish_reason = choice.get(
+                'finish_reason'
+            )
+
+            logger.info(
+                'Direct Groq response '
+                'module_id=%s attempt=%s/%s '
+                'model=%s finish_reason=%s '
+                'payload_chars=%s',
+                getattr(module, 'id', '?'),
+                attempt,
+                max_attempts,
+                model,
+                finish_reason,
+                len(str(content or '')),
+            )
+
+            parsed = _extract_json_object(
+                content
+            )
+
+            return (
+                parsed,
+                'success',
+                (
+                    f'provider=groq '
+                    f'model={model}'
+                ),
+            )
+
+        except Exception as exc:
+            last_error = (
+                'Invalid Groq response: '
+                f'{type(exc).__name__}: '
+                f'{exc}'
+            )
+
+            logger.warning(
+                'Direct Groq response parsing '
+                'failed module_id=%s '
+                'attempt=%s/%s: %s',
+                getattr(module, 'id', '?'),
+                attempt,
+                max_attempts,
+                exc,
+            )
+
+            if attempt < max_attempts:
+                continue
+
+    return (
+        None,
+        'invalid_json',
+        last_error
+        or 'Groq returned no valid response.',
+    )
+
+
+def _call_configured_ai_for_questions(
+    module,
+    context,
+    question_count,
+    max_attempts=None,
+):
+    """
+    Select the quiz provider.
+
+    Explicit provider values:
+        agentic
+        groq
+        cerebras
+
+    auto:
+        Agentic gateway first,
+        then direct Groq if the gateway is unavailable,
+        then Cerebras.
+    """
+    provider = str(
+        getattr(
+            settings,
+            'AI_ASSESSMENT_PROVIDER',
+            'auto',
+        )
+        or 'auto'
+    ).strip().lower()
+
+    valid = {
+        'auto',
+        'agentic',
+        'groq',
+        'cerebras',
+    }
+
+    if provider not in valid:
+        return (
+            None,
+            'api_error',
+            (
+                'Unsupported '
+                f'AI_ASSESSMENT_PROVIDER='
+                f'{provider!r}'
+            ),
+        )
+
+    if provider == 'groq':
+        return _call_groq_for_questions(
+            module,
+            context,
+            question_count,
+            max_attempts=max_attempts,
+        )
 
     if provider == 'agentic':
-        return None, 'missing_api_key', 'Agentic AI gateway selected but AGENTIC_AI_BASE_URL/API_KEY are not configured.'
+        if not gateway_configured():
+            return (
+                None,
+                'missing_api_key',
+                (
+                    'Agentic AI gateway selected '
+                    'but AGENTIC_AI_BASE_URL/API_KEY '
+                    'are not configured.'
+                ),
+            )
 
-    if provider in {'auto', 'cerebras'} and getattr(settings, 'CEREBRAS_API_KEY', None):
-        return _call_cerebras_for_questions(module, context, question_count)
+        return (
+            _call_agentic_gateway_for_questions(
+                module,
+                context,
+                question_count,
+                max_attempts,
+            )
+        )
 
     if provider == 'cerebras':
-        return None, 'missing_api_key', 'Cerebras selected but CEREBRAS_API_KEY is not configured.'
+        if not getattr(
+            settings,
+            'CEREBRAS_API_KEY',
+            None,
+        ):
+            return (
+                None,
+                'missing_api_key',
+                (
+                    'Cerebras selected but '
+                    'CEREBRAS_API_KEY is not '
+                    'configured.'
+                ),
+            )
 
-    return None, 'missing_api_key', 'No AI quiz provider is configured.'
+        return _call_cerebras_for_questions(
+            module,
+            context,
+            question_count,
+        )
+
+    # AUTO MODE
+    #
+    # Keep the existing multi-provider gateway first.
+    # If the whole gateway is temporarily unavailable, fall through
+    # to the user's own direct Groq account.
+    if gateway_configured():
+        result = (
+            _call_agentic_gateway_for_questions(
+                module,
+                context,
+                question_count,
+                max_attempts,
+            )
+        )
+
+        payload, status, message = result
+
+        if status == 'success':
+            return result
+
+        if getattr(
+            settings,
+            'GROQ_API_KEY',
+            '',
+        ):
+            logger.warning(
+                'Agentic provider failed for '
+                'module_id=%s status=%s; '
+                'falling back to direct Groq.',
+                getattr(module, 'id', '?'),
+                status,
+            )
+
+            return _call_groq_for_questions(
+                module,
+                context,
+                question_count,
+                max_attempts=max_attempts,
+            )
+
+        return result
+
+    if getattr(
+        settings,
+        'GROQ_API_KEY',
+        '',
+    ):
+        return _call_groq_for_questions(
+            module,
+            context,
+            question_count,
+            max_attempts=max_attempts,
+        )
+
+    if getattr(
+        settings,
+        'CEREBRAS_API_KEY',
+        None,
+    ):
+        return _call_cerebras_for_questions(
+            module,
+            context,
+            question_count,
+        )
+
+    return (
+        None,
+        'missing_api_key',
+        'No AI quiz provider is configured.',
+    )
 
 
 # CHUOSMART_FINAL_EXAM_BATCHING_V1
