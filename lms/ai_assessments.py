@@ -1029,9 +1029,18 @@ def _call_groq_for_questions(
                 f'{body[:500]}'
             )
 
+            # A Groq 429 usually carries a real quota reset window
+            # (TPM/TPD). Retrying it again after only 2-4 seconds wastes
+            # requests and cannot fix an exhausted daily quota.
+            if exc.code == 429:
+                return (
+                    None,
+                    'rate_limited',
+                    last_error,
+                )
+
             retryable = (
-                exc.code == 429
-                or 500 <= exc.code < 600
+                500 <= exc.code < 600
             )
 
             if (

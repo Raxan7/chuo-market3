@@ -1,6 +1,7 @@
 import logging
 import time
 
+from django.conf import settings
 from django.core.management.base import BaseCommand
 from django.db import transaction, close_old_connections
 from django.db.models import Count, F
@@ -27,6 +28,27 @@ class Command(BaseCommand):
 
         limit = options["limit"]
         sleep_seconds = options["sleep"]
+
+        # Direct Groq has organization-level TPM/TPD quotas.
+        # Never lock a large group of jobs at once while Groq is active.
+        if (
+            str(
+                getattr(
+                    settings,
+                    "AI_ASSESSMENT_PROVIDER",
+                    "",
+                )
+                or ""
+            ).strip().lower()
+            == "groq"
+            and limit > 1
+        ):
+            self.stdout.write(
+                self.style.WARNING(
+                    f"Groq safety: reducing --limit {limit} to --limit 1."
+                )
+            )
+            limit = 1
         retry_stuck_after_minutes = options["retry_stuck_after_minutes"]
 
         self.stdout.write("")
@@ -145,8 +167,61 @@ class Command(BaseCommand):
             except Exception as exc:
                 elapsed = round(time.time() - job_started, 2)
 
+                error_text = str(exc)
+                lowered_error = error_text.lower()
+
+                quota_limited = any(
+                    marker in lowered_error
+                    for marker in (
+                        "rate limit reached",
+                        "rate_limit_exceeded",
+                        "tokens per day",
+                        "tokens per minute",
+                        "groq http 429",
+                    )
+                )
+
+                if quota_limited:
+                    # External quota exhaustion is not a bad quiz-generation
+                    # attempt. Return the job to pending without consuming one
+                    # of its three attempts.
+                    job.status = "pending"
+                    job.error = error_text
+                    job.locked_at = None
+                    job.started_at = None
+                    job.completed_at = None
+
+                    job.save(
+                        update_fields=[
+                            "status",
+                            "error",
+                            "locked_at",
+                            "started_at",
+                            "completed_at",
+                            "updated_at",
+                        ]
+                    )
+
+                    self.stdout.write(
+                        self.style.WARNING(
+                            f"RATE LIMITED: Job #{job.id} returned to pending "
+                            "without consuming an attempt."
+                        )
+                    )
+
+                    logger.warning(
+                        "Quiz job rate limited id=%s module_id=%s; "
+                        "attempt count preserved at %s/%s",
+                        job.id,
+                        module.id,
+                        job.attempts,
+                        job.max_attempts,
+                    )
+
+                    continue
+
                 job.attempts += 1
-                job.error = str(exc)
+                job.error = error_text
 
                 self.stdout.write(self.style.ERROR(
                     f"ERROR: Job #{job.id} failed after {elapsed}s."
