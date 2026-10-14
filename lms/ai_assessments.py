@@ -980,6 +980,9 @@ def _call_groq_for_questions(
                 'Accept': (
                     'application/json'
                 ),
+                'User-Agent': (
+                    'ChuoSmart/1.0 (+https://chuosmart.com)'
+                ),
             },
             method='POST',
         )
