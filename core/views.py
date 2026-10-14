@@ -50,6 +50,23 @@ def _build_page_url(request, page_number):
     return f"{request.path}?{params.urlencode()}"
 
 
+def manifest_json(request):
+    """Serve the ChuoSmart web-app manifest from the site root."""
+    manifest_path = settings.BASE_DIR / 'static' / 'manifest.json'
+
+    if not manifest_path.exists():
+        raise Http404('Web app manifest is unavailable.')
+
+    response = FileResponse(
+        manifest_path.open('rb'),
+        content_type='application/manifest+json',
+    )
+
+    response['Cache-Control'] = 'public, max-age=86400'
+
+    return response
+
+
 def _cloudinary_context():
     """
     Return a context dict with the configured Cloudinary cloud name and upload

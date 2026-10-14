@@ -63,6 +63,7 @@
   <meta name="twitter:description" content="{% block twitter_description %}{{ default_meta_description }}{% endblock %}">
   <meta name="twitter:image" content="{% block twitter_image %}{{ base_url }}{% static 'app/images/logo.png' %}{% endblock %}">
   <link rel="canonical" href="{{ canonical_url|safe_href }}">
+  <link rel="manifest" href="{% url 'manifest_json' %}">
 
   <link rel="preconnect" href="https://cdn.jsdelivr.net">
   {% block extra_meta %}{% endblock extra_meta %}
