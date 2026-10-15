@@ -1932,7 +1932,12 @@ def user_dashboard(request):
     )
 
     # Instructor workspace and revenue accounting live in the unified dashboard.
-    is_instructor_user = bool(lms_profile and lms_profile.role == 'instructor')
+    # Use the same instructor approval check as the LMS instructor routes.
+    # A legacy approved request can still have role='student'; previously the
+    # navigation allowed the instructor dashboard but this view hid its tab.
+    # Enrollment in another instructor's course must not change this access.
+    from lms.views import is_instructor
+    is_instructor_user = bool(lms_profile and is_instructor(user))
     instructor_context = {}
     if is_instructor_user:
         from decimal import Decimal

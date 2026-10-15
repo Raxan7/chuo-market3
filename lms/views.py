@@ -942,7 +942,13 @@ def enroll_course(request, slug):
     else:
         profile = request.user.lms_profile
 
-    # Check if already enrolled
+    # Teaching access is not a student enrollment. Never prompt a course's
+    # instructor to buy/enroll in their own course, even via a direct URL.
+    if course.instructors.filter(pk=profile.pk).exists():
+        messages.info(request, _("You can preview your own course without enrolling."))
+        return redirect('lms:course_detail', slug=course.slug)
+
+    # Instructors may still enroll as students in other instructors' courses.
     enrollment = CourseEnrollment.objects.filter(student=profile, course=course).first()
     if enrollment:
         messages.info(request, _("You are already enrolled in this course."))

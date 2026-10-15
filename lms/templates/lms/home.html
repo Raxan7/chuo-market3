@@ -35,6 +35,7 @@
                                 <div class="lms-home-actions">
                                     <a href="{% url 'lms:course_create' %}" class="btn btn-success" data-creator-action="create-course"><i class="fas fa-plus-circle me-2"></i>Create a Course</a>
                                     <a href="{% url 'lms:instructor_dashboard' %}" class="btn btn-primary ms-2">Go to Instructor Dashboard</a>
+                                    <a href="{% url 'user_dashboard' %}?tab=courses" class="btn btn-outline-primary ms-2">My Enrolled Courses</a>
                                 </div>
                             {% elif user_profile.role == 'admin' %}
                                 <div class="lms-home-actions">
