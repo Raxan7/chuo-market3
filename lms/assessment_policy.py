@@ -73,45 +73,155 @@ def assessment_type_for_quiz(quiz):
     )
 
 
-def collect_course_assessment_context(course, limit=24000):
+def collect_course_assessment_context(course, limit=10000):
     """
-    Build course-wide textual context for the final exam.
+    Build a balanced course-wide context for the Final Exam.
 
-    Videos/audio remain externally hosted, so their title/module metadata
-    contributes context, while text lessons and descriptions contribute
-    their actual textual content.
+    The old implementation concatenated the course and truncated the
+    resulting string. Large courses could therefore include mostly early
+    modules while consuming too many provider tokens.
+
+    This implementation gives every assessed module a share of the
+    available character budget, so the Final Exam remains course-wide.
     """
-    chunks = []
+    try:
+        limit = int(limit)
+    except (TypeError, ValueError):
+        limit = 10000
 
-    def add(value):
-        value = strip_tags(str(value or "")).strip()
+    limit = max(2000, limit)
 
-        if value:
-            chunks.append(value)
+    def clean(value):
+        return strip_tags(
+            str(value or "")
+        ).strip()
 
-    add(f"Course: {course.title}")
-    add(getattr(course, "summary", ""))
-    add(getattr(course, "description", ""))
+    header_parts = [
+        f"Course: {clean(course.title)}",
+    ]
 
-    modules = CourseModule.objects.filter(
-        course=course
-    ).order_by("order", "id")
+    summary = clean(
+        getattr(course, "summary", "")
+    )
+    description = clean(
+        getattr(course, "description", "")
+    )
+
+    if summary:
+        header_parts.append(
+            f"Course summary: {summary}"
+        )
+
+    if description:
+        header_parts.append(
+            f"Course description: {description}"
+        )
+
+    # Keep course metadata useful without allowing it to consume the
+    # whole Final Exam context budget.
+    header_budget = min(
+        1200,
+        max(300, limit // 6),
+    )
+
+    header = "\n".join(
+        header_parts
+    )[:header_budget].rstrip()
+
+    modules = list(
+        CourseModule.objects.filter(
+            course=course,
+            skip_assessment=False,
+        ).order_by(
+            "order",
+            "id",
+        )
+    )
+
+    if not modules:
+        return header[:limit]
+
+    remaining = max(
+        1,
+        limit
+        - len(header)
+        - 2,
+    )
+
+    per_module_budget = max(
+        1,
+        remaining // len(modules),
+    )
+
+    module_sections = []
 
     for module in modules:
-        if getattr(module, "skip_assessment", False):
-            continue
+        parts = [
+            f"Module: {clean(module.title)}",
+        ]
 
-        add(f"Module: {module.title}")
-        add(getattr(module, "description", ""))
+        module_description = clean(
+            getattr(
+                module,
+                "description",
+                "",
+            )
+        )
 
-        contents = CourseContent.objects.filter(
-            module=module
-        ).order_by("id")
+        if module_description:
+            parts.append(
+                module_description
+            )
+
+        contents = (
+            CourseContent.objects
+            .filter(module=module)
+            .order_by(
+                "order",
+                "id",
+            )
+        )
 
         for content in contents:
-            add(f"Lesson: {content.title}")
-            add(getattr(content, "text_content", ""))
+            title = clean(
+                getattr(
+                    content,
+                    "title",
+                    "",
+                )
+            )
 
-    context = "\n\n".join(chunks)
+            if title:
+                parts.append(
+                    f"Lesson: {title}"
+                )
 
-    return context[: max(1000, int(limit or 24000))]
+            body = clean(
+                getattr(
+                    content,
+                    "text_content",
+                    "",
+                )
+            )
+
+            if body:
+                parts.append(body)
+
+        section = "\n".join(parts)
+
+        module_sections.append(
+            section[
+                :per_module_budget
+            ].rstrip()
+        )
+
+    context = (
+        header
+        + "\n\n"
+        + "\n\n".join(
+            module_sections
+        )
+    )
+
+    return context[:limit]
+

@@ -185,6 +185,16 @@ AGENTIC_AI_ROUTE = os.getenv('AGENTIC_AI_ROUTE', 'structured')
 AGENTIC_AI_TIMEOUT_SECONDS = float(os.getenv('AGENTIC_AI_TIMEOUT_SECONDS', '240'))
 AI_ASSESSMENT_PROVIDER = os.getenv('AI_ASSESSMENT_PROVIDER', 'auto').strip().lower()
 AI_ASSESSMENT_CONTEXT_LIMIT = int(os.getenv('AI_ASSESSMENT_CONTEXT_LIMIT', '12000'))
+
+# Final Exams need course-wide coverage, but Groq free/on-demand has a
+# tight TPM budget. The context collector distributes this budget across
+# every assessed module instead of simply taking the first N characters.
+AI_FINAL_EXAM_CONTEXT_LIMIT = int(
+    os.getenv(
+        'AI_FINAL_EXAM_CONTEXT_LIMIT',
+        '10000',
+    )
+)
 AI_ASSESSMENT_MAX_TOKENS = int(os.getenv('AI_ASSESSMENT_MAX_TOKENS', '4000'))
 
 # Number of questions requested from the assessment provider per AI call.

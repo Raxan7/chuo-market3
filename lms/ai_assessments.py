@@ -59,15 +59,18 @@ def collect_module_learning_context(module, student=None):
     if _cs_module is not None and is_final_assessed_module(
         _cs_module
     ):
-        _cs_limit = (
-            locals().get("limit")
-            or locals().get("max_chars")
-            or 24000
+        _cs_limit = int(
+            getattr(
+                settings,
+                'AI_FINAL_EXAM_CONTEXT_LIMIT',
+                10000,
+            )
+            or 10000
         )
 
         return collect_course_assessment_context(
             _cs_module.course,
-            limit=int(_cs_limit),
+            limit=_cs_limit,
         )
     parts = [
         f"Course: {module.course.title}",
