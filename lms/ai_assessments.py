@@ -960,7 +960,15 @@ def _call_groq_for_questions(
             'model': model,
             'messages': messages,
             'temperature': 0,
-            'max_tokens': max_tokens,
+            # GPT-OSS otherwise may spend the whole completion budget
+            # on internal reasoning and return empty message.content.
+            'reasoning_effort': 'low',
+            'include_reasoning': False,
+            # Force the assessment response itself to be JSON.
+            'response_format': {
+                'type': 'json_object',
+            },
+            'max_completion_tokens': max_tokens,
         }
 
         request_body = json.dumps(
