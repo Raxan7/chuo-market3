@@ -182,13 +182,49 @@ def home(request):
     else:
         customers = False
 
-    # Fetch courses in random order so the homepage feels fresh on every device.
+    # Balanced discovery.
+    #
+    # Pinned courses are a HARD prefix and never enter randomization.
     from lms.models import Course
+    from lms.course_discovery import rank_courses_for_discovery
     from django.db.models import Count
-    courses_qs = (Course.objects.select_related('program').prefetch_related('instructors')
-                  .annotate(student_count=Count('students', distinct=True), annotated_instructor_count=Count('instructors', distinct=True))
-                  .order_by('-is_pinned', '-created_at', '-id'))
-    paginator = Paginator(courses_qs, LIST_PAGE_SIZE)
+
+    courses_qs = (
+        Course.objects
+        .select_related(
+            'program'
+        )
+        .prefetch_related(
+            'instructors'
+        )
+        .annotate(
+            student_count=Count(
+                'students',
+                distinct=True,
+            ),
+            annotated_instructor_count=Count(
+                'instructors',
+                distinct=True,
+            ),
+        )
+        .order_by(
+            '-is_pinned',
+            '-created_at',
+            '-id',
+        )
+    )
+
+    ranked_courses = (
+        rank_courses_for_discovery(
+            courses_qs,
+            page_size=LIST_PAGE_SIZE,
+        )
+    )
+
+    paginator = Paginator(
+        ranked_courses,
+        LIST_PAGE_SIZE,
+    )
     page_number = request.GET.get('page')
     courses_page = paginator.get_page(page_number)
     banners = list(Banners.objects.all())

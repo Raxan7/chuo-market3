@@ -643,7 +643,10 @@ class CourseListView(ListView):
         if level:
             queryset = queryset.filter(level=level)
 
-        return rank_courses_for_discovery(queryset)
+        return rank_courses_for_discovery(
+            queryset,
+            page_size=self.paginate_by,
+        )
 
     def _active_filters(self):
         """Describe the filters currently narrowing the list.

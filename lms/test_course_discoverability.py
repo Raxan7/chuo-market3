@@ -356,44 +356,68 @@ class InstructorCourseVisibilityTests(TestCase):
             'a non-instructor must not be able to list teaching courses',
         )
 
-    def test_dashboard_course_search(self):
+    def test_instructor_dashboard_redirects_to_unified_dashboard(self):
+        """The legacy instructor URL now opens the unified instructor tab."""
         response = self.client.get(
-            reverse('lms:instructor_dashboard'), {'course_q': 'Marine'},
-        )
-        self.assertEqual(response.status_code, 200)
-        self.assertIn(self.mine, list(response.context['my_courses']))
-        body = response.content.decode()
-        self.assertIn('Introduction to Marine Biology', body)
-        self.assertIn(
-            'name="course_q"',
-            body,
-            'the dashboard search input must actually render',
+            reverse('lms:instructor_dashboard'),
         )
 
-    def test_dashboard_search_does_not_break_stats(self):
-        """The stats aggregates must still cover every course, not just matches.
+        self.assertEqual(
+            response.status_code,
+            302,
+        )
 
-        ``teaching_courses`` drives quiz stats, completion stats and the
-        incomplete-course count. Filtering it to the search results would
-        silently zero out those numbers, so the dashboard keeps a separate
-        display queryset.
-        """
-        other_course = Course.objects.create(title='Another Course')
-        other_course.instructors.add(self.profile)
+        self.assertEqual(
+            response.url,
+            f"{reverse('user_dashboard')}?tab=instructor",
+        )
+
+    def test_unified_dashboard_keeps_all_teaching_course_stats(self):
+        """The unified instructor dashboard must include every taught course."""
+        other_course = Course.objects.create(
+            title='Another Course',
+        )
+        other_course.instructors.add(
+            self.profile
+        )
 
         response = self.client.get(
-            reverse('lms:instructor_dashboard'), {'course_q': 'Marine'},
+            f"{reverse('user_dashboard')}?tab=instructor",
         )
+
         self.assertEqual(
-            [c.title for c in response.context['my_courses']],
-            ['Introduction to Marine Biology'],
-            'the display panel should honour the search',
+            response.status_code,
+            200,
         )
-        self.assertEqual(
-            response.context['total_teaching_courses'], 2,
-            'the total should still count every teaching course',
+
+        self.assertTrue(
+            response.context['is_instructor_user'],
         )
+
         self.assertEqual(
-            response.context['teaching_courses'].count(), 2,
-            'the stats queryset must remain unfiltered',
+            response.context['active_tab'],
+            'instructor',
+        )
+
+        self.assertEqual(
+            response.context['teaching_course_count'],
+            2,
+        )
+
+        self.assertEqual(
+            response.context['teaching_courses'].count(),
+            2,
+        )
+
+        teaching_titles = {
+            course.title
+            for course in response.context['teaching_courses']
+        }
+
+        self.assertEqual(
+            teaching_titles,
+            {
+                'Introduction to Marine Biology',
+                'Another Course',
+            },
         )
