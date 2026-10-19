@@ -211,7 +211,7 @@ class InstructorRevenueTests(TestCase):
         self.assertEqual(set(mail.outbox[0].to), {
             'saidi@chuosmart.com', 'francis@chuosmart.com', 'support@chuosmart.com'
         })
-        with self.assertRaisesMessage(ValueError, 'at least'):
+        with self.assertRaisesMessage(ValueError, 'At least'):
             create_payout_request(self.instructor)
 
     def test_rejected_payout_releases_reserved_revenue(self):

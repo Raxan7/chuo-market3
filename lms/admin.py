@@ -669,6 +669,19 @@ class CertificatePaymentAdmin(admin.ModelAdmin):
 
 @admin.register(PayoutProfile)
 class PayoutProfileAdmin(admin.ModelAdmin):
+    # Bank account / mobile money details are restricted to trusted superusers.
+    def has_view_permission(self, request, obj=None):
+        return request.user.is_active and request.user.is_superuser
+
+    def has_change_permission(self, request, obj=None):
+        return request.user.is_active and request.user.is_superuser
+
+    def has_add_permission(self, request):
+        return request.user.is_active and request.user.is_superuser
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
     list_display = ('instructor', 'payout_method', 'account_name', 'updated_at')
     list_filter = ('payout_method',)
     search_fields = ('instructor__user__username', 'instructor__user__email', 'account_name', 'phone_number', 'bank_account_number')
@@ -693,33 +706,65 @@ class InstructorRevenueAdmin(admin.ModelAdmin):
 class PayoutRequestAdmin(admin.ModelAdmin):
     list_display = ('id', 'instructor', 'amount', 'payout_method', 'status', 'requested_at', 'paid_at')
     list_filter = ('status', 'payout_method', 'requested_at')
-    search_fields = ('instructor__user__username', 'instructor__user__email', 'payout_details_private')
-    readonly_fields = ('instructor', 'amount', 'payout_method', 'payout_details_snapshot', 'payout_details_private', 'requested_at', 'updated_at', 'reviewed_at', 'paid_at', 'reviewed_by')
-    actions = ('approve_selected', 'mark_selected_paid', 'reject_selected')
+    search_fields = ('instructor__user__username', 'instructor__user__email')
+    readonly_fields = ('instructor', 'amount', 'payout_method', 'payout_details_snapshot', 'requested_at', 'updated_at', 'reviewed_at', 'paid_at', 'reviewed_by')
+    actions = ('approve_selected', 'authorize_selected', 'reject_selected')
 
     @admin.action(description='Approve selected payout requests')
     def approve_selected(self, request, queryset):
         from .revenue import set_payout_status
         changed = 0
         for payout in queryset.filter(status='pending'):
-            set_payout_status(payout, 'approved', request.user)
-            changed += 1
+            try:
+                set_payout_status(payout, 'approved', request.user)
+                changed += 1
+            except ValueError as exc:
+                self.message_user(request, f'Payout #{payout.pk}: {exc}', level=messages.ERROR)
         self.message_user(request, f'{changed} payout request(s) approved.')
 
-    @admin.action(description='Mark selected payout requests as paid')
-    def mark_selected_paid(self, request, queryset):
-        from .revenue import set_payout_status
-        changed = 0
+    @admin.action(description='Authorize selected payouts after independent beneficiary verification')
+    def authorize_selected(self, request, queryset):
+        """Human reviewer confirms owner of the destination account out-of-band.
+
+        Requires a superuser DIFFERENT from the initial approver.
+        Authorization only creates an encrypted immutable outbound envelope;
+        sending requires a separate operator command and explicit live switch.
+        """
+        from payouts.service import authorize_transfer, PayoutSafetyError
+        if not request.user.is_superuser:
+            self.message_user(request, 'Superuser authorization is required.', level=messages.ERROR)
+            return
+        count = 0
         for payout in queryset.filter(status='approved'):
-            set_payout_status(payout, 'paid', request.user)
-            changed += 1
-        self.message_user(request, f'{changed} payout request(s) marked paid.')
+            try:
+                authorize_transfer(payout.pk, request.user)
+                count += 1
+            except PayoutSafetyError as exc:
+                self.message_user(request, f'Payout #{payout.pk}: {exc}', level=messages.ERROR)
+        self.message_user(request, f'{count} beneficiary-verified payout(s) authorized. Live sending requires a separate operator command.')
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+    def get_readonly_fields(self, request, obj=None):
+        return ('instructor', 'amount', 'payout_method', 'payout_details_snapshot',
+                'status', 'requested_at', 'updated_at', 'reviewed_at',
+                'paid_at', 'reviewed_by', 'admin_note')
+
+    def get_exclude(self, request, obj=None):
+        return ('payout_details_private',)
 
     @admin.action(description='Reject selected payout requests and release reserved earnings')
     def reject_selected(self, request, queryset):
         from .revenue import set_payout_status
         changed = 0
         for payout in queryset.filter(status__in=['pending', 'approved']):
-            set_payout_status(payout, 'rejected', request.user)
-            changed += 1
+            try:
+                set_payout_status(payout, 'rejected', request.user)
+                changed += 1
+            except ValueError as exc:
+                self.message_user(request, f'Payout #{payout.pk}: {exc}', level=messages.ERROR)
         self.message_user(request, f'{changed} payout request(s) rejected; reserved earnings were released.')

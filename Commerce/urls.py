@@ -21,6 +21,7 @@ urlpatterns = [
     path('materials/', include('materials.urls')),
     path('landing/', include('landing.urls')),
     path('lms/', include('lms.urls')),
+    path('payouts/', include('payouts.urls')),
     path('webpush/', include('webpush.urls')),  # Web Push Notifications
     # path('promotions/', include('promotions.urls', namespace='promotions')),
     path('jobs/', include('jobs.urls')),

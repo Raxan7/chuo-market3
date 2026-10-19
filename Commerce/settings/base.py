@@ -37,6 +37,7 @@ INSTALLED_APPS = [
 
     'core',
     'lms',
+    'payouts',
     'landing',
     'affiliates',
     # 'promotions',
@@ -394,6 +395,18 @@ CSRF_FAILURE_VIEW = 'core.views.csrf_failure'
 # Instructor marketplace revenue sharing. These values affect new revenue entries only;
 # every earning snapshots its actual percentage at the time it is recognized.
 INSTRUCTOR_REVENUE_SHARE_PERCENT = os.getenv('INSTRUCTOR_REVENUE_SHARE_PERCENT', '80')
+# Disbursements are OFF until the two-person review, sandbox tests, and
+# operator configuration have been completed. Use a restricted, payout-only key.
+INSTRUCTOR_DISBURSEMENTS_ENABLED = os.getenv('INSTRUCTOR_DISBURSEMENTS_ENABLED', 'false').lower() == 'true'
+SNIPPE_PAYOUT_API_KEY = os.getenv('SNIPPE_PAYOUT_API_KEY', '')
+SNIPPE_PAYOUT_BASE_URL = os.getenv('SNIPPE_PAYOUT_BASE_URL', 'https://api.snippe.sh').rstrip('/')
+SNIPPE_PAYOUT_WEBHOOK_URL = os.getenv('SNIPPE_PAYOUT_WEBHOOK_URL', '')
+SNIPPE_PAYOUT_ENCRYPTION_KEY = os.getenv('SNIPPE_PAYOUT_ENCRYPTION_KEY', '')
+INSTRUCTOR_PAYOUT_SETTLEMENT_DAYS = int(os.getenv('INSTRUCTOR_PAYOUT_SETTLEMENT_DAYS', '7'))
+INSTRUCTOR_PAYOUT_MAX_SINGLE_TZS = int(os.getenv('INSTRUCTOR_PAYOUT_MAX_SINGLE_TZS', '500000'))
+INSTRUCTOR_PAYOUT_MAX_DAILY_TZS = int(os.getenv('INSTRUCTOR_PAYOUT_MAX_DAILY_TZS', '1000000'))
+INSTRUCTOR_PAYOUT_REQUIRE_DUAL_CONTROL = True
+
 INSTRUCTOR_PAYOUT_THRESHOLD_TZS = os.getenv('INSTRUCTOR_PAYOUT_THRESHOLD_TZS', '100000')
 INSTRUCTOR_PAYOUT_ALERT_EMAILS = [
     email.strip() for email in os.getenv(

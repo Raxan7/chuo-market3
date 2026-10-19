@@ -34,6 +34,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'core',
     'lms',
+    'payouts',
     'landing',
     'affiliates',
     'jobs',

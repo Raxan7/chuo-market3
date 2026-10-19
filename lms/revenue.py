@@ -108,7 +108,7 @@ def instructor_balance(instructor):
 
 
 def create_payout_request(instructor):
-    """Reserve the instructor's full currently available balance in one payout request."""
+    """Reserve eligible, distinct earning rows up to the single-payout cap."""
     from .models import InstructorRevenue, PayoutProfile, PayoutRequest
 
     threshold = payout_threshold()
@@ -122,21 +122,39 @@ def create_payout_request(instructor):
             .filter(instructor=instructor, payout_request__isnull=True)
             .order_by('earned_at', 'id')
         )
-        amount = sum((row.instructor_amount for row in rows), Decimal('0.00')).quantize(MONEY)
+        # Reserve at most one authorized transfer's configured limit. The
+        # legacy ledger attaches WHOLE earnings entries to a request, so select
+        # a disjoint group without splitting / duplicating revenue rows.
+        limit = Decimal(str(getattr(settings, 'INSTRUCTOR_PAYOUT_MAX_SINGLE_TZS', 500000)))
+        if limit < threshold:
+            raise ValueError('Instructor payout limit is below the payout threshold; contact support.')
+        selected = []
+        amount = Decimal('0.00')
+        for row in rows:
+            value = row.instructor_amount
+            if value > 0 and amount + value <= limit:
+                selected.append(row)
+                amount += value
+        amount = amount.quantize(MONEY)
         if amount < threshold:
-            raise ValueError(f'You need at least TSh {threshold:,.0f} available before requesting a payout.')
-        if not rows:
-            raise ValueError('There are no earnings available for payout.')
+            raise ValueError(
+                f'At least TSh {threshold:,.0f} in earnings must fit within the per-payout limit. '
+                'Contact support if an individual earning exceeds the limit.'
+            )
 
+        # Encrypt at rest when a Fernet key is configured. Live sending always
+        # requires this key, including for pre-existing (legacy) requests.
+        from payouts.service import encrypt_request_snapshot
+        private_snapshot = encrypt_request_snapshot(profile.snapshot)
         payout = PayoutRequest.objects.create(
             instructor=instructor,
             amount=amount,
             payout_method=profile.payout_method,
             payout_details_snapshot=profile.masked_snapshot,
-            payout_details_private=profile.snapshot,
+            payout_details_private=private_snapshot,
             status='pending',
         )
-        InstructorRevenue.objects.filter(pk__in=[row.pk for row in rows]).update(payout_request=payout)
+        InstructorRevenue.objects.filter(pk__in=[row.pk for row in selected]).update(payout_request=payout)
         transaction.on_commit(lambda: send_payout_request_alert(payout.pk))
         return payout
 
@@ -170,28 +188,34 @@ def send_payout_request_alert(payout_id):
 
 
 def set_payout_status(payout, new_status, admin_user=None, note=''):
-    """Safely move a payout request; rejected rows become withdrawable again."""
+    """Apply only human review transitions under lock; never mark money paid.
+
+    Paid requires verified Snippe status via payouts.service.reconcile_transfer.
+    This also fixes the legacy pre-lock status-check race.
+    """
     from .models import InstructorRevenue
+    from payouts.models import PayoutTransfer
+    from django.utils import timezone
 
     allowed = {
         'pending': {'approved', 'rejected'},
-        'approved': {'paid', 'rejected'},
+        'approved': {'rejected'},
         'paid': set(),
         'rejected': set(),
     }
-    if new_status not in allowed.get(payout.status, set()):
-        raise ValueError(f'Invalid payout transition {payout.status} -> {new_status}.')
-
-    from django.utils import timezone
+    if new_status == 'paid':
+        raise ValueError('Only authenticated Snippe reconciliation may mark a payout paid.')
     with transaction.atomic():
         payout = type(payout).objects.select_for_update().get(pk=payout.pk)
+        if new_status not in allowed.get(payout.status, set()):
+            raise ValueError(f'Invalid payout transition {payout.status} -> {new_status}.')
+        if new_status == 'rejected' and PayoutTransfer.objects.filter(payout_request_id=payout.pk).exists():
+            raise ValueError('An authorized transfer cannot be rejected; escalate for controlled reconciliation.')
         payout.status = new_status
         payout.reviewed_by = admin_user
         payout.admin_note = note or payout.admin_note
         payout.reviewed_at = timezone.now()
-        if new_status == 'paid':
-            payout.paid_at = timezone.now()
-        payout.save(update_fields=['status', 'reviewed_by', 'admin_note', 'reviewed_at', 'paid_at', 'updated_at'])
+        payout.save(update_fields=['status', 'reviewed_by', 'admin_note', 'reviewed_at', 'updated_at'])
         if new_status == 'rejected':
             InstructorRevenue.objects.filter(payout_request=payout).update(payout_request=None)
     return payout
