@@ -1,4 +1,5 @@
 {% extends "app/base.html" %}
+{% load share_tags %}
 
 {% block title %}My Courses{% endblock %}
 
@@ -62,6 +63,8 @@
                         </span>
                         {% endif %}
                     </div>
+                    {% url 'lms:course_detail' course.slug as public_share_path %}
+                    {% share_buttons course.title public_share_path compact=True %}
                     <div class="d-flex gap-1 mt-2">
                         <a href="{% url 'lms:course_detail' course.slug %}" class="btn btn-sm btn-outline-primary w-100">
                             <i class="fas fa-eye me-1"></i>Preview Course

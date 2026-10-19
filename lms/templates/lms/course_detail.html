@@ -1,4 +1,5 @@
 {% extends "app/base.html" %}
+{% load share_tags %}
 {% load static %}
 {% load lms_extras %}
 {% load lms_user_tags %}
@@ -358,6 +359,9 @@
                         <span class="badge bg-light text-dark border px-2 px-sm-3 py-1 py-sm-2"><strong>{{ course.price }}</strong><span class="d-none d-sm-inline"> TZS</span></span>
                         {% endif %}
                     </div>
+
+                    {% url 'lms:course_detail' course.slug as public_share_path %}
+                    {% share_buttons course.title public_share_path %}
 
                     <!-- Course Type Badge -->
                     <div class="mb-3">

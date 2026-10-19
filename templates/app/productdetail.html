@@ -1,4 +1,5 @@
 {% extends 'app/base.html' %}
+{% load share_tags %}
 {% load static %}
 {% load product_filters %}
 {% load sanitize_tags %}
@@ -79,6 +80,9 @@
               {% include 'promotions/promote_button.html' with product=product %}
             {% endif %}
           </div>
+          {% url 'product-detail' slug=product.slug as public_share_path %}
+          {% share_buttons product.title public_share_path %}
+
           <div class="product-description">
             {{ product.description|process_product_description|sanitize }}
           </div>

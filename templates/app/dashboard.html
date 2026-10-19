@@ -1,4 +1,5 @@
 {% extends 'app/base.html' %}
+{% load share_tags %}
 {% load static %}
 {% load form_tags %}
 {% load humanize %}
@@ -522,7 +523,7 @@
                                 <thead><tr><th>Course</th><th>Students</th><th>Revenue owner</th><th></th></tr></thead>
                                 <tbody>
                                 {% for course in teaching_courses %}
-                                    <tr><td><strong>{{ course.title }}</strong><br><small class="text-muted">{% if course.is_free %}Free{% else %}Paid · TSh {{ course.price|floatformat:0|intcomma }}{% endif %}</small></td><td>{{ course.student_count }}</td><td>{% if course.revenue_owner %}{{ course.revenue_owner.user.get_full_name|default:course.revenue_owner.user.username }}{% else %}<span class="text-danger">Not assigned</span>{% endif %}</td><td class="text-end"><a href="{% url 'lms:course_detail' course.slug %}" class="btn btn-sm btn-outline-primary">Preview</a> <a href="{% url 'lms:course_update' course.slug %}" class="btn btn-sm btn-outline-secondary">Edit</a></td></tr>
+                                    <tr><td><strong>{{ course.title }}</strong><br><small class="text-muted">{% if course.is_free %}Free{% else %}Paid · TSh {{ course.price|floatformat:0|intcomma }}{% endif %}</small></td><td>{{ course.student_count }}</td><td>{% if course.revenue_owner %}{{ course.revenue_owner.user.get_full_name|default:course.revenue_owner.user.username }}{% else %}<span class="text-danger">Not assigned</span>{% endif %}</td><td class="text-end"><a href="{% url 'lms:course_detail' course.slug %}" class="btn btn-sm btn-outline-primary">Preview</a> <a href="{% url 'lms:course_update' course.slug %}" class="btn btn-sm btn-outline-secondary">Edit</a>{% url 'lms:course_detail' course.slug as public_share_path %}{% share_buttons course.title public_share_path compact=True %}</td></tr>
                                 {% empty %}<tr><td colspan="4" class="text-muted">You have not created a course yet.</td></tr>{% endfor %}
                                 </tbody>
                             </table>

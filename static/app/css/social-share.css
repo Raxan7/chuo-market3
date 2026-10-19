@@ -1,0 +1,19 @@
+.cs-share { margin: 1rem 0 1.5rem; }
+.cs-share__label { display: block; color: #475569; font-size: .9rem; font-weight: 600; margin-bottom: .5rem; }
+.cs-share__actions { display: flex; flex-wrap: wrap; gap: .45rem; align-items: center; }
+.cs-share__action {
+  display: inline-flex; align-items: center; justify-content: center; gap: .4rem;
+  border: 1px solid #ccd6e0; background: #fff; color: #17324f;
+  border-radius: .55rem; padding: .45rem .7rem; min-height: 2.5rem;
+  font: inherit; font-size: .875rem; font-weight: 600; line-height: 1.15;
+  text-decoration: none; cursor: pointer;
+}
+.cs-share__action:hover { background: #f0f6fc; border-color: #7997b3; color: #0b396d; text-decoration: none; }
+.cs-share__action:focus-visible { outline: 3px solid #2563eb; outline-offset: 2px; }
+.cs-share__action[hidden] { display: none; }
+.cs-share--compact { margin: .5rem 0; }
+.cs-share--compact .cs-share__action { padding: .4rem .5rem; min-height: 2.25rem; }
+.cs-share--compact .cs-share__action span { display: none; }
+@media (max-width: 420px) {
+  .cs-share:not(.cs-share--compact) .cs-share__action { flex: 1 1 auto; }
+}

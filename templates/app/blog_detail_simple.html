@@ -1,4 +1,5 @@
 {% extends 'app/base.html' %}
+{% load share_tags %}
 {% load markdown_deux_tags %}
 {% load sanitize_tags %}
 {% block title %}{{ blog.title }}{% endblock title %}
@@ -259,21 +260,8 @@
                     {% include "app/partials/adsense_in_article_ad.html" %}
                 </div>
                 
-                <!-- Share buttons -->
-                <div class="blog-share mt-5 pt-4 border-top">
-                    <h5 class="mb-3">Share this Article</h5>
-                    <div class="d-flex gap-2">
-                        <a href="https://twitter.com/intent/tweet?text={{ blog.title|urlencode }}&url={{ request.build_absolute_uri }}" target="_blank" class="btn btn-sm btn-outline-primary">
-                            <i class="fab fa-twitter me-1"></i> Twitter
-                        </a>
-                        <a href="https://www.facebook.com/sharer/sharer.php?u={{ request.build_absolute_uri|urlencode }}" target="_blank" class="btn btn-sm btn-outline-primary">
-                            <i class="fab fa-facebook me-1"></i> Facebook
-                        </a>
-                        <a href="https://wa.me/?text={{ blog.title|urlencode }}%20{{ request.build_absolute_uri|urlencode }}" target="_blank" class="btn btn-sm btn-outline-success">
-                            <i class="fab fa-whatsapp me-1"></i> WhatsApp
-                        </a>
-                    </div>
-                </div>
+                {% url 'blog_detail' blog.slug as public_share_path %}
+                {% share_buttons blog.title public_share_path %}
             </div>
         </div>
     </div>
